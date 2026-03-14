@@ -1,0 +1,13 @@
+[package]
+name = "pdfmod"
+version = "0.1.0"
+edition = "2021"
+description = "A PDF library for reading, modifying, and writing PDF files"
+license = "MIT"
+
+[dependencies]
+
+[dev-dependencies]
+
+[profile.release]
+lto = true
