@@ -1,8 +1,7 @@
 {
-  "name": "pdfmod-node",
-  "image": "ubuntu:24.04",
-  "features": {
-    "ghcr.io/devcontainers/features/node:1": {}
+  "name": "pdfmod",
+  "build": {
+    "dockerfile": "node/Dockerfile"
   },
   "customizations": {
     "vscode": {
