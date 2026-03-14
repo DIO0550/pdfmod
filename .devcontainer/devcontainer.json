@@ -1,27 +1,23 @@
 {
   "name": "pdfmod",
-  "image": "mcr.microsoft.com/devcontainers/rust:1",
-  "features": {
-    "ghcr.io/devcontainers/features/common-utils:2": {}
-  },
+  "image": "node:22-bookworm",
   "customizations": {
     "vscode": {
       "extensions": [
-        "rust-lang.rust-analyzer",
-        "tamasfe.even-better-toml",
-        "vadimcn.vscode-lldb",
-        "serayuzgur.crates"
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode"
       ],
       "settings": {
-        "rust-analyzer.checkOnSave": true,
-        "rust-analyzer.cargo.allFeatures": true,
         "editor.formatOnSave": true,
-        "[rust]": {
-          "editor.defaultFormatter": "rust-lang.rust-analyzer"
+        "[javascript]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode"
+        },
+        "[typescript]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode"
         }
       }
     }
   },
-  "postCreateCommand": "rustup component add clippy rustfmt && cargo fetch || true",
-  "remoteUser": "vscode"
+  "postCreateCommand": "npm install",
+  "remoteUser": "node"
 }
