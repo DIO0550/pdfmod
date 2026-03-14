@@ -140,3 +140,9 @@ vite.config.ts.timestamp-*
 
 # devcontainer init flag
 .devcontainer/.init-done
+
+# macOS
+.DS_Store
+
+# pnpm store
+.pnpm-store/
