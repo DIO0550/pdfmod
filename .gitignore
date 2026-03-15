@@ -146,3 +146,7 @@ vite.config.ts.timestamp-*
 
 # pnpm store
 .pnpm-store/
+
+# spec-to-issues working files
+.specs/
+.spec-to-issues/
