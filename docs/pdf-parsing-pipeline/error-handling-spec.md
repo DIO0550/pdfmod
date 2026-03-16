@@ -5,7 +5,7 @@
 
 ## 概要
 
-PDF解析パイプラインのエラー体系を定義する。基本方針はPostelの法則（寛容処理優先）に基づき、壊れたPDFでも可能な限り解析を継続する。回復不能なエラーのみ例外をスローし、回復可能な問題は警告コールバックで通知する。
+PDF解析パイプラインのエラー体系を定義する。基本方針はPostelの法則（寛容処理優先）に基づき、壊れたPDFでも可能な限り解析を継続する。回復不能なエラーは `Result<T, PdfError>` 型で表現し、回復可能な問題は警告コールバックで通知する。
 
 ## エラー設計方針
 
@@ -27,33 +27,66 @@ PDF解析パイプラインのエラー体系を定義する。基本方針はPo
 └──────────────┘
       │ いいえ
       ▼
-  エラー (Error) をスロー
+  Result の err() でエラーを返却
 ```
 
-## エラークラス階層
+### 例外ではなく Result 型を使う理由
+
+- PDFの解析エラーは「予期される結果」であり、例外的事態ではない
+- `try-catch` は型で強制できず、呼び出し側がハンドリングを忘れるリスクがある
+- `Result<T, E>` は discriminated union で型安全に narrowing できる
+- パイプラインアーキテクチャとの関数的な合成に適している
+- 例外のスタックトレース生成コストを回避できる
+
+## エラー型（discriminated union）
 
 ```typescript
-// 基底クラス
-class PdfError extends Error {
-  readonly code: string;
-  constructor(code: string, message: string);
+/** Parse error codes */
+type PdfParseErrorCode =
+  | "INVALID_HEADER"
+  | "STARTXREF_NOT_FOUND"
+  | "ROOT_NOT_FOUND"
+  | "SIZE_NOT_FOUND"
+  | "MEDIABOX_NOT_FOUND"
+  | "NESTING_TOO_DEEP";
+
+/** All fatal PDF error codes */
+type PdfErrorCode = PdfParseErrorCode | "CIRCULAR_REFERENCE" | "TYPE_MISMATCH";
+
+/** Parse error — unrecoverable structural/syntactic problem */
+interface PdfParseError {
+  readonly code: PdfParseErrorCode;
+  readonly message: string;
+  readonly offset?: number;
 }
 
-// 解析エラー（回復不能）
-class PdfParseError extends PdfError {
-  readonly offset?: number; // 問題が発生したバイトオフセット
-}
-
-// 循環参照エラー
-class CircularReferenceError extends PdfError {
+/** Circular reference detected during object resolution */
+interface PdfCircularReferenceError {
+  readonly code: "CIRCULAR_REFERENCE";
+  readonly message: string;
   readonly objectId: ObjectId;
 }
 
-// 型不一致エラー
-class PdfTypeError extends PdfError {
+/** PDF object type does not match expected type */
+interface PdfTypeMismatchError {
+  readonly code: "TYPE_MISMATCH";
+  readonly message: string;
   readonly expected: string;
   readonly actual: string;
 }
+
+/** Discriminated union of all fatal PDF errors */
+type PdfError = PdfParseError | PdfCircularReferenceError | PdfTypeMismatchError;
+```
+
+### Result 型
+
+```typescript
+type Result<T, E> = { ok: true; value: T } | { ok: false; error: E };
+
+// ヘルパー関数
+const ok = <T>(value: T): Ok<T> => ({ ok: true, value });
+const err = <E>(error: E): Err<E> => ({ ok: false, error });
 ```
 
 ### 警告（回復可能な問題）
@@ -61,29 +94,61 @@ class PdfTypeError extends PdfError {
 ```typescript
 interface PdfWarning {
   /** 警告コード */
-  code: string;
+  readonly code: PdfWarningCode;
   /** 人間が読めるメッセージ */
-  message: string;
+  readonly message: string;
   /** 問題が発生したバイトオフセット */
-  offset?: number;
+  readonly offset?: number;
   /** 適用されたフォールバック処理 */
-  recovery?: string;
+  readonly recovery?: string;
+}
+```
+
+## 使用例
+
+```typescript
+// エラーの返却
+function parseHeader(bytes: Uint8Array): Result<PdfHeader, PdfError> {
+  if (!startsWithPdfMagic(bytes)) {
+    return err({
+      code: "INVALID_HEADER",
+      message: "Invalid PDF header: expected %PDF-",
+      offset: 0,
+    });
+  }
+  return ok(header);
+}
+
+// エラーの処理（code で narrowing）
+const result = parseHeader(bytes);
+if (!result.ok) {
+  switch (result.error.code) {
+    case "INVALID_HEADER":
+      console.error(`offset: ${result.error.offset}`); // offset にアクセス可能
+      break;
+    case "CIRCULAR_REFERENCE":
+      console.error(`object: ${result.error.objectId}`); // objectId にアクセス可能
+      break;
+    case "TYPE_MISMATCH":
+      console.error(`expected ${result.error.expected}, got ${result.error.actual}`);
+      break;
+  }
 }
 ```
 
 ## エラー/警告コード一覧
 
-### 致命的エラー（例外スロー）
+### 致命的エラー（Result の err で返却）
 
-| コード | クラス | 発生条件 | メッセージ例 |
-|:-------|:-------|:---------|:-----------|
+| コード | 型 | 発生条件 | メッセージ例 |
+|:-------|:---|:---------|:-----------|
 | `INVALID_HEADER` | PdfParseError | ヘッダが`%PDF-`で始まらない | "Invalid PDF header: expected %PDF-" |
 | `STARTXREF_NOT_FOUND` | PdfParseError | startxrefが検出できない（フォールバック後も） | "startxref not found in file" |
 | `ROOT_NOT_FOUND` | PdfParseError | `/Root`がトレイラに存在しない | "Trailer missing required /Root entry" |
 | `SIZE_NOT_FOUND` | PdfParseError | `/Size`がトレイラに存在しない | "Trailer missing required /Size entry" |
 | `MEDIABOX_NOT_FOUND` | PdfParseError | ルートまで辿ってもMediaBox未定義 | "Page {n}: MediaBox not found in page or ancestors" |
-| `CIRCULAR_REFERENCE` | CircularReferenceError | オブジェクト解決で循環検出 | "Circular reference detected: object {id}" |
-| `TYPE_MISMATCH` | PdfTypeError | resolveAs()で型不一致 | "Expected dictionary but got array" |
+| `CIRCULAR_REFERENCE` | PdfCircularReferenceError | オブジェクト解決で循環検出 | "Circular reference detected: object {id}" |
+| `TYPE_MISMATCH` | PdfTypeMismatchError | resolveAs()で型不一致 | "Expected dictionary but got array" |
 | `NESTING_TOO_DEEP` | PdfParseError | 配列/辞書のネストが100段超 | "Object nesting exceeds maximum depth (100)" |
 
 ### 警告（寛容処理で回復）
@@ -108,7 +173,7 @@ interface PdfWarning {
 
 xrefテーブルの通常パースが完全に失敗した場合の最終手段。
 
-**トリガー**: startxref未検出、またはxrefパースで例外発生
+**トリガー**: startxref未検出、またはxrefパースでエラー返却
 
 **処理**:
 1. ファイル全体をスキャンして `\d+ \d+ obj` パターンを検出
@@ -174,12 +239,10 @@ const doc = await PdfDocument.load(data, {
 ```
 packages/core/src/
 ├── errors/
-│   ├── index.ts              # 再エクスポート
-│   ├── pdf-error.ts          # PdfError 基底クラス
-│   ├── pdf-parse-error.ts    # PdfParseError
-│   ├── circular-reference-error.ts # CircularReferenceError
-│   ├── pdf-type-error.ts     # PdfTypeError
-│   └── pdf-warning.ts        # PdfWarning インターフェース
+│   ├── index.ts          # 再エクスポート
+│   ├── pdf-error.ts      # PdfError discriminated union + PdfErrorCode
+│   ├── pdf-warning.ts    # PdfWarning インターフェース
+│   └── result.ts         # Result<T, E> 型 + ok/err ヘルパー
 ├── xref/
 │   └── fallback-scanner.ts   # フォールバックXRefスキャナ
 ```
