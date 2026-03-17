@@ -1,5 +1,5 @@
 {
-  "name": "Agent Lab Dev Container",
+  "name": "pdf-mod Container",
   "dockerComposeFile": "docker-compose.yml",
   "service": "app",
   "workspaceFolder": "/workspace",
