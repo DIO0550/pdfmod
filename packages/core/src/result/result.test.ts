@@ -13,6 +13,7 @@ test("errは失敗結果を生成する", () => {
 
 test("okのdiscriminantで値にアクセスできる", () => {
   const result = ok(42);
+  expect(result.ok).toBe(true);
   if (result.ok) {
     expect(result.value).toBe(42);
   }
