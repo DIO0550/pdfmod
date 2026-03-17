@@ -23,7 +23,7 @@ test("flatMapはok結果をチェーンする", () => {
 
 test("flatMapはerrで短絡する", () => {
   const double = (n: number): Result<number, string> => ok(n * 2);
-  expect(flatMap(err("fail") as Result<number, string>, double)).toEqual({
+  expect(flatMap(err<string>("fail"), double)).toEqual({
     ok: false,
     error: "fail",
   });
