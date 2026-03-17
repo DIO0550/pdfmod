@@ -11,7 +11,7 @@ test("sourceがnullのとき空状態を表示する", () => {
   expect(screen.getByText("No document loaded")).toBeDefined();
 });
 
-test("ArrayBufferからドキュメントを表示する", async () => {
+test("Uint8Arrayからドキュメントを表示する", async () => {
   const pdfContent = new TextEncoder().encode("%PDF-1.7 test");
   render(<PdfViewer source={pdfContent} />);
 
