@@ -109,16 +109,18 @@ interface PdfWarning {
 ## 使用例
 
 ```typescript
+// 擬似コード: 実際の型定義・関数は各モジュールで実装される
+
 // エラーの返却
-function parseHeader(bytes: Uint8Array): Result<PdfHeader, PdfError> {
-  if (!startsWithPdfMagic(bytes)) {
+function parseHeader(bytes: Uint8Array): Result<{ version: string }, PdfError> {
+  if (bytes[0] !== 0x25 /* '%' */) {
     return err({
       code: "INVALID_HEADER",
       message: "Invalid PDF header: expected %PDF-",
       offset: 0,
     });
   }
-  return ok(header);
+  return ok({ version: "1.7" });
 }
 
 // エラーの処理（code で narrowing）
