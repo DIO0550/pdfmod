@@ -34,3 +34,6 @@ export interface XRefEntry {
   generationNumber: number;
   inUse: boolean;
 }
+
+/** Object identifier for PDF indirect objects (alias for IndirectRef) */
+export type ObjectId = IndirectRef;
