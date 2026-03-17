@@ -241,8 +241,10 @@ packages/core/src/
 ├── errors/
 │   ├── index.ts          # 再エクスポート
 │   ├── pdf-error.ts      # PdfError discriminated union + PdfErrorCode
-│   ├── pdf-warning.ts    # PdfWarning インターフェース
-│   └── result.ts         # Result<T, E> 型 + ok/err ヘルパー
+│   └── pdf-warning.ts    # PdfWarning インターフェース
+├── result/
+│   ├── index.ts          # 再エクスポート
+│   └── result.ts         # Result<T, E> 型 + ok/err/map/flatMap/mapErr/unwrapOr
 ├── xref/
 │   └── fallback-scanner.ts   # フォールバックXRefスキャナ
 ```
