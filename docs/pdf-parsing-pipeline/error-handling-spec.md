@@ -129,7 +129,7 @@ if (!result.ok) {
       console.error(`offset: ${result.error.offset}`); // offset にアクセス可能
       break;
     case "CIRCULAR_REFERENCE":
-      console.error(`object: ${result.error.objectId}`); // objectId にアクセス可能
+      console.error(`object: ${result.error.objectId.objectNumber} gen ${result.error.objectId.generationNumber}`); // objectId にアクセス可能
       break;
     case "TYPE_MISMATCH":
       console.error(`expected ${result.error.expected}, got ${result.error.actual}`);
