@@ -82,7 +82,9 @@ type PdfError = PdfParseError | PdfCircularReferenceError | PdfTypeMismatchError
 ### Result 型
 
 ```typescript
-type Result<T, E> = { ok: true; value: T } | { ok: false; error: E };
+interface Ok<T> { readonly ok: true; readonly value: T }
+interface Err<E> { readonly ok: false; readonly error: E }
+type Result<T, E> = Ok<T> | Err<E>;
 
 // ヘルパー関数
 const ok = <T>(value: T): Ok<T> => ({ ok: true, value });
