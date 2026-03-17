@@ -1,5 +1,6 @@
 import { test, expect } from "vitest";
 import { ok, err, map, flatMap, mapErr, unwrapOr } from "./result.js";
+import type { Result } from "./result.js";
 
 // map
 
