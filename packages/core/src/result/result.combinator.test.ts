@@ -1,6 +1,5 @@
 import { test, expect } from "vitest";
 import { ok, err, map, flatMap, mapErr, unwrapOr } from "./result.js";
-import type { Result } from "./result.js";
 
 // map
 
@@ -48,9 +47,10 @@ test("mapErrはokをそのまま返す", () => {
 
 // unwrapOr
 
-test.each([
-  [ok(42), 0, 42],
-  [err("fail"), 0, 0],
-] as const)("unwrapOrは%oに対してデフォルト値%iで%iを返す", (result, defaultVal, expected) => {
-  expect(unwrapOr(result as Result<number, string>, defaultVal)).toBe(expected);
+test("unwrapOrはokから値を取り出す", () => {
+  expect(unwrapOr(ok(42), 0)).toBe(42);
+});
+
+test("unwrapOrはerrに対してデフォルト値を返す", () => {
+  expect(unwrapOr(err("fail"), 0)).toBe(0);
 });
