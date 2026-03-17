@@ -21,6 +21,7 @@ test("okのdiscriminantで値にアクセスできる", () => {
 
 test("errのdiscriminantでエラーにアクセスできる", () => {
   const result = err("fail");
+  expect(result.ok).toBe(false);
   if (!result.ok) {
     expect(result.error).toBe("fail");
   }
