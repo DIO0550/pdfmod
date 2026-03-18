@@ -30,8 +30,10 @@ test("flatMapはerrで短絡する", () => {
 });
 
 test("flatMapは関数からのerrを伝播する", () => {
-  const fail = (_n: number): Result<number, string> => err("inner fail");
-  expect(flatMap(ok(5), fail)).toEqual({ ok: false, error: "inner fail" });
+  expect(flatMap(ok(5), () => err("inner fail"))).toEqual({
+    ok: false,
+    error: "inner fail",
+  });
 });
 
 // mapErr
