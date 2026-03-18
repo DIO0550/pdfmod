@@ -1,0 +1,21 @@
+# AGENTS.md
+
+## プロジェクト概要
+
+**pdfmod** — React向けPDF編集ライブラリ。ISO 32000-1:2008 (PDF 1.7) および ISO 32000-2:2020 (PDF 2.0) 準拠を目標とする。
+
+pnpmモノレポ構成で `@pdfmod/core`（PDF処理エンジン）と `@pdfmod/react`（Reactコンポーネント）の2パッケージ。
+
+## 仕様書
+
+実装時は `docs/specs/` 配下の仕様書（`00_overview.md` 〜 `09_implementation_guide.md`）を参照すること。
+
+`docs/PDFフォーマット仕様調査とライブラリ開発.md` は包括的な調査ドキュメント（日本語）。
+
+## PDF重要概念
+
+- 座標原点は**左下**（1単位 = 1/72インチ）
+- ページ属性（MediaBox、Resources）は親Pagesノードからの**継承** — 親チェーン走査が必要
+- コンテンツストリームは**逆ポーランド記法（RPN）** — ループ・条件分岐・変数なし
+- テキスト抽出には `/ToUnicode` CMAPが必須
+- 圧縮: `/FlateDecode`（zlib）が最も一般的。フィルタは配列でカスケード可能
