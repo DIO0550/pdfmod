@@ -49,6 +49,13 @@ jobs:
             const final = JSON.parse(fs.readFileSync('coverage/coverage-final.json', 'utf8'));
             const total = summary.total;
 
+            // Emoji based on coverage percentage
+            const coverageEmoji = (pct) => {
+              if (pct >= 80) return '🟢';
+              if (pct >= 60) return '🟡';
+              return '🔴';
+            };
+
             // Badge color based on coverage percentage
             const badgeColor = (pct) => {
               if (pct >= 80) return 'brightgreen';
@@ -62,13 +69,16 @@ jobs:
               const pct = total[cat].pct;
               const label = cat.charAt(0).toUpperCase() + cat.slice(1);
               return `![${label}](https://img.shields.io/badge/${label}-${pct}%25-${badgeColor(pct)})`;
-            }).join('\n');
+            }).join(' ');
 
             // Summary table
             const summaryTable = [
-              '| Category | Coverage |',
-              '|----------|----------|',
-              ...categories.map(cat => `| ${cat.charAt(0).toUpperCase() + cat.slice(1)} | ${total[cat].pct.toFixed(2)}% |`)
+              '| Category | Coverage | |',
+              '|----------|----------|:-:|',
+              ...categories.map(cat => {
+                const pct = total[cat].pct;
+                return `| ${cat.charAt(0).toUpperCase() + cat.slice(1)} | ${pct.toFixed(2)}% | ${coverageEmoji(pct)} |`;
+              })
             ].join('\n');
 
             // File details (exclude config files, test files, barrel index files)
