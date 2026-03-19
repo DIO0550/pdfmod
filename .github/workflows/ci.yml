@@ -46,7 +46,6 @@ jobs:
 
             // Read coverage data
             const summary = JSON.parse(fs.readFileSync('coverage/coverage-summary.json', 'utf8'));
-            const final = JSON.parse(fs.readFileSync('coverage/coverage-final.json', 'utf8'));
             const total = summary.total;
 
             // Emoji based on coverage percentage
@@ -81,31 +80,14 @@ jobs:
               })
             ].join('\n');
 
-            // File details (exclude config files, test files, barrel index files)
+            // File details from coverage-summary.json (exclude config files, test files, barrel index files)
             const excludePatterns = [/\.config\./, /\.test\./, /\/index\.ts$/];
-            const fileRows = Object.entries(final)
-              .filter(([filePath]) => !excludePatterns.some(p => p.test(filePath)))
+            const fmt = (pct) => `${pct.toFixed(1)}% ${coverageEmoji(pct)}`;
+            const fileRows = Object.entries(summary)
+              .filter(([filePath]) => filePath !== 'total' && !excludePatterns.some(p => p.test(filePath)))
               .map(([filePath, data]) => {
-                const s = data.s || {};
-                const b = data.b || {};
-                const f = data.f || {};
-
-                const stmtTotal = Object.keys(s).length;
-                const stmtCovered = Object.values(s).filter(v => v > 0).length;
-                const stmtPct = stmtTotal > 0 ? ((stmtCovered / stmtTotal) * 100).toFixed(1) : 'N/A';
-
-                const branchTotal = Object.values(b).flat().length;
-                const branchCovered = Object.values(b).flat().filter(v => v > 0).length;
-                const branchPct = branchTotal > 0 ? ((branchCovered / branchTotal) * 100).toFixed(1) : 'N/A';
-
-                const fnTotal = Object.keys(f).length;
-                const fnCovered = Object.values(f).filter(v => v > 0).length;
-                const fnPct = fnTotal > 0 ? ((fnCovered / fnTotal) * 100).toFixed(1) : 'N/A';
-
-                const fmt = (v) => v === 'N/A' ? 'N/A' : `${v}% ${coverageEmoji(parseFloat(v))}`;
-                // Use relative path from workspace root
                 const displayPath = filePath.replace(process.cwd() + '/', '');
-                return `| \`${displayPath}\` | ${fmt(stmtPct)} | ${fmt(branchPct)} | ${fmt(fnPct)} | ${fmt(stmtPct)} |`;
+                return `| \`${displayPath}\` | ${fmt(data.lines.pct)} | ${fmt(data.branches.pct)} | ${fmt(data.functions.pct)} | ${fmt(data.statements.pct)} |`;
               });
 
             const fileDetails = fileRows.length > 0 ? [
