@@ -45,7 +45,12 @@ jobs:
             const fs = require('fs');
 
             // Read coverage data
-            const summary = JSON.parse(fs.readFileSync('coverage/coverage-summary.json', 'utf8'));
+            const summaryPath = 'coverage/coverage-summary.json';
+            if (!fs.existsSync(summaryPath)) {
+              core.warning('coverage-summary.json not found, skipping coverage comment');
+              return;
+            }
+            const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
             const total = summary.total;
 
             // Emoji based on coverage percentage
