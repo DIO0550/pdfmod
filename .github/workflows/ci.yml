@@ -8,7 +8,6 @@ on:
 
 permissions:
   contents: read
-  pull-requests: write
 
 jobs:
   ci:
@@ -37,15 +36,34 @@ jobs:
       - name: Build
         run: pnpm build
 
-      - name: Coverage PR Comment
+      - name: Upload Coverage
         if: github.event_name == 'pull_request' && !github.event.pull_request.head.repo.fork && success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-summary
+          path: coverage/coverage-summary.json
+          retention-days: 1
+
+  coverage-comment:
+    needs: ci
+    if: github.event_name == 'pull_request' && !github.event.pull_request.head.repo.fork
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Download Coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-summary
+
+      - name: Post Coverage Comment
         uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
 
             // Read coverage data
-            const summaryPath = 'coverage/coverage-summary.json';
+            const summaryPath = 'coverage-summary.json';
             if (!fs.existsSync(summaryPath)) {
               core.warning('coverage-summary.json not found, skipping coverage comment');
               return;
