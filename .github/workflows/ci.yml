@@ -73,11 +73,11 @@ jobs:
 
             // Summary table
             const summaryTable = [
-              '| Category | Coverage | |',
-              '|----------|----------|:-:|',
+              '| Category | Coverage |',
+              '|----------|----------|',
               ...categories.map(cat => {
                 const pct = total[cat].pct;
-                return `| ${cat.charAt(0).toUpperCase() + cat.slice(1)} | ${pct.toFixed(2)}% | ${coverageEmoji(pct)} |`;
+                return `| ${cat.charAt(0).toUpperCase() + cat.slice(1)} | ${coverageEmoji(pct)} ${pct.toFixed(2)}% |`;
               })
             ].join('\n');
 
@@ -102,9 +102,10 @@ jobs:
                 const fnCovered = Object.values(f).filter(v => v > 0).length;
                 const fnPct = fnTotal > 0 ? ((fnCovered / fnTotal) * 100).toFixed(1) : 'N/A';
 
+                const fmt = (v) => v === 'N/A' ? 'N/A' : `${v}% ${coverageEmoji(parseFloat(v))}`;
                 // Use relative path from workspace root
                 const displayPath = filePath.replace(process.cwd() + '/', '');
-                return `| \`${displayPath}\` | ${stmtPct}% | ${branchPct}% | ${fnPct}% | ${stmtPct}% |`;
+                return `| \`${displayPath}\` | ${fmt(stmtPct)} | ${fmt(branchPct)} | ${fmt(fnPct)} | ${fmt(stmtPct)} |`;
               });
 
             const fileDetails = fileRows.length > 0 ? [
