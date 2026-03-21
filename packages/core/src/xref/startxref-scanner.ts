@@ -120,18 +120,26 @@ export function scanStartXRef(data: Uint8Array): Result<number, PdfParseError> {
   // Step 3: オフセット値パース
   let pos = skipWhitespaceAndComments(data, startxrefOffset + STARTXREF_LEN, eofOffset);
 
-  let digits = "";
+  let value = 0;
+  let digitsCount = 0;
   while (pos < eofOffset && data[pos] >= DIGIT_0 && data[pos] <= DIGIT_9) {
-    digits += String.fromCharCode(data[pos]);
+    value = value * 10 + (data[pos] - DIGIT_0);
+    digitsCount++;
+    if (!Number.isSafeInteger(value)) {
+      return err({
+        code: "STARTXREF_NOT_FOUND",
+        message: "invalid startxref offset value",
+      });
+    }
     pos++;
   }
 
-  if (digits.length === 0) {
+  if (digitsCount === 0) {
     return err({
       code: "STARTXREF_NOT_FOUND",
       message: "invalid startxref offset value",
     });
   }
 
-  return ok(parseInt(digits, 10));
+  return ok(value);
 }
