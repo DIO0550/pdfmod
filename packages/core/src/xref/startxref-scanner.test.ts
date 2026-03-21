@@ -48,40 +48,48 @@ test("1024バイト未満の小さいPDFを処理する", () => {
 
 test("%%EOFが見つからない場合にエラーを返す", () => {
   const data = encode("no eof marker here");
-  const result = scanStartXRef(data);
-  expect(result.ok).toBe(false);
-  if (!result.ok) {
-    expect(result.error.code).toBe("STARTXREF_NOT_FOUND");
-    expect(result.error.message).toContain("%%EOF");
-  }
+  expect(scanStartXRef(data)).toEqual({
+    ok: false,
+    error: expect.objectContaining({
+      code: "STARTXREF_NOT_FOUND",
+      message: expect.stringContaining("%%EOF"),
+    }),
+  });
 });
 
 test("startxrefが見つからない場合にエラーを返す", () => {
   const data = encode("some data\n%%EOF\n");
-  const result = scanStartXRef(data);
-  expect(result.ok).toBe(false);
-  if (!result.ok) {
-    expect(result.error.code).toBe("STARTXREF_NOT_FOUND");
-    expect(result.error.message).toContain("startxref");
-  }
+  expect(scanStartXRef(data)).toEqual({
+    ok: false,
+    error: expect.objectContaining({
+      code: "STARTXREF_NOT_FOUND",
+      message: expect.stringContaining("startxref"),
+    }),
+  });
 });
 
 test("startxref後に数字がない場合にエラーを返す", () => {
   const data = encode("startxref\nabc\n%%EOF\n");
-  const result = scanStartXRef(data);
-  expect(result.ok).toBe(false);
-  if (!result.ok) {
-    expect(result.error.code).toBe("STARTXREF_NOT_FOUND");
-  }
+  expect(scanStartXRef(data)).toEqual({
+    ok: false,
+    error: expect.objectContaining({ code: "STARTXREF_NOT_FOUND" }),
+  });
 });
 
 test("空のUint8Arrayに対してエラーを返す", () => {
   const data = new Uint8Array(0);
-  const result = scanStartXRef(data);
-  expect(result.ok).toBe(false);
-  if (!result.ok) {
-    expect(result.error.code).toBe("STARTXREF_NOT_FOUND");
-  }
+  expect(scanStartXRef(data)).toEqual({
+    ok: false,
+    error: expect.objectContaining({ code: "STARTXREF_NOT_FOUND" }),
+  });
+});
+
+test("startxref後のオフセット値が%%EOFの後にある場合にエラーを返す", () => {
+  const data = encode("startxref\n%%EOF\n123");
+  expect(scanStartXRef(data)).toEqual({
+    ok: false,
+    error: expect.objectContaining({ code: "STARTXREF_NOT_FOUND" }),
+  });
 });
 
 // --- 境界値 ---
@@ -100,11 +108,10 @@ test("%%EOFが1024バイト境界の外にある場合にエラーを返す", ()
   const eofAndTrailer = "startxref\n500\n%%EOF\n";
   const trailingBytes = "z".repeat(1024);
   const data = encode(eofAndTrailer + trailingBytes);
-  const result = scanStartXRef(data);
-  expect(result.ok).toBe(false);
-  if (!result.ok) {
-    expect(result.error.code).toBe("STARTXREF_NOT_FOUND");
-  }
+  expect(scanStartXRef(data)).toEqual({
+    ok: false,
+    error: expect.objectContaining({ code: "STARTXREF_NOT_FOUND" }),
+  });
 });
 
 test("%%EOFが複数ある場合に最後のものを使用する", () => {
@@ -157,8 +164,5 @@ test("実際のPDFファイルからstartxrefを取得する", () => {
     "%%EOF\n";
   const pdfData = encode(pdf);
   const result = scanStartXRef(pdfData);
-  expect(result.ok).toBe(true);
-  if (result.ok) {
-    expect(result.value).toBe(xrefOffset);
-  }
+  expect(result).toEqual({ ok: true, value: xrefOffset });
 });
