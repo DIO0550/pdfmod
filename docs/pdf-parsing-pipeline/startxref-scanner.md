@@ -76,8 +76,8 @@ function scanStartXRef(data: Uint8Array): Result<number, PdfParseError>
 
 | ケース | エラーメッセージ |
 |:-------|:-----------------|
-| %%EOF が末尾1024バイト内に見つからない | `"%%EOF not found within last 1024 bytes"` |
-| startxref キーワードが見つからない | `"startxref keyword not found before %%EOF"` |
+| `%%EOF` が末尾1024バイト内に見つからない | `"%%EOF not found within last 1024 bytes"` |
+| `startxref` キーワードが見つからない | `"startxref keyword not found before %%EOF"` |
 | オフセット値が不正（数字がない） | `"invalid startxref offset value"` |
 
 エラーコードはすべて `"STARTXREF_NOT_FOUND"` を使用。
