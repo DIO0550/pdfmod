@@ -104,5 +104,14 @@ export function scanStartXRef(data: Uint8Array): Result<number, PdfParseError> {
     });
   }
 
+  // Verify only whitespace/comments remain between digits and %%EOF
+  const trailing = skipWhitespaceAndComments(data, pos, eofOffset);
+  if (trailing !== eofOffset) {
+    return err({
+      code: "STARTXREF_NOT_FOUND",
+      message: "invalid startxref offset value",
+    });
+  }
+
   return ok(value);
 }

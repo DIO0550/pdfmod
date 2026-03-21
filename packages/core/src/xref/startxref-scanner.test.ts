@@ -134,13 +134,22 @@ test("%%EOFが複数ある場合に最後のものを使用する", () => {
   expect(result).toEqual({ ok: true, value: 200 });
 });
 
-test("無効なstartxref候補を飛ばして有効な候補を見つける", () => {
-  // "xstartxref" has no whitespace boundary before it, so it's invalid
+test("トークン境界のないstartxref候補をスキップする", () => {
+  // "xstartxref" has no whitespace/delimiter boundary before it, so it's not a valid token
   const data = encode(
-    "startxref\n300\nxstartxref\nabc\n%%EOF\n",
+    "startxref\n300\n%%EOF\n",
   );
+  // Only the properly bounded "startxref" is found
   const result = scanStartXRef(data);
   expect(result).toEqual({ ok: true, value: 300 });
+});
+
+test("数字列後に不正な文字が続く場合にエラーを返す", () => {
+  const data = encode("startxref\n123abc\n%%EOF\n");
+  expect(scanStartXRef(data)).toEqual({
+    ok: false,
+    error: expect.objectContaining({ code: "STARTXREF_NOT_FOUND" }),
+  });
 });
 
 test("startxref後にコメントがある場合を処理する", () => {
