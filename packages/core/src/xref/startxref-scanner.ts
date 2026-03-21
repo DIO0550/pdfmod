@@ -30,9 +30,10 @@ function isPdfWhitespace(byte: number): boolean {
 }
 
 /** PDFホワイトスペースとコメント（% から行末まで）をスキップし、次の非空白位置を返す */
-function skipWhitespaceAndComments(data: Uint8Array, pos: number): number {
+function skipWhitespaceAndComments(data: Uint8Array, pos: number, end?: number): number {
+  const limit = end ?? data.length;
   let i = pos;
-  while (i < data.length) {
+  while (i < limit) {
     if (isPdfWhitespace(data[i])) {
       i++;
       continue;
@@ -40,7 +41,7 @@ function skipWhitespaceAndComments(data: Uint8Array, pos: number): number {
     if (data[i] === PERCENT) {
       // Skip comment until end of line
       i++;
-      while (i < data.length && data[i] !== LF && data[i] !== CR) {
+      while (i < limit && data[i] !== LF && data[i] !== CR) {
         i++;
       }
       continue;
@@ -101,8 +102,8 @@ export function scanStartXRef(data: Uint8Array): Result<number, PdfParseError> {
     if (i > 0 && !isPdfWhitespace(data[i - 1])) continue;
 
     // Validate: after "startxref" (9 bytes), skip whitespace/comments, must find digits
-    const afterKeyword = skipWhitespaceAndComments(data, i + 9);
-    if (afterKeyword < len && data[afterKeyword] >= DIGIT_0 && data[afterKeyword] <= DIGIT_9) {
+    const afterKeyword = skipWhitespaceAndComments(data, i + 9, eofOffset);
+    if (afterKeyword < eofOffset && data[afterKeyword] >= DIGIT_0 && data[afterKeyword] <= DIGIT_9) {
       startxrefOffset = i;
       break;
     }
@@ -116,10 +117,10 @@ export function scanStartXRef(data: Uint8Array): Result<number, PdfParseError> {
   }
 
   // Step 3: オフセット値パース
-  let pos = skipWhitespaceAndComments(data, startxrefOffset + 9);
+  let pos = skipWhitespaceAndComments(data, startxrefOffset + 9, eofOffset);
 
   let digits = "";
-  while (pos < len && data[pos] >= DIGIT_0 && data[pos] <= DIGIT_9) {
+  while (pos < eofOffset && data[pos] >= DIGIT_0 && data[pos] <= DIGIT_9) {
     digits += String.fromCharCode(data[pos]);
     pos++;
   }
