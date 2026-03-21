@@ -19,7 +19,7 @@ export type Option<T> = Some<T> | None;
 export const none: None = Object.freeze({ some: false as const });
 
 /** Create a Some value (frozen, NonNullable enforced) */
-export const some = <T extends NonNullable<unknown>>(value: T): Some<T> =>
+export const some = <T>(value: NonNullable<T>): Some<NonNullable<T>> =>
   Object.freeze({ some: true as const, value });
 
 /** Convert nullable value to Option */
