@@ -113,5 +113,12 @@ export function scanStartXRef(data: Uint8Array): Result<number, PdfParseError> {
     });
   }
 
+  if (value >= len) {
+    return err({
+      code: "STARTXREF_NOT_FOUND",
+      message: "invalid startxref offset value",
+    });
+  }
+
   return ok(value);
 }
