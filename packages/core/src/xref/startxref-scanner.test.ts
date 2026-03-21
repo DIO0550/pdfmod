@@ -92,6 +92,18 @@ test("startxref後のオフセット値が%%EOFの後にある場合にエラー
   });
 });
 
+test("直近のstartxrefが不正な場合に前方の有効な候補を使わずエラーを返す", () => {
+  // 最後の%%EOFに最も近いstartxrefのオフセットが壊れている場合、
+  // より前方の古いstartxrefにフォールバックせずエラーにする
+  const data = encode(
+    "startxref\n100\n%%EOF\nstartxref\nabc\n%%EOF\n",
+  );
+  expect(scanStartXRef(data)).toEqual({
+    ok: false,
+    error: expect.objectContaining({ code: "STARTXREF_NOT_FOUND" }),
+  });
+});
+
 // --- 境界値 ---
 
 test("%%EOFが1024バイト境界ちょうどにある場合を処理する", () => {
