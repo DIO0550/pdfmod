@@ -140,12 +140,22 @@ test("%%EOFが複数ある場合に最後のものを使用する", () => {
   expect(result).toEqual({ ok: true, value: 18 });
 });
 
-test("トークン境界のないstartxref候補をスキップする", () => {
-  const data = encode(
-    "startxref\n5\n%%EOF\n",
-  );
-  const result = scanStartXRef(data);
-  expect(result).toEqual({ ok: true, value: 5 });
+test("前方にトークン境界のないstartxref候補をスキップする", () => {
+  // "xstartxref" は前方が非境界文字なのでトークンとして認識されない
+  const data = encode("xstartxref\n5\n%%EOF\n");
+  expect(scanStartXRef(data)).toEqual({
+    ok: false,
+    error: expect.objectContaining({ code: "STARTXREF_NOT_FOUND" }),
+  });
+});
+
+test("後方にトークン境界のないstartxref候補をスキップする", () => {
+  // "startxrefX" は後方が非境界文字なのでトークンとして認識されない
+  const data = encode("startxrefX\n5\n%%EOF\n");
+  expect(scanStartXRef(data)).toEqual({
+    ok: false,
+    error: expect.objectContaining({ code: "STARTXREF_NOT_FOUND" }),
+  });
 });
 
 test("数字列後に不正な文字が続く場合にエラーを返す", () => {
