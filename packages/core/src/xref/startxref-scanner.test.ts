@@ -8,21 +8,21 @@ function encode(s: string): Uint8Array {
 // --- 正常系 ---
 
 test("正常なPDF末尾構造からstartxrefオフセットを取得する", () => {
-  const data = encode("dummy body\nstartxref\n12345\n%%EOF\n");
+  const data = encode("dummy body\nstartxref\n9\n%%EOF\n");
   const result = scanStartXRef(data);
-  expect(result).toEqual({ ok: true, value: 12345 });
+  expect(result).toEqual({ ok: true, value: 9 });
 });
 
 test("CR+LF改行のPDF末尾構造を処理する", () => {
-  const data = encode("dummy body\r\nstartxref\r\n12345\r\n%%EOF\r\n");
+  const data = encode("dummy body\r\nstartxref\r\n9\r\n%%EOF\r\n");
   const result = scanStartXRef(data);
-  expect(result).toEqual({ ok: true, value: 12345 });
+  expect(result).toEqual({ ok: true, value: 9 });
 });
 
 test("CR改行のPDF末尾構造を処理する", () => {
-  const data = encode("dummy body\rstartxref\r12345\r%%EOF\r");
+  const data = encode("dummy body\rstartxref\r9\r%%EOF\r");
   const result = scanStartXRef(data);
-  expect(result).toEqual({ ok: true, value: 12345 });
+  expect(result).toEqual({ ok: true, value: 9 });
 });
 
 test("オフセット値0を正しく取得する", () => {
@@ -32,16 +32,16 @@ test("オフセット値0を正しく取得する", () => {
 });
 
 test("末尾に余分なバイトがあるPDFを処理する", () => {
-  const data = encode("dummy\nstartxref\n999\n%%EOF\n\n\n");
+  const data = encode("dummy\nstartxref\n5\n%%EOF\n\n\n");
   const result = scanStartXRef(data);
-  expect(result).toEqual({ ok: true, value: 999 });
+  expect(result).toEqual({ ok: true, value: 5 });
 });
 
 test("1024バイト未満の小さいPDFを処理する", () => {
-  const data = encode("startxref\n42\n%%EOF\n");
+  const data = encode("startxref\n3\n%%EOF\n");
   expect(data.length).toBeLessThan(1024);
   const result = scanStartXRef(data);
-  expect(result).toEqual({ ok: true, value: 42 });
+  expect(result).toEqual({ ok: true, value: 3 });
 });
 
 // --- 異常系 ---
@@ -93,11 +93,17 @@ test("startxref後のオフセット値が%%EOFの後にある場合にエラー
 });
 
 test("直近のstartxrefが不正な場合に前方の有効な候補を使わずエラーを返す", () => {
-  // 最後の%%EOFに最も近いstartxrefのオフセットが壊れている場合、
-  // より前方の古いstartxrefにフォールバックせずエラーにする
   const data = encode(
-    "startxref\n100\n%%EOF\nstartxref\nabc\n%%EOF\n",
+    "startxref\n0\n%%EOF\nstartxref\nabc\n%%EOF\n",
   );
+  expect(scanStartXRef(data)).toEqual({
+    ok: false,
+    error: expect.objectContaining({ code: "STARTXREF_NOT_FOUND" }),
+  });
+});
+
+test("オフセット値がファイル長以上の場合にエラーを返す", () => {
+  const data = encode("startxref\n99999\n%%EOF\n");
   expect(scanStartXRef(data)).toEqual({
     ok: false,
     error: expect.objectContaining({ code: "STARTXREF_NOT_FOUND" }),
@@ -128,20 +134,18 @@ test("%%EOFが1024バイト境界の外にある場合にエラーを返す", ()
 
 test("%%EOFが複数ある場合に最後のものを使用する", () => {
   const data = encode(
-    "startxref\n100\n%%EOF\n" + "startxref\n200\n%%EOF\n",
+    "startxref\n0\n%%EOF\n" + "startxref\n18\n%%EOF\n",
   );
   const result = scanStartXRef(data);
-  expect(result).toEqual({ ok: true, value: 200 });
+  expect(result).toEqual({ ok: true, value: 18 });
 });
 
 test("トークン境界のないstartxref候補をスキップする", () => {
-  // "xstartxref" has no whitespace/delimiter boundary before it, so it's not a valid token
   const data = encode(
-    "startxref\n300\n%%EOF\n",
+    "startxref\n5\n%%EOF\n",
   );
-  // Only the properly bounded "startxref" is found
   const result = scanStartXRef(data);
-  expect(result).toEqual({ ok: true, value: 300 });
+  expect(result).toEqual({ ok: true, value: 5 });
 });
 
 test("数字列後に不正な文字が続く場合にエラーを返す", () => {
@@ -153,9 +157,9 @@ test("数字列後に不正な文字が続く場合にエラーを返す", () =>
 });
 
 test("startxref後にコメントがある場合を処理する", () => {
-  const data = encode("startxref%comment\n123\n%%EOF\n");
+  const data = encode("startxref%comment\n5\n%%EOF\n");
   const result = scanStartXRef(data);
-  expect(result).toEqual({ ok: true, value: 123 });
+  expect(result).toEqual({ ok: true, value: 5 });
 });
 
 // --- fixture ---
