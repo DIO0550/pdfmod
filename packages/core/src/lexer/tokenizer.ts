@@ -1,17 +1,8 @@
 import { Token, TokenType } from "../types/index.js";
+import { isPdfWhitespace, isPdfDelimiter } from "./pdf-bytes.js";
 
-const WHITESPACE = new Set([0, 9, 10, 12, 13, 32]); // NUL, TAB, LF, FF, CR, SPACE
-const DELIMITER = new Set([
-  40, 41, 60, 62, 91, 93, 123, 125, 47, 37,
-]); // ( ) < > [ ] { } / %
-
-function isWhitespace(byte: number): boolean {
-  return WHITESPACE.has(byte);
-}
-
-function isDelimiter(byte: number): boolean {
-  return DELIMITER.has(byte);
-}
+const isWhitespace = isPdfWhitespace;
+const isDelimiter = isPdfDelimiter;
 
 function isDigit(byte: number): boolean {
   return byte >= 48 && byte <= 57; // '0'-'9'

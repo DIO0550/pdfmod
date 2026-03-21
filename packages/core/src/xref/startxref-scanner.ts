@@ -1,6 +1,7 @@
 import type { PdfParseError } from "../errors/index.js";
 import type { Result } from "../result/index.js";
 import { ok, err } from "../result/index.js";
+import { isPdfTokenBoundary, skipWhitespaceAndComments } from "../lexer/pdf-bytes.js";
 
 // %%EOF = [0x25, 0x25, 0x45, 0x4F, 0x46]
 const PERCENT = 0x25;
@@ -14,43 +15,6 @@ const STARTXREF_LEN = STARTXREF_BYTES.length;
 
 const DIGIT_0 = 0x30;
 const DIGIT_9 = 0x39;
-
-const LF = 0x0a;
-const CR = 0x0d;
-
-/** PDF仕様のホワイトスペース6種を判定（ISO 32000 Table 1） */
-function isPdfWhitespace(byte: number): boolean {
-  return (
-    byte === 0x00 ||
-    byte === 0x09 ||
-    byte === 0x0a ||
-    byte === 0x0c ||
-    byte === 0x0d ||
-    byte === 0x20
-  );
-}
-
-/** PDFホワイトスペースとコメント（% から行末まで）をスキップし、次の非空白位置を返す */
-function skipWhitespaceAndComments(data: Uint8Array, pos: number, end?: number): number {
-  const limit = end ?? data.length;
-  let i = pos;
-  while (i < limit) {
-    if (isPdfWhitespace(data[i])) {
-      i++;
-      continue;
-    }
-    if (data[i] === PERCENT) {
-      // Skip comment until end of line
-      i++;
-      while (i < limit && data[i] !== LF && data[i] !== CR) {
-        i++;
-      }
-      continue;
-    }
-    break;
-  }
-  return i;
-}
 
 export function scanStartXRef(data: Uint8Array): Result<number, PdfParseError> {
   const len = data.length;
@@ -99,8 +63,8 @@ export function scanStartXRef(data: Uint8Array): Result<number, PdfParseError> {
     }
     if (!match) continue;
 
-    // Token boundary check: before startxref must be whitespace or start of data
-    if (i > 0 && !isPdfWhitespace(data[i - 1])) continue;
+    // Token boundary check: before startxref must be whitespace/delimiter or start of data
+    if (i > 0 && !isPdfTokenBoundary(data[i - 1])) continue;
 
     // Found the nearest token-boundary startxref; offset validity is checked in Step 3
     startxrefOffset = i;
