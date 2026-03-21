@@ -23,3 +23,4 @@ export type { Result, Ok, Err } from "./result/index.js";
 export { ok, err, map, flatMap, mapErr, unwrapOr } from "./result/index.js";
 export type { ObjectId } from "./types/index.js";
 export { LRUCache } from "./objects/index.js";
+export { scanStartXRef } from "./xref/index.js";
