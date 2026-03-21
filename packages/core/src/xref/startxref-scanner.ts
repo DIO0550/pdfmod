@@ -10,6 +10,7 @@ const F_UPPER = 0x46;
 
 // "startxref" = [0x73, 0x74, 0x61, 0x72, 0x74, 0x78, 0x72, 0x65, 0x66]
 const STARTXREF_BYTES = [0x73, 0x74, 0x61, 0x72, 0x74, 0x78, 0x72, 0x65, 0x66];
+const STARTXREF_LEN = STARTXREF_BYTES.length;
 
 const DIGIT_0 = 0x30;
 const DIGIT_9 = 0x39;
@@ -87,10 +88,10 @@ export function scanStartXRef(data: Uint8Array): Result<number, PdfParseError> {
   // Step 2: startxref 逆方向検索
   let startxrefOffset = -1;
   for (let i = eofOffset - 1; i >= tailStart; i--) {
-    if (i + 9 > len) continue;
+    if (i + STARTXREF_LEN > len) continue;
 
     let match = true;
-    for (let j = 0; j < 9; j++) {
+    for (let j = 0; j < STARTXREF_LEN; j++) {
       if (data[i + j] !== STARTXREF_BYTES[j]) {
         match = false;
         break;
@@ -102,7 +103,7 @@ export function scanStartXRef(data: Uint8Array): Result<number, PdfParseError> {
     if (i > 0 && !isPdfWhitespace(data[i - 1])) continue;
 
     // Validate: after "startxref" (9 bytes), skip whitespace/comments, must find digits
-    const afterKeyword = skipWhitespaceAndComments(data, i + 9, eofOffset);
+    const afterKeyword = skipWhitespaceAndComments(data, i + STARTXREF_LEN, eofOffset);
     if (afterKeyword < eofOffset && data[afterKeyword] >= DIGIT_0 && data[afterKeyword] <= DIGIT_9) {
       startxrefOffset = i;
       break;
@@ -117,7 +118,7 @@ export function scanStartXRef(data: Uint8Array): Result<number, PdfParseError> {
   }
 
   // Step 3: オフセット値パース
-  let pos = skipWhitespaceAndComments(data, startxrefOffset + 9, eofOffset);
+  let pos = skipWhitespaceAndComments(data, startxrefOffset + STARTXREF_LEN, eofOffset);
 
   let digits = "";
   while (pos < eofOffset && data[pos] >= DIGIT_0 && data[pos] <= DIGIT_9) {
