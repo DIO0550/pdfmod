@@ -63,8 +63,10 @@ export function scanStartXRef(data: Uint8Array): Result<number, PdfParseError> {
     }
     if (!match) continue;
 
-    // Token boundary check: before startxref must be whitespace/delimiter or start of data
+    // Token boundary check: before and after startxref must be whitespace/delimiter or data edge
     if (i > 0 && !isPdfTokenBoundary(data[i - 1])) continue;
+    const afterPos = i + STARTXREF_LEN;
+    if (afterPos < len && !isPdfTokenBoundary(data[afterPos])) continue;
 
     // Found the nearest token-boundary startxref; offset validity is checked in Step 3
     startxrefOffset = i;
