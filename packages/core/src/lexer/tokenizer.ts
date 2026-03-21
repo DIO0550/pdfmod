@@ -1,5 +1,5 @@
 import { Token, TokenType } from "../types/index.js";
-import { isPdfWhitespace, isPdfDelimiter } from "./pdf-bytes.js";
+import { isPdfWhitespace, isPdfDelimiter, skipWhitespaceAndComments as skipWsAndComments } from "./pdf-bytes.js";
 
 const isWhitespace = isPdfWhitespace;
 const isDelimiter = isPdfDelimiter;
@@ -40,22 +40,7 @@ export class Tokenizer {
 
   /** Skip whitespace and comments */
   private skipWhitespaceAndComments(): void {
-    while (this.pos < this.data.length) {
-      const byte = this.data[this.pos];
-      if (isWhitespace(byte)) {
-        this.pos++;
-      } else if (byte === 37) {
-        // '%' — comment, skip to end of line
-        this.pos++;
-        while (this.pos < this.data.length) {
-          const b = this.data[this.pos];
-          if (b === 10 || b === 13) break; // LF or CR
-          this.pos++;
-        }
-      } else {
-        break;
-      }
-    }
+    this.pos = skipWsAndComments(this.data, this.pos);
   }
 
   /** Read the next token from the stream */
