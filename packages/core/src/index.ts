@@ -19,7 +19,7 @@ export type {
   PdfWarningCode,
   PdfWarning,
 } from "./errors/index.js";
-export type { Result, Ok, Err } from "./result/index.js";
-export { ok, err, map, flatMap, mapErr, unwrapOr } from "./result/index.js";
+export * as Result from "./result/index.js";
+export * as Option from "./option/index.js";
 export type { ObjectId } from "./types/index.js";
 export { LRUCache } from "./objects/index.js";
