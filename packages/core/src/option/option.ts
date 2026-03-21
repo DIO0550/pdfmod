@@ -29,10 +29,11 @@ export const fromNullable = <T>(
   value != null ? some(value as NonNullable<T>) : none;
 
 /** Transform the Some value */
-export const map = <T, U extends NonNullable<unknown>>(
+export const map = <T, U>(
   option: Option<T>,
   fn: (value: T) => U,
-): Option<U> => (option.some ? some(fn(option.value)) : none);
+): Option<NonNullable<U>> =>
+  option.some ? fromNullable(fn(option.value)) : none;
 
 /** Chain Option-returning functions */
 export const flatMap = <T, U>(

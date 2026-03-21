@@ -11,6 +11,11 @@ test("mapはNoneに対してNoneをそのまま返す", () => {
   expect(result).toBe(none);
 });
 
+test("mapはfnがnullを返す場合Noneを返す", () => {
+  const result = map(some(2), () => null);
+  expect(result).toBe(none);
+});
+
 test("flatMapはSomeに対してfnがSomeを返す場合Someを返す", () => {
   const result = flatMap(some(2), (x) => some(x * 3));
   expect(result).toEqual({ some: true, value: 6 });
