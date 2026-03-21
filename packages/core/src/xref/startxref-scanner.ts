@@ -16,6 +16,10 @@ const STARTXREF_LEN = STARTXREF_BYTES.length;
 const DIGIT_0 = 0x30;
 const DIGIT_9 = 0x39;
 
+function failStartXRef(message: string): Result<number, PdfParseError> {
+  return err({ code: "STARTXREF_NOT_FOUND", message });
+}
+
 export function scanStartXRef(data: Uint8Array): Result<number, PdfParseError> {
   const len = data.length;
   const tailStart = Math.max(0, len - 1024);
@@ -23,10 +27,7 @@ export function scanStartXRef(data: Uint8Array): Result<number, PdfParseError> {
   // Step 1: %%EOF 逆方向検索
   let eofOffset = -1;
   if (len < 5) {
-    return err({
-      code: "STARTXREF_NOT_FOUND",
-      message: "%%EOF not found within last 1024 bytes",
-    });
+    return failStartXRef("%%EOF not found within last 1024 bytes");
   }
 
   for (let i = len - 5; i >= tailStart; i--) {
@@ -43,10 +44,7 @@ export function scanStartXRef(data: Uint8Array): Result<number, PdfParseError> {
   }
 
   if (eofOffset < 0) {
-    return err({
-      code: "STARTXREF_NOT_FOUND",
-      message: "%%EOF not found within last 1024 bytes",
-    });
+    return failStartXRef("%%EOF not found within last 1024 bytes");
   }
 
   // Step 2: startxref 逆方向検索
@@ -74,10 +72,7 @@ export function scanStartXRef(data: Uint8Array): Result<number, PdfParseError> {
   }
 
   if (startxrefOffset < 0) {
-    return err({
-      code: "STARTXREF_NOT_FOUND",
-      message: "startxref keyword not found before %%EOF",
-    });
+    return failStartXRef("startxref keyword not found before %%EOF");
   }
 
   // Step 3: オフセット値パース
@@ -89,35 +84,23 @@ export function scanStartXRef(data: Uint8Array): Result<number, PdfParseError> {
     value = value * 10 + (data[pos] - DIGIT_0);
     digitsCount++;
     if (!Number.isSafeInteger(value)) {
-      return err({
-        code: "STARTXREF_NOT_FOUND",
-        message: "invalid startxref offset value",
-      });
+      return failStartXRef("invalid startxref offset value");
     }
     pos++;
   }
 
   if (digitsCount === 0) {
-    return err({
-      code: "STARTXREF_NOT_FOUND",
-      message: "invalid startxref offset value",
-    });
+    return failStartXRef("invalid startxref offset value");
   }
 
   // Verify only whitespace/comments remain between digits and %%EOF
   const trailing = skipWhitespaceAndComments(data, pos, eofOffset);
   if (trailing !== eofOffset) {
-    return err({
-      code: "STARTXREF_NOT_FOUND",
-      message: "invalid startxref offset value",
-    });
+    return failStartXRef("invalid startxref offset value");
   }
 
   if (value >= len) {
-    return err({
-      code: "STARTXREF_NOT_FOUND",
-      message: "invalid startxref offset value",
-    });
+    return failStartXRef("invalid startxref offset value");
   }
 
   return ok(value);
