@@ -102,12 +102,9 @@ export function scanStartXRef(data: Uint8Array): Result<number, PdfParseError> {
     // Token boundary check: before startxref must be whitespace or start of data
     if (i > 0 && !isPdfWhitespace(data[i - 1])) continue;
 
-    // Validate: after "startxref" (9 bytes), skip whitespace/comments, must find digits
-    const afterKeyword = skipWhitespaceAndComments(data, i + STARTXREF_LEN, eofOffset);
-    if (afterKeyword < eofOffset && data[afterKeyword] >= DIGIT_0 && data[afterKeyword] <= DIGIT_9) {
-      startxrefOffset = i;
-      break;
-    }
+    // Found the nearest token-boundary startxref; offset validity is checked in Step 3
+    startxrefOffset = i;
+    break;
   }
 
   if (startxrefOffset < 0) {
