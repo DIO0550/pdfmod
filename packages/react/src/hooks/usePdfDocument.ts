@@ -27,8 +27,11 @@ export interface PdfDocumentState {
  * sourceがnullの場合は初期状態にリセットする。
  *
  * @param source - PDFソース（URL文字列、Uint8Arrayバイナリ、またはnull）
- * @returns 読み込み状態オブジェクト。`loading` はfetch中に `true`、
- *   `error` はfetch失敗時にErrorオブジェクト、`data` は読み込み完了後にUint8Array
+ * @returns 読み込み状態オブジェクト（{@link PdfDocumentState}）。
+ *   `loading` はsourceがURL文字列のときfetch中のみ `true` になり、それ以外のときは `false`。
+ *   `error` はfetch失敗時にErrorオブジェクトとなり、エラーがない場合（sourceがnullまたはUint8Arrayの場合や正常終了時）は `null`。
+ *   `data` は読み込みに成功した場合にPDFバイナリの `Uint8Array` となり、
+ *   初期状態、sourceがnullのとき、fetch中、またはエラー発生時には `null`（`Uint8Array | null`）となる。
  *
  * @example
  * ```tsx
