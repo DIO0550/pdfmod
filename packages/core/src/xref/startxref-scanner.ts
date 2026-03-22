@@ -16,8 +16,20 @@ const STARTXREF_LEN = STARTXREF_BYTES.length;
 const DIGIT_0 = 0x30;
 const DIGIT_9 = 0x39;
 
+const LF = 0x0a;
+const CR = 0x0d;
+
 function failStartXRef(message: string): Result<number, PdfParseError> {
   return err({ code: "STARTXREF_NOT_FOUND", message });
+}
+
+/** Check if position is inside a PDF comment (% ... EOL) by scanning back to line start */
+function isInsideComment(data: Uint8Array, pos: number): boolean {
+  for (let i = pos - 1; i >= 0; i--) {
+    if (data[i] === LF || data[i] === CR) return false;
+    if (data[i] === PERCENT) return true;
+  }
+  return false;
 }
 
 export function scanStartXRef(data: Uint8Array): Result<number, PdfParseError> {
@@ -38,6 +50,7 @@ export function scanStartXRef(data: Uint8Array): Result<number, PdfParseError> {
       data[i + 3] === O_UPPER &&
       data[i + 4] === F_UPPER
     ) {
+      if (isInsideComment(data, i)) continue;
       eofOffset = i;
       break;
     }
@@ -65,6 +78,8 @@ export function scanStartXRef(data: Uint8Array): Result<number, PdfParseError> {
     if (i > 0 && !isPdfTokenBoundary(data[i - 1])) continue;
     const afterPos = i + STARTXREF_LEN;
     if (afterPos < len && !isPdfTokenBoundary(data[afterPos])) continue;
+
+    if (isInsideComment(data, i)) continue;
 
     // Found the nearest token-boundary startxref; offset validity is checked in Step 3
     startxrefOffset = i;
