@@ -1,0 +1,32 @@
+{
+  "$schema": "https://raw.githubusercontent.com/nicolo-ribaudo/oxc-config-schema/refs/heads/main/json-schema.json",
+  "overrides": [
+    {
+      "files": ["*.test.ts", "*.test.tsx", "*.spec.ts", "*.spec.tsx"],
+      "rules": {
+        "no-magic-numbers": "off"
+      }
+    }
+  ],
+  "rules": {
+    "curly": "error",
+    "no-magic-numbers": [
+      "warn",
+      {
+        "ignore": [-1, 0, 1, 2],
+        "ignoreEnums": true,
+        "ignoreReadonlyClassProperties": true
+      }
+    ],
+    "max-depth": ["error", { "max": 4 }],
+    "typescript/explicit-function-return-type": [
+      "warn",
+      {
+        "allowExpressions": true,
+        "allowTypedFunctionExpressions": true,
+        "allowHigherOrderFunctions": true
+      }
+    ],
+    "typescript/prefer-readonly": "warn"
+  }
+}
