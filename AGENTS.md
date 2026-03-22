@@ -19,3 +19,13 @@ pnpmモノレポ構成で `@pdfmod/core`（PDF処理エンジン）と `@pdfmod/
 - コンテンツストリームは**逆ポーランド記法（RPN）** — ループ・条件分岐・変数なし
 - テキスト抽出には `/ToUnicode` CMAPが必須
 - 圧縮: `/FlateDecode`（zlib）が最も一般的。フィルタは配列でカスケード可能
+
+## TypeScript 開発ルール
+
+TypeScript コードを変更するすべての作業で以下のスキルを参照すること。
+
+- 実装開始時は `implementation-workflow` スキルのフローに従う
+- コーディング中は `coding-standards` スキルを参照
+- テスト作成時は `tdd` および `testing` スキルを参照
+- コードレビュー時は `typescript-code-review-skill` スキルを参照
+- パフォーマンス確認時は `typescript-performance-review-skill` スキルを参照
