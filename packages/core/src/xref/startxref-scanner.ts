@@ -70,7 +70,8 @@ function isInsideComment(data: Uint8Array, pos: number): boolean {
 
 /**
  * PDFファイル末尾から `startxref` オフセットを走査・取得する。
- * ISO 32000 7.5.5 に基づき、末尾1024バイトから %%EOF → startxref → オフセット値の順に逆方向走査する。
+ * ISO 32000 7.5.5 に基づき、末尾1024バイト内で %%EOF を検索し、その位置から startxref および
+ * オフセット値をファイル先頭方向へ逆方向走査する。
  *
  * @param data - PDFファイル全体のバイト配列
  * @returns 成功時は `Ok<number>` でバイトオフセット値を返す。
