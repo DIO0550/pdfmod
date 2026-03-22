@@ -1,14 +1,33 @@
 import type React from "react";
 
+/**
+ * PDFページコンポーネントのProps。
+ *
+ * @example
+ * ```tsx
+ * <PdfPage pageNumber={1} width={800} height={600} />
+ * ```
+ */
 export interface PdfPageProps {
+  /** 表示するページ番号（1始まり） */
   pageNumber: number;
+  /** ページの幅（ピクセル、デフォルト: 612） */
   width?: number;
+  /** ページの高さ（ピクセル、デフォルト: 792） */
   height?: number;
 }
 
 /**
- * Renders a single PDF page.
- * Currently a placeholder — will be implemented with canvas rendering.
+ * 単一のPDFページを描画するコンポーネント。
+ * 現在はプレースホルダ実装。将来的にCanvas描画に置き換え予定。
+ *
+ * @param props - {@link PdfPageProps}
+ * @returns ページプレースホルダのReact要素
+ *
+ * @example
+ * ```tsx
+ * <PdfPage pageNumber={1} />
+ * ```
  */
 export const PdfPage: React.FC<PdfPageProps> = ({
   pageNumber,

@@ -1,4 +1,12 @@
-/** Warning codes for recoverable PDF issues */
+/**
+ * 回復可能なPDF問題の警告コード。
+ * 致命的ではないが注意が必要な問題を分類する。
+ *
+ * @example
+ * ```ts
+ * const code: PdfWarningCode = "EOF_NOT_FOUND";
+ * ```
+ */
 export type PdfWarningCode =
   | "EOF_NOT_FOUND"
   | "XREF_OFFSET_MISMATCH"
@@ -12,14 +20,27 @@ export type PdfWarningCode =
   | "UNKNOWN_PAGE_TYPE"
   | "DATE_PARSE_FAILED";
 
-/** Warning for recoverable PDF issues (not thrown, passed to onWarning callback) */
+/**
+ * 回復可能なPDF問題の警告。
+ * throwされず、onWarningコールバックに渡される。
+ *
+ * @example
+ * ```ts
+ * const warning: PdfWarning = {
+ *   code: "EOF_NOT_FOUND",
+ *   message: "%%EOFマーカーが見つかりません",
+ *   offset: 2048,
+ *   recovery: "ファイル末尾をEOFとして扱います",
+ * };
+ * ```
+ */
 export interface PdfWarning {
-  /** Warning code */
+  /** 警告コード */
   readonly code: PdfWarningCode;
-  /** Human-readable message */
+  /** 人間可読な警告メッセージ */
   readonly message: string;
-  /** Byte offset where the issue was detected */
+  /** 問題が検出されたバイトオフセット */
   readonly offset?: number;
-  /** Description of the recovery/fallback applied */
+  /** 適用されたリカバリ・フォールバックの説明 */
   readonly recovery?: string;
 }
