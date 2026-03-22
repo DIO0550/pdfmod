@@ -1,4 +1,8 @@
-export type { None, Option, Some } from "./option.js";
+/**
+ * Option型とそのコンビネータ関数群を提供するモジュール。
+ * nullable値を型安全に扱うための抽象化を実現する。
+ */
+export type { Option, Some, None } from "./option.js";
 export {
   flatMap,
   fromNullable,
