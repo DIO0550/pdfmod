@@ -81,3 +81,5 @@ export interface TrailerDict {
 
 /** Object identifier for PDF indirect objects (alias for IndirectRef) */
 export type ObjectId = IndirectRef;
+
+export type { Brand, ObjectNumber, GenerationNumber, ByteOffset } from "./brand.js";
