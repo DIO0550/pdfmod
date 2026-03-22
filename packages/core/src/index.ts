@@ -22,4 +22,10 @@ export type {
 export * as Result from "./result/index.js";
 export * as Option from "./option/index.js";
 export type { ObjectId } from "./types/index.js";
+export type {
+  Brand,
+  ObjectNumber,
+  GenerationNumber,
+  ByteOffset,
+} from "./types/index.js";
 export { LRUCache } from "./objects/index.js";
