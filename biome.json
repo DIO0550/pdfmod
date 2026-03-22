@@ -3,6 +3,8 @@
   "files": {
     "includes": [
       "packages/*/src/**",
+      "packages/*/stories/**",
+      "packages/*/*.config.ts",
       "packages/*/package.json",
       "package.json",
       "tsconfig*.json",
