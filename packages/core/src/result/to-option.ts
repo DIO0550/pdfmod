@@ -16,9 +16,11 @@ import type { Result } from "./result.js";
  *
  * @example
  * ```ts
- * toOption(ok(42));        // { some: true, value: 42 }
- * toOption(err("error"));  // { some: false }
- * toOption(ok(null));      // { some: false }
+ * import { Result } from "@pdfmod/core";
+ *
+ * Result.toOption(Result.ok(42));        // { some: true, value: 42 }
+ * Result.toOption(Result.err("error"));  // { some: false }
+ * Result.toOption(Result.ok(null));      // { some: false }
  * ```
  */
 export const toOption = <T, E>(result: Result<T, E>): Option<NonNullable<T>> =>
