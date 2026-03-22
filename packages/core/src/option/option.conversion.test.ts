@@ -1,6 +1,6 @@
-import { test, expect } from "vitest";
-import { some, none, toResult, fromResult } from "./option.js";
-import { ok, err } from "../result/result.js";
+import { expect, test } from "vitest";
+import { err, ok } from "../result/result.js";
+import { fromResult, none, some, toResult } from "./option.js";
 
 test("toResultはSomeをOkに変換する", () => {
   const result = toResult(some(42), "error");

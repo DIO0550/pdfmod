@@ -1,13 +1,13 @@
-import { test, expect } from "vitest";
+import { expect, test } from "vitest";
 import type {
-  PdfErrorCode,
-  PdfParseErrorCode,
-  PdfParseError,
-  PdfCircularReferenceError,
-  PdfTypeMismatchError,
-  PdfWarningCode,
-  PdfWarning,
   ObjectId,
+  PdfCircularReferenceError,
+  PdfErrorCode,
+  PdfParseError,
+  PdfParseErrorCode,
+  PdfTypeMismatchError,
+  PdfWarning,
+  PdfWarningCode,
 } from "../index.js";
 
 test("PdfParseErrorCodeは6つのコードを持つ", () => {
@@ -26,7 +26,10 @@ test("型エクスポートが利用可能", () => {
   const errorCode: PdfErrorCode = "INVALID_HEADER";
   const parseErrorCode: PdfParseErrorCode = "STARTXREF_NOT_FOUND";
   const warningCode: PdfWarningCode = "EOF_NOT_FOUND";
-  const warning: PdfWarning = { code: "EOF_NOT_FOUND", message: "EOF marker not found" };
+  const warning: PdfWarning = {
+    code: "EOF_NOT_FOUND",
+    message: "EOF marker not found",
+  };
   const objectId: ObjectId = { objectNumber: 1, generationNumber: 0 };
   const parseError: PdfParseError = { code: "INVALID_HEADER", message: "test" };
   const circularError: PdfCircularReferenceError = {

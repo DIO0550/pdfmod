@@ -1,0 +1,33 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.4.7/schema.json",
+  "files": {
+    "includes": [
+      "packages/*/src/**",
+      "packages/*/stories/**",
+      "packages/*/*.config.ts",
+      "packages/*/package.json",
+      "package.json",
+      "tsconfig*.json",
+      "packages/*/tsconfig*.json",
+      "vitest*.ts",
+      ".storybook/**"
+    ]
+  },
+  "formatter": {
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 80
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "double",
+      "trailingCommas": "all",
+      "semicolons": "always"
+    }
+  },
+  "linter": {
+    "rules": {
+      "recommended": true
+    }
+  }
+}

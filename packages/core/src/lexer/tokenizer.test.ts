@@ -1,6 +1,6 @@
-import { test, expect } from "vitest";
-import { Tokenizer } from "./tokenizer.js";
+import { expect, test } from "vitest";
 import { TokenType } from "../types/index.js";
+import { Tokenizer } from "./tokenizer.js";
 
 function tokenize(input: string) {
   const encoder = new TextEncoder();
@@ -38,29 +38,44 @@ test("名前オブジェクトをトークナイズする", () => {
 
 test("リテラル文字列をトークナイズする", () => {
   const tokens = tokenize("(Hello World)");
-  expect(tokens[0]).toMatchObject({ type: TokenType.LiteralString, value: "Hello World" });
+  expect(tokens[0]).toMatchObject({
+    type: TokenType.LiteralString,
+    value: "Hello World",
+  });
 });
 
 test("ネストされた括弧を含むリテラル文字列を処理する", () => {
   const tokens = tokenize("(Hello (nested) World)");
-  expect(tokens[0]).toMatchObject({ type: TokenType.LiteralString, value: "Hello (nested) World" });
+  expect(tokens[0]).toMatchObject({
+    type: TokenType.LiteralString,
+    value: "Hello (nested) World",
+  });
 });
 
 test("エスケープシーケンスを含むリテラル文字列を処理する", () => {
   const tokens = tokenize("(line1\\nline2\\ttab)");
-  expect(tokens[0]).toMatchObject({ type: TokenType.LiteralString, value: "line1\nline2\ttab" });
+  expect(tokens[0]).toMatchObject({
+    type: TokenType.LiteralString,
+    value: "line1\nline2\ttab",
+  });
 });
 
 test("16進文字列をトークナイズする", () => {
   const tokens = tokenize("<48656C6C6F>");
-  expect(tokens[0]).toMatchObject({ type: TokenType.HexString, value: "48656C6C6F" });
+  expect(tokens[0]).toMatchObject({
+    type: TokenType.HexString,
+    value: "48656C6C6F",
+  });
 });
 
 test("辞書デリミタと16進文字列を区別する", () => {
   const tokens = tokenize("<< /Key (value) >>");
   expect(tokens[0]).toMatchObject({ type: TokenType.DictBegin });
   expect(tokens[1]).toMatchObject({ type: TokenType.Name, value: "Key" });
-  expect(tokens[2]).toMatchObject({ type: TokenType.LiteralString, value: "value" });
+  expect(tokens[2]).toMatchObject({
+    type: TokenType.LiteralString,
+    value: "value",
+  });
   expect(tokens[3]).toMatchObject({ type: TokenType.DictEnd });
 });
 
@@ -80,5 +95,8 @@ test("PDFキーワードをトークナイズする", () => {
   expect(tokens[2]).toMatchObject({ type: TokenType.Keyword, value: "obj" });
   expect(tokens[3]).toMatchObject({ type: TokenType.Keyword, value: "endobj" });
   expect(tokens[4]).toMatchObject({ type: TokenType.Keyword, value: "stream" });
-  expect(tokens[5]).toMatchObject({ type: TokenType.Keyword, value: "endstream" });
+  expect(tokens[5]).toMatchObject({
+    type: TokenType.Keyword,
+    value: "endstream",
+  });
 });

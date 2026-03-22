@@ -1,4 +1,4 @@
-import { test, expect } from "vitest";
+import { expect, test } from "vitest";
 import type { PdfWarning } from "../index.js";
 
 test("PdfWarningは全フィールドを持てる", () => {

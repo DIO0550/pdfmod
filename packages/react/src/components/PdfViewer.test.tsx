@@ -1,6 +1,5 @@
-import { test, expect, afterEach } from "vitest";
-import { render, screen, cleanup, waitFor } from "@testing-library/react";
-import React from "react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, expect, test } from "vitest";
 import { PdfViewer } from "./PdfViewer.js";
 
 afterEach(cleanup);
