@@ -1,5 +1,5 @@
 /**
- * @pdfmod/core — PDF処理エンジン。
+ * `@pdfmod/core` — PDF処理エンジン。
  * ISO 32000-1:2008 (PDF 1.7) 準拠のPDF字句解析・構造解析を提供する。
  *
  * @packageDocumentation
