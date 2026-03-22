@@ -114,7 +114,7 @@ export function scanStartXRef(data: Uint8Array): Result<number, PdfParseError> {
     return failStartXRef("invalid startxref offset value");
   }
 
-  if (value >= len) {
+  if (value >= len || value >= startxrefOffset) {
     return failStartXRef("invalid startxref offset value");
   }
 
