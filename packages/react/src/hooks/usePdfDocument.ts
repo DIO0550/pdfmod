@@ -1,13 +1,41 @@
 import { useEffect, useState } from "react";
 
+/**
+ * PDFドキュメントの読み込み状態を表すインターフェース。
+ *
+ * @example
+ * ```ts
+ * const state: PdfDocumentState = {
+ *   loading: false,
+ *   error: null,
+ *   data: new Uint8Array([...]),
+ * };
+ * ```
+ */
 export interface PdfDocumentState {
+  /** 読み込み中かどうか */
   loading: boolean;
+  /** 読み込みエラー（エラーがない場合はnull） */
   error: Error | null;
+  /** 読み込んだPDFバイナリデータ（未読み込みの場合はnull） */
   data: Uint8Array | null;
 }
 
 /**
- * Hook to load a PDF document from a URL or Uint8Array.
+ * URLまたはUint8ArrayからPDFドキュメントを読み込むフック。
+ * sourceがURL文字列の場合はfetchで非同期取得し、Uint8Arrayの場合はそのまま使用する。
+ * sourceがnullの場合は初期状態にリセットする。
+ *
+ * @param source - PDFソース（URL文字列、Uint8Arrayバイナリ、またはnull）
+ * @returns 読み込み状態オブジェクト。`loading` はfetch中に `true`、
+ *   `error` はfetch失敗時にErrorオブジェクト、`data` は読み込み完了後にUint8Array
+ *
+ * @example
+ * ```tsx
+ * const { loading, error, data } = usePdfDocument("https://example.com/doc.pdf");
+ * if (loading) return <p>Loading...</p>;
+ * if (error) return <p>Error: {error.message}</p>;
+ * ```
  */
 export function usePdfDocument(
   source: string | Uint8Array | null,
