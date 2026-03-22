@@ -1,5 +1,5 @@
 /**
- * @pdfmod/react — React向けPDFコンポーネントライブラリ。
+ * `@pdfmod/react` — React向けPDFコンポーネントライブラリ。
  * PDFの表示・操作を行うReactコンポーネントとフックを提供する。
  *
  * @packageDocumentation
