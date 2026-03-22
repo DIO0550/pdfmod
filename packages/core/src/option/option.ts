@@ -9,7 +9,9 @@ import { err, ok } from "../result/result.js";
  *
  * @example
  * ```ts
- * const s: Some<number> = { some: true, value: 42 };
+ * import { Option } from "@pdfmod/core";
+ *
+ * const s: Option.Some<number> = { some: true, value: 42 };
  * ```
  */
 export interface Some<T> {
@@ -24,7 +26,9 @@ export interface Some<T> {
  *
  * @example
  * ```ts
- * const n: None = { some: false };
+ * import { Option } from "@pdfmod/core";
+ *
+ * const n: Option.None = { some: false };
  * ```
  */
 export interface None {
@@ -40,8 +44,10 @@ export interface None {
  *
  * @example
  * ```ts
- * function find(id: number): Option<string> {
- *   return id === 1 ? some("found") : none;
+ * import { Option } from "@pdfmod/core";
+ *
+ * function find(id: number): Option.Option<string> {
+ *   return id === 1 ? Option.some("found") : Option.none;
  * }
  * ```
  */
@@ -52,7 +58,9 @@ export type Option<T> = Some<T> | None;
  *
  * @example
  * ```ts
- * const empty: Option<number> = none;
+ * import { Option } from "@pdfmod/core";
+ *
+ * const empty: Option.Option<number> = Option.none;
  * // empty = { some: false }
  * ```
  */
@@ -67,7 +75,9 @@ export const none: None = Object.freeze({ some: false as const });
  *
  * @example
  * ```ts
- * const s = some(42);
+ * import { Option } from "@pdfmod/core";
+ *
+ * const s = Option.some(42);
  * // s = { some: true, value: 42 }
  * ```
  */
@@ -84,9 +94,11 @@ export const some = <T>(value: NonNullable<T>): Some<NonNullable<T>> =>
  *
  * @example
  * ```ts
- * fromNullable(42);        // { some: true, value: 42 }
- * fromNullable(null);      // { some: false }
- * fromNullable(undefined); // { some: false }
+ * import { Option } from "@pdfmod/core";
+ *
+ * Option.fromNullable(42);        // { some: true, value: 42 }
+ * Option.fromNullable(null);      // { some: false }
+ * Option.fromNullable(undefined); // { some: false }
  * ```
  */
 export const fromNullable = <T>(
@@ -107,8 +119,10 @@ export const fromNullable = <T>(
  *
  * @example
  * ```ts
- * map(some(10), (v) => v * 2); // { some: true, value: 20 }
- * map(none, (v) => v * 2);     // { some: false }
+ * import { Option } from "@pdfmod/core";
+ *
+ * Option.map(Option.some(10), (v) => v * 2); // { some: true, value: 20 }
+ * Option.map(Option.none, (v) => v * 2);     // { some: false }
  * ```
  */
 export const map = <T, U>(
@@ -129,8 +143,12 @@ export const map = <T, U>(
  *
  * @example
  * ```ts
- * flatMap(some(10), (v) => (v > 0 ? some(v) : none)); // { some: true, value: 10 }
- * flatMap(none, (v) => some(v));                       // { some: false }
+ * import { Option } from "@pdfmod/core";
+ *
+ * Option.flatMap(Option.some(10), (v) =>
+ *   v > 0 ? Option.some(v) : Option.none,
+ * ); // { some: true, value: 10 }
+ * Option.flatMap(Option.none, (v) => Option.some(v)); // { some: false }
  * ```
  */
 export const flatMap = <T, U>(
@@ -148,8 +166,10 @@ export const flatMap = <T, U>(
  *
  * @example
  * ```ts
- * unwrapOr(some(42), 0); // 42
- * unwrapOr(none, 0);     // 0
+ * import { Option } from "@pdfmod/core";
+ *
+ * Option.unwrapOr(Option.some(42), 0); // 42
+ * Option.unwrapOr(Option.none, 0);     // 0
  * ```
  */
 export const unwrapOr = <T>(option: Option<T>, defaultValue: T): T =>
@@ -167,8 +187,10 @@ export const unwrapOr = <T>(option: Option<T>, defaultValue: T): T =>
  *
  * @example
  * ```ts
- * toResult(some(42), "missing");  // { ok: true, value: 42 }
- * toResult(none, "missing");      // { ok: false, error: "missing" }
+ * import { Option } from "@pdfmod/core";
+ *
+ * Option.toResult(Option.some(42), "missing");  // { ok: true, value: 42 }
+ * Option.toResult(Option.none, "missing");      // { ok: false, error: "missing" }
  * ```
  */
 export const toResult = <T, E>(option: Option<T>, error: E): Result<T, E> =>
@@ -188,8 +210,10 @@ export const toResult = <T, E>(option: Option<T>, error: E): Result<T, E> =>
  *
  * @example
  * ```ts
- * fromResult(ok(42));        // { some: true, value: 42 }
- * fromResult(err("error"));  // { some: false }
+ * import { Option, Result } from "@pdfmod/core";
+ *
+ * Option.fromResult(Result.ok(42));        // { some: true, value: 42 }
+ * Option.fromResult(Result.err("error"));  // { some: false }
  * ```
  */
 export const fromResult = <T, E>(
