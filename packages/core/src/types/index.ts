@@ -1,4 +1,15 @@
-/** PDF token types produced by the lexer */
+/**
+ * PDFトークンの種別を表す列挙型。
+ * PDF字句解析器が生成するトークンの分類に使用する。
+ *
+ * @example
+ * ```ts
+ * const token: Token = { type: TokenType.Integer, value: 42, offset: 0 };
+ * if (token.type === TokenType.Name) {
+ *   console.log(token.value); // "Type" など
+ * }
+ * ```
+ */
 export enum TokenType {
   Boolean = "Boolean",
   Integer = "Integer",
@@ -15,36 +26,89 @@ export enum TokenType {
   EOF = "EOF",
 }
 
-/** A single token produced by the lexer */
+/**
+ * 字句解析器が生成する単一のトークン。
+ * トークン種別、値、およびバイトストリーム内の出現位置を保持する。
+ *
+ * @example
+ * ```ts
+ * const token: Token = { type: TokenType.Name, value: "Type", offset: 15 };
+ * ```
+ */
 export interface Token {
+  /** トークン種別 */
   type: TokenType;
+  /** トークンの値（型はトークン種別に依存する） */
   value: string | number | boolean | null;
+  /** バイトストリーム内のオフセット位置 */
   offset: number;
 }
 
-/** Represents a PDF indirect object reference (e.g. "5 0 R") */
+/**
+ * PDF間接オブジェクト参照 (例: "5 0 R")。
+ * オブジェクト番号と世代番号の組でオブジェクトを参照する。
+ *
+ * @example
+ * ```ts
+ * const ref: IndirectRef = { objectNumber: 5, generationNumber: 0 };
+ * ```
+ */
 export interface IndirectRef {
+  /** オブジェクト番号 */
   objectNumber: number;
+  /** 世代番号 */
   generationNumber: number;
 }
 
-/** PDF cross-reference entry (ISO 32000 Table 18) */
+/**
+ * PDF相互参照エントリ (ISO 32000 Table 18)。
+ * 相互参照テーブル内の各エントリの型とフィールドを保持する。
+ *
+ * @example
+ * ```ts
+ * const entry: XRefEntry = { type: 1, field2: 1024, field3: 0 };
+ * ```
+ */
 export interface XRefEntry {
-  /** Entry type: 0=free, 1=normal object, 2=in object stream */
+  /** エントリ型: 0=フリーオブジェクト, 1=通常オブジェクト, 2=オブジェクトストリーム内 */
   type: 0 | 1 | 2;
-  /** type=0: next free object number, type=1: byte offset in file, type=2: object number of parent stream */
+  /** type=0: 次のフリーオブジェクト番号, type=1: ファイル内バイトオフセット, type=2: 親ストリームのオブジェクト番号 */
   field2: number;
-  /** type=0,1: generation number, type=2: index within stream */
+  /** type=0,1: 世代番号, type=2: ストリーム内インデックス */
   field3: number;
 }
 
-/** PDF dictionary object */
+/**
+ * PDF辞書オブジェクト。
+ * キーと値のペアを保持するPDFの基本データ構造。
+ *
+ * @example
+ * ```ts
+ * const dict: PdfDictionary = {
+ *   type: "dictionary",
+ *   entries: new Map([["Type", { type: "name", value: "Catalog" }]]),
+ * };
+ * ```
+ */
 export interface PdfDictionary {
+  /** オブジェクト種別識別子 */
   type: "dictionary";
+  /** 辞書エントリのマップ（キー: 名前文字列, 値: PDFオブジェクト） */
   entries: Map<string, PdfObject>;
 }
 
-/** PDF object union type (ISO 32000 7.3) */
+/**
+ * PDFオブジェクトの判別共用体型 (ISO 32000 7.3)。
+ * PDFファイル内の全オブジェクト型を網羅する。
+ *
+ * @example
+ * ```ts
+ * const obj: PdfObject = { type: "integer", value: 42 };
+ * if (obj.type === "name") {
+ *   console.log(obj.value);
+ * }
+ * ```
+ */
 export type PdfObject =
   | { type: "null" }
   | { type: "boolean"; value: boolean }
@@ -57,29 +121,58 @@ export type PdfObject =
   | { type: "stream"; dictionary: PdfDictionary; data: Uint8Array }
   | { type: "indirect-ref"; objectNumber: number; generationNumber: number };
 
-/** Cross-reference table */
+/**
+ * 相互参照テーブル。
+ * オブジェクト番号からXRefEntryへのマッピングとテーブルサイズを保持する。
+ *
+ * @example
+ * ```ts
+ * const table: XRefTable = {
+ *   entries: new Map([[1, { type: 1, field2: 1024, field3: 0 }]]),
+ *   size: 2,
+ * };
+ * ```
+ */
 export interface XRefTable {
-  /** Object number -> XRefEntry mapping */
+  /** オブジェクト番号 → XRefEntryのマッピング */
   entries: Map<number, XRefEntry>;
-  /** Maximum object number + 1 */
+  /** 最大オブジェクト番号 + 1 */
   size: number;
 }
 
-/** Trailer dictionary */
+/**
+ * トレーラ辞書。
+ * PDFファイルのメタデータと相互参照テーブルへの参照を保持する。
+ *
+ * @example
+ * ```ts
+ * const trailer: TrailerDict = {
+ *   root: { objectNumber: 1, generationNumber: 0 },
+ *   size: 10,
+ * };
+ * ```
+ */
 export interface TrailerDict {
-  /** /Root - document catalog indirect reference (required) */
+  /** /Root - ドキュメントカタログの間接参照（必須） */
   root: IndirectRef;
-  /** /Size - total number of xref entries (required) */
+  /** /Size - 相互参照エントリの総数（必須） */
   size: number;
-  /** /Prev - byte offset of previous xref table */
+  /** /Prev - 前の相互参照テーブルのバイトオフセット */
   prev?: number;
-  /** /Info - document info dictionary indirect reference */
+  /** /Info - ドキュメント情報辞書の間接参照 */
   info?: IndirectRef;
-  /** /ID - file identifiers [permanent-id, change-id] */
+  /** /ID - ファイル識別子 [永続ID, 変更ID] */
   id?: [Uint8Array, Uint8Array];
 }
 
-/** Object identifier for PDF indirect objects (alias for IndirectRef) */
+/**
+ * PDF間接オブジェクトの識別子（{@link IndirectRef} のエイリアス）。
+ *
+ * @example
+ * ```ts
+ * const id: ObjectId = { objectNumber: 3, generationNumber: 0 };
+ * ```
+ */
 export type ObjectId = IndirectRef;
 
 export type {
