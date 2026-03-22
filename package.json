@@ -12,7 +12,7 @@
     "lint": "biome check . && oxlint .",
     "lint:fix": "biome check --fix . && oxlint --fix .",
     "format": "biome format --write .",
-    "format:check": "biome format .",
+    "format:check": "biome check --linter-enabled=false .",
     "typecheck": "pnpm -r run typecheck",
     "storybook": "storybook dev -p 13200",
     "build-storybook": "storybook build"
