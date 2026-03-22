@@ -4,8 +4,6 @@
  *
  * @packageDocumentation
  */
-export { Tokenizer } from "./lexer/index.js";
-export { TokenType } from "./types/index.js";
 export type {
   PdfCircularReferenceError,
   PdfError,
