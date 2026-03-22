@@ -6,7 +6,9 @@
  *
  * @example
  * ```ts
- * const success: Ok<number> = { ok: true, value: 42 };
+ * import { Result } from "@pdfmod/core";
+ *
+ * const success: Result.Ok<number> = { ok: true, value: 42 };
  * ```
  */
 export interface Ok<T> {
@@ -24,7 +26,9 @@ export interface Ok<T> {
  *
  * @example
  * ```ts
- * const failure: Err<string> = { ok: false, error: "not found" };
+ * import { Result } from "@pdfmod/core";
+ *
+ * const failure: Result.Err<string> = { ok: false, error: "not found" };
  * ```
  */
 export interface Err<E> {
@@ -43,8 +47,10 @@ export interface Err<E> {
  *
  * @example
  * ```ts
- * function divide(a: number, b: number): Result<number, string> {
- *   return b === 0 ? err("division by zero") : ok(a / b);
+ * import { Result } from "@pdfmod/core";
+ *
+ * function divide(a: number, b: number): Result.Result<number, string> {
+ *   return b === 0 ? Result.err("division by zero") : Result.ok(a / b);
  * }
  * ```
  */
@@ -59,7 +65,9 @@ export type Result<T, E> = Ok<T> | Err<E>;
  *
  * @example
  * ```ts
- * const result = ok(42);
+ * import { Result } from "@pdfmod/core";
+ *
+ * const result = Result.ok(42);
  * // result = { ok: true, value: 42 }
  * ```
  */
@@ -74,7 +82,9 @@ export const ok = <T>(value: T): Ok<T> => ({ ok: true, value });
  *
  * @example
  * ```ts
- * const result = err("not found");
+ * import { Result } from "@pdfmod/core";
+ *
+ * const result = Result.err("not found");
  * // result = { ok: false, error: "not found" }
  * ```
  */
@@ -93,8 +103,10 @@ export const err = <E>(error: E): Err<E> => ({ ok: false, error });
  *
  * @example
  * ```ts
- * const r = ok(10);
- * const doubled = map(r, (v) => v * 2);
+ * import { Result } from "@pdfmod/core";
+ *
+ * const r = Result.ok(10);
+ * const doubled = Result.map(r, (v) => v * 2);
  * // doubled = { ok: true, value: 20 }
  * ```
  */
@@ -116,8 +128,12 @@ export const map = <T, U, E>(
  *
  * @example
  * ```ts
- * const r = ok(10);
- * const result = flatMap(r, (v) => (v > 0 ? ok(v) : err("negative")));
+ * import { Result } from "@pdfmod/core";
+ *
+ * const r = Result.ok(10);
+ * const result = Result.flatMap(r, (v) =>
+ *   v > 0 ? Result.ok(v) : Result.err("negative"),
+ * );
  * // result = { ok: true, value: 10 }
  * ```
  */
@@ -139,8 +155,10 @@ export const flatMap = <T, U, E>(
  *
  * @example
  * ```ts
- * const r = err("not found");
- * const mapped = mapErr(r, (e) => new Error(e));
+ * import { Result } from "@pdfmod/core";
+ *
+ * const r = Result.err("not found");
+ * const mapped = Result.mapErr(r, (e) => new Error(e));
  * // mapped = { ok: false, error: Error("not found") }
  * ```
  */
@@ -160,8 +178,10 @@ export const mapErr = <T, E, F>(
  *
  * @example
  * ```ts
- * unwrapOr(ok(42), 0);   // 42
- * unwrapOr(err("x"), 0); // 0
+ * import { Result } from "@pdfmod/core";
+ *
+ * Result.unwrapOr(Result.ok(42), 0);   // 42
+ * Result.unwrapOr(Result.err("x"), 0); // 0
  * ```
  */
 export const unwrapOr = <T, E>(result: Result<T, E>, defaultValue: T): T =>
