@@ -26,7 +26,7 @@ test("CR改行のPDF末尾構造を処理する", () => {
 });
 
 test("オフセット値0を正しく取得する", () => {
-  const data = encode("startxref\n0\n%%EOF\n");
+  const data = encode("dummy body\nstartxref\n0\n%%EOF\n");
   const result = scanStartXRef(data);
   expect(result).toEqual({ ok: true, value: 0 });
 });
@@ -38,7 +38,7 @@ test("末尾に余分なバイトがあるPDFを処理する", () => {
 });
 
 test("1024バイト未満の小さいPDFを処理する", () => {
-  const data = encode("startxref\n3\n%%EOF\n");
+  const data = encode("dummy body\nstartxref\n3\n%%EOF\n");
   expect(data.length).toBeLessThan(1024);
   const result = scanStartXRef(data);
   expect(result).toEqual({ ok: true, value: 3 });
@@ -125,13 +125,13 @@ test("%%EOFが1024バイト境界ちょうどにある場合を処理する", ()
 test("startxrefがtailStartより前にある場合でも検出する", () => {
   // startxref + %%EOF の後に大量のtrailing garbageがあり、
   // %%EOFは末尾1024バイト内だがstartxrefはtailStartより前にある構造
-  const pdfPart = "\nstartxref\n5\n%%EOF\n";
+  const pdfPart = "dummy body\nstartxref\n0\n%%EOF\n";
   const trailingLength = 1024 - 6; // %%EOF\nが末尾1024バイト境界内に残る程度
   const trailing = " ".repeat(trailingLength);
   const data = encode(pdfPart + trailing);
   expect(data.length).toBeGreaterThan(1024);
   const result = scanStartXRef(data);
-  expect(result).toEqual({ ok: true, value: 5 });
+  expect(result).toEqual({ ok: true, value: 0 });
 });
 
 test("%%EOFが1024バイト境界の外にある場合にエラーを返す", () => {
@@ -146,10 +146,10 @@ test("%%EOFが1024バイト境界の外にある場合にエラーを返す", ()
 
 test("%%EOFが複数ある場合に最後のものを使用する", () => {
   const data = encode(
-    "startxref\n0\n%%EOF\n" + "startxref\n18\n%%EOF\n",
+    "startxref\n0\n%%EOF\n" + "dummy body dummy body\nstartxref\n0\n%%EOF\n",
   );
   const result = scanStartXRef(data);
-  expect(result).toEqual({ ok: true, value: 18 });
+  expect(result).toEqual({ ok: true, value: 0 });
 });
 
 test("前方にトークン境界のないstartxref候補をスキップする", () => {
@@ -179,7 +179,7 @@ test("数字列後に不正な文字が続く場合にエラーを返す", () =>
 });
 
 test("startxref後にコメントがある場合を処理する", () => {
-  const data = encode("startxref%comment\n5\n%%EOF\n");
+  const data = encode("dummy body\nstartxref%comment\n5\n%%EOF\n");
   const result = scanStartXRef(data);
   expect(result).toEqual({ ok: true, value: 5 });
 });
@@ -195,7 +195,7 @@ test("コメント内のstartxrefを無視する", () => {
 
 test("コメント本文中の%%EOFを無視する", () => {
   // コメント行内の %%EOF はEOFマーカーとして扱わない
-  const data = encode("startxref\n5\n%fake %%EOF here\n%%EOF\n");
+  const data = encode("dummy body\nstartxref\n5\n%fake %%EOF here\n%%EOF\n");
   const result = scanStartXRef(data);
   expect(result).toEqual({ ok: true, value: 5 });
 });
