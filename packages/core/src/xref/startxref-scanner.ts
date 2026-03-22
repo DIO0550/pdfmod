@@ -4,7 +4,11 @@ import {
   skipWhitespaceAndComments,
 } from "../lexer/pdf-bytes.js";
 import type { Result } from "../result/index.js";
-import { err, ok } from "../result/index.js";
+import { ok, err } from "../result/index.js";
+import {
+  isPdfTokenBoundary,
+  skipWhitespaceAndComments,
+} from "../lexer/pdf-bytes.js";
 
 // %%EOF = [0x25, 0x25, 0x45, 0x4F, 0x46]
 const PERCENT = 0x25;
@@ -22,11 +26,36 @@ const DIGIT_9 = 0x39;
 const LF = 0x0a;
 const CR = 0x0d;
 
+/**
+ * startxref走査失敗時のエラーResultを生成するヘルパー。
+ *
+ * @param message - エラーメッセージ
+ * @returns `Err<PdfParseError>` （コード: STARTXREF_NOT_FOUND）
+ *
+ * @example
+ * ```ts
+ * const result = failStartXRef("%%EOF not found");
+ * // result = { ok: false, error: { code: "STARTXREF_NOT_FOUND", message: "%%EOF not found" } }
+ * ```
+ */
 function failStartXRef(message: string): Result<number, PdfParseError> {
   return err({ code: "STARTXREF_NOT_FOUND", message });
 }
 
-/** Check if position is inside a PDF comment (% ... EOL) by scanning back to line start */
+/**
+ * 指定位置がPDFコメント（% ... 行末）の内部にあるかを判定する。
+ * 行頭方向に走査し、改行より先に `%` が見つかればコメント内と判定する。
+ *
+ * @param data - PDFバイト配列
+ * @param pos - 判定対象の位置
+ * @returns コメント内であれば `true`
+ *
+ * @example
+ * ```ts
+ * const data = new TextEncoder().encode("% comment\n");
+ * isInsideComment(data, 5); // true
+ * ```
+ */
 function isInsideComment(data: Uint8Array, pos: number): boolean {
   for (let i = pos - 1; i >= 0; i--) {
     if (data[i] === LF || data[i] === CR) {
@@ -39,6 +68,25 @@ function isInsideComment(data: Uint8Array, pos: number): boolean {
   return false;
 }
 
+/**
+ * PDFファイル末尾から `startxref` オフセットを走査・取得する。
+ * ISO 32000 7.5.5 に基づき、末尾1024バイトから %%EOF → startxref → オフセット値の順に逆方向走査する。
+ *
+ * @param data - PDFファイル全体のバイト配列
+ * @returns 成功時は `Ok<number>` でバイトオフセット値を返す。
+ *   失敗時は `Err<PdfParseError>` で以下のエラーコードを返す:
+ *   - `STARTXREF_NOT_FOUND`: %%EOF またはstartxrefキーワードが見つからない場合、
+ *     またはオフセット値が不正な場合
+ *
+ * @example
+ * ```ts
+ * const pdfBytes = new Uint8Array([...]);
+ * const result = scanStartXRef(pdfBytes);
+ * if (result.ok) {
+ *   console.log(`startxref offset: ${result.value}`);
+ * }
+ * ```
+ */
 export function scanStartXRef(data: Uint8Array): Result<number, PdfParseError> {
   const len = data.length;
   const tailStart = Math.max(0, len - 1024);
