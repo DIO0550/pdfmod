@@ -1,5 +1,5 @@
-import { test, expect } from "vitest";
-import { ok, err } from "./result.js";
+import { expect, test } from "vitest";
+import { err, ok } from "./result.js";
 
 test("okは成功結果を生成する", () => {
   const result = ok(42);

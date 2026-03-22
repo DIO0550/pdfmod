@@ -1,6 +1,6 @@
-import React from "react";
-import { PdfPage } from "./PdfPage.js";
+import type React from "react";
 import { usePdfDocument } from "../hooks/usePdfDocument.js";
+import { PdfPage } from "./PdfPage.js";
 
 export interface PdfViewerProps {
   source: string | Uint8Array | null;

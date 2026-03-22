@@ -1,10 +1,10 @@
-import { test, expect } from "vitest";
+import { expect, test } from "vitest";
 import type {
-  PdfObject,
   PdfDictionary,
+  PdfObject,
+  TrailerDict,
   XRefEntry,
   XRefTable,
-  TrailerDict,
 } from "./index.js";
 
 test("PdfObjectの各バリアントを生成できる", () => {
@@ -135,11 +135,27 @@ test("エントリポイントから全型がimportできる", async () => {
 
   // Compile-time verification: types are importable from entry point
   const _check: import("../index.js").PdfObject = { type: "null" };
-  const _check2: import("../index.js").PdfDictionary = { type: "dictionary", entries: new Map() };
-  const _check3: import("../index.js").XRefEntry = { type: 1, field2: 0, field3: 0 };
-  const _check4: import("../index.js").XRefTable = { entries: new Map(), size: 0 };
-  const _check5: import("../index.js").TrailerDict = { root: { objectNumber: 1, generationNumber: 0 }, size: 1 };
-  const _check6: import("../index.js").IndirectRef = { objectNumber: 1, generationNumber: 0 };
+  const _check2: import("../index.js").PdfDictionary = {
+    type: "dictionary",
+    entries: new Map(),
+  };
+  const _check3: import("../index.js").XRefEntry = {
+    type: 1,
+    field2: 0,
+    field3: 0,
+  };
+  const _check4: import("../index.js").XRefTable = {
+    entries: new Map(),
+    size: 0,
+  };
+  const _check5: import("../index.js").TrailerDict = {
+    root: { objectNumber: 1, generationNumber: 0 },
+    size: 1,
+  };
+  const _check6: import("../index.js").IndirectRef = {
+    objectNumber: 1,
+    generationNumber: 0,
+  };
   expect(_check.type).toBe("null");
   expect(_check2.type).toBe("dictionary");
   expect(_check3.type).toBe(1);

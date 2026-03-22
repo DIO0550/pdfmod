@@ -1,32 +1,30 @@
-export { Tokenizer } from "./lexer/index.js";
-export { TokenType } from "./types/index.js";
 export type {
-  Token,
-  IndirectRef,
-  XRefEntry,
-  PdfObject,
-  PdfDictionary,
-  XRefTable,
-  TrailerDict,
-} from "./types/index.js";
-export type {
-  PdfErrorCode,
-  PdfParseErrorCode,
-  PdfParseError,
   PdfCircularReferenceError,
-  PdfTypeMismatchError,
   PdfError,
-  PdfWarningCode,
+  PdfErrorCode,
+  PdfParseError,
+  PdfParseErrorCode,
+  PdfTypeMismatchError,
   PdfWarning,
+  PdfWarningCode,
 } from "./errors/index.js";
-export * as Result from "./result/index.js";
+export { Tokenizer } from "./lexer/index.js";
+export { LRUCache } from "./objects/index.js";
 export * as Option from "./option/index.js";
-export type { ObjectId } from "./types/index.js";
+export * as Result from "./result/index.js";
 export type {
   Brand,
-  ObjectNumber,
-  GenerationNumber,
   ByteOffset,
+  GenerationNumber,
+  IndirectRef,
+  ObjectId,
+  ObjectNumber,
+  PdfDictionary,
+  PdfObject,
+  Token,
+  TrailerDict,
+  XRefEntry,
+  XRefTable,
 } from "./types/index.js";
-export { LRUCache } from "./objects/index.js";
+export { TokenType } from "./types/index.js";
 export { scanStartXRef } from "./xref/index.js";
