@@ -5,8 +5,11 @@
  * コンパイル時に型レベルで区別するための Branded Type パターンを提供する。
  */
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- used only as type brand via typeof
 declare const ObjectNumberBrand: unique symbol;
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- used only as type brand via typeof
 declare const GenerationNumberBrand: unique symbol;
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- used only as type brand via typeof
 declare const ByteOffsetBrand: unique symbol;
 
 /**
