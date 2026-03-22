@@ -29,3 +29,4 @@ export type {
   ByteOffset,
 } from "./types/index.js";
 export { LRUCache } from "./objects/index.js";
+export { scanStartXRef } from "./xref/index.js";
