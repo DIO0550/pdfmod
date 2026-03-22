@@ -4,11 +4,7 @@ import {
   skipWhitespaceAndComments,
 } from "../lexer/pdf-bytes.js";
 import type { Result } from "../result/index.js";
-import { ok, err } from "../result/index.js";
-import {
-  isPdfTokenBoundary,
-  skipWhitespaceAndComments,
-} from "../lexer/pdf-bytes.js";
+import { err, ok } from "../result/index.js";
 
 // %%EOF = [0x25, 0x25, 0x45, 0x4F, 0x46]
 const PERCENT = 0x25;
