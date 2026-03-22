@@ -62,7 +62,7 @@ export function scanStartXRef(data: Uint8Array): Result<number, PdfParseError> {
 
   // Step 2: startxref 逆方向検索
   let startxrefOffset = -1;
-  for (let i = eofOffset - 1; i >= tailStart; i--) {
+  for (let i = eofOffset - 1; i >= 0; i--) {
     if (i + STARTXREF_LEN > len) continue;
 
     let match = true;
