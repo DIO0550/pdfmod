@@ -9,7 +9,8 @@
       "package.json",
       "tsconfig*.json",
       "packages/*/tsconfig*.json",
-      "vitest*.ts"
+      "vitest*.ts",
+      ".storybook/**"
     ]
   },
   "formatter": {
