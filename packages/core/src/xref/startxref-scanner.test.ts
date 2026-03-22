@@ -1,4 +1,4 @@
-import { test, expect } from "vitest";
+import { expect, test } from "vitest";
 import { scanStartXRef } from "./startxref-scanner.js";
 
 function encode(s: string): Uint8Array {
@@ -93,9 +93,7 @@ test("startxref後のオフセット値が%%EOFの後にある場合にエラー
 });
 
 test("直近のstartxrefが不正な場合に前方の有効な候補を使わずエラーを返す", () => {
-  const data = encode(
-    "startxref\n0\n%%EOF\nstartxref\nabc\n%%EOF\n",
-  );
+  const data = encode("startxref\n0\n%%EOF\nstartxref\nabc\n%%EOF\n");
   expect(scanStartXRef(data)).toEqual({
     ok: false,
     error: expect.objectContaining({ code: "STARTXREF_NOT_FOUND" }),

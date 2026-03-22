@@ -1,5 +1,5 @@
 import type { Result } from "../result/index.js";
-import { ok, err } from "../result/index.js";
+import { err, ok } from "../result/index.js";
 
 /** LRU (Least Recently Used) cache with O(1) get/set operations */
 export class LRUCache<K, V> {
@@ -43,8 +43,16 @@ export class LRUCache<K, V> {
     this.map.set(key, value);
   }
 
-  has(key: K): boolean { return this.map.has(key); }
-  delete(key: K): boolean { return this.map.delete(key); }
-  clear(): void { this.map.clear(); }
-  get size(): number { return this.map.size; }
+  has(key: K): boolean {
+    return this.map.has(key);
+  }
+  delete(key: K): boolean {
+    return this.map.delete(key);
+  }
+  clear(): void {
+    this.map.clear();
+  }
+  get size(): number {
+    return this.map.size;
+  }
 }

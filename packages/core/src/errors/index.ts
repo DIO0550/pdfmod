@@ -1,9 +1,9 @@
 export type {
-  PdfErrorCode,
-  PdfParseErrorCode,
-  PdfParseError,
   PdfCircularReferenceError,
-  PdfTypeMismatchError,
   PdfError,
+  PdfErrorCode,
+  PdfParseError,
+  PdfParseErrorCode,
+  PdfTypeMismatchError,
 } from "./pdf-error.js";
-export type { PdfWarningCode, PdfWarning } from "./pdf-warning.js";
+export type { PdfWarning, PdfWarningCode } from "./pdf-warning.js";

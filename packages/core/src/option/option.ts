@@ -1,5 +1,5 @@
-import { ok, err } from "../result/result.js";
 import type { Result } from "../result/result.js";
+import { err, ok } from "../result/result.js";
 
 /** Some variant - contains a value */
 export interface Some<T> {

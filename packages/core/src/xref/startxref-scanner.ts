@@ -1,7 +1,10 @@
 import type { PdfParseError } from "../errors/index.js";
+import {
+  isPdfTokenBoundary,
+  skipWhitespaceAndComments,
+} from "../lexer/pdf-bytes.js";
 import type { Result } from "../result/index.js";
-import { ok, err } from "../result/index.js";
-import { isPdfTokenBoundary, skipWhitespaceAndComments } from "../lexer/pdf-bytes.js";
+import { err, ok } from "../result/index.js";
 
 // %%EOF = [0x25, 0x25, 0x45, 0x4F, 0x46]
 const PERCENT = 0x25;
@@ -26,8 +29,12 @@ function failStartXRef(message: string): Result<number, PdfParseError> {
 /** Check if position is inside a PDF comment (% ... EOL) by scanning back to line start */
 function isInsideComment(data: Uint8Array, pos: number): boolean {
   for (let i = pos - 1; i >= 0; i--) {
-    if (data[i] === LF || data[i] === CR) return false;
-    if (data[i] === PERCENT) return true;
+    if (data[i] === LF || data[i] === CR) {
+      return false;
+    }
+    if (data[i] === PERCENT) {
+      return true;
+    }
   }
   return false;
 }
@@ -50,7 +57,9 @@ export function scanStartXRef(data: Uint8Array): Result<number, PdfParseError> {
       data[i + 3] === O_UPPER &&
       data[i + 4] === F_UPPER
     ) {
-      if (isInsideComment(data, i)) continue;
+      if (isInsideComment(data, i)) {
+        continue;
+      }
       eofOffset = i;
       break;
     }
@@ -63,7 +72,9 @@ export function scanStartXRef(data: Uint8Array): Result<number, PdfParseError> {
   // Step 2: startxref 逆方向検索
   let startxrefOffset = -1;
   for (let i = eofOffset - 1; i >= 0; i--) {
-    if (i + STARTXREF_LEN > len) continue;
+    if (i + STARTXREF_LEN > len) {
+      continue;
+    }
 
     let match = true;
     for (let j = 0; j < STARTXREF_LEN; j++) {
@@ -72,14 +83,22 @@ export function scanStartXRef(data: Uint8Array): Result<number, PdfParseError> {
         break;
       }
     }
-    if (!match) continue;
+    if (!match) {
+      continue;
+    }
 
     // Token boundary check: before and after startxref must be whitespace/delimiter or data edge
-    if (i > 0 && !isPdfTokenBoundary(data[i - 1])) continue;
+    if (i > 0 && !isPdfTokenBoundary(data[i - 1])) {
+      continue;
+    }
     const afterPos = i + STARTXREF_LEN;
-    if (afterPos < len && !isPdfTokenBoundary(data[afterPos])) continue;
+    if (afterPos < len && !isPdfTokenBoundary(data[afterPos])) {
+      continue;
+    }
 
-    if (isInsideComment(data, i)) continue;
+    if (isInsideComment(data, i)) {
+      continue;
+    }
 
     // Found the nearest token-boundary startxref; offset validity is checked in Step 3
     startxrefOffset = i;
@@ -91,7 +110,11 @@ export function scanStartXRef(data: Uint8Array): Result<number, PdfParseError> {
   }
 
   // Step 3: オフセット値パース
-  let pos = skipWhitespaceAndComments(data, startxrefOffset + STARTXREF_LEN, eofOffset);
+  let pos = skipWhitespaceAndComments(
+    data,
+    startxrefOffset + STARTXREF_LEN,
+    eofOffset,
+  );
 
   let value = 0;
   let digitsCount = 0;

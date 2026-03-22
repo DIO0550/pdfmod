@@ -1,10 +1,11 @@
-import { test, expect } from "vitest";
+import { expect, test } from "vitest";
 import { LRUCache } from "./lru-cache.js";
 
 function createCache<K, V>(capacity?: number): LRUCache<K, V> {
-  const result = capacity === undefined
-    ? LRUCache.create<K, V>()
-    : LRUCache.create<K, V>(capacity);
+  const result =
+    capacity === undefined
+      ? LRUCache.create<K, V>()
+      : LRUCache.create<K, V>(capacity);
   if (!result.ok) {
     throw new Error(`Unexpected create failure: ${result.error.message}`);
   }
