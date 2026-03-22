@@ -8,6 +8,7 @@
       "packages/*/package.json",
       "package.json",
       "tsconfig*.json",
+      "packages/*/tsconfig*.json",
       "vitest*.ts"
     ]
   },
