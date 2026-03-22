@@ -172,6 +172,22 @@ test("startxref後にコメントがある場合を処理する", () => {
   expect(result).toEqual({ ok: true, value: 5 });
 });
 
+test("コメント内のstartxrefを無視する", () => {
+  // 行頭の % により "startxref" はコメント内なので無視されるべき
+  const data = encode("%startxref\n5\n%%EOF\n");
+  expect(scanStartXRef(data)).toEqual({
+    ok: false,
+    error: expect.objectContaining({ code: "STARTXREF_NOT_FOUND" }),
+  });
+});
+
+test("コメント本文中の%%EOFを無視する", () => {
+  // コメント行内の %%EOF はEOFマーカーとして扱わない
+  const data = encode("startxref\n5\n%fake %%EOF here\n%%EOF\n");
+  const result = scanStartXRef(data);
+  expect(result).toEqual({ ok: true, value: 5 });
+});
+
 // --- fixture ---
 
 test("実際のPDFファイルからstartxrefを取得する", () => {
