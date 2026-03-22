@@ -57,7 +57,7 @@ ISO 32000-1 §7.5.5 では「ファイルの最後の1024バイト以内に `%%E
 import type { Result } from "@pdfmod/core";
 import type { PdfParseError } from "@pdfmod/core";
 
-function scanStartXRef(data: Uint8Array): Result<number, PdfParseError>
+function scanStartXRef(data: Uint8Array): Result<number, PdfParseError>;
 ```
 
 `Uint8Array` としてPDFバイナリ全体を受け取り、`startxref` 直後のオフセット値を `Result` 型で返す。
