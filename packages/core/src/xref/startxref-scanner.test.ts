@@ -122,6 +122,18 @@ test("%%EOFが1024バイト境界ちょうどにある場合を処理する", ()
   expect(result).toEqual({ ok: true, value: 500 });
 });
 
+test("startxrefがtailStartより前にある場合でも検出する", () => {
+  // startxref + %%EOF の後に大量のtrailing garbageがあり、
+  // %%EOFは末尾1024バイト内だがstartxrefはtailStartより前にある構造
+  const pdfPart = "\nstartxref\n5\n%%EOF\n";
+  const trailingLength = 1024 - 6; // %%EOF\nが末尾1024バイト境界内に残る程度
+  const trailing = " ".repeat(trailingLength);
+  const data = encode(pdfPart + trailing);
+  expect(data.length).toBeGreaterThan(1024);
+  const result = scanStartXRef(data);
+  expect(result).toEqual({ ok: true, value: 5 });
+});
+
 test("%%EOFが1024バイト境界の外にある場合にエラーを返す", () => {
   const eofAndTrailer = "startxref\n500\n%%EOF\n";
   const trailingBytes = "z".repeat(1024);
