@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 
 export interface PdfDocumentState {
   loading: boolean;
@@ -34,7 +34,9 @@ export function usePdfDocument(
 
     fetch(source)
       .then((res) => {
-        if (!res.ok) throw new Error(`Failed to fetch PDF: ${res.status}`);
+        if (!res.ok) {
+          throw new Error(`Failed to fetch PDF: ${res.status}`);
+        }
         return res.arrayBuffer();
       })
       .then((buffer) => {

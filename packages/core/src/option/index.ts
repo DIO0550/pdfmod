@@ -1,11 +1,11 @@
-export type { Option, Some, None } from "./option.js";
+export type { None, Option, Some } from "./option.js";
 export {
-  some,
-  none,
-  fromNullable,
-  map,
   flatMap,
-  unwrapOr,
-  toResult,
+  fromNullable,
   fromResult,
+  map,
+  none,
+  some,
+  toResult,
+  unwrapOr,
 } from "./option.js";

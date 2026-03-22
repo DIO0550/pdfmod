@@ -1,5 +1,9 @@
-import { Token, TokenType } from "../types/index.js";
-import { isPdfWhitespace, isPdfDelimiter, skipWhitespaceAndComments as skipWsAndComments } from "./pdf-bytes.js";
+import { type Token, TokenType } from "../types/index.js";
+import {
+  isPdfDelimiter,
+  isPdfWhitespace,
+  skipWhitespaceAndComments as skipWsAndComments,
+} from "./pdf-bytes.js";
 
 const isWhitespace = isPdfWhitespace;
 const isDelimiter = isPdfDelimiter;
@@ -116,7 +120,9 @@ export class Tokenizer {
       } else if (b === 41) {
         // ')'
         depth--;
-        if (depth > 0) result += ")";
+        if (depth > 0) {
+          result += ")";
+        }
       } else if (b === 92) {
         // '\\' — escape
         result += this.readEscapeChar();
@@ -171,7 +177,9 @@ export class Tokenizer {
     let name = "";
     while (this.pos < this.data.length) {
       const b = this.data[this.pos];
-      if (isWhitespace(b) || isDelimiter(b)) break;
+      if (isWhitespace(b) || isDelimiter(b)) {
+        break;
+      }
       if (b === 35 && this.pos + 2 < this.data.length) {
         // '#' hex escape
         const hi = this.data[this.pos + 1];
@@ -221,7 +229,9 @@ export class Tokenizer {
 
     while (this.pos < this.data.length) {
       const b = this.data[this.pos];
-      if (isWhitespace(b) || isDelimiter(b)) break;
+      if (isWhitespace(b) || isDelimiter(b)) {
+        break;
+      }
       str += String.fromCharCode(b);
       this.pos++;
     }
@@ -245,7 +255,9 @@ export class Tokenizer {
     while (true) {
       const token = this.nextToken();
       tokens.push(token);
-      if (token.type === TokenType.EOF) break;
+      if (token.type === TokenType.EOF) {
+        break;
+      }
     }
     return tokens;
   }

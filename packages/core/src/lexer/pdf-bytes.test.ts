@@ -1,4 +1,4 @@
-import { test, expect } from "vitest";
+import { expect, test } from "vitest";
 import { skipWhitespaceAndComments } from "./pdf-bytes.js";
 
 function encode(s: string): Uint8Array {

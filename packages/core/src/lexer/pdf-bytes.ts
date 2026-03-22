@@ -2,7 +2,9 @@
 const WHITESPACE = new Set([0x00, 0x09, 0x0a, 0x0c, 0x0d, 0x20]);
 
 /** PDF delimiter bytes (ISO 32000 Table 2): ( ) < > [ ] { } / % */
-const DELIMITER = new Set([0x28, 0x29, 0x3c, 0x3e, 0x5b, 0x5d, 0x7b, 0x7d, 0x2f, 0x25]);
+const DELIMITER = new Set([
+  0x28, 0x29, 0x3c, 0x3e, 0x5b, 0x5d, 0x7b, 0x7d, 0x2f, 0x25,
+]);
 
 export function isPdfWhitespace(byte: number): boolean {
   return WHITESPACE.has(byte);
@@ -16,7 +18,11 @@ export function isPdfTokenBoundary(byte: number): boolean {
   return WHITESPACE.has(byte) || DELIMITER.has(byte);
 }
 
-export function skipWhitespaceAndComments(data: Uint8Array, pos: number, end?: number): number {
+export function skipWhitespaceAndComments(
+  data: Uint8Array,
+  pos: number,
+  end?: number,
+): number {
   const limit = end ?? data.length;
   let i = pos;
   while (i < limit) {
