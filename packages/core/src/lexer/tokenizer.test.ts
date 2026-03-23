@@ -105,12 +105,18 @@ test("PDFキーワードをトークナイズする", () => {
 
 test("不正数値 12abc はキーワードにフォールバックする", () => {
   const tokens = tokenize("12abc");
-  expect(tokens[0].type).toBe(TokenType.Keyword);
+  expect(tokens[0]).toMatchObject({
+    type: TokenType.Keyword,
+    value: "12abc",
+  });
 });
 
 test("不正数値 1.2.3 はキーワードにフォールバックする", () => {
   const tokens = tokenize("1.2.3");
-  expect(tokens[0].type).toBe(TokenType.Keyword);
+  expect(tokens[0]).toMatchObject({
+    type: TokenType.Keyword,
+    value: "1.2.3",
+  });
 });
 
 test("ドット単独 . は Real (NaN) になる", () => {

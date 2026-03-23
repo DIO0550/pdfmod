@@ -396,6 +396,7 @@ export class Tokenizer {
       } else if (isWhitespace(b) || isDelimiter(b)) {
         break;
       } else {
+        this.pos = offset + 1;
         return this.readKeyword(offset, firstByte);
       }
     }
