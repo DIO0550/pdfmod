@@ -1,14 +1,38 @@
-// --- PDF byte constants (関数本体で使用するもののみ) ---
+// --- PDF byte constants (ISO 32000) ---
+// Whitespace (Table 1)
+const PdfNul = 0x00;
+const PdfTab = 0x09;
 const PdfLf = 0x0a;
+const PdfFf = 0x0c;
 const PdfCr = 0x0d;
+const PdfSpace = 0x20;
+// Delimiter (Table 2)
 const PdfPercent = 0x25;
+const PdfLeftParen = 0x28;
+const PdfRightParen = 0x29;
+const PdfSlash = 0x2f;
+const PdfLessThan = 0x3c;
+const PdfGreaterThan = 0x3e;
+const PdfLeftBracket = 0x5b;
+const PdfRightBracket = 0x5d;
+const PdfLeftBrace = 0x7b;
+const PdfRightBrace = 0x7d;
 
 /** PDFホワイトスペースバイト (ISO 32000 Table 1): NUL, TAB, LF, FF, CR, SPACE */
-const WHITESPACE = new Set([0x00, 0x09, 0x0a, 0x0c, 0x0d, 0x20]);
+const WHITESPACE = new Set([PdfNul, PdfTab, PdfLf, PdfFf, PdfCr, PdfSpace]);
 
 /** PDF区切り文字バイト (ISO 32000 Table 2): ( ) < > [ ] { } / % */
 const DELIMITER = new Set([
-  0x28, 0x29, 0x3c, 0x3e, 0x5b, 0x5d, 0x7b, 0x7d, 0x2f, 0x25,
+  PdfLeftParen,
+  PdfRightParen,
+  PdfLessThan,
+  PdfGreaterThan,
+  PdfLeftBracket,
+  PdfRightBracket,
+  PdfLeftBrace,
+  PdfRightBrace,
+  PdfSlash,
+  PdfPercent,
 ]);
 
 /**

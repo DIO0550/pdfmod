@@ -6,14 +6,12 @@ import {
 import type { Result } from "../result/index.js";
 import { err, ok } from "../result/index.js";
 
-// %%EOF = [0x25, 0x25, 0x45, 0x4F, 0x46]
 const PERCENT = 0x25;
-const E_UPPER = 0x45;
-const O_UPPER = 0x4f;
-const F_UPPER = 0x46;
 
-// "startxref" = [0x73, 0x74, 0x61, 0x72, 0x74, 0x78, 0x72, 0x65, 0x66]
-const STARTXREF_BYTES = [0x73, 0x74, 0x61, 0x72, 0x74, 0x78, 0x72, 0x65, 0x66];
+const EOF_BYTES = Array.from(new TextEncoder().encode("%%EOF"));
+const EOF_LEN = EOF_BYTES.length;
+
+const STARTXREF_BYTES = Array.from(new TextEncoder().encode("startxref"));
 const STARTXREF_LEN = STARTXREF_BYTES.length;
 
 const DIGIT_0 = 0x30;
@@ -23,7 +21,6 @@ const LF = 0x0a;
 const CR = 0x0d;
 
 const StartxrefSearchWindow = 1024;
-const EofMarkerLength = 5;
 const DecimalRadix = 10;
 const NotFound = -1;
 
@@ -141,27 +138,22 @@ export function scanStartXRef(data: Uint8Array): Result<number, PdfParseError> {
 
   // Step 1: %%EOF 逆方向検索
   let eofOffset = NotFound;
-  if (len < EofMarkerLength) {
+  if (len < EOF_LEN) {
     return failStartXRef("%%EOF not found within last 1024 bytes");
   }
 
-  for (let i = len - EofMarkerLength; i >= tailStart; i--) {
-    if (
-      data[i] === PERCENT &&
-      data[i + 1] === PERCENT &&
-      data[i + 2] === E_UPPER &&
-      data[i + 3] === O_UPPER &&
-      data[i + 4] === F_UPPER
-    ) {
-      if (isInsideComment(data, i)) {
-        continue;
-      }
-      if (!hasTokenBoundary(data, i, EofMarkerLength, len)) {
-        continue;
-      }
-      eofOffset = i;
-      break;
+  for (let i = len - EOF_LEN; i >= tailStart; i--) {
+    if (!matchesBytesAt(data, i, EOF_BYTES)) {
+      continue;
     }
+    if (isInsideComment(data, i)) {
+      continue;
+    }
+    if (!hasTokenBoundary(data, i, EOF_LEN, len)) {
+      continue;
+    }
+    eofOffset = i;
+    break;
   }
 
   if (eofOffset < 0) {
