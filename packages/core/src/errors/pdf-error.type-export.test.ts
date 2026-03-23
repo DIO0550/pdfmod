@@ -10,16 +10,17 @@ import type {
   PdfWarningCode,
 } from "../index.js";
 
-test("PdfParseErrorCodeは6つのコードを持つ", () => {
+test("PdfParseErrorCodeは7つのコードを持つ", () => {
   const codes: PdfParseErrorCode[] = [
     "INVALID_HEADER",
     "STARTXREF_NOT_FOUND",
+    "XREF_TABLE_INVALID",
     "ROOT_NOT_FOUND",
     "SIZE_NOT_FOUND",
     "MEDIABOX_NOT_FOUND",
     "NESTING_TOO_DEEP",
   ];
-  expect(codes).toHaveLength(6);
+  expect(codes).toHaveLength(7);
 });
 
 test("型エクスポートが利用可能", () => {
