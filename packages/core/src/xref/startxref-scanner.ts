@@ -139,7 +139,9 @@ export function scanStartXRef(data: Uint8Array): Result<number, PdfParseError> {
   // Step 1: %%EOF 逆方向検索
   let eofOffset = NOT_FOUND;
   if (len < EOF_LEN) {
-    return failStartXRef(`%%EOF not found within last ${STARTXREF_SEARCH_WINDOW} bytes`);
+    return failStartXRef(
+      `%%EOF not found within last ${STARTXREF_SEARCH_WINDOW} bytes`,
+    );
   }
 
   for (let i = len - EOF_LEN; i >= tailStart; i--) {
@@ -157,7 +159,9 @@ export function scanStartXRef(data: Uint8Array): Result<number, PdfParseError> {
   }
 
   if (eofOffset < 0) {
-    return failStartXRef(`%%EOF not found within last ${STARTXREF_SEARCH_WINDOW} bytes`);
+    return failStartXRef(
+      `%%EOF not found within last ${STARTXREF_SEARCH_WINDOW} bytes`,
+    );
   }
 
   // Step 2: startxref 逆方向検索
