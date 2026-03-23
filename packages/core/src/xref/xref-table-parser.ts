@@ -364,7 +364,7 @@ export function parseXRefTable(
     for (let i = 0; i < count; i++) {
       const entryResult = parseEntry(data, entryPos);
       if (!entryResult.ok) {
-        return entryResult as Result<never, PdfParseError>;
+        return entryResult;
       }
       entries.set(firstObj + i, entryResult.value.entry);
       entryPos = entryResult.value.nextPos;
