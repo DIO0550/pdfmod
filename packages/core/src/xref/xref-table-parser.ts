@@ -334,7 +334,7 @@ export function parseXRefTable(
   while (pos < data.length) {
     const headerResult = parseSubsectionHeader(data, pos);
     if (!headerResult.ok) {
-      return headerResult as Result<never, PdfParseError>;
+      return headerResult;
     }
 
     const headerOption = headerResult.value;
