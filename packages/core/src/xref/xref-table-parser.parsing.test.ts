@@ -17,7 +17,7 @@ function encode(str: string): Uint8Array {
  */
 function buildXRefBytes(
   sections: Array<{ header: string; entries: string[] }>,
-  entryEol: "\r\n" | "\n" | "\r " = "\r\n",
+  entryEol: "\r\n" | "\n" | "\r " | "\r" = "\r\n",
 ): Uint8Array {
   const parts: string[] = ["xref\n"];
   for (const section of sections) {
@@ -143,6 +143,7 @@ test.each([
   { eol: "\r\n" as const, label: "CR+LF (0x0D 0x0A)" },
   { eol: "\n" as const, label: "LF のみ (0x0A)" },
   { eol: "\r " as const, label: "CR+SP (0x0D 0x20)" },
+  { eol: "\r" as const, label: "CR のみ (0x0D)" },
 ])("EOL: $label をパースできる", ({ eol }) => {
   const data = buildXRefBytes(
     [{ header: "0 1", entries: ["0000000100 00000 n"] }],
