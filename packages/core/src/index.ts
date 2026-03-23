@@ -33,4 +33,4 @@ export type {
   XRefTable,
 } from "./types/index.js";
 export { TokenType } from "./types/index.js";
-export { scanStartXRef } from "./xref/index.js";
+export { scanStartXRef, parseXRefTable } from "./xref/index.js";
