@@ -1,6 +1,9 @@
 import type { Result } from "../result/index.js";
 import { err, ok } from "../result/index.js";
 
+const DefaultCacheCapacity = 1024;
+const MinCacheCapacity = 1;
+
 /**
  * 固定容量のLeast Recently Usedキャッシュ。
  * 容量超過時は最も古いエントリを自動的に削除する。
@@ -56,9 +59,9 @@ export class LRUCache<K, V> {
    * ```
    */
   static create<K, V>(
-    capacity: number = 1024,
+    capacity: number = DefaultCacheCapacity,
   ): Result<LRUCache<K, V>, RangeError> {
-    if (!Number.isInteger(capacity) || capacity <= 0) {
+    if (!Number.isInteger(capacity) || capacity < MinCacheCapacity) {
       return err(
         new RangeError(
           `LRUCache capacity must be a positive integer, got ${capacity}`,
