@@ -17,5 +17,7 @@ test.each([
   const data = encode("xref\n0 1\n0000000000 00000 n\r\ntrailer");
   const result = parseXRefTable(data, offset as ByteOffset);
   expect(result.ok).toBe(false);
-  expect((result as { ok: false; error: { code: string } }).error.code).toBe("XREF_TABLE_INVALID");
+  expect((result as { ok: false; error: { code: string } }).error.code).toBe(
+    "XREF_TABLE_INVALID",
+  );
 });
