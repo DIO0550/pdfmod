@@ -20,9 +20,9 @@ const DIGIT_9 = 0x39;
 const LF = 0x0a;
 const CR = 0x0d;
 
-const StartxrefSearchWindow = 1024;
-const DecimalRadix = 10;
-const NotFound = -1;
+const STARTXREF_SEARCH_WINDOW = 1024;
+const DECIMAL_RADIX = 10;
+const NOT_FOUND = -1;
 
 /**
  * バイト列がdataの指定位置で一致するか判定する。
@@ -134,10 +134,10 @@ function isInsideComment(data: Uint8Array, pos: number): boolean {
  */
 export function scanStartXRef(data: Uint8Array): Result<number, PdfParseError> {
   const len = data.length;
-  const tailStart = Math.max(0, len - StartxrefSearchWindow);
+  const tailStart = Math.max(0, len - STARTXREF_SEARCH_WINDOW);
 
   // Step 1: %%EOF 逆方向検索
-  let eofOffset = NotFound;
+  let eofOffset = NOT_FOUND;
   if (len < EOF_LEN) {
     return failStartXRef("%%EOF not found within last 1024 bytes");
   }
@@ -161,7 +161,7 @@ export function scanStartXRef(data: Uint8Array): Result<number, PdfParseError> {
   }
 
   // Step 2: startxref 逆方向検索
-  let startxrefOffset = NotFound;
+  let startxrefOffset = NOT_FOUND;
   for (let i = eofOffset - 1; i >= 0; i--) {
     if (i + STARTXREF_LEN > len) {
       continue;
@@ -195,7 +195,7 @@ export function scanStartXRef(data: Uint8Array): Result<number, PdfParseError> {
   let value = 0;
   let digitsCount = 0;
   while (pos < eofOffset && data[pos] >= DIGIT_0 && data[pos] <= DIGIT_9) {
-    value = value * DecimalRadix + (data[pos] - DIGIT_0);
+    value = value * DECIMAL_RADIX + (data[pos] - DIGIT_0);
     digitsCount++;
     if (!Number.isSafeInteger(value)) {
       return failStartXRef("invalid startxref offset value");
