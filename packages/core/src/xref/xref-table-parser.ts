@@ -184,27 +184,32 @@ function parseEntry(
     });
   }
 
-  // EOL 検出
-  const eolPos = pos + ENTRY_BODY_LENGTH;
-  if (eolPos >= data.length) {
+  // ステータスフラグ直後の任意の SPACE (0x20) をスキップしてから EOL を検出する。
+  // 実PDFでは "f \r\n" / "n \r\n" のようにフラグ後にSPACEが入る形式が存在する。
+  let eolScanPos = pos + ENTRY_BODY_LENGTH;
+  while (eolScanPos < data.length && data[eolScanPos] === SPACE) {
+    eolScanPos++;
+  }
+
+  if (eolScanPos >= data.length) {
     return err({
       code: "XREF_TABLE_INVALID",
       message: "xref entry truncated: missing EOL after 18-byte body",
-      offset: eolPos,
+      offset: eolScanPos,
     });
   }
-  const eolLen = detectEol(data, eolPos);
+  const eolLen = detectEol(data, eolScanPos);
   if (eolLen === undefined) {
     return err({
       code: "XREF_TABLE_INVALID",
       message: "xref entry: unknown EOL pattern",
-      offset: eolPos,
+      offset: eolScanPos,
     });
   }
 
   return ok({
     entry: { type: entryType, field2: offsetValue, field3: genValue },
-    nextPos: eolPos + eolLen,
+    nextPos: eolScanPos + eolLen,
   });
 }
 

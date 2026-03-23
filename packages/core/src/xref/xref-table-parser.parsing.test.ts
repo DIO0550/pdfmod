@@ -139,3 +139,23 @@ test.each([
     field3: 0,
   });
 });
+
+// --- フラグ直後の SPACE 許容 ---
+
+test("フラグ直後に SPACE が入る形式 (f SP CR LF) をパースできる", () => {
+  const raw = encode(
+    "xref\n0 2\n0000000000 65535 f \r\n0000000100 00000 n \r\ntrailer",
+  );
+  const result = parseXRefTable(raw, 0 as ByteOffset);
+  assert(result.ok);
+  expect(result.value.xref.entries.get(0)).toEqual({
+    type: 0,
+    field2: 0,
+    field3: 65535,
+  });
+  expect(result.value.xref.entries.get(1)).toEqual({
+    type: 1,
+    field2: 100,
+    field3: 0,
+  });
+});
