@@ -186,6 +186,13 @@ function parseEntry(
 
   // EOL 検出
   const eolPos = pos + ENTRY_BODY_LENGTH;
+  if (eolPos >= data.length) {
+    return err({
+      code: "XREF_TABLE_INVALID",
+      message: "xref entry truncated: missing EOL after 18-byte body",
+      offset: eolPos,
+    });
+  }
   const eolLen = detectEol(data, eolPos);
   if (eolLen === undefined) {
     return err({
