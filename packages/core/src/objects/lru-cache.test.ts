@@ -167,3 +167,61 @@ test("デフォルト容量が1024である", () => {
   expect(cache.size).toBe(1024);
   expect(cache.has("key0")).toBe(false);
 });
+
+// --- falsy値テスト ---
+
+test.each([
+  ["0", 0],
+  ["false", false],
+  ["empty string", ""],
+  ["null", null],
+  ["undefined", undefined],
+])("falsy値 %s をset/getできる", (_label, value) => {
+  const cache = createCache<string, unknown>(3);
+  cache.set("key", value);
+  expect(cache.get("key")).toBe(value);
+  expect(cache.has("key")).toBe(true);
+});
+
+// --- delete/clear後の再挿入 ---
+
+test("delete後の再挿入で不要なevictionが起きない", () => {
+  const cache = createCache<string, number>(3);
+  cache.set("a", 1);
+  cache.set("b", 2);
+  cache.set("c", 3);
+  cache.delete("b");
+  cache.set("d", 4);
+  expect(cache.size).toBe(3);
+  expect(cache.has("a")).toBe(true);
+  expect(cache.has("c")).toBe(true);
+  expect(cache.has("d")).toBe(true);
+});
+
+test("clear後の再挿入でcapacity分まで挿入できる", () => {
+  const cache = createCache<string, number>(3);
+  cache.set("a", 1);
+  cache.set("b", 2);
+  cache.set("c", 3);
+  cache.clear();
+  cache.set("x", 10);
+  cache.set("y", 20);
+  cache.set("z", 30);
+  expect(cache.size).toBe(3);
+  expect(cache.has("x")).toBe(true);
+  expect(cache.has("y")).toBe(true);
+  expect(cache.has("z")).toBe(true);
+});
+
+// --- has() recency非更新 ---
+
+test("has()がLRU順序を変更しない", () => {
+  const cache = createCache<string, number>(2);
+  cache.set("a", 1);
+  cache.set("b", 2);
+  cache.has("a");
+  cache.set("c", 3);
+  expect(cache.has("a")).toBe(false);
+  expect(cache.has("b")).toBe(true);
+  expect(cache.has("c")).toBe(true);
+});

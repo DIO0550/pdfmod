@@ -6,14 +6,12 @@ import {
 import type { Result } from "../result/index.js";
 import { err, ok } from "../result/index.js";
 
-// %%EOF = [0x25, 0x25, 0x45, 0x4F, 0x46]
 const PERCENT = 0x25;
-const E_UPPER = 0x45;
-const O_UPPER = 0x4f;
-const F_UPPER = 0x46;
 
-// "startxref" = [0x73, 0x74, 0x61, 0x72, 0x74, 0x78, 0x72, 0x65, 0x66]
-const STARTXREF_BYTES = [0x73, 0x74, 0x61, 0x72, 0x74, 0x78, 0x72, 0x65, 0x66];
+const EOF_BYTES = Array.from(new TextEncoder().encode("%%EOF"));
+const EOF_LEN = EOF_BYTES.length;
+
+const STARTXREF_BYTES = Array.from(new TextEncoder().encode("startxref"));
 const STARTXREF_LEN = STARTXREF_BYTES.length;
 
 const DIGIT_0 = 0x30;
@@ -21,6 +19,56 @@ const DIGIT_9 = 0x39;
 
 const LF = 0x0a;
 const CR = 0x0d;
+
+const STARTXREF_SEARCH_WINDOW = 1024;
+const DECIMAL_RADIX = 10;
+const NOT_FOUND = -1;
+
+/**
+ * バイト列がdataの指定位置で一致するか判定する。
+ *
+ * @param data - 検索対象のバイト配列
+ * @param offset - 比較開始位置
+ * @param pattern - 一致判定するバイト列
+ * @returns 一致すれば `true`
+ */
+function matchesBytesAt(
+  data: Uint8Array,
+  offset: number,
+  pattern: number[],
+): boolean {
+  for (let j = 0; j < pattern.length; j++) {
+    if (data[offset + j] !== pattern[j]) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * 指定位置のトークンが前後でトークン境界を持つか判定する。
+ *
+ * @param data - PDFバイト配列
+ * @param offset - トークン開始位置
+ * @param length - トークンのバイト長
+ * @param dataLength - データ全体の長さ
+ * @returns 前後が境界であれば `true`
+ */
+function hasTokenBoundary(
+  data: Uint8Array,
+  offset: number,
+  length: number,
+  dataLength: number,
+): boolean {
+  if (offset > 0 && !isPdfTokenBoundary(data[offset - 1])) {
+    return false;
+  }
+  const afterPos = offset + length;
+  if (afterPos < dataLength && !isPdfTokenBoundary(data[afterPos])) {
+    return false;
+  }
+  return true;
+}
 
 /**
  * startxref走査失敗時のエラーResultを生成するヘルパー。
@@ -86,66 +134,53 @@ function isInsideComment(data: Uint8Array, pos: number): boolean {
  */
 export function scanStartXRef(data: Uint8Array): Result<number, PdfParseError> {
   const len = data.length;
-  const tailStart = Math.max(0, len - 1024);
+  const tailStart = Math.max(0, len - STARTXREF_SEARCH_WINDOW);
 
   // Step 1: %%EOF 逆方向検索
-  let eofOffset = -1;
-  if (len < 5) {
-    return failStartXRef("%%EOF not found within last 1024 bytes");
+  let eofOffset = NOT_FOUND;
+  if (len < EOF_LEN) {
+    return failStartXRef(
+      `%%EOF not found within last ${STARTXREF_SEARCH_WINDOW} bytes`,
+    );
   }
 
-  for (let i = len - 5; i >= tailStart; i--) {
-    if (
-      data[i] === PERCENT &&
-      data[i + 1] === PERCENT &&
-      data[i + 2] === E_UPPER &&
-      data[i + 3] === O_UPPER &&
-      data[i + 4] === F_UPPER
-    ) {
-      if (isInsideComment(data, i)) {
-        continue;
-      }
-      eofOffset = i;
-      break;
+  for (let i = len - EOF_LEN; i >= tailStart; i--) {
+    if (!matchesBytesAt(data, i, EOF_BYTES)) {
+      continue;
     }
+    if (isInsideComment(data, i)) {
+      continue;
+    }
+    if (!hasTokenBoundary(data, i, EOF_LEN, len)) {
+      continue;
+    }
+    eofOffset = i;
+    break;
   }
 
   if (eofOffset < 0) {
-    return failStartXRef("%%EOF not found within last 1024 bytes");
+    return failStartXRef(
+      `%%EOF not found within last ${STARTXREF_SEARCH_WINDOW} bytes`,
+    );
   }
 
   // Step 2: startxref 逆方向検索
-  let startxrefOffset = -1;
+  let startxrefOffset = NOT_FOUND;
   for (let i = eofOffset - 1; i >= 0; i--) {
     if (i + STARTXREF_LEN > len) {
       continue;
     }
 
-    let match = true;
-    for (let j = 0; j < STARTXREF_LEN; j++) {
-      if (data[i + j] !== STARTXREF_BYTES[j]) {
-        match = false;
-        break;
-      }
-    }
-    if (!match) {
+    if (!matchesBytesAt(data, i, STARTXREF_BYTES)) {
       continue;
     }
-
-    // Token boundary check: before and after startxref must be whitespace/delimiter or data edge
-    if (i > 0 && !isPdfTokenBoundary(data[i - 1])) {
+    if (!hasTokenBoundary(data, i, STARTXREF_LEN, len)) {
       continue;
     }
-    const afterPos = i + STARTXREF_LEN;
-    if (afterPos < len && !isPdfTokenBoundary(data[afterPos])) {
-      continue;
-    }
-
     if (isInsideComment(data, i)) {
       continue;
     }
 
-    // Found the nearest token-boundary startxref; offset validity is checked in Step 3
     startxrefOffset = i;
     break;
   }
@@ -164,7 +199,7 @@ export function scanStartXRef(data: Uint8Array): Result<number, PdfParseError> {
   let value = 0;
   let digitsCount = 0;
   while (pos < eofOffset && data[pos] >= DIGIT_0 && data[pos] <= DIGIT_9) {
-    value = value * 10 + (data[pos] - DIGIT_0);
+    value = value * DECIMAL_RADIX + (data[pos] - DIGIT_0);
     digitsCount++;
     if (!Number.isSafeInteger(value)) {
       return failStartXRef("invalid startxref offset value");

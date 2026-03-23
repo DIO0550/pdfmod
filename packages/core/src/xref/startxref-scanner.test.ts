@@ -200,6 +200,72 @@ test("コメント本文中の%%EOFを無視する", () => {
 
 // --- fixture ---
 
+// --- 追加エッジケース ---
+
+test("非境界 x%%EOF はEOFマーカーとして誤認しない", () => {
+  const data = encode("startxref\n5\nx%%EOF\n");
+  expect(scanStartXRef(data)).toEqual({
+    ok: false,
+    error: expect.objectContaining({ code: "STARTXREF_NOT_FOUND" }),
+  });
+});
+
+test("非境界 %%EOFx はEOFマーカーとして誤認しない", () => {
+  // %%EOF 後に非境界文字が続く場合、EOFマーカーとして扱わない
+  const data = encode("dummy\nstartxref\n5\n%%EOFx\n");
+  expect(scanStartXRef(data)).toEqual({
+    ok: false,
+    error: expect.objectContaining({ code: "STARTXREF_NOT_FOUND" }),
+  });
+});
+
+test("ファイル末尾がちょうど%%EOFで終わる (改行なし)", () => {
+  const data = encode("dummy\nstartxref\n5\n%%EOF");
+  const result = scanStartXRef(data);
+  expect(result).toEqual({ ok: true, value: 5 });
+});
+
+test("数値後コメントがある場合を処理する", () => {
+  const data = encode("dummy\nstartxref\n5 %comment\n%%EOF\n");
+  const result = scanStartXRef(data);
+  expect(result).toEqual({ ok: true, value: 5 });
+});
+
+test("TABをstartxrefと数値の間に挟むケースを処理する", () => {
+  const data = encode("dummy\nstartxref\t5\n%%EOF\n");
+  const result = scanStartXRef(data);
+  expect(result).toEqual({ ok: true, value: 5 });
+});
+
+test("FFをstartxrefと数値の間に挟むケースを処理する", () => {
+  const data = new Uint8Array([
+    ...encode("dummy\nstartxref"),
+    0x0c,
+    ...encode("5\n%%EOF\n"),
+  ]);
+  const result = scanStartXRef(data);
+  expect(result).toEqual({ ok: true, value: 5 });
+});
+
+test("NULをstartxrefと数値の間に挟むケースを処理する", () => {
+  const data = new Uint8Array([
+    ...encode("dummy\nstartxref"),
+    0x00,
+    ...encode("5\n%%EOF\n"),
+  ]);
+  const result = scanStartXRef(data);
+  expect(result).toEqual({ ok: true, value: 5 });
+});
+
+test("巨大オフセット (Number.MAX_SAFE_INTEGER超) はエラーを返す", () => {
+  const hugeOffset = "99999999999999999";
+  const data = encode(`${"x".repeat(100)}\nstartxref\n${hugeOffset}\n%%EOF\n`);
+  expect(scanStartXRef(data)).toEqual({
+    ok: false,
+    error: expect.objectContaining({ code: "STARTXREF_NOT_FOUND" }),
+  });
+});
+
 test("実際のPDFファイルからstartxrefを取得する", () => {
   const body =
     "%PDF-1.4\n" +

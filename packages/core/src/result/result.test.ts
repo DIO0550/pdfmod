@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { err, ok } from "./result.js";
+import { err, ok, unwrapOr } from "./result.js";
 
 test("okは成功結果を生成する", () => {
   const result = ok(42);
@@ -25,4 +25,15 @@ test("errのdiscriminantでエラーにアクセスできる", () => {
   if (!result.ok) {
     expect(result.error).toBe("fail");
   }
+});
+
+// --- falsy値テスト ---
+
+test.each([[0], [false], [""]])("ok(%s) は ok: true を返す", (value) => {
+  const result = ok(value);
+  expect(result).toEqual({ ok: true, value });
+});
+
+test("unwrapOr(ok(0), 1) は 0 を返す", () => {
+  expect(unwrapOr(ok(0), 1)).toBe(0);
 });
