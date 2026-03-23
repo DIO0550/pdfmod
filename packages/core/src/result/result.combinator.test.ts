@@ -1,4 +1,4 @@
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import type { Result } from "./result.js";
 import { err, flatMap, map, mapErr, ok, unwrapOr } from "./result.js";
 
@@ -56,4 +56,33 @@ test("unwrapOrはokから値を取り出す", () => {
 
 test("unwrapOrはerrに対してデフォルト値を返す", () => {
   expect(unwrapOr(err("fail"), 0)).toBe(0);
+});
+
+// --- コールバック非実行テスト ---
+
+test("mapはerrに対してfnを呼ばない", () => {
+  const fn = vi.fn();
+  map(err("e"), fn);
+  expect(fn).not.toHaveBeenCalled();
+});
+
+test("flatMapはerrに対してfnを呼ばない", () => {
+  const fn = vi.fn();
+  flatMap(err("e"), fn);
+  expect(fn).not.toHaveBeenCalled();
+});
+
+test("mapErrはokに対してfnを呼ばない", () => {
+  const fn = vi.fn();
+  mapErr(ok(1), fn);
+  expect(fn).not.toHaveBeenCalled();
+});
+
+test("mapはfnが例外を投げた場合そのまま伝播する", () => {
+  const error = new Error("test error");
+  expect(() =>
+    map(ok(1), () => {
+      throw error;
+    }),
+  ).toThrow(error);
 });
