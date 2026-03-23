@@ -1,4 +1,4 @@
-import { expect, test } from "vitest";
+import { assert, expect, test } from "vitest";
 import type { ByteOffset } from "../types/index.js";
 import { parseXRefTable } from "./xref-table-parser.js";
 
@@ -37,25 +37,13 @@ test("単一サブセクション (1エントリ, n) をパースできる", () 
     { header: "0 1", entries: ["0000000100 00000 n"] },
   ]);
   const result = parseXRefTable(data, 0 as ByteOffset);
-  expect(result.ok).toBe(true);
-  expect(
-    (
-      result as {
-        ok: true;
-        value: {
-          xref: { entries: Map<number, unknown>; size: number };
-          trailerOffset: number;
-        };
-      }
-    ).value.xref.entries.get(0),
-  ).toEqual({
+  assert(result.ok);
+  expect(result.value.xref.entries.get(0)).toEqual({
     type: 1,
     field2: 100,
     field3: 0,
   });
-  expect(
-    (result as { ok: true; value: { xref: { size: number } } }).value.xref.size,
-  ).toBe(1);
+  expect(result.value.xref.size).toBe(1);
 });
 
 test("オブジェクト0 (f, gen=65535) + オブジェクト1 (n, gen=0) をパースできる", () => {
@@ -66,12 +54,17 @@ test("オブジェクト0 (f, gen=65535) + オブジェクト1 (n, gen=0) をパ
     },
   ]);
   const result = parseXRefTable(data, 0 as ByteOffset);
-  expect(result.ok).toBe(true);
-  const entries = (
-    result as { ok: true; value: { xref: { entries: Map<number, unknown> } } }
-  ).value.xref.entries;
-  expect(entries.get(0)).toEqual({ type: 0, field2: 0, field3: 65535 });
-  expect(entries.get(1)).toEqual({ type: 1, field2: 100, field3: 0 });
+  assert(result.ok);
+  expect(result.value.xref.entries.get(0)).toEqual({
+    type: 0,
+    field2: 0,
+    field3: 65535,
+  });
+  expect(result.value.xref.entries.get(1)).toEqual({
+    type: 1,
+    field2: 100,
+    field3: 0,
+  });
 });
 
 test("複数サブセクション (0 2 + 5 1) をパースできる", () => {
@@ -83,30 +76,24 @@ test("複数サブセクション (0 2 + 5 1) をパースできる", () => {
     { header: "5 1", entries: ["0000000200 00000 n"] },
   ]);
   const result = parseXRefTable(data, 0 as ByteOffset);
-  expect(result.ok).toBe(true);
-  const value = (
-    result as {
-      ok: true;
-      value: { xref: { entries: Map<number, unknown>; size: number } };
-    }
-  ).value;
-  expect(value.xref.entries.size).toBe(3);
-  expect(value.xref.entries.get(0)).toEqual({
+  assert(result.ok);
+  expect(result.value.xref.entries.size).toBe(3);
+  expect(result.value.xref.entries.get(0)).toEqual({
     type: 0,
     field2: 0,
     field3: 65535,
   });
-  expect(value.xref.entries.get(1)).toEqual({
+  expect(result.value.xref.entries.get(1)).toEqual({
     type: 1,
     field2: 100,
     field3: 0,
   });
-  expect(value.xref.entries.get(5)).toEqual({
+  expect(result.value.xref.entries.get(5)).toEqual({
     type: 1,
     field2: 200,
     field3: 0,
   });
-  expect(value.xref.size).toBe(6);
+  expect(result.value.xref.size).toBe(6);
 });
 
 test("size は最大の firstObj+count になる", () => {
@@ -118,10 +105,8 @@ test("size は最大の firstObj+count になる", () => {
     },
   ]);
   const result = parseXRefTable(data, 0 as ByteOffset);
-  expect(result.ok).toBe(true);
-  expect(
-    (result as { ok: true; value: { xref: { size: number } } }).value.xref.size,
-  ).toBe(12);
+  assert(result.ok);
+  expect(result.value.xref.size).toBe(12);
 });
 
 test("trailerOffset が trailer キーワードの先頭バイト位置と一致する", () => {
@@ -130,11 +115,8 @@ test("trailerOffset が trailer キーワードの先頭バイト位置と一致
   ]);
   const expectedTrailerOffset = data.length - "trailer".length;
   const result = parseXRefTable(data, 0 as ByteOffset);
-  expect(result.ok).toBe(true);
-  expect(
-    (result as { ok: true; value: { trailerOffset: number } }).value
-      .trailerOffset,
-  ).toBe(expectedTrailerOffset);
+  assert(result.ok);
+  expect(result.value.trailerOffset).toBe(expectedTrailerOffset);
 });
 
 // --- EOL バリエーション ---
@@ -150,12 +132,8 @@ test.each([
     eol,
   );
   const result = parseXRefTable(data, 0 as ByteOffset);
-  expect(result.ok).toBe(true);
-  expect(
-    (
-      result as { ok: true; value: { xref: { entries: Map<number, unknown> } } }
-    ).value.xref.entries.get(0),
-  ).toEqual({
+  assert(result.ok);
+  expect(result.value.xref.entries.get(0)).toEqual({
     type: 1,
     field2: 100,
     field3: 0,
