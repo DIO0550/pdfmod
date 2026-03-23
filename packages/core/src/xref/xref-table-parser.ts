@@ -349,6 +349,12 @@ export function parseXRefTable(
 
     const { firstObj, count, nextPos } = headerOption.value;
     const subsectionEnd = firstObj + count;
+    if (!Number.isSafeInteger(subsectionEnd)) {
+      return failXRefTable(
+        "xref subsection length exceeds Number.MAX_SAFE_INTEGER",
+        pos,
+      );
+    }
     if (subsectionEnd > size) {
       size = subsectionEnd;
     }
