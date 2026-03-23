@@ -280,6 +280,16 @@ function parseSubsectionHeader(
     });
   }
 
+  // count の直後は PDF トークン境界でなければならない
+  if (i < data.length && !isPdfTokenBoundary(data[i])) {
+    return err({
+      code: "XREF_TABLE_INVALID",
+      message:
+        "xref subsection header: expected token boundary after entry count",
+      offset: i,
+    });
+  }
+
   // ヘッダ後の空白・コメントをスキップ
   const nextPos = skipWhitespaceAndComments(data, i);
 
