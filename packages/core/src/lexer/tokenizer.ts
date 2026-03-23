@@ -8,6 +8,36 @@ import {
 const isWhitespace = isPdfWhitespace;
 const isDelimiter = isPdfDelimiter;
 
+// --- ASCII code point constants ---
+const AsciiDigit0 = 48; // '0'
+const AsciiDigit7 = 55; // '7'
+const AsciiDigit9 = 57; // '9'
+const AsciiLeftBracket = 91; // '['
+const AsciiRightBracket = 93; // ']'
+const AsciiLessThan = 60; // '<'
+const AsciiGreaterThan = 62; // '>'
+const AsciiLeftParen = 40; // '('
+const AsciiRightParen = 41; // ')'
+const AsciiSlash = 47; // '/'
+const AsciiPlus = 43; // '+'
+const AsciiMinus = 45; // '-'
+const AsciiDot = 46; // '.'
+const AsciiBackslash = 92; // '\\'
+const AsciiHash = 35; // '#'
+const AsciiLowerN = 110; // 'n'
+const AsciiLowerR = 114; // 'r'
+const AsciiLowerT = 116; // 't'
+const AsciiLowerB = 98; // 'b'
+const AsciiLowerF = 102; // 'f'
+
+// --- Numeric constants ---
+const EofByte = -1;
+const DecimalRadix = 10;
+const OctalRadix = 8;
+const HexRadix = 16;
+const MaxOctalFollowingDigits = 2;
+const HexEscapeWidth = 3;
+
 /**
  * 指定バイトがASCII数字（'0'-'9'）かどうかを判定する。
  *
@@ -21,7 +51,7 @@ const isDelimiter = isPdfDelimiter;
  * ```
  */
 function isDigit(byte: number): boolean {
-  return byte >= 48 && byte <= 57; // '0'-'9'
+  return byte >= AsciiDigit0 && byte <= AsciiDigit9;
 }
 
 /**
@@ -83,7 +113,7 @@ export class Tokenizer {
    * ```
    */
   private peek(): number {
-    return this.pos < this.data.length ? this.data[this.pos] : -1;
+    return this.pos < this.data.length ? this.data[this.pos] : EofByte;
   }
 
   /**
@@ -98,7 +128,7 @@ export class Tokenizer {
    * ```
    */
   private read(): number {
-    return this.pos < this.data.length ? this.data[this.pos++] : -1;
+    return this.pos < this.data.length ? this.data[this.pos++] : EofByte;
   }
 
   /**
@@ -138,29 +168,33 @@ export class Tokenizer {
     const byte = this.read();
 
     switch (byte) {
-      case 91: // '['
+      case AsciiLeftBracket:
         return { type: TokenType.ArrayBegin, value: "[", offset };
-      case 93: // ']'
+      case AsciiRightBracket:
         return { type: TokenType.ArrayEnd, value: "]", offset };
-      case 60: // '<'
-        if (this.peek() === 60) {
+      case AsciiLessThan:
+        if (this.peek() === AsciiLessThan) {
           this.pos++;
           return { type: TokenType.DictBegin, value: "<<", offset };
         }
         return this.readHexString(offset);
-      case 62: // '>'
-        if (this.peek() === 62) {
+      case AsciiGreaterThan:
+        if (this.peek() === AsciiGreaterThan) {
           this.pos++;
           return { type: TokenType.DictEnd, value: ">>", offset };
         }
         return { type: TokenType.Keyword, value: ">", offset };
-      case 40: // '('
+      case AsciiLeftParen:
         return this.readLiteralString(offset);
-      case 47: // '/'
+      case AsciiSlash:
         return this.readName(offset);
       default:
-        if (isDigit(byte) || byte === 43 || byte === 45 || byte === 46) {
-          // digit, '+', '-', '.'
+        if (
+          isDigit(byte) ||
+          byte === AsciiPlus ||
+          byte === AsciiMinus ||
+          byte === AsciiDot
+        ) {
           return this.readNumber(offset, byte);
         }
         return this.readKeyword(offset, byte);
@@ -183,8 +217,7 @@ export class Tokenizer {
     let hex = "";
     while (this.pos < this.data.length) {
       const b = this.data[this.pos];
-      if (b === 62) {
-        // '>'
+      if (b === AsciiGreaterThan) {
         this.pos++;
         break;
       }
@@ -214,18 +247,15 @@ export class Tokenizer {
 
     while (this.pos < this.data.length && depth > 0) {
       const b = this.read();
-      if (b === 40) {
-        // '('
+      if (b === AsciiLeftParen) {
         depth++;
         result += "(";
-      } else if (b === 41) {
-        // ')'
+      } else if (b === AsciiRightParen) {
         depth--;
         if (depth > 0) {
           result += ")";
         }
-      } else if (b === 92) {
-        // '\\' — escape
+      } else if (b === AsciiBackslash) {
         result += this.readEscapeChar();
       } else {
         result += String.fromCharCode(b);
@@ -249,38 +279,48 @@ export class Tokenizer {
   private readEscapeChar(): string {
     const b = this.read();
     switch (b) {
-      case 110:
-        return "\n"; // \n
-      case 114:
-        return "\r"; // \r
-      case 116:
-        return "\t"; // \t
-      case 98:
-        return "\b"; // \b
-      case 102:
-        return "\f"; // \f
-      case 40:
-        return "("; // \(
-      case 41:
-        return ")"; // \)
-      case 92:
-        return "\\"; // \\
+      case AsciiLowerN:
+        return "\n";
+      case AsciiLowerR:
+        return "\r";
+      case AsciiLowerT:
+        return "\t";
+      case AsciiLowerB:
+        return "\b";
+      case AsciiLowerF:
+        return "\f";
+      case AsciiLeftParen:
+        return "(";
+      case AsciiRightParen:
+        return ")";
+      case AsciiBackslash:
+        return "\\";
       default:
-        if (b >= 48 && b <= 55) {
-          // octal
-          let octal = String.fromCharCode(b);
-          for (let i = 0; i < 2; i++) {
-            const next = this.peek();
-            if (next >= 48 && next <= 55) {
-              octal += String.fromCharCode(this.read());
-            } else {
-              break;
-            }
-          }
-          return String.fromCharCode(parseInt(octal, 8));
+        if (b >= AsciiDigit0 && b <= AsciiDigit7) {
+          return this.readOctalEscape(b);
         }
-        return b === -1 ? "" : String.fromCharCode(b);
+        return b === EofByte ? "" : String.fromCharCode(b);
     }
+  }
+
+  /**
+   * オクタルエスケープシーケンスを読み取る。
+   * 最初の桁に続く最大2桁のオクタル数字を消費し、対応する文字を返す。
+   *
+   * @param firstDigit - 最初のオクタル数字のバイト値
+   * @returns オクタルエスケープに対応する文字
+   */
+  private readOctalEscape(firstDigit: number): string {
+    let octal = String.fromCharCode(firstDigit);
+    for (let i = 0; i < MaxOctalFollowingDigits; i++) {
+      const next = this.peek();
+      if (next >= AsciiDigit0 && next <= AsciiDigit7) {
+        octal += String.fromCharCode(this.read());
+      } else {
+        break;
+      }
+    }
+    return String.fromCharCode(parseInt(octal, OctalRadix));
   }
 
   /**
@@ -302,19 +342,28 @@ export class Tokenizer {
       if (isWhitespace(b) || isDelimiter(b)) {
         break;
       }
-      if (b === 35 && this.pos + 2 < this.data.length) {
-        // '#' hex escape
-        const hi = this.data[this.pos + 1];
-        const lo = this.data[this.pos + 2];
-        const hex = String.fromCharCode(hi) + String.fromCharCode(lo);
-        name += String.fromCharCode(parseInt(hex, 16));
-        this.pos += 3;
+      if (b === AsciiHash && this.pos + HexEscapeWidth - 1 < this.data.length) {
+        name += this.readHexEscapeInName();
       } else {
         name += String.fromCharCode(b);
         this.pos++;
       }
     }
     return { type: TokenType.Name, value: name, offset };
+  }
+
+  /**
+   * 名前オブジェクト内の16進エスケープ (#xx) を読み取る。
+   * `#` の後の2バイトを16進数として解釈する。
+   *
+   * @returns エスケープされた文字
+   */
+  private readHexEscapeInName(): string {
+    const hi = this.data[this.pos + 1];
+    const lo = this.data[this.pos + 2];
+    const hex = String.fromCharCode(hi) + String.fromCharCode(lo);
+    this.pos += HexEscapeWidth;
+    return String.fromCharCode(parseInt(hex, HexRadix));
   }
 
   /**
@@ -333,21 +382,20 @@ export class Tokenizer {
    */
   private readNumber(offset: number, firstByte: number): Token {
     let str = String.fromCharCode(firstByte);
-    let hasDecimal = firstByte === 46; // '.'
+    let hasDecimal = firstByte === AsciiDot;
 
     while (this.pos < this.data.length) {
       const b = this.data[this.pos];
       if (isDigit(b)) {
         str += String.fromCharCode(b);
         this.pos++;
-      } else if (b === 46 && !hasDecimal) {
+      } else if (b === AsciiDot && !hasDecimal) {
         hasDecimal = true;
         str += ".";
         this.pos++;
       } else if (isWhitespace(b) || isDelimiter(b)) {
         break;
       } else {
-        // Not a valid number continuation — treat as keyword
         return this.readKeyword(offset, firstByte);
       }
     }
@@ -355,7 +403,11 @@ export class Tokenizer {
     if (hasDecimal) {
       return { type: TokenType.Real, value: parseFloat(str), offset };
     }
-    return { type: TokenType.Integer, value: parseInt(str, 10), offset };
+    return {
+      type: TokenType.Integer,
+      value: parseInt(str, DecimalRadix),
+      offset,
+    };
   }
 
   /**
@@ -412,13 +464,11 @@ export class Tokenizer {
    */
   tokenize(): Token[] {
     const tokens: Token[] = [];
-    while (true) {
-      const token = this.nextToken();
+    let token: Token;
+    do {
+      token = this.nextToken();
       tokens.push(token);
-      if (token.type === TokenType.EOF) {
-        break;
-      }
-    }
+    } while (token.type !== TokenType.EOF);
     return tokens;
   }
 }
