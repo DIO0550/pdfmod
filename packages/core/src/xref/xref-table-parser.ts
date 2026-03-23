@@ -314,10 +314,11 @@ export function parseXRefTable(
     return failXRefTable("xref offset out of bounds", offset);
   }
 
-  // xref キーワード確認 + トークン境界チェック
+  // xref キーワード確認 + 前後トークン境界チェック
   const afterXref = offset + XREF_BYTES.length;
   if (
     !matchesBytesAt(data, offset, XREF_BYTES) ||
+    (offset > 0 && !isPdfTokenBoundary(data[offset - 1])) ||
     (afterXref < data.length && !isPdfTokenBoundary(data[afterXref]))
   ) {
     return failXRefTable("expected 'xref' keyword", offset);
