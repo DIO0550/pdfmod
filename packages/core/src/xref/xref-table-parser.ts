@@ -259,15 +259,17 @@ function parseSubsectionHeader(
     });
   }
 
-  // SPACE
-  if (i >= data.length || data[i] !== SPACE) {
+  // 区切りのホワイトスペース/コメントをスキップ（少なくとも1文字必要）
+  const nextAfterFirstObj = skipWhitespaceAndComments(data, i);
+  if (nextAfterFirstObj === i) {
     return err({
       code: "XREF_TABLE_INVALID",
-      message: "xref subsection header: expected SPACE after object number",
+      message:
+        "xref subsection header: expected whitespace after object number",
       offset: i,
     });
   }
-  i++;
+  i = nextAfterFirstObj;
 
   // count (数字列)
   let count = 0;
