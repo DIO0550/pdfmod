@@ -12,6 +12,7 @@ import type { ObjectId } from "../types/index.js";
 export type PdfParseErrorCode =
   | "INVALID_HEADER"
   | "STARTXREF_NOT_FOUND"
+  | "XREF_TABLE_INVALID"
   | "ROOT_NOT_FOUND"
   | "SIZE_NOT_FOUND"
   | "MEDIABOX_NOT_FOUND"

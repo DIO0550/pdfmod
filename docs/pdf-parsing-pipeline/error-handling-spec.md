@@ -45,6 +45,7 @@ PDF解析パイプラインのエラー体系を定義する。基本方針はPo
 type PdfParseErrorCode =
   | "INVALID_HEADER"
   | "STARTXREF_NOT_FOUND"
+  | "XREF_TABLE_INVALID"
   | "ROOT_NOT_FOUND"
   | "SIZE_NOT_FOUND"
   | "MEDIABOX_NOT_FOUND"
@@ -148,6 +149,7 @@ if (!result.ok) {
 |:-------|:---|:---------|:-----------|
 | `INVALID_HEADER` | PdfParseError | ヘッダが`%PDF-`で始まらない | "Invalid PDF header: expected %PDF-" |
 | `STARTXREF_NOT_FOUND` | PdfParseError | startxrefが検出できない（フォールバック後も） | "startxref not found in file" |
+| `XREF_TABLE_INVALID` | PdfParseError | xrefテーブルの構造が不正（キーワード不在、エントリ不正、trailer未検出など） | "expected 'xref' keyword" |
 | `ROOT_NOT_FOUND` | PdfParseError | `/Root`がトレイラに存在しない | "Trailer missing required /Root entry" |
 | `SIZE_NOT_FOUND` | PdfParseError | `/Size`がトレイラに存在しない | "Trailer missing required /Size entry" |
 | `MEDIABOX_NOT_FOUND` | PdfParseError | ルートまで辿ってもMediaBox未定義 | "Page {n}: MediaBox not found in page or ancestors" |
