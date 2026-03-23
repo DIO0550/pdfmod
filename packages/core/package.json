@@ -17,6 +17,7 @@
   ],
   "scripts": {
     "build": "vite build && tsc -p tsconfig.build.json --emitDeclarationOnly --outDir dist",
+    "test": "vitest run",
     "typecheck": "tsc --noEmit"
   }
 }

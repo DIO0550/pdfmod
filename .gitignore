@@ -150,3 +150,6 @@ vite.config.ts.timestamp-*
 # spec-to-issues working files
 .specs/
 .spec-to-issues/
+
+.test-rules.yml
+.worktreeinclude
