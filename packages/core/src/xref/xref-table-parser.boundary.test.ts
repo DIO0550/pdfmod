@@ -1,4 +1,4 @@
-import { expect, test } from "vitest";
+import { assert, expect, test } from "vitest";
 import type { ByteOffset } from "../types/index.js";
 import { parseXRefTable } from "./xref-table-parser.js";
 
@@ -16,8 +16,6 @@ test.each([
 ])("offset が $label のとき Err(XREF_TABLE_INVALID) を返す", ({ offset }) => {
   const data = encode("xref\n0 1\n0000000000 00000 n\r\ntrailer");
   const result = parseXRefTable(data, offset as ByteOffset);
-  expect(result.ok).toBe(false);
-  expect((result as { ok: false; error: { code: string } }).error.code).toBe(
-    "XREF_TABLE_INVALID",
-  );
+  assert(!result.ok);
+  expect(result.error.code).toBe("XREF_TABLE_INVALID");
 });
