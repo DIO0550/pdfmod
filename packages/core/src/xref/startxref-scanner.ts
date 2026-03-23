@@ -156,8 +156,7 @@ export function scanStartXRef(data: Uint8Array): Result<number, PdfParseError> {
       if (isInsideComment(data, i)) {
         continue;
       }
-      const afterEof = i + EofMarkerLength;
-      if (afterEof < len && !isPdfTokenBoundary(data[afterEof])) {
+      if (!hasTokenBoundary(data, i, EofMarkerLength, len)) {
         continue;
       }
       eofOffset = i;
