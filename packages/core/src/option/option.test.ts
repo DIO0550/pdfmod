@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import type { Option } from "./option.js";
-import { fromNullable, none, some } from "./option.js";
+import { fromNullable, none, some, unwrapOr } from "./option.js";
 
 test("someは{ some: true, value }を生成する", () => {
   const result = some(42);
@@ -46,4 +46,15 @@ test("discriminantによる型絞り込みができる", () => {
   if (opt.some) {
     expect(opt.value).toBe(42);
   }
+});
+
+// --- falsy値テスト ---
+
+test.each([[0], [false], [""]])("fromNullable(%s) はSomeを返す", (value) => {
+  const result = fromNullable(value);
+  expect(result).toEqual({ some: true, value });
+});
+
+test("unwrapOr(some(0), 1) は 0 を返す", () => {
+  expect(unwrapOr(some(0), 1)).toBe(0);
 });
