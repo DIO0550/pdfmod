@@ -1,4 +1,4 @@
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import { flatMap, map, none, some, unwrapOr } from "./option.js";
 
 test("mapはSomeに対して関数を適用し新しいSomeを返す", () => {
@@ -39,4 +39,32 @@ test("unwrapOrはSomeからvalueを取得する", () => {
 test("unwrapOrはNoneからdefaultValueを取得する", () => {
   const result = unwrapOr(none, 0);
   expect(result).toBe(0);
+});
+
+// --- エッジケース ---
+
+test("mapはfnがundefinedを返す場合Noneを返す", () => {
+  const result = map(some(1), () => undefined);
+  expect(result).toBe(none);
+});
+
+test("mapはNoneに対してfnを呼ばない", () => {
+  const fn = vi.fn();
+  map(none, fn);
+  expect(fn).not.toHaveBeenCalled();
+});
+
+test("flatMapはNoneに対してfnを呼ばない", () => {
+  const fn = vi.fn();
+  flatMap(none, fn);
+  expect(fn).not.toHaveBeenCalled();
+});
+
+test("mapはfnが例外を投げた場合そのまま伝播する", () => {
+  const error = new Error("test error");
+  expect(() =>
+    map(some(1), () => {
+      throw error;
+    }),
+  ).toThrow(error);
 });
