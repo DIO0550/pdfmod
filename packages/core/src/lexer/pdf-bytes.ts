@@ -1,9 +1,36 @@
+// --- PDF byte constants (ISO 32000) ---
+const PdfNul = 0x00;
+const PdfTab = 0x09;
+const PdfLf = 0x0a;
+const PdfFf = 0x0c;
+const PdfCr = 0x0d;
+const PdfSpace = 0x20;
+const PdfPercent = 0x25;
+const PdfLeftParen = 0x28;
+const PdfRightParen = 0x29;
+const PdfSlash = 0x2f;
+const PdfLessThan = 0x3c;
+const PdfGreaterThan = 0x3e;
+const PdfLeftBracket = 0x5b;
+const PdfRightBracket = 0x5d;
+const PdfLeftBrace = 0x7b;
+const PdfRightBrace = 0x7d;
+
 /** PDFホワイトスペースバイト (ISO 32000 Table 1): NUL, TAB, LF, FF, CR, SPACE */
-const WHITESPACE = new Set([0x00, 0x09, 0x0a, 0x0c, 0x0d, 0x20]);
+const WHITESPACE = new Set([PdfNul, PdfTab, PdfLf, PdfFf, PdfCr, PdfSpace]);
 
 /** PDF区切り文字バイト (ISO 32000 Table 2): ( ) < > [ ] { } / % */
 const DELIMITER = new Set([
-  0x28, 0x29, 0x3c, 0x3e, 0x5b, 0x5d, 0x7b, 0x7d, 0x2f, 0x25,
+  PdfLeftParen,
+  PdfRightParen,
+  PdfLessThan,
+  PdfGreaterThan,
+  PdfLeftBracket,
+  PdfRightBracket,
+  PdfLeftBrace,
+  PdfRightBrace,
+  PdfSlash,
+  PdfPercent,
 ]);
 
 /**
@@ -58,6 +85,23 @@ export function isPdfTokenBoundary(byte: number): boolean {
 }
 
 /**
+ * コメント（`%` から行末まで）をスキップする。
+ * 呼び出し時、`data[pos]` は `%` の次のバイトを指していること。
+ *
+ * @param data - PDFバイト配列
+ * @param pos - `%` の次の位置
+ * @param limit - スキャン上限位置
+ * @returns コメント終了後の位置
+ */
+function skipComment(data: Uint8Array, pos: number, limit: number): number {
+  let i = pos;
+  while (i < limit && data[i] !== PdfLf && data[i] !== PdfCr) {
+    i++;
+  }
+  return i;
+}
+
+/**
  * ホワイトスペースとコメントをスキップして次の有効バイト位置を返す。
  * コメントは `%` から行末（LF/CR）までの範囲。
  *
@@ -84,11 +128,8 @@ export function skipWhitespaceAndComments(
       i++;
       continue;
     }
-    if (data[i] === 0x25) {
-      i++;
-      while (i < limit && data[i] !== 0x0a && data[i] !== 0x0d) {
-        i++;
-      }
+    if (data[i] === PdfPercent) {
+      i = skipComment(data, i + 1, limit);
       continue;
     }
     break;
