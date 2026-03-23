@@ -289,7 +289,7 @@ function parseSubsectionHeader(
 /**
  * テキスト形式の xref テーブルを解析し、XRefTable と trailerOffset を返す。
  * ISO 32000 7.5.4 に基づき、複数サブセクション・EOL バリエーション
- * (CR+LF, LF, CR+SP) に対応する。
+ * (CR+LF, LF, CR, CR+SP) に対応する。
  *
  * @param data - PDF ファイル全体のバイト配列
  * @param offset - xref テーブルの開始バイトオフセット
