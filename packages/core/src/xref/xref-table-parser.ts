@@ -47,6 +47,11 @@ function failXRefTable(
 
 /**
  * バイト列が data の指定位置で一致するか判定する。
+ *
+ * @param data - 検索対象のバイト配列
+ * @param offset - 比較開始位置
+ * @param pattern - 一致判定するバイト列
+ * @returns 一致すれば `true`
  */
 function matchesBytesAt(
   data: Uint8Array,
@@ -67,6 +72,9 @@ function matchesBytesAt(
 /**
  * 固定桁数の10進数をパースする。
  *
+ * @param data - PDFバイト配列
+ * @param pos - パース開始位置
+ * @param digitCount - 読み取る桁数
  * @returns パースした数値、または桁数不足・非数字の場合は undefined
  */
 function parseDecimalDigits(
@@ -91,6 +99,8 @@ function parseDecimalDigits(
 /**
  * EOL パターンを検出し消費バイト数を返す。
  *
+ * @param data - PDFバイト配列
+ * @param pos - EOL 検出開始位置
  * @returns 消費バイト数、または未知パターンの場合は undefined
  */
 function detectEol(data: Uint8Array, pos: number): number | undefined {
@@ -114,6 +124,8 @@ function detectEol(data: Uint8Array, pos: number): number | undefined {
 /**
  * xref エントリ (18バイト本体 + EOL) をパースする。
  *
+ * @param data - PDFバイト配列
+ * @param pos - エントリ開始位置
  * @returns パース結果の entry と次の位置、またはエラー Result
  */
 function parseEntry(
@@ -217,6 +229,8 @@ function parseEntry(
  * サブセクションヘッダ "{firstObj} {count}" をパースする。
  * trailer キーワードを検出した場合は none を返す。
  *
+ * @param data - PDFバイト配列
+ * @param pos - ヘッダ開始位置
  * @returns Some({ firstObj, count, nextPos }) または None (trailer 検出時)
  */
 function parseSubsectionHeader(
