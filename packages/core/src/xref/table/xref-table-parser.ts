@@ -1,13 +1,13 @@
-import type { PdfParseError } from "../errors/index.js";
+import type { PdfParseError } from "../../errors/index.js";
 import {
   isPdfTokenBoundary,
   skipWhitespaceAndComments,
-} from "../lexer/pdf-bytes.js";
-import type { Option } from "../option/index.js";
-import { none, some } from "../option/index.js";
-import type { Result } from "../result/index.js";
-import { err, ok } from "../result/index.js";
-import type { ByteOffset, XRefEntry, XRefTable } from "../types/index.js";
+} from "../../lexer/pdf-bytes.js";
+import type { Option } from "../../option/index.js";
+import { none, some } from "../../option/index.js";
+import type { Result } from "../../result/index.js";
+import { err, ok } from "../../result/index.js";
+import type { ByteOffset, XRefEntry, XRefTable } from "../../types/index.js";
 
 // --- バイト定数 (SCREAMING_SNAKE_CASE) ---
 

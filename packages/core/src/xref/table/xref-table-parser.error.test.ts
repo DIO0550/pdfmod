@@ -1,5 +1,5 @@
 import { assert, expect, test } from "vitest";
-import type { ByteOffset } from "../types/index.js";
+import type { ByteOffset } from "../../types/index.js";
 import { parseXRefTable } from "./xref-table-parser.js";
 
 const encoder = new TextEncoder();
