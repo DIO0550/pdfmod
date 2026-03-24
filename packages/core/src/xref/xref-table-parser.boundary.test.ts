@@ -19,3 +19,23 @@ test.each([
   assert(!result.ok);
   expect(result.error.code).toBe("XREF_TABLE_INVALID");
 });
+
+test("非0 offset からprefixの後にあるxrefテーブルを正常にパースする", () => {
+  const prefix = "DUMMY_PREFIX\n";
+  const xrefData = "xref\n0 1\n0000000100 00000 n\r\ntrailer";
+  const data = encode(prefix + xrefData);
+  const result = parseXRefTable(data, prefix.length as ByteOffset);
+  assert(result.ok);
+  expect(result.value.xref.entries.get(0)).toEqual({
+    type: 1,
+    field2: 100,
+    field3: 0,
+  });
+});
+
+test("xrefキーワード途中でデータが終了する場合 Err を返す", () => {
+  const data = encode("xre");
+  const result = parseXRefTable(data, 0 as ByteOffset);
+  assert(!result.ok);
+  expect(result.error.code).toBe("XREF_TABLE_INVALID");
+});
