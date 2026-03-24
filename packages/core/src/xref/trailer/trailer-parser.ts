@@ -372,16 +372,12 @@ function readValue(
         offset,
       });
     }
-    case TokenType.DictBegin: {
-      if (depth >= MAX_NESTING_DEPTH) {
-        return failNestingTooDeep(offset);
-      }
-      const r = skipNestedDict(tokens, baseOffset, depth + 1, offset);
-      if (!r.ok) {
-        return r;
-      }
-      return ok({ value: { type: "null" }, offset });
-    }
+    case TokenType.DictBegin:
+      return err({
+        code: "XREF_TABLE_INVALID",
+        message: "dictionary value is not supported in trailer dictionary",
+        offset,
+      });
     default:
       return err({
         code: "XREF_TABLE_INVALID",
