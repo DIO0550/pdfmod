@@ -426,6 +426,54 @@ function readArrayElements(
   }
 }
 
+const SUPPORTED_TRAILER_KEYS = new Set(["Root", "Size", "Prev", "Info", "ID"]);
+
+/**
+ * 未サポートキーの値をトークンストリームから読み飛ばす。
+ * スカラ値・配列・辞書のいずれにも対応し、オブジェクトは構築しない。
+ *
+ * @param firstToken - 読み取り済みの値の先頭トークン
+ * @param tokens - バッファ付きトークナイザ
+ * @param baseOffset - エラー報告用のベースオフセット
+ * @returns 成功時は `Ok<void>`、失敗時は `Err<PdfParseError>`
+ */
+function skipValue(
+  firstToken: Token,
+  tokens: BufferedTokenizer,
+  baseOffset: number,
+): Result<void, PdfParseError> {
+  if (firstToken.type === TokenType.ArrayBegin) {
+    return skipNestedArray(
+      tokens,
+      baseOffset,
+      0,
+      baseOffset + firstToken.offset,
+    );
+  }
+  if (firstToken.type === TokenType.DictBegin) {
+    return skipNestedDict(
+      tokens,
+      baseOffset,
+      0,
+      baseOffset + firstToken.offset,
+    );
+  }
+  // Integer の場合、間接参照 (Int Int R) の可能性があるためトークンを先読みして消費する
+  if (firstToken.type === TokenType.Integer) {
+    const second = tokens.next();
+    if (second.type === TokenType.Integer) {
+      const third = tokens.next();
+      if (third.type === TokenType.Keyword && third.value === "R") {
+        return ok(undefined);
+      }
+      tokens.pushBack(third);
+    }
+    tokens.pushBack(second);
+  }
+  // スカラ値は firstToken が消費済みなので何もしない
+  return ok(undefined);
+}
+
 /**
  * `<<` ... `>>` 間のトークンを走査し、キーと値のエントリマップを構築する。
  *
@@ -490,11 +538,18 @@ function parseDictTokens(
       });
     }
 
-    const valueResult = readValue(valueToken, tokens, baseOffset);
-    if (!valueResult.ok) {
-      return valueResult;
+    if (SUPPORTED_TRAILER_KEYS.has(key)) {
+      const valueResult = readValue(valueToken, tokens, baseOffset);
+      if (!valueResult.ok) {
+        return valueResult;
+      }
+      entries.set(key, valueResult.value);
+    } else {
+      const skipResult = skipValue(valueToken, tokens, baseOffset);
+      if (!skipResult.ok) {
+        return skipResult;
+      }
     }
-    entries.set(key, valueResult.value);
   }
 }
 
