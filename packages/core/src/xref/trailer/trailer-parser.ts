@@ -22,6 +22,13 @@ const MAX_NESTING_DEPTH = 64;
 
 // --- エラーヘルパー ---
 
+/**
+ * trailer パース失敗時のエラー Result を生成するヘルパー。
+ *
+ * @param message - エラーメッセージ
+ * @param offset - 問題が検出されたバイトオフセット
+ * @returns `Err<PdfParseError>` (コード: XREF_TABLE_INVALID)
+ */
 function failTrailer(
   message: string,
   offset?: number,
@@ -31,6 +38,14 @@ function failTrailer(
 
 // --- 内部ヘルパー ---
 
+/**
+ * data の指定位置でバイト列が一致するか判定する。
+ *
+ * @param data - 検索対象のバイト配列
+ * @param offset - 比較開始位置
+ * @param pattern - 一致判定するバイト列
+ * @returns 一致すれば `true`
+ */
 function matchesBytesAt(
   data: Uint8Array,
   offset: number,
@@ -47,6 +62,12 @@ function matchesBytesAt(
   return true;
 }
 
+/**
+ * hex 文字列を Uint8Array に変換する。奇数長の場合は末尾に 0 をパディングする。
+ *
+ * @param hex - 16進文字列
+ * @returns 変換されたバイト配列
+ */
 function hexStringToBytes(hex: string): Uint8Array {
   const padded = hex.length % 2 === 1 ? `${hex}0` : hex;
   const bytes = new Uint8Array(padded.length / 2);
@@ -56,6 +77,12 @@ function hexStringToBytes(hex: string): Uint8Array {
   return bytes;
 }
 
+/**
+ * リテラル文字列の各文字をバイト値として Uint8Array に変換する。
+ *
+ * @param str - リテラル文字列
+ * @returns 変換されたバイト配列
+ */
 function literalStringToBytes(str: string): Uint8Array {
   const bytes = new Uint8Array(str.length);
   for (let i = 0; i < str.length; i++) {
@@ -64,6 +91,12 @@ function literalStringToBytes(str: string): Uint8Array {
   return bytes;
 }
 
+/**
+ * ネスト深さ超過時のエラー Result を生成するヘルパー。
+ *
+ * @param offset - 問題が検出されたバイトオフセット
+ * @returns `Err<PdfParseError>` (コード: NESTING_TOO_DEEP)
+ */
 function failNestingTooDeep(offset: number): Result<never, PdfParseError> {
   return err({
     code: "NESTING_TOO_DEEP",
@@ -72,6 +105,14 @@ function failNestingTooDeep(offset: number): Result<never, PdfParseError> {
   });
 }
 
+/**
+ * ネストされた配列 `[` ... `]` のトークンを再帰的に消費して読み飛ばす。
+ *
+ * @param tokens - バッファ付きトークナイザ
+ * @param baseOffset - エラー報告用のベースオフセット
+ * @param depth - 現在のネスト深さ
+ * @returns 成功時は `Ok<void>`、失敗時は `Err<PdfParseError>`
+ */
 function skipNestedArray(
   tokens: BufferedTokenizer,
   baseOffset: number,
@@ -106,6 +147,14 @@ function skipNestedArray(
   }
 }
 
+/**
+ * ネストされた辞書 `<<` ... `>>` のトークンを再帰的に消費して読み飛ばす。
+ *
+ * @param tokens - バッファ付きトークナイザ
+ * @param baseOffset - エラー報告用のベースオフセット
+ * @param depth - 現在のネスト深さ
+ * @returns 成功時は `Ok<void>`、失敗時は `Err<PdfParseError>`
+ */
 function skipNestedDict(
   tokens: BufferedTokenizer,
   baseOffset: number,
@@ -140,19 +189,29 @@ function skipNestedDict(
   }
 }
 
+/** 辞書エントリの値と、その値の開始バイトオフセットを保持する。 */
 interface DictEntry {
   value: PdfObject;
   offset: number;
 }
 
+/** Tokenizer にトークンの push-back 機能を付加するラッパー。間接参照の先読みに使用する。 */
 class BufferedTokenizer {
   private tokenizer: Tokenizer;
   private buffer: Token[] = [];
 
+  /**
+   * @param tokenizer - ラップ対象の Tokenizer
+   */
   constructor(tokenizer: Tokenizer) {
     this.tokenizer = tokenizer;
   }
 
+  /**
+   * 次のトークンを返す。バッファにトークンがあればそちらを優先する。
+   *
+   * @returns 次のトークン
+   */
   next(): Token {
     const buffered = this.buffer.pop();
     if (buffered) {
@@ -161,11 +220,25 @@ class BufferedTokenizer {
     return this.tokenizer.nextToken();
   }
 
+  /**
+   * トークンをバッファに戻し、次回の next() で再取得できるようにする。
+   *
+   * @param token - 戻すトークン
+   */
   pushBack(token: Token): void {
     this.buffer.push(token);
   }
 }
 
+/**
+ * トークンから PdfObject を読み取る。Integer の場合は間接参照 (Int Int R) を先読み判定する。
+ *
+ * @param firstToken - 読み取り済みの先頭トークン
+ * @param tokens - バッファ付きトークナイザ
+ * @param baseOffset - エラー報告用のベースオフセット
+ * @param depth - 現在のネスト深さ
+ * @returns 成功時は `Ok<DictEntry>`、失敗時は `Err<PdfParseError>`
+ */
 function readValue(
   firstToken: Token,
   tokens: BufferedTokenizer,
@@ -260,6 +333,14 @@ function readValue(
   }
 }
 
+/**
+ * `[` 直後から `]` までの配列要素を読み取り PdfObject 配列として返す。
+ *
+ * @param tokens - バッファ付きトークナイザ
+ * @param baseOffset - エラー報告用のベースオフセット
+ * @param depth - 現在のネスト深さ
+ * @returns 成功時は `Ok<PdfObject[]>`、失敗時は `Err<PdfParseError>`
+ */
 function readArrayElements(
   tokens: BufferedTokenizer,
   baseOffset: number,
@@ -287,6 +368,13 @@ function readArrayElements(
   }
 }
 
+/**
+ * `<<` ... `>>` 間のトークンを走査し、キーと値のエントリマップを構築する。
+ *
+ * @param tokens - バッファ付きトークナイザ
+ * @param baseOffset - エラー報告用のベースオフセット
+ * @returns 成功時は `Ok<Map<string, DictEntry>>`、失敗時は `Err<PdfParseError>`
+ */
 function parseDictTokens(
   tokens: BufferedTokenizer,
   baseOffset: number,
@@ -352,6 +440,12 @@ function parseDictTokens(
   }
 }
 
+/**
+ * 辞書エントリから必須・オプションキーを検証・抽出し TrailerDict を構築する。
+ *
+ * @param entries - parseDictTokens で構築された辞書エントリマップ
+ * @returns 成功時は `Ok<TrailerDict>`、失敗時は `Err<PdfParseError>`
+ */
 function buildTrailerDict(
   entries: Map<string, DictEntry>,
 ): Result<TrailerDict, PdfParseError> {
