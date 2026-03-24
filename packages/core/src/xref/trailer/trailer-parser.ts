@@ -517,6 +517,8 @@ function buildTrailerDict(
   }
   if (
     rootEntry.value.type !== "indirect-ref" ||
+    !Number.isSafeInteger(rootEntry.value.objectNumber) ||
+    !Number.isSafeInteger(rootEntry.value.generationNumber) ||
     rootEntry.value.objectNumber < 0 ||
     rootEntry.value.generationNumber < 0
   ) {
@@ -541,6 +543,7 @@ function buildTrailerDict(
   }
   if (
     sizeEntry.value.type !== "integer" ||
+    !Number.isSafeInteger(sizeEntry.value.value as number) ||
     (sizeEntry.value.value as number) < 0
   ) {
     return err({
@@ -558,6 +561,7 @@ function buildTrailerDict(
   if (prevEntry) {
     if (
       prevEntry.value.type !== "integer" ||
+      !Number.isSafeInteger(prevEntry.value.value as number) ||
       (prevEntry.value.value as number) < 0
     ) {
       return failTrailer(
@@ -573,6 +577,8 @@ function buildTrailerDict(
   if (infoEntry) {
     if (
       infoEntry.value.type !== "indirect-ref" ||
+      !Number.isSafeInteger(infoEntry.value.objectNumber) ||
+      !Number.isSafeInteger(infoEntry.value.generationNumber) ||
       infoEntry.value.objectNumber < 0 ||
       infoEntry.value.generationNumber < 0
     ) {
