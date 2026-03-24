@@ -423,6 +423,59 @@ function readArrayElements(
 }
 
 const SUPPORTED_TRAILER_KEYS = new Set(["Root", "Size", "Prev", "Info", "ID"]);
+const ID_MAX_ELEMENTS = 2;
+
+/**
+ * /ID 配列を上限付きでパースする。最大2要素まで読み取り、3要素目が来たら即エラーを返す。
+ *
+ * @param valueToken - 値の先頭トークン（ArrayBegin であること）
+ * @param tokens - バッファ付きトークナイザ
+ * @param baseOffset - エラー報告用のベースオフセット
+ * @returns 成功時は `Ok<DictEntry>`、失敗時は `Err<PdfParseError>`
+ */
+function readIdArray(
+  valueToken: Token,
+  tokens: BufferedTokenizer,
+  baseOffset: number,
+): Result<DictEntry, PdfParseError> {
+  const offset = baseOffset + valueToken.offset;
+  if (valueToken.type !== TokenType.ArrayBegin) {
+    return ok({
+      value: { type: "null" },
+      offset,
+    });
+  }
+  const elements: PdfObject[] = [];
+  while (true) {
+    const token = tokens.next();
+    if (token.type === TokenType.ArrayEnd) {
+      return ok({
+        value: { type: "array", elements },
+        offset,
+      });
+    }
+    if (token.type === TokenType.EOF) {
+      return err({
+        code: "XREF_TABLE_INVALID",
+        message:
+          "unexpected end of data while parsing /ID array in trailer dictionary",
+        offset: baseOffset + token.offset,
+      });
+    }
+    if (elements.length >= ID_MAX_ELEMENTS) {
+      return err({
+        code: "XREF_TABLE_INVALID",
+        message: "/ID entry must be a 2-element array of strings",
+        offset: baseOffset + token.offset,
+      });
+    }
+    const elemResult = readValue(token, tokens, baseOffset, 0);
+    if (!elemResult.ok) {
+      return elemResult;
+    }
+    elements.push(elemResult.value.value);
+  }
+}
 
 /**
  * 未サポートキーの値をトークンストリームから読み飛ばす。
@@ -534,7 +587,13 @@ function parseDictTokens(
       });
     }
 
-    if (SUPPORTED_TRAILER_KEYS.has(key)) {
+    if (key === "ID") {
+      const idResult = readIdArray(valueToken, tokens, baseOffset);
+      if (!idResult.ok) {
+        return idResult;
+      }
+      entries.set(key, idResult.value);
+    } else if (SUPPORTED_TRAILER_KEYS.has(key)) {
       const valueResult = readValue(valueToken, tokens, baseOffset);
       if (!valueResult.ok) {
         return valueResult;
