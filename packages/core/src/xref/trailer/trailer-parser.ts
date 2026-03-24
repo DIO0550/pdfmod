@@ -17,7 +17,7 @@ import { TokenType } from "../../types/index.js";
 // --- バイト定数 (SCREAMING_SNAKE_CASE) ---
 
 const TRAILER_BYTES = Array.from(new TextEncoder().encode("trailer"));
-const TRAILER_KEYWORD_LENGTH = 7;
+const TRAILER_KEYWORD_LENGTH = TRAILER_BYTES.length;
 const MAX_NESTING_DEPTH = 64;
 const MAX_BYTE_VALUE = 0xff;
 
