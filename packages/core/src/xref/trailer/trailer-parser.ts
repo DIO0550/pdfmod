@@ -359,7 +359,11 @@ function readValue(
       return ok({ value: { type: "null" }, offset });
     }
     default:
-      return ok({ value: { type: "null" }, offset });
+      return err({
+        code: "XREF_TABLE_INVALID",
+        message: "unexpected token at value position in trailer dictionary",
+        offset,
+      });
   }
 }
 
