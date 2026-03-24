@@ -64,15 +64,20 @@ function matchesBytesAt(
 
 /**
  * hex 文字列を Uint8Array に変換する。奇数長の場合は末尾に 0 をパディングする。
+ * 不正な 16進文字が含まれる場合は `undefined` を返す。
  *
  * @param hex - 16進文字列
- * @returns 変換されたバイト配列
+ * @returns 変換されたバイト配列、または不正文字を含む場合は `undefined`
  */
-function hexStringToBytes(hex: string): Uint8Array {
+function hexStringToBytes(hex: string): Uint8Array | undefined {
   const padded = hex.length % 2 === 1 ? `${hex}0` : hex;
   const bytes = new Uint8Array(padded.length / 2);
   for (let i = 0; i < padded.length; i += 2) {
-    bytes[i / 2] = parseInt(padded.substring(i, i + 2), 16);
+    const value = parseInt(padded.substring(i, i + 2), 16);
+    if (Number.isNaN(value)) {
+      return undefined;
+    }
+    bytes[i / 2] = value;
   }
   return bytes;
 }
@@ -280,15 +285,24 @@ function readValue(
         value: { type: "name", value: firstToken.value as string },
         offset,
       });
-    case TokenType.HexString:
+    case TokenType.HexString: {
+      const hexBytes = hexStringToBytes(firstToken.value as string);
+      if (!hexBytes) {
+        return err({
+          code: "XREF_TABLE_INVALID",
+          message: "invalid hex string: contains non-hex characters",
+          offset,
+        });
+      }
       return ok({
         value: {
           type: "string",
-          value: hexStringToBytes(firstToken.value as string),
+          value: hexBytes,
           encoding: "hex" as const,
         },
         offset,
       });
+    }
     case TokenType.LiteralString:
       return ok({
         value: {
