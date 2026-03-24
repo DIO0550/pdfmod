@@ -145,6 +145,13 @@ function skipNestedArray(
         offset: baseOffset + token.offset,
       });
     }
+    if (token.type === TokenType.DictEnd) {
+      return err({
+        code: "XREF_TABLE_INVALID",
+        message: "unexpected >> while skipping array value",
+        offset: baseOffset + token.offset,
+      });
+    }
     if (token.type === TokenType.ArrayBegin) {
       const r = skipNestedArray(
         tokens,
@@ -197,6 +204,13 @@ function skipNestedDict(
       return err({
         code: "XREF_TABLE_INVALID",
         message: "unexpected end of data while skipping value",
+        offset: baseOffset + keyToken.offset,
+      });
+    }
+    if (keyToken.type === TokenType.ArrayEnd) {
+      return err({
+        code: "XREF_TABLE_INVALID",
+        message: "unexpected ] while skipping dictionary value",
         offset: baseOffset + keyToken.offset,
       });
     }
