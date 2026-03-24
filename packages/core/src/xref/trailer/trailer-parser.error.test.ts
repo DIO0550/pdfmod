@@ -126,6 +126,29 @@ test("未知キーの値が未閉鎖の配列の場合にErrが返る", () => {
   expect(result.error.code).toBe("XREF_TABLE_INVALID");
 });
 
+test("65段ネストの配列でNESTING_TOO_DEEPエラーが返る", () => {
+  const depth = 65;
+  const open = "[".repeat(depth);
+  const close = "]".repeat(depth);
+  const { data, offset } = trailerAt(
+    `trailer << /Root 1 0 R /Size 10 /Unknown ${open}1${close} >>`,
+  );
+  const result = parseTrailer(data, offset);
+  assert(!result.ok);
+  expect(result.error.code).toBe("NESTING_TOO_DEEP");
+});
+
+test("64段ネストの配列は正常にパースされる", () => {
+  const depth = 64;
+  const open = "[".repeat(depth);
+  const close = "]".repeat(depth);
+  const { data, offset } = trailerAt(
+    `trailer << /Root 1 0 R /Size 10 /Unknown ${open}1${close} >>`,
+  );
+  const result = parseTrailer(data, offset);
+  assert(result.ok);
+});
+
 test("エラー発生時のoffsetがファイル内の正しいバイト位置を指している", () => {
   const prefix = "        ";
   const content = `${prefix}trailer << /Size 10 >>`;
