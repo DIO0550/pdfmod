@@ -102,6 +102,16 @@ test("/IDの要素が非文字列の場合にエラーが返る", () => {
   expect(result.error.message).toContain("/ID");
 });
 
+test("/IDのhex stringに不正な16進文字が含まれる場合にエラーが返る", () => {
+  const { data, offset } = trailerAt(
+    "trailer << /Root 1 0 R /Size 10 /ID [<zz> <00>] >>",
+  );
+  const result = parseTrailer(data, offset);
+  assert(!result.ok);
+  expect(result.error.code).toBe("XREF_TABLE_INVALID");
+  expect(result.error.message).toContain("hex");
+});
+
 test("<<が見つからない場合にXREF_TABLE_INVALIDエラーが返る", () => {
   const { data, offset } = trailerAt("trailer /Root 1 0 R /Size 10 >>");
   const result = parseTrailer(data, offset);
