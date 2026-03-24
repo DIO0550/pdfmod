@@ -7,23 +7,16 @@ import {
   scanStartXRef,
 } from "./index.js";
 
-test("Tokenizerがルートからexportされている", () => {
-  expect(typeof Tokenizer).toBe("function");
-});
-
-test("LRUCache.createがルートからexportされている", () => {
-  expect(typeof LRUCache.create).toBe("function");
+test.each([
+  { name: "Tokenizer", value: Tokenizer },
+  { name: "LRUCache.create", value: LRUCache.create },
+  { name: "scanStartXRef", value: scanStartXRef },
+  { name: "parseXRefTable", value: parseXRefTable },
+])("$nameがルートからexportされている", ({ value }) => {
+  expect(typeof value).toBe("function");
 });
 
 test("TokenType enumがルートからexportされている", () => {
   expect(TokenType.Integer).toBeDefined();
   expect(TokenType.EOF).toBeDefined();
-});
-
-test("scanStartXRefがルートからexportされている", () => {
-  expect(typeof scanStartXRef).toBe("function");
-});
-
-test("parseXRefTableがルートからexportされている", () => {
-  expect(typeof parseXRefTable).toBe("function");
 });

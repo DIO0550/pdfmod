@@ -1,14 +1,10 @@
 import { expect, test } from "vitest";
 import { PdfPage, PdfViewer, usePdfDocument } from "./index.js";
 
-test("PdfViewerがルートからexportされている", () => {
-  expect(typeof PdfViewer).toBe("function");
-});
-
-test("PdfPageがルートからexportされている", () => {
-  expect(typeof PdfPage).toBe("function");
-});
-
-test("usePdfDocumentがルートからexportされている", () => {
-  expect(typeof usePdfDocument).toBe("function");
+test.each([
+  { name: "PdfViewer", value: PdfViewer },
+  { name: "PdfPage", value: PdfPage },
+  { name: "usePdfDocument", value: usePdfDocument },
+])("$nameがルートからexportされている", ({ value }) => {
+  expect(typeof value).toBe("function");
 });
