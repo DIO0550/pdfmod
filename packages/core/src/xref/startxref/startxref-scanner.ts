@@ -1,6 +1,7 @@
 import type { PdfParseError } from "../../errors/index.js";
 import {
   isPdfTokenBoundary,
+  matchesBytesAt,
   skipWhitespaceAndComments,
 } from "../../lexer/pdf-bytes.js";
 import type { Result } from "../../result/index.js";
@@ -23,27 +24,6 @@ const CR = 0x0d;
 const STARTXREF_SEARCH_WINDOW = 1024;
 const DECIMAL_RADIX = 10;
 const NOT_FOUND = -1;
-
-/**
- * バイト列がdataの指定位置で一致するか判定する。
- *
- * @param data - 検索対象のバイト配列
- * @param offset - 比較開始位置
- * @param pattern - 一致判定するバイト列
- * @returns 一致すれば `true`
- */
-function matchesBytesAt(
-  data: Uint8Array,
-  offset: number,
-  pattern: number[],
-): boolean {
-  for (let j = 0; j < pattern.length; j++) {
-    if (data[offset + j] !== pattern[j]) {
-      return false;
-    }
-  }
-  return true;
-}
 
 /**
  * 指定位置のトークンが前後でトークン境界を持つか判定する。
