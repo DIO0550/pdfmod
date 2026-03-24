@@ -19,6 +19,7 @@ import { TokenType } from "../../types/index.js";
 const TRAILER_BYTES = Array.from(new TextEncoder().encode("trailer"));
 const TRAILER_KEYWORD_LENGTH = 7;
 const MAX_NESTING_DEPTH = 64;
+const MAX_BYTE_VALUE = 0xff;
 
 // --- エラーヘルパー ---
 
@@ -84,14 +85,19 @@ function hexStringToBytes(hex: string): Uint8Array | undefined {
 
 /**
  * リテラル文字列の各文字をバイト値として Uint8Array に変換する。
+ * code unit が 0-255 の範囲外の場合は `undefined` を返す。
  *
  * @param str - リテラル文字列
- * @returns 変換されたバイト配列
+ * @returns 変換されたバイト配列、または範囲外の code unit を含む場合は `undefined`
  */
-function literalStringToBytes(str: string): Uint8Array {
+function literalStringToBytes(str: string): Uint8Array | undefined {
   const bytes = new Uint8Array(str.length);
   for (let i = 0; i < str.length; i++) {
-    bytes[i] = str.charCodeAt(i);
+    const codeUnit = str.charCodeAt(i);
+    if (codeUnit > MAX_BYTE_VALUE) {
+      return undefined;
+    }
+    bytes[i] = codeUnit;
   }
   return bytes;
 }
@@ -303,15 +309,25 @@ function readValue(
         offset,
       });
     }
-    case TokenType.LiteralString:
+    case TokenType.LiteralString: {
+      const litBytes = literalStringToBytes(firstToken.value as string);
+      if (!litBytes) {
+        return err({
+          code: "XREF_TABLE_INVALID",
+          message:
+            "invalid literal string: contains code unit outside 0-255 range",
+          offset,
+        });
+      }
       return ok({
         value: {
           type: "string",
-          value: literalStringToBytes(firstToken.value as string),
+          value: litBytes,
           encoding: "literal" as const,
         },
         offset,
       });
+    }
     case TokenType.Boolean:
       return ok({
         value: { type: "boolean", value: firstToken.value as boolean },
