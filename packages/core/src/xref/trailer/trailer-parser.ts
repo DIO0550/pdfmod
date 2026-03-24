@@ -71,14 +71,13 @@ function matchesBytesAt(
  * @returns 変換されたバイト配列、または不正文字を含む場合は `undefined`
  */
 function hexStringToBytes(hex: string): Uint8Array | undefined {
+  if (!/^[0-9A-Fa-f]*$/.test(hex)) {
+    return undefined;
+  }
   const padded = hex.length % 2 === 1 ? `${hex}0` : hex;
   const bytes = new Uint8Array(padded.length / 2);
   for (let i = 0; i < padded.length; i += 2) {
-    const value = parseInt(padded.substring(i, i + 2), 16);
-    if (Number.isNaN(value)) {
-      return undefined;
-    }
-    bytes[i / 2] = value;
+    bytes[i / 2] = parseInt(padded.substring(i, i + 2), 16);
   }
   return bytes;
 }
