@@ -122,15 +122,17 @@ function failNestingTooDeep(offset: number): Result<never, PdfParseError> {
  * @param tokens - バッファ付きトークナイザ
  * @param baseOffset - エラー報告用のベースオフセット
  * @param depth - 現在のネスト深さ
+ * @param entryOffset - この構造の開始トークンの絶対オフセット（深さ超過時のエラー位置に使用）
  * @returns 成功時は `Ok<void>`、失敗時は `Err<PdfParseError>`
  */
 function skipNestedArray(
   tokens: BufferedTokenizer,
   baseOffset: number,
-  depth = 0,
+  depth: number,
+  entryOffset: number,
 ): Result<void, PdfParseError> {
   if (depth >= MAX_NESTING_DEPTH) {
-    return failNestingTooDeep(baseOffset);
+    return failNestingTooDeep(entryOffset);
   }
   while (true) {
     const token = tokens.next();
@@ -145,12 +147,22 @@ function skipNestedArray(
       });
     }
     if (token.type === TokenType.ArrayBegin) {
-      const r = skipNestedArray(tokens, baseOffset, depth + 1);
+      const r = skipNestedArray(
+        tokens,
+        baseOffset,
+        depth + 1,
+        baseOffset + token.offset,
+      );
       if (!r.ok) {
         return r;
       }
     } else if (token.type === TokenType.DictBegin) {
-      const r = skipNestedDict(tokens, baseOffset, depth + 1);
+      const r = skipNestedDict(
+        tokens,
+        baseOffset,
+        depth + 1,
+        baseOffset + token.offset,
+      );
       if (!r.ok) {
         return r;
       }
@@ -164,15 +176,17 @@ function skipNestedArray(
  * @param tokens - バッファ付きトークナイザ
  * @param baseOffset - エラー報告用のベースオフセット
  * @param depth - 現在のネスト深さ
+ * @param entryOffset - この構造の開始トークンの絶対オフセット（深さ超過時のエラー位置に使用）
  * @returns 成功時は `Ok<void>`、失敗時は `Err<PdfParseError>`
  */
 function skipNestedDict(
   tokens: BufferedTokenizer,
   baseOffset: number,
-  depth = 0,
+  depth: number,
+  entryOffset: number,
 ): Result<void, PdfParseError> {
   if (depth >= MAX_NESTING_DEPTH) {
-    return failNestingTooDeep(baseOffset);
+    return failNestingTooDeep(entryOffset);
   }
   while (true) {
     const token = tokens.next();
@@ -187,12 +201,22 @@ function skipNestedDict(
       });
     }
     if (token.type === TokenType.ArrayBegin) {
-      const r = skipNestedArray(tokens, baseOffset, depth + 1);
+      const r = skipNestedArray(
+        tokens,
+        baseOffset,
+        depth + 1,
+        baseOffset + token.offset,
+      );
       if (!r.ok) {
         return r;
       }
     } else if (token.type === TokenType.DictBegin) {
-      const r = skipNestedDict(tokens, baseOffset, depth + 1);
+      const r = skipNestedDict(
+        tokens,
+        baseOffset,
+        depth + 1,
+        baseOffset + token.offset,
+      );
       if (!r.ok) {
         return r;
       }
@@ -352,7 +376,7 @@ function readValue(
       if (depth >= MAX_NESTING_DEPTH) {
         return failNestingTooDeep(offset);
       }
-      const r = skipNestedDict(tokens, baseOffset, depth + 1);
+      const r = skipNestedDict(tokens, baseOffset, depth + 1, offset);
       if (!r.ok) {
         return r;
       }
