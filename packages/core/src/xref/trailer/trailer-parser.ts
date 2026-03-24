@@ -1,6 +1,7 @@
 import type { PdfParseError } from "../../errors/index.js";
 import {
   isPdfTokenBoundary,
+  matchesBytesAt,
   skipWhitespaceAndComments,
 } from "../../lexer/pdf-bytes.js";
 import { Tokenizer } from "../../lexer/tokenizer.js";
@@ -38,30 +39,6 @@ function failTrailer(
 }
 
 // --- 内部ヘルパー ---
-
-/**
- * data の指定位置でバイト列が一致するか判定する。
- *
- * @param data - 検索対象のバイト配列
- * @param offset - 比較開始位置
- * @param pattern - 一致判定するバイト列
- * @returns 一致すれば `true`
- */
-function matchesBytesAt(
-  data: Uint8Array,
-  offset: number,
-  pattern: number[],
-): boolean {
-  if (offset + pattern.length > data.length) {
-    return false;
-  }
-  for (let j = 0; j < pattern.length; j++) {
-    if (data[offset + j] !== pattern[j]) {
-      return false;
-    }
-  }
-  return true;
-}
 
 /**
  * hex 文字列を Uint8Array に変換する。奇数長の場合は末尾に 0 をパディングする。
