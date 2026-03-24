@@ -187,37 +187,64 @@ function skipNestedDict(
   if (depth >= MAX_NESTING_DEPTH) {
     return failNestingTooDeep(entryOffset);
   }
+  // key/value ペア単位で消費し、Name 値を key と誤認しないようにする
   while (true) {
-    const token = tokens.next();
-    if (token.type === TokenType.DictEnd) {
+    const keyToken = tokens.next();
+    if (keyToken.type === TokenType.DictEnd) {
       return ok(undefined);
     }
-    if (token.type === TokenType.EOF) {
+    if (keyToken.type === TokenType.EOF) {
       return err({
         code: "XREF_TABLE_INVALID",
         message: "unexpected end of data while skipping value",
-        offset: baseOffset + token.offset,
+        offset: baseOffset + keyToken.offset,
       });
     }
-    if (token.type === TokenType.ArrayBegin) {
+    // key は Name であるべき。それ以外はスキップして再同期
+    if (keyToken.type !== TokenType.Name) {
+      continue;
+    }
+    // value を1トークン読み取り、配列・辞書の場合は再帰的に消費
+    const valueToken = tokens.next();
+    if (valueToken.type === TokenType.EOF) {
+      return err({
+        code: "XREF_TABLE_INVALID",
+        message: "unexpected end of data while skipping value",
+        offset: baseOffset + valueToken.offset,
+      });
+    }
+    if (valueToken.type === TokenType.ArrayBegin) {
       const r = skipNestedArray(
         tokens,
         baseOffset,
         depth + 1,
-        baseOffset + token.offset,
+        baseOffset + valueToken.offset,
       );
       if (!r.ok) {
         return r;
       }
-    } else if (token.type === TokenType.DictBegin) {
+    } else if (valueToken.type === TokenType.DictBegin) {
       const r = skipNestedDict(
         tokens,
         baseOffset,
         depth + 1,
-        baseOffset + token.offset,
+        baseOffset + valueToken.offset,
       );
       if (!r.ok) {
         return r;
+      }
+    }
+    // Integer の場合、間接参照 (Int Int R) の可能性がある
+    if (valueToken.type === TokenType.Integer) {
+      const second = tokens.next();
+      if (second.type === TokenType.Integer) {
+        const third = tokens.next();
+        if (!(third.type === TokenType.Keyword && third.value === "R")) {
+          tokens.pushBack(third);
+          tokens.pushBack(second);
+        }
+      } else {
+        tokens.pushBack(second);
       }
     }
   }
