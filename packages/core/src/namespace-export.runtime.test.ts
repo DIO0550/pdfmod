@@ -1,10 +1,10 @@
 import { expect, test } from "vitest";
 import {
   LRUCache,
-  TokenType,
-  Tokenizer,
   parseXRefTable,
   scanStartXRef,
+  Tokenizer,
+  TokenType,
 } from "./index.js";
 
 test.each([

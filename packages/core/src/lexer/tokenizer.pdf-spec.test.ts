@@ -54,18 +54,15 @@ test.each([
   ["\\+LF", "(a\\\nb)", "a\nb"],
   ["\\+CR", "(a\\\rb)", "a\rb"],
   ["\\+CRLF", "(a\\\r\nb)", "a\r\nb"],
-])(
-  "リテラル文字列内のエスケープ %s はEOL文字をそのまま通す",
-  (_label, input, expected) => {
-    const bytes = new TextEncoder().encode(input);
-    const tokenizer = new Tokenizer(bytes);
-    const token = tokenizer.nextToken();
-    expect(token).toMatchObject({
-      type: TokenType.LiteralString,
-      value: expected,
-    });
-  },
-);
+])("リテラル文字列内のエスケープ %s はEOL文字をそのまま通す", (_label, input, expected) => {
+  const bytes = new TextEncoder().encode(input);
+  const tokenizer = new Tokenizer(bytes);
+  const token = tokenizer.nextToken();
+  expect(token).toMatchObject({
+    type: TokenType.LiteralString,
+    value: expected,
+  });
+});
 
 test("配列内の複数間接参照をトークナイズする", () => {
   const tokens = tokenize("[1 0 R 2 0 R]");
@@ -81,7 +78,11 @@ test("配列内の複数間接参照をトークナイズする", () => {
 
 test("高位バイト(0xFF, 0x00)を含むバイト列をトークナイズする", () => {
   const bytes = new Uint8Array([
-    0x28, 0xff, 0x00, 0x41, 0x29, // (0xFF 0x00 A)
+    0x28,
+    0xff,
+    0x00,
+    0x41,
+    0x29, // (0xFF 0x00 A)
   ]);
   const tokenizer = new Tokenizer(bytes);
   const token = tokenizer.nextToken();
