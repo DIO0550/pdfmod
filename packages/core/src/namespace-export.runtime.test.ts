@@ -1,6 +1,7 @@
 import { expect, test } from "vitest";
 import {
   LRUCache,
+  parseTrailer,
   parseXRefTable,
   scanStartXRef,
   Tokenizer,
@@ -12,6 +13,7 @@ test.each([
   { name: "LRUCache.create", value: LRUCache.create },
   { name: "scanStartXRef", value: scanStartXRef },
   { name: "parseXRefTable", value: parseXRefTable },
+  { name: "parseTrailer", value: parseTrailer },
 ])("$nameがルートからexportされている", ({ value }) => {
   expect(typeof value).toBe("function");
 });
