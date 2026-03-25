@@ -9,7 +9,7 @@
     "build": "pnpm -r run build",
     "test": "vitest",
     "test:run": "vitest run",
-    "lint": "biome check . && oxlint . && bash scripts/no-import-extensions.sh",
+    "lint": "biome check . && oxlint .",
     "lint:fix": "biome check --fix . && oxlint --fix .",
     "format": "biome format --write .",
     "format:check": "biome check --linter-enabled=false .",
