@@ -1,13 +1,14 @@
-import type { PdfParseError } from "../errors/index.js";
+import type { PdfParseError } from "../../errors/index.js";
 import {
   isPdfTokenBoundary,
+  matchesBytesAt,
   skipWhitespaceAndComments,
-} from "../lexer/pdf-bytes.js";
-import type { Option } from "../option/index.js";
-import { none, some } from "../option/index.js";
-import type { Result } from "../result/index.js";
-import { err, ok } from "../result/index.js";
-import type { ByteOffset, XRefEntry, XRefTable } from "../types/index.js";
+} from "../../lexer/pdf-bytes.js";
+import type { Option } from "../../option/index.js";
+import { none, some } from "../../option/index.js";
+import type { Result } from "../../result/index.js";
+import { err, ok } from "../../result/index.js";
+import type { ByteOffset, XRefEntry, XRefTable } from "../../types/index.js";
 
 // --- バイト定数 (SCREAMING_SNAKE_CASE) ---
 
@@ -44,30 +45,6 @@ function failXRefTable(
 }
 
 // --- 内部ヘルパー ---
-
-/**
- * バイト列が data の指定位置で一致するか判定する。
- *
- * @param data - 検索対象のバイト配列
- * @param offset - 比較開始位置
- * @param pattern - 一致判定するバイト列
- * @returns 一致すれば `true`
- */
-function matchesBytesAt(
-  data: Uint8Array,
-  offset: number,
-  pattern: number[],
-): boolean {
-  if (offset + pattern.length > data.length) {
-    return false;
-  }
-  for (let j = 0; j < pattern.length; j++) {
-    if (data[offset + j] !== pattern[j]) {
-      return false;
-    }
-  }
-  return true;
-}
 
 /**
  * 固定桁数の10進数をパースする。
