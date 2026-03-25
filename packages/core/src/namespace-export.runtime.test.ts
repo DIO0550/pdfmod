@@ -6,7 +6,7 @@ import {
   scanStartXRef,
   Tokenizer,
   TokenType,
-} from "./index.js";
+} from "./index";
 
 test.each([
   { name: "Tokenizer", value: Tokenizer },

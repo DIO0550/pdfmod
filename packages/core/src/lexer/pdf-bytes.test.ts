@@ -4,7 +4,7 @@ import {
   isPdfTokenBoundary,
   isPdfWhitespace,
   skipWhitespaceAndComments,
-} from "./pdf-bytes.js";
+} from "./pdf-bytes";
 
 function encode(s: string): Uint8Array {
   return new TextEncoder().encode(s);

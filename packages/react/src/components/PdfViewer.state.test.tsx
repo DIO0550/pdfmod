@@ -1,6 +1,6 @@
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, expect, test, vi } from "vitest";
-import { PdfViewer } from "./PdfViewer.js";
+import { PdfViewer } from "./PdfViewer";
 
 afterEach(() => {
   cleanup();

@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
-import { TokenType } from "../types/index.js";
-import { Tokenizer } from "./tokenizer.js";
+import { TokenType } from "../types/index";
+import { Tokenizer } from "./tokenizer";
 
 function tokenize(input: string): ReturnType<Tokenizer["tokenize"]> {
   const encoder = new TextEncoder();

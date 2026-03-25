@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { err, ok, unwrapOr } from "./result.js";
+import { err, ok, unwrapOr } from "./result";
 
 test("okは成功結果を生成する", () => {
   const result = ok(42);

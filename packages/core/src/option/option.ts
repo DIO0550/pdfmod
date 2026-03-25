@@ -1,5 +1,5 @@
-import type { Result } from "../result/result.js";
-import { err, ok } from "../result/result.js";
+import type { Result } from "../result/result";
+import { err, ok } from "../result/result";
 
 /**
  * 値が存在することを表すOption型。
@@ -206,7 +206,7 @@ export const toResult = <T, E>(option: Option<T>, error: E): Result<T, E> =>
  * @param result - 変換対象のResult
  * @returns `Ok` かつ非nullish値の場合は `Some<NonNullable<T>>`、それ以外は `None`
  *
- * @see {@link import("../result/index.js").toOption} — Result モジュール側の同等関数
+ * @see {@link import("../result/index").toOption} — Result モジュール側の同等関数
  *
  * @example
  * ```ts

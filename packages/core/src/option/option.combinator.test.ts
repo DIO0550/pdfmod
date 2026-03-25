@@ -1,5 +1,5 @@
 import { expect, test, vi } from "vitest";
-import { flatMap, map, none, some, unwrapOr } from "./option.js";
+import { flatMap, map, none, some, unwrapOr } from "./option";
 
 test("mapはSomeに対して関数を適用し新しいSomeを返す", () => {
   const result = map(some(2), (x) => x * 3);

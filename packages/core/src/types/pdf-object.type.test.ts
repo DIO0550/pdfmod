@@ -5,7 +5,7 @@ import type {
   TrailerDict,
   XRefEntry,
   XRefTable,
-} from "./index.js";
+} from "./index";
 
 test("PdfObjectの各バリアントを生成できる", () => {
   const nullObj: PdfObject = { type: "null" };
@@ -130,29 +130,29 @@ test("TrailerDictのオプションフィールドを含めて生成できる", 
 });
 
 test("エントリポイントから全型がimportできる", async () => {
-  const mod = await import("../index.js");
+  const mod = await import("../index");
   expect(mod).toBeDefined();
 
   // Compile-time verification: types are importable from entry point
-  const _check: import("../index.js").PdfObject = { type: "null" };
-  const _check2: import("../index.js").PdfDictionary = {
+  const _check: import("../index").PdfObject = { type: "null" };
+  const _check2: import("../index").PdfDictionary = {
     type: "dictionary",
     entries: new Map(),
   };
-  const _check3: import("../index.js").XRefEntry = {
+  const _check3: import("../index").XRefEntry = {
     type: 1,
     field2: 0,
     field3: 0,
   };
-  const _check4: import("../index.js").XRefTable = {
+  const _check4: import("../index").XRefTable = {
     entries: new Map(),
     size: 0,
   };
-  const _check5: import("../index.js").TrailerDict = {
+  const _check5: import("../index").TrailerDict = {
     root: { objectNumber: 1, generationNumber: 0 },
     size: 1,
   };
-  const _check6: import("../index.js").IndirectRef = {
+  const _check6: import("../index").IndirectRef = {
     objectNumber: 1,
     generationNumber: 0,
   };

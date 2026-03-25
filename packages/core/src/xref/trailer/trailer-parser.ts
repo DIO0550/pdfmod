@@ -1,19 +1,19 @@
-import type { PdfParseError } from "../../errors/index.js";
+import type { PdfParseError } from "../../errors/index";
 import {
   isPdfTokenBoundary,
   matchesBytesAt,
   skipWhitespaceAndComments,
-} from "../../lexer/pdf-bytes.js";
-import { Tokenizer } from "../../lexer/tokenizer.js";
-import type { Result } from "../../result/index.js";
-import { err, ok } from "../../result/index.js";
+} from "../../lexer/pdf-bytes";
+import { Tokenizer } from "../../lexer/tokenizer";
+import type { Result } from "../../result/index";
+import { err, ok } from "../../result/index";
 import type {
   ByteOffset,
   PdfObject,
   Token,
   TrailerDict,
-} from "../../types/index.js";
-import { TokenType } from "../../types/index.js";
+} from "../../types/index";
+import { TokenType } from "../../types/index";
 
 // --- バイト定数 (SCREAMING_SNAKE_CASE) ---
 

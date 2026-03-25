@@ -13,11 +13,11 @@ export type {
   PdfTypeMismatchError,
   PdfWarning,
   PdfWarningCode,
-} from "./errors/index.js";
-export { Tokenizer } from "./lexer/index.js";
-export { LRUCache } from "./objects/index.js";
-export * as Option from "./option/index.js";
-export * as Result from "./result/index.js";
+} from "./errors/index";
+export { Tokenizer } from "./lexer/index";
+export { LRUCache } from "./objects/index";
+export * as Option from "./option/index";
+export * as Result from "./result/index";
 export type {
   Brand,
   ByteOffset,
@@ -31,6 +31,6 @@ export type {
   TrailerDict,
   XRefEntry,
   XRefTable,
-} from "./types/index.js";
-export { TokenType } from "./types/index.js";
-export { parseTrailer, parseXRefTable, scanStartXRef } from "./xref/index.js";
+} from "./types/index";
+export { TokenType } from "./types/index";
+export { parseTrailer, parseXRefTable, scanStartXRef } from "./xref/index";

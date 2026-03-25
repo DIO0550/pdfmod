@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
-import type { Option } from "./option.js";
-import { fromNullable, none, some, unwrapOr } from "./option.js";
+import type { Option } from "./option";
+import { fromNullable, none, some, unwrapOr } from "./option";
 
 test("someは{ some: true, value }を生成する", () => {
   const result = some(42);

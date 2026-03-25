@@ -1,9 +1,9 @@
-import { type Token, TokenType } from "../types/index.js";
+import { type Token, TokenType } from "../types/index";
 import {
   isPdfDelimiter,
   isPdfWhitespace,
   skipWhitespaceAndComments as skipWsAndComments,
-} from "./pdf-bytes.js";
+} from "./pdf-bytes";
 
 const isWhitespace = isPdfWhitespace;
 const isDelimiter = isPdfDelimiter;

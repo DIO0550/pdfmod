@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { scanStartXRef } from "./startxref-scanner.js";
+import { scanStartXRef } from "./startxref-scanner";
 
 function encode(s: string): Uint8Array {
   return new TextEncoder().encode(s);

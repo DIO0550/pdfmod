@@ -1,1 +1,1 @@
-export { scanStartXRef } from "./startxref-scanner.js";
+export { scanStartXRef } from "./startxref-scanner";

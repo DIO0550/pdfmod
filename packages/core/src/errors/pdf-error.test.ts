@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import type { ObjectId, PdfError, PdfParseError } from "../index.js";
+import type { ObjectId, PdfError, PdfParseError } from "../index";
 
 test("PdfParseErrorはcodeでナローイングできる", () => {
   const error: PdfError = {
