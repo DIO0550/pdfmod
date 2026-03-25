@@ -1,5 +1,5 @@
-import type { Result } from "../result/index.js";
-import { err, ok } from "../result/index.js";
+import type { Result } from "../result/index";
+import { err, ok } from "../result/index";
 
 const DefaultCacheCapacity = 1024;
 const MinCacheCapacity = 1;

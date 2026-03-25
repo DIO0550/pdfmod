@@ -180,4 +180,4 @@ export type {
   ByteOffset,
   GenerationNumber,
   ObjectNumber,
-} from "./brand.js";
+} from "./brand";

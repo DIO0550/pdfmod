@@ -1,11 +1,11 @@
-import type { PdfParseError } from "../../errors/index.js";
+import type { PdfParseError } from "../../errors/index";
 import {
   isPdfTokenBoundary,
   matchesBytesAt,
   skipWhitespaceAndComments,
-} from "../../lexer/pdf-bytes.js";
-import type { Result } from "../../result/index.js";
-import { err, ok } from "../../result/index.js";
+} from "../../lexer/pdf-bytes";
+import type { Result } from "../../result/index";
+import { err, ok } from "../../result/index";
 
 const PERCENT = 0x25;
 

@@ -1,1 +1,1 @@
-export { parseTrailer } from "./trailer-parser.js";
+export { parseTrailer } from "./trailer-parser";

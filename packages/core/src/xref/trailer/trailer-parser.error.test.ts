@@ -1,6 +1,6 @@
 import { assert, expect, test } from "vitest";
-import type { ByteOffset } from "../../types/index.js";
-import { parseTrailer } from "./trailer-parser.js";
+import type { ByteOffset } from "../../types/index";
+import { parseTrailer } from "./trailer-parser";
 
 const encoder = new TextEncoder();
 

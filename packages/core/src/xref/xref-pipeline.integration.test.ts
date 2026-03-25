@@ -1,8 +1,8 @@
 import { assert, expect, test } from "vitest";
-import type { ByteOffset } from "../types/index.js";
-import { scanStartXRef } from "./startxref/startxref-scanner.js";
-import { parseXRefTable } from "./table/xref-table-parser.js";
-import { parseTrailer } from "./trailer/trailer-parser.js";
+import type { ByteOffset } from "../types/index";
+import { scanStartXRef } from "./startxref/startxref-scanner";
+import { parseXRefTable } from "./table/xref-table-parser";
+import { parseTrailer } from "./trailer/trailer-parser";
 
 test("scanStartXRefの結果をparseXRefTableに渡してend-to-endで解析する", () => {
   const pdf =

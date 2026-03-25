@@ -1,1 +1,1 @@
-export { parseXRefTable } from "./xref-table-parser.js";
+export { parseXRefTable } from "./xref-table-parser";
