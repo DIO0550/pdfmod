@@ -457,8 +457,9 @@ function readIdArray(
 ): Result<DictEntry, PdfParseError> {
   const offset = baseOffset + valueToken.offset;
   if (valueToken.type !== TokenType.ArrayBegin) {
-    return ok({
-      value: { type: "null" },
+    return err({
+      code: "XREF_TABLE_INVALID",
+      message: "/ID entry must be an array of two strings",
       offset,
     });
   }
