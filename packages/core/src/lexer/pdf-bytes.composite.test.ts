@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { skipWhitespaceAndComments } from "./pdf-bytes.js";
+import { skipWhitespaceAndComments } from "./pdf-bytes";
 
 test("NUL+TAB+コメント+ホワイトスペースの連鎖をスキップする", () => {
   const data = new Uint8Array([

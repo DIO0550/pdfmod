@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { LRUCache } from "./lru-cache.js";
+import { LRUCache } from "./lru-cache";
 
 function createCache<K, V>(capacity?: number): LRUCache<K, V> {
   const result =

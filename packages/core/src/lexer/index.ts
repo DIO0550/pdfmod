@@ -8,5 +8,5 @@ export {
   isPdfTokenBoundary,
   isPdfWhitespace,
   skipWhitespaceAndComments,
-} from "./pdf-bytes.js";
-export { Tokenizer } from "./tokenizer.js";
+} from "./pdf-bytes";
+export { Tokenizer } from "./tokenizer";

@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import type { ByteOffset, GenerationNumber, ObjectNumber } from "./brand.js";
+import type { ByteOffset, GenerationNumber, ObjectNumber } from "./brand";
 
 // --- 同一Brand型間の代入テスト ---
 
@@ -82,15 +82,15 @@ test("Brand型の値は算術演算に使用できる", () => {
 // --- エントリポイントインポートテスト ---
 
 test("エントリポイントから全Brand型がインポートできる", async () => {
-  const mod = await import("../index.js");
+  const mod = await import("../index");
   expect(mod).toBeDefined();
 
-  const _obj: import("../index.js").ObjectNumber =
-    1 as import("../index.js").ObjectNumber;
-  const _gen: import("../index.js").GenerationNumber =
-    0 as import("../index.js").GenerationNumber;
-  const _off: import("../index.js").ByteOffset =
-    512 as import("../index.js").ByteOffset;
+  const _obj: import("../index").ObjectNumber =
+    1 as import("../index").ObjectNumber;
+  const _gen: import("../index").GenerationNumber =
+    0 as import("../index").GenerationNumber;
+  const _off: import("../index").ByteOffset =
+    512 as import("../index").ByteOffset;
   expect(_obj).toBe(1);
   expect(_gen).toBe(0);
   expect(_off).toBe(512);

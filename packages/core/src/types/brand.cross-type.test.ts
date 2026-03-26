@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import type { ByteOffset, GenerationNumber, ObjectNumber } from "./brand.js";
+import type { ByteOffset, GenerationNumber, ObjectNumber } from "./brand";
 
 test("GenerationNumber型の値をObjectNumber型の変数に代入するとコンパイルエラーになる", () => {
   const gen = 0 as GenerationNumber;

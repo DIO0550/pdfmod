@@ -5,9 +5,9 @@
  * @packageDocumentation
  */
 
-export type { PdfPageProps } from "./components/PdfPage.js";
-export { PdfPage } from "./components/PdfPage.js";
-export type { PdfViewerProps } from "./components/PdfViewer.js";
-export { PdfViewer } from "./components/PdfViewer.js";
-export type { PdfDocumentState } from "./hooks/usePdfDocument.js";
-export { usePdfDocument } from "./hooks/usePdfDocument.js";
+export type { PdfPageProps } from "./components/PdfPage";
+export { PdfPage } from "./components/PdfPage";
+export type { PdfViewerProps } from "./components/PdfViewer";
+export { PdfViewer } from "./components/PdfViewer";
+export type { PdfDocumentState } from "./hooks/usePdfDocument";
+export { usePdfDocument } from "./hooks/usePdfDocument";

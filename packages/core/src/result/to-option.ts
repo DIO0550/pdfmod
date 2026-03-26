@@ -1,6 +1,6 @@
-import type { Option } from "../option/option.js";
-import { none, some } from "../option/option.js";
-import type { Result } from "./result.js";
+import type { Option } from "../option/option";
+import { none, some } from "../option/option";
+import type { Result } from "./result";
 
 /**
  * ResultをOptionに変換する。
@@ -12,7 +12,7 @@ import type { Result } from "./result.js";
  * @param result - 変換対象のResult
  * @returns `Ok` かつ非nullish値の場合は `Some<NonNullable<T>>`、それ以外は `None`
  *
- * @see {@link import("../option/index.js").fromResult} — Option モジュール側の同等関数
+ * @see {@link import("../option/index").fromResult} — Option モジュール側の同等関数
  *
  * @example
  * ```ts
