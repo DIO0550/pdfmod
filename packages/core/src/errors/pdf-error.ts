@@ -1,4 +1,4 @@
-import type { ObjectId } from "../types/index.js";
+import type { ObjectId } from "../types/index";
 
 /**
  * PDFパースエラーのエラーコード。

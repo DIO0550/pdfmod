@@ -8,7 +8,7 @@ import type {
   PdfTypeMismatchError,
   PdfWarning,
   PdfWarningCode,
-} from "../index.js";
+} from "../index";
 
 test("PdfParseErrorCodeは7つのコードを持つ", () => {
   const codes: PdfParseErrorCode[] = [

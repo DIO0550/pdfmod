@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { Option, Result } from "./index.js";
+import { Option, Result } from "./index";
 
 test("Result.okがランタイムで動作する", () => {
   const result = Result.ok(42);

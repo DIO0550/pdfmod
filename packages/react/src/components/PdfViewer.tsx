@@ -1,6 +1,6 @@
 import type React from "react";
-import { usePdfDocument } from "../hooks/usePdfDocument.js";
-import { PdfPage } from "./PdfPage.js";
+import { usePdfDocument } from "../hooks/usePdfDocument";
+import { PdfPage } from "./PdfPage";
 
 /**
  * PDFビューアコンポーネントのProps。

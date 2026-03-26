@@ -9,5 +9,5 @@ export type {
   PdfParseError,
   PdfParseErrorCode,
   PdfTypeMismatchError,
-} from "./pdf-error.js";
-export type { PdfWarning, PdfWarningCode } from "./pdf-warning.js";
+} from "./pdf-error";
+export type { PdfWarning, PdfWarningCode } from "./pdf-warning";
