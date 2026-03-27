@@ -59,21 +59,21 @@ test("PdfObjectの各バリアントを生成できる", () => {
   expect(refObj.type).toBe("indirect-ref");
 });
 
-test("typeフィールドでdiscriminated unionのナローイングが動作する", () => {
-  const obj: PdfObject = { type: "integer", value: 42 };
+test("typeフィールドでdiscriminated unionのナローイングが動作する - integer", () => {
+  const obj = { type: "integer" as const, value: 42 };
+  const narrowed: Extract<PdfObject, { type: "integer" }> = obj;
+  const n: number = narrowed.value;
+  expect(n).toBe(42);
+});
 
-  // @ts-expect-error - verifying narrowing works via conditional
-  const _narrowing_test: never = obj.type === "integer" ? undefined : obj;
-  expect(_narrowing_test).toBeUndefined();
-
-  const dict: PdfObject = {
-    type: "dictionary",
-    entries: new Map(),
+test("typeフィールドでdiscriminated unionのナローイングが動作する - dictionary", () => {
+  const dict = {
+    type: "dictionary" as const,
+    entries: new Map<string, PdfObject>(),
   };
-
-  // @ts-expect-error - verifying narrowing works via conditional
-  const _narrowing_test2: never = dict.type === "dictionary" ? undefined : dict;
-  expect(_narrowing_test2).toBeUndefined();
+  const narrowed: Extract<PdfObject, { type: "dictionary" }> = dict;
+  const entries: Map<string, PdfObject> = narrowed.entries;
+  expect(entries.size).toBe(0);
 });
 
 test("PdfDictionary型がdictionaryバリアントと一致する", () => {
