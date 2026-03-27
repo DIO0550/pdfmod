@@ -1,11 +1,18 @@
 import { expect, test } from "vitest";
+import { ByteOffset } from "./byte-offset";
+import { GenerationNumber } from "./generation-number";
 import type {
+  IndirectRef,
   PdfDictionary,
   PdfObject,
   TrailerDict,
+  XRefCompressedEntry,
   XRefEntry,
+  XRefFreeEntry,
   XRefTable,
+  XRefUsedEntry,
 } from "./index";
+import { ObjectNumber } from "./object-number";
 
 test("PdfObjectの各バリアントを生成できる", () => {
   const nullObj: PdfObject = { type: "null" };
@@ -52,23 +59,21 @@ test("PdfObjectの各バリアントを生成できる", () => {
   expect(refObj.type).toBe("indirect-ref");
 });
 
-test("typeフィールドでdiscriminated unionのナローイングが動作する", () => {
-  const obj: PdfObject = { type: "integer", value: 42 };
+test("typeフィールドでdiscriminated unionのナローイングが動作する - integer", () => {
+  const obj = { type: "integer" as const, value: 42 };
+  const narrowed: Extract<PdfObject, { type: "integer" }> = obj;
+  const n: number = narrowed.value;
+  expect(n).toBe(42);
+});
 
-  if (obj.type === "integer") {
-    const n: number = obj.value;
-    expect(n).toBe(42);
-  }
-
-  const dict: PdfObject = {
-    type: "dictionary",
-    entries: new Map(),
+test("typeフィールドでdiscriminated unionのナローイングが動作する - dictionary", () => {
+  const dict = {
+    type: "dictionary" as const,
+    entries: new Map<string, PdfObject>(),
   };
-
-  if (dict.type === "dictionary") {
-    const entries: Map<string, PdfObject> = dict.entries;
-    expect(entries.size).toBe(0);
-  }
+  const narrowed: Extract<PdfObject, { type: "dictionary" }> = dict;
+  const entries: Map<string, PdfObject> = narrowed.entries;
+  expect(entries.size).toBe(0);
 });
 
 test("PdfDictionary型がdictionaryバリアントと一致する", () => {
@@ -82,58 +87,143 @@ test("PdfDictionary型がdictionaryバリアントと一致する", () => {
   expect(dict.type).toBe("dictionary");
 });
 
-test("XRefEntryのtype: 0, 1, 2の各バリアントを生成できる", () => {
-  const free: XRefEntry = { type: 0, field2: 1, field3: 65535 };
-  const normal: XRefEntry = { type: 1, field2: 9, field3: 0 };
-  const stream: XRefEntry = { type: 2, field2: 10, field3: 0 };
-
+test("XRefFreeEntry を構築できる", () => {
+  const free: XRefFreeEntry = {
+    type: 0,
+    nextFreeObject: ObjectNumber.of(1),
+    generationNumber: GenerationNumber.of(65535),
+  };
   expect(free.type).toBe(0);
-  expect(normal.type).toBe(1);
-  expect(stream.type).toBe(2);
+  expect(free.nextFreeObject).toBe(1);
+  expect(free.generationNumber).toBe(65535);
 });
 
-test("XRefTableのentriesとsizeを持つオブジェクトを生成できる", () => {
+test("XRefUsedEntry を構築できる", () => {
+  const used: XRefUsedEntry = {
+    type: 1,
+    offset: ByteOffset.of(9),
+    generationNumber: GenerationNumber.of(0),
+  };
+  expect(used.type).toBe(1);
+  expect(used.offset).toBe(9);
+  expect(used.generationNumber).toBe(0);
+});
+
+test("XRefCompressedEntry を構築できる", () => {
+  const compressed: XRefCompressedEntry = {
+    type: 2,
+    streamObject: ObjectNumber.of(10),
+    indexInStream: 0,
+  };
+  expect(compressed.type).toBe(2);
+  expect(compressed.streamObject).toBe(10);
+  expect(compressed.indexInStream).toBe(0);
+});
+
+test("XRefEntry は3バリアントの union である", () => {
+  const free: XRefEntry = {
+    type: 0,
+    nextFreeObject: ObjectNumber.of(0),
+    generationNumber: GenerationNumber.of(65535),
+  };
+  const used: XRefEntry = {
+    type: 1,
+    offset: ByteOffset.of(1024),
+    generationNumber: GenerationNumber.of(0),
+  };
+  const compressed: XRefEntry = {
+    type: 2,
+    streamObject: ObjectNumber.of(10),
+    indexInStream: 0,
+  };
+  expect(free.type).toBe(0);
+  expect(used.type).toBe(1);
+  expect(compressed.type).toBe(2);
+});
+
+test("XRefTable の entries キーが ObjectNumber 型である", () => {
   const table: XRefTable = {
-    entries: new Map<number, XRefEntry>([
-      [0, { type: 0, field2: 0, field3: 65535 }],
-      [1, { type: 1, field2: 9, field3: 0 }],
+    entries: new Map<ObjectNumber, XRefEntry>([
+      [
+        ObjectNumber.of(0),
+        {
+          type: 0,
+          nextFreeObject: ObjectNumber.of(0),
+          generationNumber: GenerationNumber.of(65535),
+        },
+      ],
+      [
+        ObjectNumber.of(1),
+        {
+          type: 1,
+          offset: ByteOffset.of(9),
+          generationNumber: GenerationNumber.of(0),
+        },
+      ],
     ]),
     size: 2,
   };
-
   expect(table.entries.size).toBe(2);
   expect(table.size).toBe(2);
 });
 
+test("IndirectRef 構築時に ObjectNumber / GenerationNumber が必要", () => {
+  const ref: IndirectRef = {
+    objectNumber: ObjectNumber.of(1),
+    generationNumber: GenerationNumber.of(0),
+  };
+  expect(ref.objectNumber).toBe(1);
+  expect(ref.generationNumber).toBe(0);
+});
+
 test("TrailerDictの必須フィールドのみで生成できる", () => {
   const trailer: TrailerDict = {
-    root: { objectNumber: 1, generationNumber: 0 },
+    root: {
+      objectNumber: ObjectNumber.of(1),
+      generationNumber: GenerationNumber.of(0),
+    },
     size: 6,
   };
-
   expect(trailer.root.objectNumber).toBe(1);
   expect(trailer.size).toBe(6);
 });
 
 test("TrailerDictのオプションフィールドを含めて生成できる", () => {
   const trailer: TrailerDict = {
-    root: { objectNumber: 1, generationNumber: 0 },
+    root: {
+      objectNumber: ObjectNumber.of(1),
+      generationNumber: GenerationNumber.of(0),
+    },
     size: 6,
-    prev: 408,
-    info: { objectNumber: 5, generationNumber: 0 },
+    prev: ByteOffset.of(408),
+    info: {
+      objectNumber: ObjectNumber.of(5),
+      generationNumber: GenerationNumber.of(0),
+    },
     id: [new Uint8Array([1, 2, 3]), new Uint8Array([4, 5, 6])],
   };
-
   expect(trailer.prev).toBe(408);
   expect(trailer.info?.objectNumber).toBe(5);
   expect(trailer.id?.[0]).toBeInstanceOf(Uint8Array);
+});
+
+test("TrailerDict.prev が ByteOffset 型", () => {
+  const trailer: TrailerDict = {
+    root: {
+      objectNumber: ObjectNumber.of(1),
+      generationNumber: GenerationNumber.of(0),
+    },
+    size: 6,
+    prev: ByteOffset.of(100),
+  };
+  const prev: ByteOffset | undefined = trailer.prev;
+  expect(prev).toBe(100);
 });
 
 test("エントリポイントから全型がimportできる", async () => {
   const mod = await import("../index");
   expect(mod).toBeDefined();
 
-  // Compile-time verification: types are importable from entry point
   const _check: import("../index").PdfObject = { type: "null" };
   const _check2: import("../index").PdfDictionary = {
     type: "dictionary",
@@ -141,20 +231,23 @@ test("エントリポイントから全型がimportできる", async () => {
   };
   const _check3: import("../index").XRefEntry = {
     type: 1,
-    field2: 0,
-    field3: 0,
+    offset: ByteOffset.of(0),
+    generationNumber: GenerationNumber.of(0),
   };
   const _check4: import("../index").XRefTable = {
     entries: new Map(),
     size: 0,
   };
   const _check5: import("../index").TrailerDict = {
-    root: { objectNumber: 1, generationNumber: 0 },
+    root: {
+      objectNumber: ObjectNumber.of(1),
+      generationNumber: GenerationNumber.of(0),
+    },
     size: 1,
   };
   const _check6: import("../index").IndirectRef = {
-    objectNumber: 1,
-    generationNumber: 0,
+    objectNumber: ObjectNumber.of(1),
+    generationNumber: GenerationNumber.of(0),
   };
   expect(_check.type).toBe("null");
   expect(_check2.type).toBe("dictionary");

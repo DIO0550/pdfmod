@@ -1,5 +1,7 @@
 import { assert, expect, test } from "vitest";
-import type { ByteOffset } from "../../types/index";
+import { ByteOffset } from "../../types/byte-offset";
+import { GenerationNumber } from "../../types/generation-number";
+import { ObjectNumber } from "../../types/object-number";
 import { parseXRefTable } from "./xref-table-parser";
 
 const encoder = new TextEncoder();
@@ -8,14 +10,12 @@ function encode(str: string): Uint8Array {
   return encoder.encode(str);
 }
 
-// --- 入力境界チェック ---
-
 test.each([
   { offset: -1, label: "負数" },
   { offset: 9999, label: "data.length 以上" },
 ])("offset が $label のとき Err(XREF_TABLE_INVALID) を返す", ({ offset }) => {
   const data = encode("xref\n0 1\n0000000000 00000 n\r\ntrailer");
-  const result = parseXRefTable(data, offset as ByteOffset);
+  const result = parseXRefTable(data, ByteOffset.of(offset));
   assert(!result.ok);
   expect(result.error.code).toBe("XREF_TABLE_INVALID");
 });
@@ -24,18 +24,18 @@ test("非0 offset からprefixの後にあるxrefテーブルを正常にパー�
   const prefix = "DUMMY_PREFIX\n";
   const xrefData = "xref\n0 1\n0000000100 00000 n\r\ntrailer";
   const data = encode(prefix + xrefData);
-  const result = parseXRefTable(data, prefix.length as ByteOffset);
+  const result = parseXRefTable(data, ByteOffset.of(prefix.length));
   assert(result.ok);
-  expect(result.value.xref.entries.get(0)).toEqual({
+  expect(result.value.xref.entries.get(ObjectNumber.of(0))).toEqual({
     type: 1,
-    field2: 100,
-    field3: 0,
+    offset: ByteOffset.of(100),
+    generationNumber: GenerationNumber.of(0),
   });
 });
 
 test("xrefキーワード途中でデータが終了する場合 Err を返す", () => {
   const data = encode("xre");
-  const result = parseXRefTable(data, 0 as ByteOffset);
+  const result = parseXRefTable(data, ByteOffset.of(0));
   assert(!result.ok);
   expect(result.error.code).toBe("XREF_TABLE_INVALID");
 });

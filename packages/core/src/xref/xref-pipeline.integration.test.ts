@@ -1,5 +1,7 @@
 import { assert, expect, test } from "vitest";
-import type { ByteOffset } from "../types/index";
+import { ByteOffset } from "../types/byte-offset";
+import { GenerationNumber } from "../types/generation-number";
+import { ObjectNumber } from "../types/object-number";
 import { scanStartXRef } from "./startxref/startxref-scanner";
 import { parseXRefTable } from "./table/xref-table-parser";
 import { parseTrailer } from "./trailer/trailer-parser";
@@ -22,20 +24,20 @@ test("scanStartXRefの結果をparseXRefTableに渡してend-to-endで解析す�
   const scanResult = scanStartXRef(data);
   assert(scanResult.ok);
 
-  const parseResult = parseXRefTable(data, scanResult.value as ByteOffset);
+  const parseResult = parseXRefTable(data, scanResult.value);
   assert(parseResult.ok);
 
   expect(parseResult.value.xref.entries.size).toBe(2);
   expect(parseResult.value.xref.size).toBe(2);
-  expect(parseResult.value.xref.entries.get(0)).toEqual({
+  expect(parseResult.value.xref.entries.get(ObjectNumber.of(0))).toEqual({
     type: 0,
-    field2: 0,
-    field3: 65535,
+    nextFreeObject: ObjectNumber.of(0),
+    generationNumber: GenerationNumber.of(65535),
   });
-  expect(parseResult.value.xref.entries.get(1)).toEqual({
+  expect(parseResult.value.xref.entries.get(ObjectNumber.of(1))).toEqual({
     type: 1,
-    field2: 9,
-    field3: 0,
+    offset: ByteOffset.of(9),
+    generationNumber: GenerationNumber.of(0),
   });
 });
 
@@ -57,15 +59,15 @@ test("scanStartXRef -> parseXRefTable -> parseTrailerのend-to-endパイプラ�
   const scanResult = scanStartXRef(data);
   assert(scanResult.ok);
 
-  const xrefResult = parseXRefTable(data, scanResult.value as ByteOffset);
+  const xrefResult = parseXRefTable(data, scanResult.value);
   assert(xrefResult.ok);
 
   const trailerResult = parseTrailer(data, xrefResult.value.trailerOffset);
   assert(trailerResult.ok);
 
   expect(trailerResult.value.root).toEqual({
-    objectNumber: 1,
-    generationNumber: 0,
+    objectNumber: ObjectNumber.of(1),
+    generationNumber: GenerationNumber.of(0),
   });
   expect(trailerResult.value.size).toBe(2);
 });

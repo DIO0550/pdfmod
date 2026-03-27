@@ -4,7 +4,7 @@
  *
  * @example
  * ```ts
- * const token: Token = { type: TokenType.Integer, value: 42, offset: 0 };
+ * const token: Token = { type: TokenType.Integer, value: 42, offset: ByteOffset.of(0) };
  * if (token.type === TokenType.Name) {
  *   console.log(token.value); // "Type" など
  * }
@@ -26,13 +26,17 @@ export enum TokenType {
   EOF = "EOF",
 }
 
+import type { ByteOffset } from "./byte-offset";
+import type { GenerationNumber } from "./generation-number";
+import type { ObjectNumber } from "./object-number";
+
 /**
  * 字句解析器が生成する単一のトークン。
  * トークン種別、値、およびバイトストリーム内の出現位置を保持する。
  *
  * @example
  * ```ts
- * const token: Token = { type: TokenType.Name, value: "Type", offset: 15 };
+ * const token: Token = { type: TokenType.Name, value: "Type", offset: ByteOffset.of(15) };
  * ```
  */
 export interface Token {
@@ -41,7 +45,7 @@ export interface Token {
   /** トークンの値（型はトークン種別に依存する） */
   value: string | number | boolean | null;
   /** バイトストリーム内のオフセット位置 */
-  offset: number;
+  offset: ByteOffset;
 }
 
 /**
@@ -50,33 +54,60 @@ export interface Token {
  *
  * @example
  * ```ts
- * const ref: IndirectRef = { objectNumber: 5, generationNumber: 0 };
+ * const ref: IndirectRef = { objectNumber: ObjectNumber.of(5), generationNumber: GenerationNumber.of(0) };
  * ```
  */
 export interface IndirectRef {
   /** オブジェクト番号 */
-  objectNumber: number;
+  objectNumber: ObjectNumber;
   /** 世代番号 */
-  generationNumber: number;
+  generationNumber: GenerationNumber;
+}
+
+/**
+ * フリーオブジェクトの相互参照エントリ (type 0)。
+ * 削除済みオブジェクトのリンクリストを構成する。
+ */
+export interface XRefFreeEntry {
+  /** エントリ型: フリーオブジェクト */
+  type: 0;
+  /** 次のフリーオブジェクトの番号 */
+  nextFreeObject: ObjectNumber;
+  /** 世代番号 */
+  generationNumber: GenerationNumber;
+}
+
+/**
+ * 通常（使用中）オブジェクトの相互参照エントリ (type 1)。
+ * ファイル内のバイトオフセットでオブジェクト位置を示す。
+ */
+export interface XRefUsedEntry {
+  /** エントリ型: 通常オブジェクト */
+  type: 1;
+  /** ファイル内バイトオフセット */
+  offset: ByteOffset;
+  /** 世代番号 */
+  generationNumber: GenerationNumber;
+}
+
+/**
+ * オブジェクトストリーム内の圧縮エントリ (type 2)。
+ * 親ストリームのオブジェクト番号とストリーム内インデックスで位置を示す。
+ */
+export interface XRefCompressedEntry {
+  /** エントリ型: オブジェクトストリーム内 */
+  type: 2;
+  /** 親ストリームのオブジェクト番号 */
+  streamObject: ObjectNumber;
+  /** ストリーム内インデックス */
+  indexInStream: number;
 }
 
 /**
  * PDF相互参照エントリ (ISO 32000 Table 18)。
- * 相互参照テーブル内の各エントリの型とフィールドを保持する。
- *
- * @example
- * ```ts
- * const entry: XRefEntry = { type: 1, field2: 1024, field3: 0 };
- * ```
+ * フリー・使用中・圧縮の3バリアントからなる discriminated union。
  */
-export interface XRefEntry {
-  /** エントリ型: 0=フリーオブジェクト, 1=通常オブジェクト, 2=オブジェクトストリーム内 */
-  type: 0 | 1 | 2;
-  /** type=0: 次のフリーオブジェクト番号, type=1: ファイル内バイトオフセット, type=2: 親ストリームのオブジェクト番号 */
-  field2: number;
-  /** type=0,1: 世代番号, type=2: ストリーム内インデックス */
-  field3: number;
-}
+export type XRefEntry = XRefFreeEntry | XRefUsedEntry | XRefCompressedEntry;
 
 /**
  * PDF辞書オブジェクト。
@@ -128,14 +159,14 @@ export type PdfObject =
  * @example
  * ```ts
  * const table: XRefTable = {
- *   entries: new Map([[1, { type: 1, field2: 1024, field3: 0 }]]),
+ *   entries: new Map([[ObjectNumber.of(1), { type: 1, offset: ByteOffset.of(1024), generationNumber: GenerationNumber.of(0) }]]),
  *   size: 2,
  * };
  * ```
  */
 export interface XRefTable {
   /** オブジェクト番号 → XRefEntryのマッピング */
-  entries: Map<number, XRefEntry>;
+  entries: Map<ObjectNumber, XRefEntry>;
   /** 最大オブジェクト番号 + 1 */
   size: number;
 }
@@ -147,7 +178,7 @@ export interface XRefTable {
  * @example
  * ```ts
  * const trailer: TrailerDict = {
- *   root: { objectNumber: 1, generationNumber: 0 },
+ *   root: { objectNumber: ObjectNumber.of(1), generationNumber: GenerationNumber.of(0) },
  *   size: 10,
  * };
  * ```
@@ -158,7 +189,7 @@ export interface TrailerDict {
   /** /Size - 相互参照エントリの総数（必須） */
   size: number;
   /** /Prev - 前の相互参照テーブルのバイトオフセット */
-  prev?: number;
+  prev?: ByteOffset;
   /** /Info - ドキュメント情報辞書の間接参照 */
   info?: IndirectRef;
   /** /ID - ファイル識別子 [永続ID, 変更ID] */
@@ -170,14 +201,12 @@ export interface TrailerDict {
  *
  * @example
  * ```ts
- * const id: ObjectId = { objectNumber: 3, generationNumber: 0 };
+ * const id: ObjectId = { objectNumber: ObjectNumber.of(3), generationNumber: GenerationNumber.of(0) };
  * ```
  */
 export type ObjectId = IndirectRef;
 
-export type {
-  Brand,
-  ByteOffset,
-  GenerationNumber,
-  ObjectNumber,
-} from "./brand";
+export type { Brand } from "./brand";
+export { ByteOffset } from "./byte-offset";
+export { GenerationNumber } from "./generation-number";
+export { ObjectNumber } from "./object-number";
