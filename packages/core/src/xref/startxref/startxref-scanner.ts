@@ -6,6 +6,10 @@ import {
 } from "../../lexer/pdf-bytes";
 import type { Result } from "../../result/index";
 import { err, ok } from "../../result/index";
+import {
+  type ByteOffset,
+  ByteOffset as ByteOffsetCompanion,
+} from "../../types/byte-offset";
 
 const PERCENT = 0x25;
 
@@ -62,7 +66,7 @@ function hasTokenBoundary(
  * // result = { ok: false, error: { code: "STARTXREF_NOT_FOUND", message: "%%EOF not found" } }
  * ```
  */
-function failStartXRef(message: string): Result<number, PdfParseError> {
+function failStartXRef(message: string): Result<ByteOffset, PdfParseError> {
   return err({ code: "STARTXREF_NOT_FOUND", message });
 }
 
@@ -98,7 +102,7 @@ function isInsideComment(data: Uint8Array, pos: number): boolean {
  * オフセット値をファイル先頭方向へ逆方向走査する。
  *
  * @param data - PDFファイル全体のバイト配列
- * @returns 成功時は `Ok<number>` でバイトオフセット値を返す。
+ * @returns 成功時は `Ok<ByteOffset>` でバイトオフセット値を返す。
  *   失敗時は `Err<PdfParseError>` で以下のエラーコードを返す:
  *   - `STARTXREF_NOT_FOUND`: %%EOF またはstartxrefキーワードが見つからない場合、
  *     またはオフセット値が不正な場合
@@ -112,7 +116,9 @@ function isInsideComment(data: Uint8Array, pos: number): boolean {
  * }
  * ```
  */
-export function scanStartXRef(data: Uint8Array): Result<number, PdfParseError> {
+export function scanStartXRef(
+  data: Uint8Array,
+): Result<ByteOffset, PdfParseError> {
   const len = data.length;
   const tailStart = Math.max(0, len - STARTXREF_SEARCH_WINDOW);
 
@@ -201,5 +207,5 @@ export function scanStartXRef(data: Uint8Array): Result<number, PdfParseError> {
     return failStartXRef("invalid startxref offset value");
   }
 
-  return ok(value);
+  return ok(ByteOffsetCompanion.of(value));
 }
