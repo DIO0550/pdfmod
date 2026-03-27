@@ -6,6 +6,10 @@ import {
 } from "../../lexer/pdf-bytes";
 import type { Result } from "../../result/index";
 import { err, ok } from "../../result/index";
+import {
+  type ByteOffset,
+  ByteOffset as ByteOffsetCompanion,
+} from "../../types/byte-offset";
 
 const PERCENT = 0x25;
 
@@ -62,7 +66,7 @@ function hasTokenBoundary(
  * // result = { ok: false, error: { code: "STARTXREF_NOT_FOUND", message: "%%EOF not found" } }
  * ```
  */
-function failStartXRef(message: string): Result<number, PdfParseError> {
+function failStartXRef(message: string): Result<ByteOffset, PdfParseError> {
   return err({ code: "STARTXREF_NOT_FOUND", message });
 }
 
@@ -112,7 +116,9 @@ function isInsideComment(data: Uint8Array, pos: number): boolean {
  * }
  * ```
  */
-export function scanStartXRef(data: Uint8Array): Result<number, PdfParseError> {
+export function scanStartXRef(
+  data: Uint8Array,
+): Result<ByteOffset, PdfParseError> {
   const len = data.length;
   const tailStart = Math.max(0, len - STARTXREF_SEARCH_WINDOW);
 
@@ -201,5 +207,5 @@ export function scanStartXRef(data: Uint8Array): Result<number, PdfParseError> {
     return failStartXRef("invalid startxref offset value");
   }
 
-  return ok(value);
+  return ok(ByteOffsetCompanion.of(value));
 }

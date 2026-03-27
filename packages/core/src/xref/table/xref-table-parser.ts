@@ -8,7 +8,17 @@ import type { Option } from "../../option/index";
 import { none, some } from "../../option/index";
 import type { Result } from "../../result/index";
 import { err, ok } from "../../result/index";
-import type { ByteOffset, XRefEntry, XRefTable } from "../../types/index";
+import {
+  type ByteOffset,
+  ByteOffset as ByteOffsetCompanion,
+} from "../../types/byte-offset";
+import { GenerationNumber } from "../../types/generation-number";
+import type {
+  XRefFreeEntry,
+  XRefTable,
+  XRefUsedEntry,
+} from "../../types/index";
+import { ObjectNumber } from "../../types/object-number";
 
 // --- バイト定数 (SCREAMING_SNAKE_CASE) ---
 
@@ -39,7 +49,7 @@ const DECIMAL_RADIX = 10;
  */
 function failXRefTable(
   message: string,
-  offset?: number,
+  offset?: ByteOffset,
 ): Result<{ xref: XRefTable; trailerOffset: ByteOffset }, PdfParseError> {
   return err({ code: "XREF_TABLE_INVALID", message, offset });
 }
@@ -108,12 +118,15 @@ function detectEol(data: Uint8Array, pos: number): number | undefined {
 function parseEntry(
   data: Uint8Array,
   pos: number,
-): Result<{ entry: XRefEntry; nextPos: number }, PdfParseError> {
+): Result<
+  { entry: XRefFreeEntry | XRefUsedEntry; nextPos: number },
+  PdfParseError
+> {
   if (pos + ENTRY_BODY_LENGTH > data.length) {
     return err({
       code: "XREF_TABLE_INVALID",
       message: "xref entry truncated: insufficient data for 18-byte body",
-      offset: pos,
+      offset: ByteOffsetCompanion.of(pos),
     });
   }
 
@@ -123,7 +136,7 @@ function parseEntry(
     return err({
       code: "XREF_TABLE_INVALID",
       message: "xref entry: invalid offset digits",
-      offset: pos,
+      offset: ByteOffsetCompanion.of(pos),
     });
   }
 
@@ -132,7 +145,7 @@ function parseEntry(
     return err({
       code: "XREF_TABLE_INVALID",
       message: "xref entry: expected SPACE after offset",
-      offset: pos + OFFSET_DIGITS,
+      offset: ByteOffsetCompanion.of(pos + OFFSET_DIGITS),
     });
   }
 
@@ -143,7 +156,17 @@ function parseEntry(
     return err({
       code: "XREF_TABLE_INVALID",
       message: "xref entry: invalid generation digits",
-      offset: genPos,
+      offset: ByteOffsetCompanion.of(genPos),
+    });
+  }
+
+  // GenerationNumber バリデーション (0-65535)
+  const genResult = GenerationNumber.create(genValue);
+  if (!genResult.ok) {
+    return err({
+      code: "XREF_TABLE_INVALID",
+      message: `xref entry: invalid generation number ${genValue}`,
+      offset: ByteOffsetCompanion.of(genPos),
     });
   }
 
@@ -153,23 +176,32 @@ function parseEntry(
     return err({
       code: "XREF_TABLE_INVALID",
       message: "xref entry: expected SPACE after generation",
-      offset: flagSepPos,
+      offset: ByteOffsetCompanion.of(flagSepPos),
     });
   }
 
   // status flag ('n' or 'f')
   const flagPos = flagSepPos + 1;
   const flagByte = data[flagPos];
-  let entryType: 0 | 1;
+
+  let entry: XRefFreeEntry | XRefUsedEntry;
   if (flagByte === CHAR_N) {
-    entryType = 1;
+    entry = {
+      type: 1,
+      offset: ByteOffsetCompanion.of(offsetValue),
+      generationNumber: genResult.value,
+    };
   } else if (flagByte === CHAR_F) {
-    entryType = 0;
+    entry = {
+      type: 0,
+      nextFreeObject: ObjectNumber.of(offsetValue),
+      generationNumber: genResult.value,
+    };
   } else {
     return err({
       code: "XREF_TABLE_INVALID",
       message: `xref entry: invalid status flag '${String.fromCharCode(flagByte)}', expected 'n' or 'f'`,
-      offset: flagPos,
+      offset: ByteOffsetCompanion.of(flagPos),
     });
   }
 
@@ -184,7 +216,7 @@ function parseEntry(
     return err({
       code: "XREF_TABLE_INVALID",
       message: "xref entry truncated: missing EOL after 18-byte body",
-      offset: eolScanPos,
+      offset: ByteOffsetCompanion.of(eolScanPos),
     });
   }
   const eolLen = detectEol(data, eolScanPos);
@@ -192,12 +224,12 @@ function parseEntry(
     return err({
       code: "XREF_TABLE_INVALID",
       message: "xref entry: unknown EOL pattern",
-      offset: eolScanPos,
+      offset: ByteOffsetCompanion.of(eolScanPos),
     });
   }
 
   return ok({
-    entry: { type: entryType, field2: offsetValue, field3: genValue },
+    entry,
     nextPos: eolScanPos + eolLen,
   });
 }
@@ -236,7 +268,7 @@ function parseSubsectionHeader(
       return err({
         code: "XREF_TABLE_INVALID",
         message: "xref subsection header: object number overflow",
-        offset: pos,
+        offset: ByteOffsetCompanion.of(pos),
       });
     }
     digits++;
@@ -246,7 +278,7 @@ function parseSubsectionHeader(
     return err({
       code: "XREF_TABLE_INVALID",
       message: "xref subsection header: expected object number",
-      offset: pos,
+      offset: ByteOffsetCompanion.of(pos),
     });
   }
 
@@ -257,7 +289,7 @@ function parseSubsectionHeader(
       code: "XREF_TABLE_INVALID",
       message:
         "xref subsection header: expected whitespace after object number",
-      offset: i,
+      offset: ByteOffsetCompanion.of(i),
     });
   }
   i = nextAfterFirstObj;
@@ -271,7 +303,7 @@ function parseSubsectionHeader(
       return err({
         code: "XREF_TABLE_INVALID",
         message: "xref subsection header: entry count overflow",
-        offset: i - digits,
+        offset: ByteOffsetCompanion.of(i - digits),
       });
     }
     digits++;
@@ -281,7 +313,7 @@ function parseSubsectionHeader(
     return err({
       code: "XREF_TABLE_INVALID",
       message: "xref subsection header: expected entry count",
-      offset: i,
+      offset: ByteOffsetCompanion.of(i),
     });
   }
 
@@ -291,7 +323,7 @@ function parseSubsectionHeader(
       code: "XREF_TABLE_INVALID",
       message:
         "xref subsection header: expected token boundary after entry count",
-      offset: i,
+      offset: ByteOffsetCompanion.of(i),
     });
   }
 
@@ -342,7 +374,7 @@ export function parseXRefTable(
   // xref 後の空白・コメントをスキップ
   let pos = skipWhitespaceAndComments(data, afterXref);
 
-  const entries = new Map<number, XRefEntry>();
+  const entries = new Map<ObjectNumber, XRefFreeEntry | XRefUsedEntry>();
   let size = 0;
 
   // サブセクションループ
@@ -358,7 +390,7 @@ export function parseXRefTable(
     if (!headerOption.some) {
       return ok({
         xref: { entries, size },
-        trailerOffset: pos as ByteOffset,
+        trailerOffset: ByteOffsetCompanion.of(pos),
       });
     }
 
@@ -367,7 +399,7 @@ export function parseXRefTable(
     if (!Number.isSafeInteger(subsectionEnd)) {
       return failXRefTable(
         "xref subsection length exceeds Number.MAX_SAFE_INTEGER",
-        pos,
+        ByteOffsetCompanion.of(pos),
       );
     }
     if (subsectionEnd > size) {
@@ -381,7 +413,7 @@ export function parseXRefTable(
       if (!entryResult.ok) {
         return entryResult;
       }
-      entries.set(firstObj + i, entryResult.value.entry);
+      entries.set(ObjectNumber.of(firstObj + i), entryResult.value.entry);
       entryPos = entryResult.value.nextPos;
     }
 
@@ -389,5 +421,8 @@ export function parseXRefTable(
     pos = skipWhitespaceAndComments(data, entryPos);
   }
 
-  return failXRefTable("trailer keyword not found", pos);
+  return failXRefTable(
+    "trailer keyword not found",
+    ByteOffsetCompanion.of(pos),
+  );
 }

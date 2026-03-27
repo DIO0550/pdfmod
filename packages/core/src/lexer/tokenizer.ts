@@ -1,3 +1,4 @@
+import { ByteOffset } from "../types/byte-offset";
 import { type Token, TokenType } from "../types/index";
 import {
   isPdfDelimiter,
@@ -161,29 +162,46 @@ export class Tokenizer {
     this.skipWhitespaceAndComments();
 
     if (this.pos >= this.data.length) {
-      return { type: TokenType.EOF, value: null, offset: this.pos };
+      return {
+        type: TokenType.EOF,
+        value: null,
+        offset: ByteOffset.of(this.pos),
+      };
     }
 
     const offset = this.pos;
+    const brandedOffset = ByteOffset.of(offset);
     const byte = this.read();
 
     switch (byte) {
       case AsciiLeftBracket:
-        return { type: TokenType.ArrayBegin, value: "[", offset };
+        return {
+          type: TokenType.ArrayBegin,
+          value: "[",
+          offset: brandedOffset,
+        };
       case AsciiRightBracket:
-        return { type: TokenType.ArrayEnd, value: "]", offset };
+        return { type: TokenType.ArrayEnd, value: "]", offset: brandedOffset };
       case AsciiLessThan:
         if (this.peek() === AsciiLessThan) {
           this.pos++;
-          return { type: TokenType.DictBegin, value: "<<", offset };
+          return {
+            type: TokenType.DictBegin,
+            value: "<<",
+            offset: brandedOffset,
+          };
         }
         return this.readHexString(offset);
       case AsciiGreaterThan:
         if (this.peek() === AsciiGreaterThan) {
           this.pos++;
-          return { type: TokenType.DictEnd, value: ">>", offset };
+          return {
+            type: TokenType.DictEnd,
+            value: ">>",
+            offset: brandedOffset,
+          };
         }
-        return { type: TokenType.Keyword, value: ">", offset };
+        return { type: TokenType.Keyword, value: ">", offset: brandedOffset };
       case AsciiLeftParen:
         return this.readLiteralString(offset);
       case AsciiSlash:
@@ -226,7 +244,11 @@ export class Tokenizer {
       }
       this.pos++;
     }
-    return { type: TokenType.HexString, value: hex, offset };
+    return {
+      type: TokenType.HexString,
+      value: hex,
+      offset: ByteOffset.of(offset),
+    };
   }
 
   /**
@@ -262,7 +284,11 @@ export class Tokenizer {
       }
     }
 
-    return { type: TokenType.LiteralString, value: result, offset };
+    return {
+      type: TokenType.LiteralString,
+      value: result,
+      offset: ByteOffset.of(offset),
+    };
   }
 
   /**
@@ -349,7 +375,7 @@ export class Tokenizer {
         this.pos++;
       }
     }
-    return { type: TokenType.Name, value: name, offset };
+    return { type: TokenType.Name, value: name, offset: ByteOffset.of(offset) };
   }
 
   /**
@@ -401,13 +427,18 @@ export class Tokenizer {
       }
     }
 
+    const brandedOff = ByteOffset.of(offset);
     if (hasDecimal) {
-      return { type: TokenType.Real, value: parseFloat(str), offset };
+      return {
+        type: TokenType.Real,
+        value: parseFloat(str),
+        offset: brandedOff,
+      };
     }
     return {
       type: TokenType.Integer,
       value: parseInt(str, DecimalRadix),
-      offset,
+      offset: brandedOff,
     };
   }
 
@@ -437,17 +468,18 @@ export class Tokenizer {
       this.pos++;
     }
 
+    const brandedOff = ByteOffset.of(offset);
     if (str === "true") {
-      return { type: TokenType.Boolean, value: true, offset };
+      return { type: TokenType.Boolean, value: true, offset: brandedOff };
     }
     if (str === "false") {
-      return { type: TokenType.Boolean, value: false, offset };
+      return { type: TokenType.Boolean, value: false, offset: brandedOff };
     }
     if (str === "null") {
-      return { type: TokenType.Null, value: null, offset };
+      return { type: TokenType.Null, value: null, offset: brandedOff };
     }
 
-    return { type: TokenType.Keyword, value: str, offset };
+    return { type: TokenType.Keyword, value: str, offset: brandedOff };
   }
 
   /**
