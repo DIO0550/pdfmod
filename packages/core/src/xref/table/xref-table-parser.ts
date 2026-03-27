@@ -346,7 +346,7 @@ function parseSubsectionHeader(
  *
  * @example
  * ```ts
- * const result = parseXRefTable(data, startXRefOffset as ByteOffset);
+ * const result = parseXRefTable(data, startXRefOffset);
  * if (result.ok) {
  *   const { xref, trailerOffset } = result.value;
  *   console.log(`entries: ${xref.entries.size}, size: ${xref.size}`);
