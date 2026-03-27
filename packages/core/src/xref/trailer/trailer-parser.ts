@@ -636,7 +636,7 @@ function buildTrailerDict(
   if (!rootGenResult.ok) {
     return err({
       code: "ROOT_NOT_FOUND",
-      message: "/Root entry is not an indirect reference",
+      message: "/Root entry has an invalid generation number (out of range)",
       offset: rootEntry.offset,
     });
   }
