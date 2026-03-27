@@ -14,6 +14,7 @@ import {
 } from "../../types/byte-offset";
 import { GenerationNumber } from "../../types/generation-number";
 import type {
+  XRefEntry,
   XRefFreeEntry,
   XRefTable,
   XRefUsedEntry,
@@ -374,7 +375,7 @@ export function parseXRefTable(
   // xref 後の空白・コメントをスキップ
   let pos = skipWhitespaceAndComments(data, afterXref);
 
-  const entries = new Map<ObjectNumber, XRefFreeEntry | XRefUsedEntry>();
+  const entries = new Map<ObjectNumber, XRefEntry>();
   let size = 0;
 
   // サブセクションループ
