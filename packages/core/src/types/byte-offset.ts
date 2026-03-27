@@ -8,8 +8,10 @@ type ByteOffset = Brand<number, typeof ByteOffsetBrand>;
 
 const ByteOffset = {
   create(n: number): Result<ByteOffset, string> {
-    if (!Number.isInteger(n) || n < 0) {
-      return err(`Invalid ByteOffset: ${n} (must be a non-negative integer)`);
+    if (!Number.isSafeInteger(n) || n < 0) {
+      return err(
+        `Invalid ByteOffset: ${n} (must be a non-negative safe integer)`,
+      );
     }
     return ok(n as ByteOffset);
   },
