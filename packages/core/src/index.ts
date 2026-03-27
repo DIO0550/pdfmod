@@ -20,17 +20,22 @@ export * as Option from "./option/index";
 export * as Result from "./result/index";
 export type {
   Brand,
-  ByteOffset,
-  GenerationNumber,
   IndirectRef,
   ObjectId,
-  ObjectNumber,
   PdfDictionary,
   PdfObject,
   Token,
   TrailerDict,
+  XRefCompressedEntry,
   XRefEntry,
+  XRefFreeEntry,
   XRefTable,
+  XRefUsedEntry,
 } from "./types/index";
-export { TokenType } from "./types/index";
+export {
+  ByteOffset,
+  GenerationNumber,
+  ObjectNumber,
+  TokenType,
+} from "./types/index";
 export { parseTrailer, parseXRefTable, scanStartXRef } from "./xref/index";

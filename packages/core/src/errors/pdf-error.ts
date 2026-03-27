@@ -1,3 +1,4 @@
+import type { ByteOffset } from "../types/byte-offset";
 import type { ObjectId } from "../types/index";
 
 /**
@@ -41,7 +42,7 @@ export type PdfErrorCode =
  * const error: PdfParseError = {
  *   code: "STARTXREF_NOT_FOUND",
  *   message: "startxrefキーワードが見つかりません",
- *   offset: 1024,
+ *   offset: ByteOffset.of(1024),
  * };
  * ```
  */
@@ -51,7 +52,7 @@ export interface PdfParseError {
   /** 人間可読なエラーメッセージ */
   readonly message: string;
   /** 問題が検出されたバイトオフセット */
-  readonly offset?: number;
+  readonly offset?: ByteOffset;
 }
 
 /**

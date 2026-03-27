@@ -7,13 +7,11 @@ import {
 import { Tokenizer } from "../../lexer/tokenizer";
 import type { Result } from "../../result/index";
 import { err, ok } from "../../result/index";
-import type {
-  ByteOffset,
-  PdfObject,
-  Token,
-  TrailerDict,
-} from "../../types/index";
+import { ByteOffset as BO, type ByteOffset } from "../../types/byte-offset";
+import { GenerationNumber } from "../../types/generation-number";
+import type { PdfObject, Token, TrailerDict } from "../../types/index";
 import { TokenType } from "../../types/index";
+import { ObjectNumber } from "../../types/object-number";
 
 // --- バイト定数 (SCREAMING_SNAKE_CASE) ---
 
@@ -33,7 +31,7 @@ const MAX_BYTE_VALUE = 0xff;
  */
 function failTrailer(
   message: string,
-  offset?: number,
+  offset?: ByteOffset,
 ): Result<TrailerDict, PdfParseError> {
   return err({ code: "XREF_TABLE_INVALID", message, offset });
 }
@@ -42,7 +40,6 @@ function failTrailer(
 
 /**
  * hex 文字列を Uint8Array に変換する。奇数長の場合は末尾に 0 をパディングする。
- * 不正な 16進文字が含まれる場合は `undefined` を返す。
  *
  * @param hex - 16進文字列
  * @returns 変換されたバイト配列、または不正文字を含む場合は `undefined`
@@ -61,7 +58,6 @@ function hexStringToBytes(hex: string): Uint8Array | undefined {
 
 /**
  * リテラル文字列の各文字をバイト値として Uint8Array に変換する。
- * code unit が 0-255 の範囲外の場合は `undefined` を返す。
  *
  * @param str - リテラル文字列
  * @returns 変換されたバイト配列、または範囲外の code unit を含む場合は `undefined`
@@ -84,7 +80,7 @@ function literalStringToBytes(str: string): Uint8Array | undefined {
  * @param offset - 問題が検出されたバイトオフセット
  * @returns `Err<PdfParseError>` (コード: NESTING_TOO_DEEP)
  */
-function failNestingTooDeep(offset: number): Result<never, PdfParseError> {
+function failNestingTooDeep(offset: ByteOffset): Result<never, PdfParseError> {
   return err({
     code: "NESTING_TOO_DEEP",
     message: "nesting depth exceeds maximum allowed limit",
@@ -98,14 +94,14 @@ function failNestingTooDeep(offset: number): Result<never, PdfParseError> {
  * @param tokens - バッファ付きトークナイザ
  * @param baseOffset - エラー報告用のベースオフセット
  * @param depth - 現在のネスト深さ
- * @param entryOffset - この構造の開始トークンの絶対オフセット（深さ超過時のエラー位置に使用）
+ * @param entryOffset - この構造の開始トークンの絶対オフセット
  * @returns 成功時は `Ok<void>`、失敗時は `Err<PdfParseError>`
  */
 function skipNestedArray(
   tokens: BufferedTokenizer,
-  baseOffset: number,
+  baseOffset: ByteOffset,
   depth: number,
-  entryOffset: number,
+  entryOffset: ByteOffset,
 ): Result<void, PdfParseError> {
   if (depth >= MAX_NESTING_DEPTH) {
     return failNestingTooDeep(entryOffset);
@@ -119,14 +115,14 @@ function skipNestedArray(
       return err({
         code: "XREF_TABLE_INVALID",
         message: "unexpected end of data while skipping value",
-        offset: baseOffset + token.offset,
+        offset: BO.add(baseOffset, token.offset),
       });
     }
     if (token.type === TokenType.DictEnd) {
       return err({
         code: "XREF_TABLE_INVALID",
         message: "unexpected >> while skipping array value",
-        offset: baseOffset + token.offset,
+        offset: BO.add(baseOffset, token.offset),
       });
     }
     if (token.type === TokenType.ArrayBegin) {
@@ -134,7 +130,7 @@ function skipNestedArray(
         tokens,
         baseOffset,
         depth + 1,
-        baseOffset + token.offset,
+        BO.add(baseOffset, token.offset),
       );
       if (!r.ok) {
         return r;
@@ -144,7 +140,7 @@ function skipNestedArray(
         tokens,
         baseOffset,
         depth + 1,
-        baseOffset + token.offset,
+        BO.add(baseOffset, token.offset),
       );
       if (!r.ok) {
         return r;
@@ -159,19 +155,18 @@ function skipNestedArray(
  * @param tokens - バッファ付きトークナイザ
  * @param baseOffset - エラー報告用のベースオフセット
  * @param depth - 現在のネスト深さ
- * @param entryOffset - この構造の開始トークンの絶対オフセット（深さ超過時のエラー位置に使用）
+ * @param entryOffset - この構造の開始トークンの絶対オフセット
  * @returns 成功時は `Ok<void>`、失敗時は `Err<PdfParseError>`
  */
 function skipNestedDict(
   tokens: BufferedTokenizer,
-  baseOffset: number,
+  baseOffset: ByteOffset,
   depth: number,
-  entryOffset: number,
+  entryOffset: ByteOffset,
 ): Result<void, PdfParseError> {
   if (depth >= MAX_NESTING_DEPTH) {
     return failNestingTooDeep(entryOffset);
   }
-  // key/value ペア単位で消費し、Name 値を key と誤認しないようにする
   while (true) {
     const keyToken = tokens.next();
     if (keyToken.type === TokenType.DictEnd) {
@@ -181,27 +176,25 @@ function skipNestedDict(
       return err({
         code: "XREF_TABLE_INVALID",
         message: "unexpected end of data while skipping value",
-        offset: baseOffset + keyToken.offset,
+        offset: BO.add(baseOffset, keyToken.offset),
       });
     }
     if (keyToken.type === TokenType.ArrayEnd) {
       return err({
         code: "XREF_TABLE_INVALID",
         message: "unexpected ] while skipping dictionary value",
-        offset: baseOffset + keyToken.offset,
+        offset: BO.add(baseOffset, keyToken.offset),
       });
     }
-    // key は Name であるべき。それ以外はスキップして再同期
     if (keyToken.type !== TokenType.Name) {
       continue;
     }
-    // value を1トークン読み取り、配列・辞書の場合は再帰的に消費
     const valueToken = tokens.next();
     if (valueToken.type === TokenType.EOF) {
       return err({
         code: "XREF_TABLE_INVALID",
         message: "unexpected end of data while skipping value",
-        offset: baseOffset + valueToken.offset,
+        offset: BO.add(baseOffset, valueToken.offset),
       });
     }
     if (valueToken.type === TokenType.ArrayBegin) {
@@ -209,7 +202,7 @@ function skipNestedDict(
         tokens,
         baseOffset,
         depth + 1,
-        baseOffset + valueToken.offset,
+        BO.add(baseOffset, valueToken.offset),
       );
       if (!r.ok) {
         return r;
@@ -219,13 +212,12 @@ function skipNestedDict(
         tokens,
         baseOffset,
         depth + 1,
-        baseOffset + valueToken.offset,
+        BO.add(baseOffset, valueToken.offset),
       );
       if (!r.ok) {
         return r;
       }
     }
-    // Integer の場合、間接参照 (Int Int R) の可能性がある
     if (valueToken.type === TokenType.Integer) {
       const second = tokens.next();
       if (second.type === TokenType.Integer) {
@@ -241,29 +233,19 @@ function skipNestedDict(
   }
 }
 
-/** 辞書エントリの値と、その値の開始バイトオフセットを保持する。 */
 interface DictEntry {
   value: PdfObject;
-  offset: number;
+  offset: ByteOffset;
 }
 
-/** Tokenizer にトークンの push-back 機能を付加するラッパー。間接参照の先読みに使用する。 */
 class BufferedTokenizer {
   private tokenizer: Tokenizer;
   private buffer: Token[] = [];
 
-  /**
-   * @param tokenizer - ラップ対象の Tokenizer
-   */
   constructor(tokenizer: Tokenizer) {
     this.tokenizer = tokenizer;
   }
 
-  /**
-   * 次のトークンを返す。バッファにトークンがあればそちらを優先する。
-   *
-   * @returns 次のトークン
-   */
   next(): Token {
     const buffered = this.buffer.pop();
     if (buffered) {
@@ -272,11 +254,6 @@ class BufferedTokenizer {
     return this.tokenizer.nextToken();
   }
 
-  /**
-   * トークンをバッファに戻し、次回の next() で再取得できるようにする。
-   *
-   * @param token - 戻すトークン
-   */
   pushBack(token: Token): void {
     this.buffer.push(token);
   }
@@ -294,10 +271,10 @@ class BufferedTokenizer {
 function readValue(
   firstToken: Token,
   tokens: BufferedTokenizer,
-  baseOffset: number,
+  baseOffset: ByteOffset,
   depth = 0,
 ): Result<DictEntry, PdfParseError> {
-  const offset = baseOffset + firstToken.offset;
+  const offset = BO.add(baseOffset, firstToken.offset);
 
   switch (firstToken.type) {
     case TokenType.Integer: {
@@ -414,7 +391,7 @@ function readValue(
  */
 function readArrayElements(
   tokens: BufferedTokenizer,
-  baseOffset: number,
+  baseOffset: ByteOffset,
   depth = 0,
 ): Result<PdfObject[], PdfParseError> {
   const elements: PdfObject[] = [];
@@ -428,7 +405,7 @@ function readArrayElements(
         code: "XREF_TABLE_INVALID",
         message:
           "unexpected end of data while parsing array in trailer dictionary",
-        offset: baseOffset + token.offset,
+        offset: BO.add(baseOffset, token.offset),
       });
     }
     const elemResult = readValue(token, tokens, baseOffset, depth);
@@ -453,9 +430,9 @@ const ID_MAX_ELEMENTS = 2;
 function readIdArray(
   valueToken: Token,
   tokens: BufferedTokenizer,
-  baseOffset: number,
+  baseOffset: ByteOffset,
 ): Result<DictEntry, PdfParseError> {
-  const offset = baseOffset + valueToken.offset;
+  const offset = BO.add(baseOffset, valueToken.offset);
   if (valueToken.type !== TokenType.ArrayBegin) {
     return err({
       code: "XREF_TABLE_INVALID",
@@ -477,14 +454,14 @@ function readIdArray(
         code: "XREF_TABLE_INVALID",
         message:
           "unexpected end of data while parsing /ID array in trailer dictionary",
-        offset: baseOffset + token.offset,
+        offset: BO.add(baseOffset, token.offset),
       });
     }
     if (elements.length >= ID_MAX_ELEMENTS) {
       return err({
         code: "XREF_TABLE_INVALID",
         message: "/ID entry must be a 2-element array of strings",
-        offset: baseOffset + token.offset,
+        offset: BO.add(baseOffset, token.offset),
       });
     }
     const elemResult = readValue(token, tokens, baseOffset, 0);
@@ -497,7 +474,6 @@ function readIdArray(
 
 /**
  * 未サポートキーの値をトークンストリームから読み飛ばす。
- * スカラ値・配列・辞書のいずれにも対応し、オブジェクトは構築しない。
  *
  * @param firstToken - 読み取り済みの値の先頭トークン
  * @param tokens - バッファ付きトークナイザ
@@ -507,14 +483,14 @@ function readIdArray(
 function skipValue(
   firstToken: Token,
   tokens: BufferedTokenizer,
-  baseOffset: number,
+  baseOffset: ByteOffset,
 ): Result<void, PdfParseError> {
   if (firstToken.type === TokenType.ArrayBegin) {
     return skipNestedArray(
       tokens,
       baseOffset,
       0,
-      baseOffset + firstToken.offset,
+      BO.add(baseOffset, firstToken.offset),
     );
   }
   if (firstToken.type === TokenType.DictBegin) {
@@ -522,10 +498,9 @@ function skipValue(
       tokens,
       baseOffset,
       0,
-      baseOffset + firstToken.offset,
+      BO.add(baseOffset, firstToken.offset),
     );
   }
-  // Integer の場合、間接参照 (Int Int R) の可能性があるためトークンを先読みして消費する
   if (firstToken.type === TokenType.Integer) {
     const second = tokens.next();
     if (second.type === TokenType.Integer) {
@@ -537,7 +512,6 @@ function skipValue(
     }
     tokens.pushBack(second);
   }
-  // スカラ値は firstToken が消費済みなので何もしない
   return ok(undefined);
 }
 
@@ -550,14 +524,14 @@ function skipValue(
  */
 function parseDictTokens(
   tokens: BufferedTokenizer,
-  baseOffset: number,
+  baseOffset: ByteOffset,
 ): Result<Map<string, DictEntry>, PdfParseError> {
   const beginToken = tokens.next();
   if (beginToken.type !== TokenType.DictBegin) {
     return err({
       code: "XREF_TABLE_INVALID",
       message: "expected dictionary start (<<) after trailer keyword",
-      offset: baseOffset + beginToken.offset,
+      offset: BO.add(baseOffset, beginToken.offset),
     });
   }
 
@@ -574,7 +548,7 @@ function parseDictTokens(
       return err({
         code: "XREF_TABLE_INVALID",
         message: "unexpected end of data while parsing trailer dictionary",
-        offset: baseOffset + token.offset,
+        offset: BO.add(baseOffset, token.offset),
       });
     }
 
@@ -582,7 +556,7 @@ function parseDictTokens(
       return err({
         code: "XREF_TABLE_INVALID",
         message: "expected name key in trailer dictionary",
-        offset: baseOffset + token.offset,
+        offset: BO.add(baseOffset, token.offset),
       });
     }
 
@@ -593,7 +567,7 @@ function parseDictTokens(
       return err({
         code: "XREF_TABLE_INVALID",
         message: "unexpected end of data while parsing trailer dictionary",
-        offset: baseOffset + valueToken.offset,
+        offset: BO.add(baseOffset, valueToken.offset),
       });
     }
 
@@ -601,7 +575,7 @@ function parseDictTokens(
       return err({
         code: "XREF_TABLE_INVALID",
         message: "expected value for key in trailer dictionary",
-        offset: baseOffset + valueToken.offset,
+        offset: BO.add(baseOffset, valueToken.offset),
       });
     }
 
@@ -656,9 +630,19 @@ function buildTrailerDict(
       offset: rootEntry.offset,
     });
   }
+  const rootGenResult = GenerationNumber.create(
+    rootEntry.value.generationNumber,
+  );
+  if (!rootGenResult.ok) {
+    return err({
+      code: "ROOT_NOT_FOUND",
+      message: "/Root entry is not an indirect reference",
+      offset: rootEntry.offset,
+    });
+  }
   const root = {
-    objectNumber: rootEntry.value.objectNumber,
-    generationNumber: rootEntry.value.generationNumber,
+    objectNumber: ObjectNumber.of(rootEntry.value.objectNumber),
+    generationNumber: rootGenResult.value,
   };
 
   // /Size - required, must be non-negative integer
@@ -697,7 +681,7 @@ function buildTrailerDict(
         prevEntry.offset,
       );
     }
-    result.prev = prevEntry.value.value as number;
+    result.prev = BO.of(prevEntry.value.value as number);
   }
 
   // /Info - optional, IndirectRef
@@ -715,9 +699,18 @@ function buildTrailerDict(
         infoEntry.offset,
       );
     }
+    const infoGenResult = GenerationNumber.create(
+      infoEntry.value.generationNumber,
+    );
+    if (!infoGenResult.ok) {
+      return failTrailer(
+        "/Info entry is not an indirect reference",
+        infoEntry.offset,
+      );
+    }
     result.info = {
-      objectNumber: infoEntry.value.objectNumber,
-      generationNumber: infoEntry.value.generationNumber,
+      objectNumber: ObjectNumber.of(infoEntry.value.objectNumber),
+      generationNumber: infoGenResult.value,
     };
   }
 
@@ -793,7 +786,7 @@ export function parseTrailer(
   const dictStart = skipWhitespaceAndComments(data, afterTrailer);
   const subData = data.subarray(dictStart);
   const tokens = new BufferedTokenizer(new Tokenizer(subData));
-  const baseOffset = dictStart;
+  const baseOffset = BO.of(dictStart);
 
   // 辞書パース
   const dictResult = parseDictTokens(tokens, baseOffset);

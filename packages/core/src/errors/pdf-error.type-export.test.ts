@@ -9,6 +9,8 @@ import type {
   PdfWarning,
   PdfWarningCode,
 } from "../index";
+import { GenerationNumber } from "../types/generation-number";
+import { ObjectNumber } from "../types/object-number";
 
 test("PdfParseErrorCodeは7つのコードを持つ", () => {
   const codes: PdfParseErrorCode[] = [
@@ -31,7 +33,10 @@ test("型エクスポートが利用可能", () => {
     code: "EOF_NOT_FOUND",
     message: "EOF marker not found",
   };
-  const objectId: ObjectId = { objectNumber: 1, generationNumber: 0 };
+  const objectId: ObjectId = {
+    objectNumber: ObjectNumber.of(1),
+    generationNumber: GenerationNumber.of(0),
+  };
   const parseError: PdfParseError = { code: "INVALID_HEADER", message: "test" };
   const circularError: PdfCircularReferenceError = {
     code: "CIRCULAR_REFERENCE",
