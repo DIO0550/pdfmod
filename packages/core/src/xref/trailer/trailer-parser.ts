@@ -704,7 +704,7 @@ function buildTrailerDict(
     );
     if (!infoGenResult.ok) {
       return failTrailer(
-        "/Info entry is not an indirect reference",
+        "/Info entry generation number must be in range 0-65535",
         infoEntry.offset,
       );
     }
