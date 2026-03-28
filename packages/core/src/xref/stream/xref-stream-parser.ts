@@ -9,6 +9,7 @@ import { ObjectNumber } from "../../types/object-number";
 
 const BYTE_BASE = 256;
 const W_ARRAY_LENGTH = 3;
+const MAX_FIELD_WIDTH = 8;
 
 interface XRefStreamParams {
   readonly data: Uint8Array;
@@ -177,6 +178,11 @@ export function decodeXRefStreamEntries(
   for (let i = 0; i < W_ARRAY_LENGTH; i++) {
     if (!Number.isSafeInteger(w[i]) || w[i] < 0) {
       return failXRefStream("/W array element must be non-negative integer");
+    }
+    if (w[i] > MAX_FIELD_WIDTH) {
+      return failXRefStream(
+        `/W field width ${w[i]} exceeds maximum ${MAX_FIELD_WIDTH} bytes`,
+      );
     }
   }
 

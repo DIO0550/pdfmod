@@ -47,6 +47,15 @@ test("/W配列の要素が非安全整数の場合にエラー", () => {
   expect(result.error.code).toBe("XREF_STREAM_INVALID");
 });
 
+test("/W配列のフィールド幅が上限(8バイト)を超える場合にエラー", () => {
+  const data = new Uint8Array([]);
+  const result = decodeXRefStreamEntries({ data, w: [1, 9, 1], size: 0 });
+
+  assert(!result.ok);
+  expect(result.error.code).toBe("XREF_STREAM_INVALID");
+  expect(result.error.message).toContain("exceeds maximum 8 bytes");
+});
+
 test("sizeが負の場合にエラー", () => {
   const data = new Uint8Array([]);
   const result = decodeXRefStreamEntries({ data, w: [1, 2, 1], size: -1 });
@@ -202,7 +211,7 @@ test("/Index配列のcountが非安全整数の場合にエラー", () => {
   expect(result.error.code).toBe("XREF_STREAM_INVALID");
 });
 
-test("entryWidth（w[0]+w[1]+w[2]）が非安全整数の場合にエラー", () => {
+test("entryWidthやexpectedBytesのオーバーフローはフィールド幅上限で先に防止される", () => {
   const data = new Uint8Array([]);
   const result = decodeXRefStreamEntries({
     data,
@@ -212,25 +221,7 @@ test("entryWidth（w[0]+w[1]+w[2]）が非安全整数の場合にエラー", ()
 
   assert(!result.ok);
   expect(result.error.code).toBe("XREF_STREAM_INVALID");
-  expect(result.error.message).toContain(
-    "entry width exceeds safe integer range",
-  );
-});
-
-test("expectedBytes（totalEntries * entryWidth）が非安全整数の場合にエラー", () => {
-  const data = new Uint8Array([]);
-  const result = decodeXRefStreamEntries({
-    data,
-    w: [1, Number.MAX_SAFE_INTEGER - 1, 0],
-    size: 2,
-    index: [0, 2],
-  });
-
-  assert(!result.ok);
-  expect(result.error.code).toBe("XREF_STREAM_INVALID");
-  expect(result.error.message).toContain(
-    "expected data length exceeds safe integer range",
-  );
+  expect(result.error.message).toContain("exceeds maximum 8 bytes");
 });
 
 test("totalEntries（各countの合計）が非安全整数の場合にエラー", () => {
