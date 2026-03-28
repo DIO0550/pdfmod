@@ -82,12 +82,10 @@ xref ストリームは PDF 1.5 で導入された相互参照テーブルのバ
 ### decodeXRefStreamEntries 関数
 
 ```typescript
-import type { Result, PdfParseError, XRefTable } from "@pdfmod/core";
-
-function decodeXRefStreamEntries(params: XRefStreamParams): Result.Result<XRefTable, PdfParseError>;
+function decodeXRefStreamEntries(params: XRefStreamParams): Result<XRefTable, PdfParseError>;
 ```
 
-解凍済みバイト列のデコードのみを担当する。辞書解析・`/Type /XRef` 検証・ストリーム展開・trailer 抽出は上位の `parseXRefStream`（別 Issue）が担当する。
+現時点では内部 API であり、`@pdfmod/core` からは直接 import できない。公開 import パスは上位 `parseXRefStream` API 実装時に確定する。解凍済みバイト列のデコードのみを担当し、辞書解析・`/Type /XRef` 検証・ストリーム展開・trailer 抽出は上位の `parseXRefStream`（別 Issue）が担当する。
 
 ### XRefStreamParams 入力型
 
@@ -97,6 +95,7 @@ interface XRefStreamParams {
   readonly w: readonly [number, number, number]; // /W 配列
   readonly size: number;         // /Size 値
   readonly index?: readonly number[]; // /Index 配列（省略可）
+  readonly baseOffset?: ByteOffset;  // ストリームのPDFファイル内開始オフセット（エラー報告用、省略時は0）
 }
 ```
 
