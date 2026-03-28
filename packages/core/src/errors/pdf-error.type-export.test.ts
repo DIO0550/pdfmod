@@ -12,17 +12,18 @@ import type {
 import { GenerationNumber } from "../types/generation-number";
 import { ObjectNumber } from "../types/object-number";
 
-test("PdfParseErrorCodeは7つのコードを持つ", () => {
+test("PdfParseErrorCodeは8つのコードを持つ", () => {
   const codes: PdfParseErrorCode[] = [
     "INVALID_HEADER",
     "STARTXREF_NOT_FOUND",
     "XREF_TABLE_INVALID",
+    "XREF_STREAM_INVALID",
     "ROOT_NOT_FOUND",
     "SIZE_NOT_FOUND",
     "MEDIABOX_NOT_FOUND",
     "NESTING_TOO_DEEP",
   ];
-  expect(codes).toHaveLength(7);
+  expect(codes).toHaveLength(8);
 });
 
 test("型エクスポートが利用可能", () => {
