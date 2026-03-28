@@ -143,7 +143,7 @@ function decodeIntBE(data, offset, width):
 
 | ケース | エラーメッセージ例 | 検出タイミング |
 |:-------|:-----------------|:-------------|
-| /W 配列に負の値・非整数・非安全整数 | `"/W array element must be non-negative integer"` | 入力バリデーション |
+| /W 配列に負の値・非整数・非安全整数 | `"/W array element must be non-negative safe integer"` | 入力バリデーション |
 | size が負数・非整数・非安全整数 | `"invalid /Size value"` | 入力バリデーション |
 | entryWidth が非安全整数 | `"entry width exceeds safe integer range"` | 入力バリデーション |
 | /Index 配列の要素数が奇数 | `"/Index array must have even number of elements"` | サブセクション解決 |

@@ -184,7 +184,9 @@ export function decodeXRefStreamEntries(
   }
   for (let i = 0; i < W_ARRAY_LENGTH; i++) {
     if (!Number.isSafeInteger(w[i]) || w[i] < 0) {
-      return failXRefStream("/W array element must be non-negative integer");
+      return failXRefStream(
+        "/W array element must be non-negative safe integer",
+      );
     }
     if (w[i] > MAX_FIELD_WIDTH) {
       return failXRefStream(
