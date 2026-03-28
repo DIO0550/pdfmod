@@ -127,7 +127,7 @@ interface XRefStreamParams {
 function decodeIntBE(data, offset, width):
   if width === 0: return Ok(0)
   value = 0
-  for i in 0..width:
+  for i in 0..width-1:
     value = value * 256 + data[offset + i]
   if value > MAX_SAFE_INTEGER: return Err(...)
   return Ok(value)
