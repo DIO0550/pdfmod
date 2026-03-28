@@ -263,3 +263,20 @@ test("totalEntries（各countの合計）が非安全整数の場合にエラー
   const { error } = result as Err<PdfParseError>;
   expect(error.code).toBe("XREF_STREAM_INVALID");
 });
+
+test("entryWidth=0 かつ totalEntries>0 の場合にエラー（CPU DoS防止）", () => {
+  const data = new Uint8Array([]);
+  const result = decodeXRefStreamEntries({
+    data,
+    w: [0, 0, 0],
+    size: 100,
+    index: [0, 100],
+  });
+
+  expect(result.ok).toBe(false);
+  const { error } = result as Err<PdfParseError>;
+  expect(error.code).toBe("XREF_STREAM_INVALID");
+  expect(error.message).toContain(
+    "entry width is 0 but total entries is non-zero",
+  );
+});

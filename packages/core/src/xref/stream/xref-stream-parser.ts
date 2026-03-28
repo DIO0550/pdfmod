@@ -227,6 +227,10 @@ export function decodeXRefStreamEntries(
     }
   }
 
+  if (entryWidth === 0 && totalEntries > 0) {
+    return failXRefStream("entry width is 0 but total entries is non-zero");
+  }
+
   const expectedBytes = totalEntries * entryWidth;
   if (!Number.isSafeInteger(expectedBytes)) {
     return failXRefStream("expected data length exceeds safe integer range");
