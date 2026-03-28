@@ -101,17 +101,11 @@ function decodeEntry(
     case 0: {
       const objNumResult = ObjectNumber.create(field2);
       if (!objNumResult.ok) {
-        return failXRefStream(
-          `invalid ObjectNumber: ${objNumResult.error}`,
-          streamOffset,
-        );
+        return failXRefStream(objNumResult.error, streamOffset);
       }
       const genResult = GenerationNumber.create(field3);
       if (!genResult.ok) {
-        return failXRefStream(
-          `invalid GenerationNumber: ${genResult.error}`,
-          streamOffset,
-        );
+        return failXRefStream(genResult.error, streamOffset);
       }
       return ok({
         type: 0,
@@ -122,17 +116,11 @@ function decodeEntry(
     case 1: {
       const offsetResult = ByteOffsetNs.create(field2);
       if (!offsetResult.ok) {
-        return failXRefStream(
-          `invalid ByteOffset: ${offsetResult.error}`,
-          streamOffset,
-        );
+        return failXRefStream(offsetResult.error, streamOffset);
       }
       const genResult = GenerationNumber.create(field3);
       if (!genResult.ok) {
-        return failXRefStream(
-          `invalid GenerationNumber: ${genResult.error}`,
-          streamOffset,
-        );
+        return failXRefStream(genResult.error, streamOffset);
       }
       return ok({
         type: 1,
@@ -143,10 +131,7 @@ function decodeEntry(
     case 2: {
       const streamObjResult = ObjectNumber.create(field2);
       if (!streamObjResult.ok) {
-        return failXRefStream(
-          `invalid ObjectNumber: ${streamObjResult.error}`,
-          streamOffset,
-        );
+        return failXRefStream(streamObjResult.error, streamOffset);
       }
       if (!Number.isSafeInteger(field3) || field3 < 0) {
         return failXRefStream(`invalid indexInStream: ${field3}`, streamOffset);
@@ -253,7 +238,7 @@ export function decodeXRefStreamEntries(
 
       const objNumResult = ObjectNumber.create(firstObj + i);
       if (!objNumResult.ok) {
-        return failXRefStream(`invalid ObjectNumber: ${objNumResult.error}`);
+        return failXRefStream(objNumResult.error);
       }
 
       entries.set(objNumResult.value, entryResult.value);
