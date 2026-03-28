@@ -47,10 +47,9 @@ function decodeIntBE(
   if (width === 0) {
     return ok(0);
   }
-  let value = 0;
-  for (let i = 0; i < width; i++) {
-    value = value * BYTE_BASE + data[offset + i];
-  }
+  const value = data
+    .subarray(offset, offset + width)
+    .reduce((acc, byte) => acc * BYTE_BASE + byte, 0);
   if (value > Number.MAX_SAFE_INTEGER) {
     return failXRefStream("decoded integer exceeds safe integer range");
   }
