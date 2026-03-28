@@ -18,7 +18,8 @@ export type PdfParseErrorCode =
   | "ROOT_NOT_FOUND"
   | "SIZE_NOT_FOUND"
   | "MEDIABOX_NOT_FOUND"
-  | "NESTING_TOO_DEEP";
+  | "NESTING_TOO_DEEP"
+  | "FLATEDECODE_FAILED";
 
 /**
  * 全致命的PDFエラーコードの共用体型。
