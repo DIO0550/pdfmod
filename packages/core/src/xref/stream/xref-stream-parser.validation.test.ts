@@ -23,7 +23,7 @@ test("/W配列に負の値がある場合にエラー", () => {
   assert(!result.ok);
   expect(result.error.code).toBe("XREF_STREAM_INVALID");
   expect(result.error.message).toContain(
-    "/W array element must be non-negative integer",
+    "/W array element must be non-negative safe integer",
   );
 });
 
