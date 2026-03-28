@@ -135,7 +135,7 @@ function decodeIntBE(data, offset, width):
 
 **decodeEntry** — 1 エントリのデコード。デフォルト値適用 → Type 分岐 → ブランド型バリデーション。
 
-**failXRefStream** — エラー生成ヘルパー。`message` + オプショナルな `offset` でストリーム内相対位置を含む。
+**failXRefStream** — エラー生成ヘルパー。`message` + オプショナルな `offset`（`baseOffset` + エントリ内相対位置から算出した PDF ファイル内絶対バイトオフセット）を含む。
 
 ## エラーケースと Result 型
 
