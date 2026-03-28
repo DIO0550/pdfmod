@@ -8,10 +8,9 @@ import { Tokenizer } from "../../lexer/tokenizer";
 import type { Result } from "../../result/index";
 import { err, ok } from "../../result/index";
 import { ByteOffset as BO, type ByteOffset } from "../../types/byte-offset";
-import { GenerationNumber } from "../../types/generation-number";
 import type { PdfObject, Token, TrailerDict } from "../../types/index";
 import { TokenType } from "../../types/index";
-import { ObjectNumber } from "../../types/object-number";
+import { trailerDictBuilder } from "./trailer-dict-builder";
 
 // --- バイト定数 (SCREAMING_SNAKE_CASE) ---
 
@@ -609,145 +608,19 @@ function parseDictTokens(
 function buildTrailerDict(
   entries: Map<string, DictEntry>,
 ): Result<TrailerDict, PdfParseError> {
-  // /Root - required, must be IndirectRef
   const rootEntry = entries.get("Root");
-  if (!rootEntry) {
-    return err({
-      code: "ROOT_NOT_FOUND",
-      message: "/Root entry is missing in trailer dictionary",
-    });
-  }
-  if (
-    rootEntry.value.type !== "indirect-ref" ||
-    !Number.isSafeInteger(rootEntry.value.objectNumber) ||
-    !Number.isSafeInteger(rootEntry.value.generationNumber) ||
-    rootEntry.value.objectNumber < 0 ||
-    rootEntry.value.generationNumber < 0
-  ) {
-    return err({
-      code: "ROOT_NOT_FOUND",
-      message: "/Root entry is not an indirect reference",
-      offset: rootEntry.offset,
-    });
-  }
-  const rootGenResult = GenerationNumber.create(
-    rootEntry.value.generationNumber,
-  );
-  if (!rootGenResult.ok) {
-    return err({
-      code: "ROOT_NOT_FOUND",
-      message: "/Root entry has an invalid generation number (out of range)",
-      offset: rootEntry.offset,
-    });
-  }
-  const root = {
-    objectNumber: ObjectNumber.of(rootEntry.value.objectNumber),
-    generationNumber: rootGenResult.value,
-  };
-
-  // /Size - required, must be non-negative integer
   const sizeEntry = entries.get("Size");
-  if (!sizeEntry) {
-    return err({
-      code: "SIZE_NOT_FOUND",
-      message: "/Size entry is missing in trailer dictionary",
-    });
-  }
-  if (
-    sizeEntry.value.type !== "integer" ||
-    !Number.isSafeInteger(sizeEntry.value.value as number) ||
-    (sizeEntry.value.value as number) < 0
-  ) {
-    return err({
-      code: "SIZE_NOT_FOUND",
-      message: "/Size entry is not a non-negative integer",
-      offset: sizeEntry.offset,
-    });
-  }
-  const size = sizeEntry.value.value as number;
-
-  const result: TrailerDict = { root, size };
-
-  // /Prev - optional, non-negative integer
   const prevEntry = entries.get("Prev");
-  if (prevEntry) {
-    if (
-      prevEntry.value.type !== "integer" ||
-      !Number.isSafeInteger(prevEntry.value.value as number) ||
-      (prevEntry.value.value as number) < 0
-    ) {
-      return failTrailer(
-        "/Prev entry is not a non-negative integer",
-        prevEntry.offset,
-      );
-    }
-    result.prev = BO.of(prevEntry.value.value as number);
-  }
-
-  // /Info - optional, IndirectRef
   const infoEntry = entries.get("Info");
-  if (infoEntry) {
-    if (
-      infoEntry.value.type !== "indirect-ref" ||
-      !Number.isSafeInteger(infoEntry.value.objectNumber) ||
-      !Number.isSafeInteger(infoEntry.value.generationNumber) ||
-      infoEntry.value.objectNumber < 0 ||
-      infoEntry.value.generationNumber < 0
-    ) {
-      return failTrailer(
-        "/Info entry is not an indirect reference",
-        infoEntry.offset,
-      );
-    }
-    const infoGenResult = GenerationNumber.create(
-      infoEntry.value.generationNumber,
-    );
-    if (!infoGenResult.ok) {
-      return failTrailer(
-        "/Info entry generation number must be in range 0-65535",
-        infoEntry.offset,
-      );
-    }
-    result.info = {
-      objectNumber: ObjectNumber.of(infoEntry.value.objectNumber),
-      generationNumber: infoGenResult.value,
-    };
-  }
-
-  // /ID - optional, must be 2-element array of string objects
   const idEntry = entries.get("ID");
-  if (idEntry) {
-    if (idEntry.value.type !== "array") {
-      return failTrailer(
-        "/ID entry must be a 2-element array of strings",
-        idEntry.offset,
-      );
-    }
-    const elements = idEntry.value.elements;
-    if (elements.length !== 2) {
-      return failTrailer(
-        "/ID entry must be a 2-element array of strings",
-        idEntry.offset,
-      );
-    }
-    const idPair: [Uint8Array, Uint8Array] = [
-      new Uint8Array(0),
-      new Uint8Array(0),
-    ];
-    for (let i = 0; i < 2; i++) {
-      const elem = elements[i];
-      if (elem.type !== "string") {
-        return failTrailer(
-          "/ID entry must be a 2-element array of strings",
-          idEntry.offset,
-        );
-      }
-      idPair[i] = elem.value;
-    }
-    result.id = idPair;
-  }
 
-  return ok(result);
+  return trailerDictBuilder("XREF_TABLE_INVALID")
+    .root(rootEntry?.value, rootEntry?.offset)
+    .size(sizeEntry?.value, sizeEntry?.offset)
+    .prev(prevEntry?.value, prevEntry?.offset)
+    .info(infoEntry?.value, infoEntry?.offset)
+    .id(idEntry?.value, idEntry?.offset)
+    .build();
 }
 
 /**
