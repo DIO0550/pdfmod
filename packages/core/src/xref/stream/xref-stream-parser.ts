@@ -1,6 +1,6 @@
-import type { PdfParseError } from "../../errors/pdf-error";
+import type { PdfParseError } from "../../errors/index";
+import type { Result } from "../../result/index";
 import { err, ok } from "../../result/index";
-import type { Result } from "../../result/result";
 import type { ByteOffset } from "../../types/byte-offset";
 import { ByteOffset as ByteOffsetNs } from "../../types/byte-offset";
 import { GenerationNumber } from "../../types/generation-number";
