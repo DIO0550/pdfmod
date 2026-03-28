@@ -248,7 +248,10 @@ export function decodeXRefStreamEntries(
 
       const objNumResult = ObjectNumber.create(firstObj + i);
       if (!objNumResult.ok) {
-        return failXRefStream(objNumResult.error);
+        return failXRefStream(
+          objNumResult.error,
+          ByteOffsetNs.add(baseOffset, ByteOffsetNs.of(dataOffset)),
+        );
       }
 
       entries.set(objNumResult.value, entryResult.value);
