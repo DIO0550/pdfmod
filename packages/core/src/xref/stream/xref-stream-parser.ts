@@ -21,7 +21,7 @@ interface XRefStreamParams {
 /**
  * xrefストリーム固有のエラーを生成する。
  * @param message - エラーメッセージ
- * @param offset - ストリーム内の相対バイトオフセット
+ * @param offset - PDFファイル内の絶対バイトオフセット（baseOffset + エントリ内位置）
  * @returns XREF_STREAM_INVALID エラーの Err
  */
 function failXRefStream(
