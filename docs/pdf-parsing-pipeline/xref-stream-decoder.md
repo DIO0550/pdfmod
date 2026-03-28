@@ -84,7 +84,7 @@ xref ストリームは PDF 1.5 で導入された相互参照テーブルのバ
 ```typescript
 import type { Result, PdfParseError, XRefTable } from "@pdfmod/core";
 
-function decodeXRefStreamEntries(params: XRefStreamParams): Result<XRefTable, PdfParseError>;
+function decodeXRefStreamEntries(params: XRefStreamParams): Result.Result<XRefTable, PdfParseError>;
 ```
 
 解凍済みバイト列のデコードのみを担当する。辞書解析・`/Type /XRef` 検証・ストリーム展開・trailer 抽出は上位の `parseXRefStream`（別 Issue）が担当する。
