@@ -71,6 +71,9 @@ function decodeEntry(
 ): Result<XRefEntry, PdfParseError> {
   const absoluteOffset = ByteOffsetNs.add(baseOffset, ByteOffsetNs.of(offset));
 
+  const field2Start = offset + w[0];
+  const field3Start = field2Start + w[1];
+
   const typeResult = decodeIntBE(data, offset, w[0]);
   if (!typeResult.ok) {
     return failXRefStream(
@@ -79,19 +82,19 @@ function decodeEntry(
     );
   }
 
-  const field2Result = decodeIntBE(data, offset + w[0], w[1]);
+  const field2Result = decodeIntBE(data, field2Start, w[1]);
   if (!field2Result.ok) {
     return failXRefStream(
       "decoded integer exceeds safe integer range",
-      absoluteOffset,
+      ByteOffsetNs.add(baseOffset, ByteOffsetNs.of(field2Start)),
     );
   }
 
-  const field3Result = decodeIntBE(data, offset + w[0] + w[1], w[2]);
+  const field3Result = decodeIntBE(data, field3Start, w[2]);
   if (!field3Result.ok) {
     return failXRefStream(
       "decoded integer exceeds safe integer range",
-      absoluteOffset,
+      ByteOffsetNs.add(baseOffset, ByteOffsetNs.of(field3Start)),
     );
   }
 
