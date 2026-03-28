@@ -163,8 +163,9 @@ function decodeIntBE(data, offset, width):
 ### 基本使用例（Type 1 のみ、/Index 省略）
 
 ```typescript
-// 内部API（ルートエクスポートは上位 parseXRefStream 実装時に追加予定）
-import { decodeXRefStreamEntries } from "../xref/stream/index";
+// NOTE: decodeXRefStreamEntries は現在内部APIです。
+// 公開 import パスは上位 parseXRefStream API 実装時に確定します。
+import { decodeXRefStreamEntries } from "@pdfmod/core";
 
 // /W [1 2 1], /Size 3, /Index省略（デフォルト [0, 3]）
 // Type 1 エントリ3件: offset=9(gen=0), offset=74(gen=0), offset=120(gen=0)
