@@ -4,6 +4,10 @@
  * およびtrailer辞書解析機能を提供する。
  */
 export { scanStartXRef } from "./startxref/index";
-export { decodeXRefStreamEntries } from "./stream/index";
+export {
+  buildXRefStreamTrailerDict,
+  decodeXRefStreamEntries,
+  decompressFlate,
+} from "./stream/index";
 export { parseXRefTable } from "./table/index";
-export { parseTrailer } from "./trailer/index";
+export { parseTrailer, trailerDictBuilder } from "./trailer/index";
