@@ -70,16 +70,23 @@ function decodeEntry(
   w: readonly [number, number, number],
   baseOffset: ByteOffset,
 ): Result<XRefEntry, PdfParseError> {
-  const absoluteOffset = ByteOffsetNs.add(baseOffset, ByteOffsetNs.of(offset));
-
   const field2Start = offset + w[0];
   const field3Start = field2Start + w[1];
+  const absTypeOffset = ByteOffsetNs.add(baseOffset, ByteOffsetNs.of(offset));
+  const absField2Offset = ByteOffsetNs.add(
+    baseOffset,
+    ByteOffsetNs.of(field2Start),
+  );
+  const absField3Offset = ByteOffsetNs.add(
+    baseOffset,
+    ByteOffsetNs.of(field3Start),
+  );
 
   const typeResult = decodeIntBE(data, offset, w[0]);
   if (!typeResult.ok) {
     return failXRefStream(
       "decoded integer exceeds safe integer range",
-      absoluteOffset,
+      absTypeOffset,
     );
   }
 
@@ -87,7 +94,7 @@ function decodeEntry(
   if (!field2Result.ok) {
     return failXRefStream(
       "decoded integer exceeds safe integer range",
-      ByteOffsetNs.add(baseOffset, ByteOffsetNs.of(field2Start)),
+      absField2Offset,
     );
   }
 
@@ -95,7 +102,7 @@ function decodeEntry(
   if (!field3Result.ok) {
     return failXRefStream(
       "decoded integer exceeds safe integer range",
-      ByteOffsetNs.add(baseOffset, ByteOffsetNs.of(field3Start)),
+      absField3Offset,
     );
   }
 
@@ -107,11 +114,11 @@ function decodeEntry(
     case 0: {
       const objNumResult = ObjectNumber.create(field2);
       if (!objNumResult.ok) {
-        return failXRefStream(objNumResult.error, absoluteOffset);
+        return failXRefStream(objNumResult.error, absField2Offset);
       }
       const genResult = GenerationNumber.create(field3);
       if (!genResult.ok) {
-        return failXRefStream(genResult.error, absoluteOffset);
+        return failXRefStream(genResult.error, absField3Offset);
       }
       return ok({
         type: 0,
@@ -122,11 +129,11 @@ function decodeEntry(
     case 1: {
       const offsetResult = ByteOffsetNs.create(field2);
       if (!offsetResult.ok) {
-        return failXRefStream(offsetResult.error, absoluteOffset);
+        return failXRefStream(offsetResult.error, absField2Offset);
       }
       const genResult = GenerationNumber.create(field3);
       if (!genResult.ok) {
-        return failXRefStream(genResult.error, absoluteOffset);
+        return failXRefStream(genResult.error, absField3Offset);
       }
       return ok({
         type: 1,
@@ -137,12 +144,12 @@ function decodeEntry(
     case 2: {
       const streamObjResult = ObjectNumber.create(field2);
       if (!streamObjResult.ok) {
-        return failXRefStream(streamObjResult.error, absoluteOffset);
+        return failXRefStream(streamObjResult.error, absField2Offset);
       }
       if (!Number.isSafeInteger(field3) || field3 < 0) {
         return failXRefStream(
           `invalid indexInStream: ${field3}`,
-          absoluteOffset,
+          absField3Offset,
         );
       }
       return ok({
@@ -152,7 +159,7 @@ function decodeEntry(
       });
     }
     default:
-      return failXRefStream(`unknown xref entry type: ${type}`, absoluteOffset);
+      return failXRefStream(`unknown xref entry type: ${type}`, absTypeOffset);
   }
 }
 
