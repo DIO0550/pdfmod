@@ -12,18 +12,30 @@ import type {
 import { GenerationNumber } from "../types/generation-number";
 import { ObjectNumber } from "../types/object-number";
 
-test("PdfParseErrorCodeは8つのコードを持つ", () => {
-  const codes: PdfParseErrorCode[] = [
-    "INVALID_HEADER",
-    "STARTXREF_NOT_FOUND",
-    "XREF_TABLE_INVALID",
-    "XREF_STREAM_INVALID",
-    "ROOT_NOT_FOUND",
-    "SIZE_NOT_FOUND",
-    "MEDIABOX_NOT_FOUND",
-    "NESTING_TOO_DEEP",
-  ];
-  expect(codes).toHaveLength(8);
+type Exact<T, U> = [T] extends [U] ? ([U] extends [T] ? true : false) : false;
+
+const allPdfParseErrorCodes = [
+  "INVALID_HEADER",
+  "STARTXREF_NOT_FOUND",
+  "XREF_TABLE_INVALID",
+  "XREF_STREAM_INVALID",
+  "ROOT_NOT_FOUND",
+  "SIZE_NOT_FOUND",
+  "MEDIABOX_NOT_FOUND",
+  "NESTING_TOO_DEEP",
+  "FLATEDECODE_FAILED",
+] as const satisfies readonly PdfParseErrorCode[];
+
+// 配列の要素型がPdfParseErrorCodeと完全一致することを型レベルで保証
+// PdfParseErrorCodeに新しいコードが追加された場合、ここでコンパイルエラーになる
+const _exhaustive: Exact<
+  (typeof allPdfParseErrorCodes)[number],
+  PdfParseErrorCode
+> = true;
+
+test("PdfParseErrorCodeは網羅的に列挙されている", () => {
+  expect(_exhaustive).toBe(true);
+  expect(allPdfParseErrorCodes).toHaveLength(9);
 });
 
 test("型エクスポートが利用可能", () => {
