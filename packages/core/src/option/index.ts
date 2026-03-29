@@ -2,7 +2,7 @@
  * Option型とそのコンビネータ関数群を提供するモジュール。
  * nullable値を型安全に扱うための抽象化を実現する。
  */
-export type { None, Option, Some } from "./option";
+export type { None, Option, Some } from "./option/index";
 export {
   flatMap,
   fromNullable,
@@ -12,4 +12,4 @@ export {
   some,
   toResult,
   unwrapOr,
-} from "./option";
+} from "./option/index";

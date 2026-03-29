@@ -5,9 +5,7 @@
  * @packageDocumentation
  */
 
-export type { PdfPageProps } from "./components/PdfPage";
-export { PdfPage } from "./components/PdfPage";
-export type { PdfViewerProps } from "./components/PdfViewer";
-export { PdfViewer } from "./components/PdfViewer";
-export type { PdfDocumentState } from "./hooks/usePdfDocument";
-export { usePdfDocument } from "./hooks/usePdfDocument";
+export type { PdfPageProps, PdfViewerProps } from "./components/index";
+export { PdfPage, PdfViewer } from "./components/index";
+export type { PdfDocumentState } from "./hooks/index";
+export { usePdfDocument } from "./hooks/index";

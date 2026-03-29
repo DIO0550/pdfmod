@@ -1,10 +1,10 @@
 import { assert, expect, test } from "vitest";
-import { ByteOffset } from "../types/byte-offset";
-import { GenerationNumber } from "../types/generation-number";
-import { ObjectNumber } from "../types/object-number";
-import { scanStartXRef } from "./startxref/startxref-scanner";
-import { parseXRefTable } from "./table/xref-table-parser";
-import { parseTrailer } from "./trailer/trailer-parser";
+import { ByteOffset } from "../types/byte-offset/index";
+import { GenerationNumber } from "../types/generation-number/index";
+import { ObjectNumber } from "../types/object-number/index";
+import { scanStartXRef } from "./startxref/startxref-scanner/index";
+import { parseXRefTable } from "./table/xref-table-parser/index";
+import { parseTrailer } from "./trailer/trailer-parser/index";
 
 test("scanStartXRefの結果をparseXRefTableに渡してend-to-endで解析する", () => {
   const pdf =
