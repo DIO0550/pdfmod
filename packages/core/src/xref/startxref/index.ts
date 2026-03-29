@@ -1,1 +1,1 @@
-export { scanStartXRef } from "./startxref-scanner";
+export { scanStartXRef } from "./startxref-scanner/index";
