@@ -19,7 +19,7 @@ const DEFAULT_MAX_DECOMPRESSED_SIZE =
  * @returns 展開されたバイト列、または `FLATEDECODE_FAILED` エラー
  */
 export async function decompressFlate(
-  data: Uint8Array,
+  data: Uint8Array<ArrayBuffer>,
   maxDecompressedSize: number = DEFAULT_MAX_DECOMPRESSED_SIZE,
 ): Promise<Result<Uint8Array, PdfParseError>> {
   if (
@@ -48,7 +48,7 @@ export async function decompressFlate(
 
     let writeError: unknown;
     const writePromise = writer
-      .write(new Uint8Array(data))
+      .write(data)
       .then(() => writer.close())
       .catch((e: unknown) => {
         writeError = e;
