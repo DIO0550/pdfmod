@@ -48,7 +48,8 @@ export async function decompressFlate(
 
     let writeError: unknown;
     const writePromise = writer
-      .write(data as Uint8Array<ArrayBuffer>)
+      // @ts-expect-error -- TS lib types narrow BufferSource to ArrayBufferView<ArrayBuffer>, but Uint8Array<ArrayBufferLike> is accepted at runtime
+      .write(data)
       .then(() => writer.close())
       .catch((e: unknown) => {
         writeError = e;
