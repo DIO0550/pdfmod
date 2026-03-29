@@ -74,10 +74,11 @@ export async function decompressFlate(
         });
       }
       if (totalLength > result.length) {
+        const previousLength = totalLength - value.length;
         const next = new Uint8Array(
           Math.min(result.length * 2, maxDecompressedSize),
         );
-        next.set(result);
+        next.set(result.subarray(0, previousLength));
         result = next;
       }
       result.set(value, totalLength - value.length);
