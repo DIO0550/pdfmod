@@ -153,16 +153,32 @@ export function trailerDictBuilder(
 
       // /Info - optional, IndirectRef
       if (_info) {
+        if (_info.type !== "indirect-ref") {
+          return err({
+            code: optionalFieldErrorCode,
+            message: "/Info entry is not an indirect reference",
+            offset: _infoOffset,
+          });
+        }
         if (
-          _info.type !== "indirect-ref" ||
           !Number.isSafeInteger(_info.objectNumber) ||
+          _info.objectNumber < 0
+        ) {
+          return err({
+            code: optionalFieldErrorCode,
+            message:
+              "/Info entry has an invalid object number (must be a non-negative safe integer)",
+            offset: _infoOffset,
+          });
+        }
+        if (
           !Number.isSafeInteger(_info.generationNumber) ||
-          _info.objectNumber < 0 ||
           _info.generationNumber < 0
         ) {
           return err({
             code: optionalFieldErrorCode,
-            message: "/Info entry is not an indirect reference",
+            message:
+              "/Info entry has an invalid generation number (must be a non-negative safe integer)",
             offset: _infoOffset,
           });
         }
