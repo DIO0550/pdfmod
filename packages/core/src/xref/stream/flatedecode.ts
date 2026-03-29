@@ -36,7 +36,7 @@ export async function decompressFlate(
 
     let writeError: unknown;
     const writePromise = writer
-      .write(data as Uint8Array<ArrayBuffer>)
+      .write(data)
       .then(() => writer.close())
       .catch((e: unknown) => {
         writeError = e;
