@@ -126,14 +126,13 @@ async function readAllChunks(
  * @returns promise と hasWriteError 関数を持つオブジェクト
  */
 function writeData(
-  writer: WritableStreamDefaultWriter,
+  writer: WritableStreamDefaultWriter<BufferSource>,
   reader: ReadableStreamDefaultReader<Uint8Array>,
   data: Uint8Array,
 ): { promise: Promise<void>; hasWriteError: () => boolean } {
   let hasError = false;
 
   const promise = writer
-    // TODO: lib に ES2024 を追加すれば Uint8Array → BufferSource の互換が解消されキャスト不要になる
     .write(data as unknown as BufferSource)
     .then(() => writer.close())
     .catch(() => {
