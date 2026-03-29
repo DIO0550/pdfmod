@@ -39,31 +39,31 @@ export function trailerDictBuilder(
   let _id: PdfObject | undefined;
   let _idOffset: ByteOffset | undefined;
 
-  return {
+  const chain: TrailerDictBuilderChain = {
     root(value?: PdfObject, offset?: ByteOffset) {
       _root = value;
       _rootOffset = offset;
-      return this;
+      return chain;
     },
     size(value?: PdfObject, offset?: ByteOffset) {
       _size = value;
       _sizeOffset = offset;
-      return this;
+      return chain;
     },
     prev(value?: PdfObject, offset?: ByteOffset) {
       _prev = value;
       _prevOffset = offset;
-      return this;
+      return chain;
     },
     info(value?: PdfObject, offset?: ByteOffset) {
       _info = value;
       _infoOffset = offset;
-      return this;
+      return chain;
     },
     id(value?: PdfObject, offset?: ByteOffset) {
       _id = value;
       _idOffset = offset;
-      return this;
+      return chain;
     },
     build(): Result<TrailerDict, PdfParseError> {
       // /Root - required, must be IndirectRef
@@ -205,4 +205,6 @@ export function trailerDictBuilder(
       return ok(result);
     },
   };
+
+  return chain;
 }
