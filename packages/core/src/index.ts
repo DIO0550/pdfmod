@@ -15,6 +15,7 @@ export type {
   PdfWarningCode,
 } from "./errors/index";
 export { Tokenizer } from "./lexer/index";
+export { NumberEx } from "./number-ex/index";
 export { LRUCache } from "./objects/index";
 export * as Option from "./option/index";
 export * as Result from "./result/index";
