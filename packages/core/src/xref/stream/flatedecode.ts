@@ -22,6 +22,18 @@ export async function decompressFlate(
   data: Uint8Array,
   maxDecompressedSize: number = DEFAULT_MAX_DECOMPRESSED_SIZE,
 ): Promise<Result<Uint8Array, PdfParseError>> {
+  if (
+    !Number.isFinite(maxDecompressedSize) ||
+    !Number.isSafeInteger(maxDecompressedSize) ||
+    maxDecompressedSize <= 0
+  ) {
+    return err({
+      code: "FLATEDECODE_FAILED",
+      message:
+        "Invalid maxDecompressedSize: must be a finite, positive safe integer",
+    });
+  }
+
   if (data.length === 0) {
     return err({
       code: "FLATEDECODE_FAILED",
