@@ -64,8 +64,8 @@ export async function decompressFlate(
       }
       totalLength += value.length;
       if (totalLength > maxDecompressedSize) {
-        await reader.cancel();
-        await writer.abort();
+        await reader.cancel().catch(() => {});
+        await writer.abort().catch(() => {});
         return err({
           code: "FLATEDECODE_FAILED",
           message: `Decompressed size exceeds limit of ${maxDecompressedSize} bytes`,
