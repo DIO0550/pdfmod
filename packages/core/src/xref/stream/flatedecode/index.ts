@@ -130,18 +130,18 @@ function writeData(
   reader: ReadableStreamDefaultReader<Uint8Array>,
   data: Uint8Array,
 ): { promise: Promise<void>; hasWriteError: () => boolean } {
-  let writeError: unknown;
+  let hasError = false;
 
   const promise = writer
     // TODO: lib に ES2024 を追加すれば Uint8Array → BufferSource の互換が解消されキャスト不要になる
     .write(data as unknown as BufferSource)
     .then(() => writer.close())
-    .catch((e: unknown) => {
-      writeError = e;
+    .catch(() => {
+      hasError = true;
       reader.cancel().catch(() => {});
     });
 
-  return { promise, hasWriteError: () => writeError !== undefined };
+  return { promise, hasWriteError: () => hasError };
 }
 
 /**
