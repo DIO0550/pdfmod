@@ -78,7 +78,7 @@ export async function decompressFlate(
  */
 async function readAllChunks(
   reader: ReadableStreamDefaultReader<Uint8Array>,
-  writer: WritableStreamDefaultWriter,
+  writer: WritableStreamDefaultWriter<BufferSource>,
   maxDecompressedSize: number,
 ): Promise<Result<Uint8Array, PdfParseError>> {
   let buffer = new Uint8Array(
