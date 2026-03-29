@@ -1,4 +1,5 @@
 import type { PdfParseError } from "../../../errors/index";
+import { NumberEx } from "../../../number-ex/index";
 import type { Result } from "../../../result/index";
 import { err, ok } from "../../../result/index";
 
@@ -22,11 +23,7 @@ export async function decompressFlate(
   data: Uint8Array,
   maxDecompressedSize: number = DEFAULT_MAX_DECOMPRESSED_SIZE,
 ): Promise<Result<Uint8Array, PdfParseError>> {
-  if (
-    !Number.isFinite(maxDecompressedSize) ||
-    !Number.isSafeInteger(maxDecompressedSize) ||
-    maxDecompressedSize <= 0
-  ) {
+  if (!NumberEx.isPositiveSafeInteger(maxDecompressedSize)) {
     return err({
       code: "FLATEDECODE_FAILED",
       message:
@@ -46,61 +43,118 @@ export async function decompressFlate(
     const writer = ds.writable.getWriter();
     const reader = ds.readable.getReader();
 
-    let writeError: unknown;
-    const writePromise = writer
-      .write(data as unknown as BufferSource)
-      .then(() => writer.close())
-      .catch((e: unknown) => {
-        writeError = e;
-        reader.cancel().catch(() => {});
-      });
-
-    let result = new Uint8Array(
-      maxDecompressedSize < BYTES_PER_MB ? maxDecompressedSize : BYTES_PER_MB,
-    );
-    let totalLength = 0;
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) {
-        break;
-      }
-      totalLength += value.length;
-      if (totalLength > maxDecompressedSize) {
-        await reader.cancel().catch(() => {});
-        await writer.abort().catch(() => {});
-        return err({
-          code: "FLATEDECODE_FAILED",
-          message: `Decompressed size exceeds limit of ${maxDecompressedSize} bytes`,
-        });
-      }
-      if (totalLength > result.length) {
-        const previousLength = totalLength - value.length;
-        const next = new Uint8Array(
-          Math.min(
-            Math.max(totalLength, result.length * 2),
-            maxDecompressedSize,
-          ),
-        );
-        next.set(result.subarray(0, previousLength));
-        result = next;
-      }
-      result.set(value, totalLength - value.length);
+    const { promise, hasWriteError } = writeData(writer, reader, data);
+    const readResult = await readAllChunks(reader, writer, maxDecompressedSize);
+    if (!readResult.ok) {
+      return readResult;
     }
 
-    await writePromise;
+    await promise;
 
-    if (writeError !== undefined) {
+    if (hasWriteError()) {
       return err({
         code: "FLATEDECODE_FAILED",
         message: "FlateDecode decompression failed during write",
       });
     }
 
-    return ok(result.subarray(0, totalLength));
+    return ok(readResult.value);
   } catch {
     return err({
       code: "FLATEDECODE_FAILED",
       message: "FlateDecode decompression failed",
     });
   }
+}
+
+/**
+ * ストリームから全チャンクを読み取り、バッファに結合して返す。
+ * サイズ超過時はストリームを中断し Err を返す。
+ *
+ * @param reader - 読み取りストリームリーダー
+ * @param writer - 書き込みストリームライター（サイズ超過時の中断用）
+ * @param maxDecompressedSize - 展開後の最大バイト数
+ * @returns 結合済みバイト列、またはサイズ超過エラー
+ */
+async function readAllChunks(
+  reader: ReadableStreamDefaultReader<Uint8Array>,
+  writer: WritableStreamDefaultWriter,
+  maxDecompressedSize: number,
+): Promise<Result<Uint8Array, PdfParseError>> {
+  let buffer = new Uint8Array(
+    maxDecompressedSize < BYTES_PER_MB ? maxDecompressedSize : BYTES_PER_MB,
+  );
+  let totalLength = 0;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) {
+      break;
+    }
+
+    totalLength += value.length;
+
+    if (totalLength > maxDecompressedSize) {
+      await abortStreams(reader, writer);
+      return err({
+        code: "FLATEDECODE_FAILED",
+        message: `Decompressed size exceeds limit of ${maxDecompressedSize} bytes`,
+      });
+    }
+
+    if (totalLength > buffer.length) {
+      const next = new Uint8Array(
+        Math.min(Math.max(totalLength, buffer.length * 2), maxDecompressedSize),
+      );
+      next.set(buffer.subarray(0, totalLength - value.length));
+      buffer = next;
+    }
+
+    buffer.set(value, totalLength - value.length);
+  }
+
+  return ok(buffer.subarray(0, totalLength));
+}
+
+/**
+ * 圧縮データをストリームに書き込み、完了後にクローズする。
+ * 書き込みエラー発生時は reader をキャンセルし、エラー状態をクロージャに保持する。
+ *
+ * @param writer - 書き込みストリームライター
+ * @param reader - 読み取りストリームリーダー（エラー時キャンセル用）
+ * @param data - 書き込む圧縮データ
+ * @returns promise と hasWriteError 関数を持つオブジェクト
+ */
+function writeData(
+  writer: WritableStreamDefaultWriter,
+  reader: ReadableStreamDefaultReader<Uint8Array>,
+  data: Uint8Array,
+): { promise: Promise<void>; hasWriteError: () => boolean } {
+  let writeError: unknown;
+
+  const promise = writer
+    // TODO: lib に ES2024 を追加すれば Uint8Array → BufferSource の互換が解消されキャスト不要になる
+    .write(data as unknown as BufferSource)
+    .then(() => writer.close())
+    .catch((e: unknown) => {
+      writeError = e;
+      reader.cancel().catch(() => {});
+    });
+
+  return { promise, hasWriteError: () => writeError !== undefined };
+}
+
+/**
+ * reader と writer のストリームを安全に中断する。
+ *
+ * @param reader - 読み取りストリームリーダー
+ * @param writer - 書き込みストリームライター
+ * @returns ストリーム中断完了後に解決する Promise
+ */
+async function abortStreams(
+  reader: ReadableStreamDefaultReader,
+  writer: WritableStreamDefaultWriter,
+): Promise<void> {
+  await reader.cancel().catch(() => {});
+  await writer.abort().catch(() => {});
 }
