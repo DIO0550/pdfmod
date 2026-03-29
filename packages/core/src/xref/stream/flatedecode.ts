@@ -2,6 +2,12 @@ import type { PdfParseError } from "../../errors/index";
 import type { Result } from "../../result/index";
 import { err, ok } from "../../result/index";
 
+const DEFAULT_MAX_DECOMPRESSED_MB = 100;
+const BYTES_PER_KB = 1024;
+const BYTES_PER_MB = BYTES_PER_KB * BYTES_PER_KB;
+const DEFAULT_MAX_DECOMPRESSED_SIZE =
+  DEFAULT_MAX_DECOMPRESSED_MB * BYTES_PER_MB;
+
 /**
  * zlib形式の圧縮データ（FlateDecode）を展開する。
  *
@@ -9,10 +15,12 @@ import { err, ok } from "../../result/index";
  * 純粋なzlib展開のみを行い、Predictor逆変換は呼び出し側の責務。
  *
  * @param data - zlib圧縮された入力バイト列
+ * @param maxDecompressedSize - 展開後の最大バイト数（デフォルト: 100MB）。超過時はエラーを返す
  * @returns 展開されたバイト列、または `FLATEDECODE_FAILED` エラー
  */
 export async function decompressFlate(
   data: Uint8Array,
+  maxDecompressedSize: number = DEFAULT_MAX_DECOMPRESSED_SIZE,
 ): Promise<Result<Uint8Array, PdfParseError>> {
   if (data.length === 0) {
     return err({
@@ -42,8 +50,16 @@ export async function decompressFlate(
       if (done) {
         break;
       }
-      chunks.push(value);
       totalLength += value.length;
+      if (totalLength > maxDecompressedSize) {
+        await reader.cancel();
+        await writer.abort();
+        return err({
+          code: "FLATEDECODE_FAILED",
+          message: `Decompressed size exceeds limit of ${maxDecompressedSize} bytes`,
+        });
+      }
+      chunks.push(value);
     }
 
     await writePromise;
