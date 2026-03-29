@@ -73,16 +73,29 @@ export function trailerDictBuilder(
           message: "/Root entry is missing in trailer dictionary",
         });
       }
+      if (_root.type !== "indirect-ref") {
+        return err({
+          code: "ROOT_NOT_FOUND",
+          message: "/Root entry is not an indirect reference",
+          offset: _rootOffset,
+        });
+      }
+      if (!Number.isSafeInteger(_root.objectNumber) || _root.objectNumber < 0) {
+        return err({
+          code: "ROOT_NOT_FOUND",
+          message:
+            "/Root entry has an invalid object number (must be a non-negative safe integer)",
+          offset: _rootOffset,
+        });
+      }
       if (
-        _root.type !== "indirect-ref" ||
-        !Number.isSafeInteger(_root.objectNumber) ||
         !Number.isSafeInteger(_root.generationNumber) ||
-        _root.objectNumber < 0 ||
         _root.generationNumber < 0
       ) {
         return err({
           code: "ROOT_NOT_FOUND",
-          message: "/Root entry is not an indirect reference",
+          message:
+            "/Root entry has an invalid generation number (must be a non-negative safe integer)",
           offset: _rootOffset,
         });
       }
