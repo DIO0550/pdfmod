@@ -133,7 +133,7 @@ function writeData(
   let hasError = false;
 
   const promise = writer
-    .write(data as unknown as BufferSource)
+    .write(data as BufferSource)
     .then(() => writer.close())
     .catch(() => {
       hasError = true;
