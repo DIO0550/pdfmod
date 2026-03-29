@@ -26,10 +26,14 @@ export async function decompressFlate(
     const writer = ds.writable.getWriter();
     const reader = ds.readable.getReader();
 
+    let writeError: unknown;
     const writePromise = writer
       .write(data as Uint8Array<ArrayBuffer>)
       .then(() => writer.close())
-      .catch(() => {});
+      .catch((e: unknown) => {
+        writeError = e;
+        reader.cancel().catch(() => {});
+      });
 
     const chunks: Uint8Array[] = [];
     let totalLength = 0;
@@ -43,6 +47,13 @@ export async function decompressFlate(
     }
 
     await writePromise;
+
+    if (writeError !== undefined) {
+      return err({
+        code: "FLATEDECODE_FAILED",
+        message: "FlateDecode decompression failed during write",
+      });
+    }
 
     const result = new Uint8Array(totalLength);
     let offset = 0;
