@@ -56,7 +56,9 @@ export async function decompressFlate(
         reader.cancel().catch(() => {});
       });
 
-    const chunks: Uint8Array[] = [];
+    let result = new Uint8Array(
+      maxDecompressedSize < BYTES_PER_MB ? maxDecompressedSize : BYTES_PER_MB,
+    );
     let totalLength = 0;
     for (;;) {
       const { done, value } = await reader.read();
@@ -72,7 +74,14 @@ export async function decompressFlate(
           message: `Decompressed size exceeds limit of ${maxDecompressedSize} bytes`,
         });
       }
-      chunks.push(value);
+      if (totalLength > result.length) {
+        const next = new Uint8Array(
+          Math.min(result.length * 2, maxDecompressedSize),
+        );
+        next.set(result);
+        result = next;
+      }
+      result.set(value, totalLength - value.length);
     }
 
     await writePromise;
@@ -84,14 +93,7 @@ export async function decompressFlate(
       });
     }
 
-    const result = new Uint8Array(totalLength);
-    let offset = 0;
-    for (const chunk of chunks) {
-      result.set(chunk, offset);
-      offset += chunk.length;
-    }
-
-    return ok(result);
+    return ok(result.subarray(0, totalLength));
   } catch {
     return err({
       code: "FLATEDECODE_FAILED",
