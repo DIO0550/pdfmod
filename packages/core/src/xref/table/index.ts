@@ -1,1 +1,1 @@
-export { parseXRefTable } from "./xref-table-parser";
+export { parseXRefTable } from "./xref-table-parser/index";

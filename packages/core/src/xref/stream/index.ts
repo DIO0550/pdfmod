@@ -1,3 +1,3 @@
-export { decompressFlate } from "./flatedecode";
-export { decodeXRefStreamEntries } from "./xref-stream-parser";
-export { buildXRefStreamTrailerDict } from "./xref-stream-trailer";
+export { decompressFlate } from "./flatedecode/index";
+export { decodeXRefStreamEntries } from "./xref-stream-parser/index";
+export { buildXRefStreamTrailerDict } from "./xref-stream-trailer/index";
