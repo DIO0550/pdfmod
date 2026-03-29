@@ -151,8 +151,8 @@ function writeData(
  * @returns ストリーム中断完了後に解決する Promise
  */
 async function abortStreams(
-  reader: ReadableStreamDefaultReader,
-  writer: WritableStreamDefaultWriter,
+  reader: ReadableStreamDefaultReader<Uint8Array>,
+  writer: WritableStreamDefaultWriter<BufferSource>,
 ): Promise<void> {
   await reader.cancel().catch(() => {});
   await writer.abort().catch(() => {});
