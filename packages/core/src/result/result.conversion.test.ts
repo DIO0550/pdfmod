@@ -1,7 +1,7 @@
 import { expect, test } from "vitest";
-import { fromResult, none } from "../../option/option/index";
-import { toOption } from "../to-option/index";
+import { fromResult, none } from "../option/index";
 import { err, ok } from "./index";
+import { toOption } from "./to-option/index";
 
 test("toOptionはOkをSomeに変換する", () => {
   const result = toOption(ok(42));
