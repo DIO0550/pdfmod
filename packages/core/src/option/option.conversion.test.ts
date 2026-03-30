@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { err, ok } from "../../result/result/index";
+import { err, ok } from "../result/index";
 import { fromResult, none, some, toResult } from "./index";
 
 test("toResultはSomeをOkに変換する", () => {
