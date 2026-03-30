@@ -1,4 +1,5 @@
 import type { PdfParseError } from "../../errors/index";
+import { NumberEx } from "../../number-ex/index";
 import type { Err, Result } from "../../result/index";
 import { err, ok } from "../../result/index";
 import type { ByteOffset } from "../../types/byte-offset/index";
@@ -30,9 +31,7 @@ function failPrevChain(
  * @returns 有効な最大深さ
  */
 function resolveMaxDepth(maxDepth: number | undefined): number {
-  return maxDepth !== undefined &&
-    Number.isSafeInteger(maxDepth) &&
-    maxDepth >= 1
+  return maxDepth !== undefined && NumberEx.isPositiveSafeInteger(maxDepth)
     ? maxDepth
     : DEFAULT_MAX_PREV_CHAIN_DEPTH;
 }
