@@ -12,7 +12,7 @@ import type { Result } from "../index";
  * @param result - 変換対象のResult
  * @returns `Ok` かつ非nullish値の場合は `Some<NonNullable<T>>`、それ以外は `None`
  *
- * @see {@link import("../option/index").fromResult} — Option モジュール側の同等関数
+ * @see {@link import("../../option/index").fromResult} — Option モジュール側の同等関数
  *
  * @example
  * ```ts
