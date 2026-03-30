@@ -56,19 +56,17 @@ export function mergeXRefChain(
   PdfParseError
 > {
   const maxDepth = resolveMaxDepth(options?.maxDepth);
-  const visited = new Set<number>();
+  const visited = new Set<ByteOffset>();
   const chain: Array<{ xref: XRefTable; trailer: TrailerDict }> = [];
 
   let currentOffset: ByteOffset = startOffset;
   let depth = 0;
 
   for (;;) {
-    const offsetNum = currentOffset as number;
-
-    if (visited.has(offsetNum)) {
+    if (visited.has(currentOffset)) {
       return failPrevChain(
         "XREF_PREV_CHAIN_CYCLE",
-        `Circular /Prev reference detected at offset ${offsetNum}`,
+        `Circular /Prev reference detected at offset ${String(currentOffset)}`,
         currentOffset,
       );
     }
@@ -81,7 +79,7 @@ export function mergeXRefChain(
       );
     }
 
-    visited.add(offsetNum);
+    visited.add(currentOffset);
 
     const parseResult = parseCallback(currentOffset);
     if (!parseResult.ok) {

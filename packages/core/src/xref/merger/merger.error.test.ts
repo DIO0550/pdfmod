@@ -43,11 +43,17 @@ type ParseCallback = (
   offset: ByteOffset,
 ) => Result<{ xref: XRefTable; trailer: TrailerDict }, PdfParseError>;
 
+function stubMap(
+  entries: Array<[number, { xref: XRefTable; trailer: TrailerDict }]>,
+): Map<ByteOffset, { xref: XRefTable; trailer: TrailerDict }> {
+  return new Map(entries.map(([n, v]) => [ByteOffset.of(n), v]));
+}
+
 function callbackFromMap(
-  table: Map<number, { xref: XRefTable; trailer: TrailerDict }>,
+  table: Map<ByteOffset, { xref: XRefTable; trailer: TrailerDict }>,
 ): ParseCallback {
   return (offset: ByteOffset) => {
-    const entry = table.get(offset as number);
+    const entry = table.get(offset);
     return entry
       ? ok(entry)
       : err({
@@ -59,7 +65,7 @@ function callbackFromMap(
 
 test("循環参照検出: 2つのxrefが互いのオフセットを /Prev で参照 -> XREF_PREV_CHAIN_CYCLE", () => {
   const callback = callbackFromMap(
-    new Map([
+    stubMap([
       [
         100,
         {
@@ -85,7 +91,7 @@ test("循環参照検出: 2つのxrefが互いのオフセットを /Prev で参
 
 test("自己参照検出: /Prev が自分自身のオフセットを指す -> XREF_PREV_CHAIN_CYCLE", () => {
   const callback = callbackFromMap(
-    new Map([
+    stubMap([
       [
         100,
         {
