@@ -1,7 +1,7 @@
 import type { PdfParseError } from "../../../errors/index";
 import type { Result } from "../../../result/index";
 import type { PdfObject, TrailerDict } from "../../../types/index";
-import { trailerDictBuilder } from "../../trailer/trailer-dict-builder/index";
+import { trailerDictBuilder } from "../../trailer/dict-builder/index";
 
 /**
  * xrefストリーム辞書から TrailerDict を構築する。

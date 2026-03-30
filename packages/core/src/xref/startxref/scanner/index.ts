@@ -3,7 +3,7 @@ import {
   isPdfTokenBoundary,
   matchesBytesAt,
   skipWhitespaceAndComments,
-} from "../../../lexer/pdf-bytes/index";
+} from "../../../lexer/bytes/index";
 import type { Result } from "../../../result/index";
 import { err, ok } from "../../../result/index";
 import {

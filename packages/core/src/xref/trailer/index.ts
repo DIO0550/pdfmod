@@ -1,2 +1,2 @@
-export { trailerDictBuilder } from "./trailer-dict-builder/index";
-export { parseTrailer } from "./trailer-parser/index";
+export { trailerDictBuilder } from "./dict-builder/index";
+export { parseTrailer } from "./parser/index";
