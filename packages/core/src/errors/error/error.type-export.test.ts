@@ -19,6 +19,8 @@ const allPdfParseErrorCodes = [
   "STARTXREF_NOT_FOUND",
   "XREF_TABLE_INVALID",
   "XREF_STREAM_INVALID",
+  "XREF_PREV_CHAIN_CYCLE",
+  "XREF_PREV_CHAIN_TOO_DEEP",
   "ROOT_NOT_FOUND",
   "SIZE_NOT_FOUND",
   "MEDIABOX_NOT_FOUND",
@@ -35,7 +37,7 @@ const _exhaustive: Exact<
 
 test("PdfParseErrorCodeは網羅的に列挙されている", () => {
   expect(_exhaustive).toBe(true);
-  expect(allPdfParseErrorCodes).toHaveLength(9);
+  expect(allPdfParseErrorCodes).toHaveLength(11);
 });
 
 test("型エクスポートが利用可能", () => {

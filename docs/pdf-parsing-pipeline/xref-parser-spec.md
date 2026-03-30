@@ -147,23 +147,33 @@ interface TrailerDict {
 | ID | ルール | 条件 | 振る舞い |
 |:---|:-------|:-----|:---------|
 | XM-001 | マージ順序 | 複数xref存在 | 新しいxrefのエントリが古いものを上書き |
-| XM-002 | 循環防止 | /Prevが同一オフセットを指す | 検出したらチェーン走査を停止 |
-| XM-003 | 深度制限 | /Prevチェーンが深すぎる | 最大100段で停止（寛容処理） |
-| XM-004 | 形式混在 | テキスト形式とストリーム形式の混在 | 各xrefの形式を自動判定して適切なパーサを呼び出し |
+| XM-002 | 循環防止 | /Prevが同一オフセットを指す | `XREF_PREV_CHAIN_CYCLE` エラーを返す |
+| XM-003 | 深度制限 | /Prevチェーンが深すぎる | 最大100段で `XREF_PREV_CHAIN_TOO_DEEP` エラーを返す |
+| XM-004 | 形式混在 | テキスト形式とストリーム形式の混在 | コールバック提供側が形式を判定し適切なパーサを呼び出す |
+
+> 📄 詳細仕様は [xref-merger-spec.md](./xref-merger-spec.md) を参照。
 
 ## ファイル配置
 
 ```
 packages/core/src/
 ├── xref/
-│   ├── index.ts              # 再エクスポート
-│   ├── startxref-scanner.ts  # StartXRefScanner
-│   ├── xref-table-parser.ts  # XRefTableParser
-│   ├── xref-stream-parser.ts # XRefStreamParser
-│   ├── trailer-parser.ts     # TrailerParser
-│   └── xref-merger.ts        # XRefMerger
+│   ├── index.ts                # 再エクスポート
+│   ├── startxref/
+│   │   └── scanner/index.ts    # StartXRefScanner
+│   ├── table/
+│   │   └── parser/index.ts     # XRefTableParser
+│   ├── stream/
+│   │   ├── parser/index.ts     # XRefStreamParser（デコード）
+│   │   ├── flatedecode/index.ts # FlateDecode展開
+│   │   └── trailer/index.ts    # xrefストリームからTrailerDict構築
+│   ├── trailer/
+│   │   ├── parser/index.ts     # TrailerParser
+│   │   └── dict-builder/index.ts # TrailerDict構築
+│   └── merger/
+│       └── index.ts            # XRefMerger（/Prevチェーン走査・マージ）
 └── types/
-    └── index.ts              # XRefEntry, XRefTable, TrailerDict 追加
+    └── pdf-types/index.ts      # XRefEntry, XRefTable, TrailerDict
 ```
 
 ## 関連仕様
