@@ -4,7 +4,7 @@ import {
   isPdfDelimiter,
   isPdfWhitespace,
   skipWhitespaceAndComments as skipWsAndComments,
-} from "../pdf-bytes/index";
+} from "../bytes/index";
 
 const isWhitespace = isPdfWhitespace;
 const isDelimiter = isPdfDelimiter;

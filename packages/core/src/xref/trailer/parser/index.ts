@@ -3,7 +3,7 @@ import {
   isPdfTokenBoundary,
   matchesBytesAt,
   skipWhitespaceAndComments,
-} from "../../../lexer/pdf-bytes/index";
+} from "../../../lexer/bytes/index";
 import { Tokenizer } from "../../../lexer/tokenizer/index";
 import type { Result } from "../../../result/index";
 import { err, ok } from "../../../result/index";
@@ -13,7 +13,7 @@ import {
 } from "../../../types/byte-offset/index";
 import type { PdfObject, Token, TrailerDict } from "../../../types/index";
 import { TokenType } from "../../../types/index";
-import { trailerDictBuilder } from "../trailer-dict-builder/index";
+import { trailerDictBuilder } from "../dict-builder/index";
 
 // --- バイト定数 (SCREAMING_SNAKE_CASE) ---
 
