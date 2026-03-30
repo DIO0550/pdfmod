@@ -2,9 +2,8 @@ import type { PdfParseError } from "../../errors/index";
 import type { Err, Result } from "../../result/index";
 import { err, ok } from "../../result/index";
 import type { ByteOffset } from "../../types/byte-offset/index";
-import type { TrailerDict, XRefTable } from "../../types/index";
+import type { TrailerDict, XRefEntry, XRefTable } from "../../types/index";
 import type { ObjectNumber } from "../../types/object-number/index";
-import type { XRefEntry } from "../../types/pdf-types/index";
 
 const DEFAULT_MAX_PREV_CHAIN_DEPTH = 100;
 
