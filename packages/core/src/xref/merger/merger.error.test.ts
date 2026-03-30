@@ -47,7 +47,7 @@ function callbackFromMap(
   table: Map<number, { xref: XRefTable; trailer: TrailerDict }>,
 ): ParseCallback {
   return (offset: ByteOffset) => {
-    const entry = table.get(offset as unknown as number);
+    const entry = table.get(offset as number);
     return entry
       ? ok(entry)
       : err({
