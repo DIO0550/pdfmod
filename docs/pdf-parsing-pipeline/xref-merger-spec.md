@@ -165,7 +165,7 @@ sections.reverse();
 // sections = [A, B, C]
 
 // Step 3: マージ
-const mergedEntries = new Map<number, XRefEntry>();
+const mergedEntries = new Map<ObjectNumber, XRefEntry>();
 let maxSize = 0;
 
 for (const section of sections) {
