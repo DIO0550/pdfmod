@@ -151,6 +151,8 @@ interface TrailerDict {
 | XM-003 | 深度制限 | /Prevチェーンが深すぎる | 最大100段で停止（寛容処理） |
 | XM-004 | 形式混在 | テキスト形式とストリーム形式の混在 | 各xrefの形式を自動判定して適切なパーサを呼び出し |
 
+> 📄 詳細仕様は [xref-merger-spec.md](./xref-merger-spec.md) を参照。
+
 ## ファイル配置
 
 ```
