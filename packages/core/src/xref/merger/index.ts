@@ -65,7 +65,7 @@ export function mergeXRefChain(
   let depth = 0;
 
   for (;;) {
-    const offsetNum = currentOffset as unknown as number;
+    const offsetNum = currentOffset as number;
 
     if (visited.has(offsetNum)) {
       return failPrevChain(
