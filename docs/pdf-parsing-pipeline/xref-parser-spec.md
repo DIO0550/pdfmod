@@ -158,14 +158,22 @@ interface TrailerDict {
 ```
 packages/core/src/
 ├── xref/
-│   ├── index.ts              # 再エクスポート
-│   ├── startxref-scanner.ts  # StartXRefScanner
-│   ├── xref-table-parser.ts  # XRefTableParser
-│   ├── xref-stream-parser.ts # XRefStreamParser
-│   ├── trailer-parser.ts     # TrailerParser
-│   └── xref-merger.ts        # XRefMerger
+│   ├── index.ts                # 再エクスポート
+│   ├── startxref/
+│   │   └── scanner/index.ts    # StartXRefScanner
+│   ├── table/
+│   │   └── parser/index.ts     # XRefTableParser
+│   ├── stream/
+│   │   ├── parser/index.ts     # XRefStreamParser（デコード）
+│   │   ├── flatedecode/index.ts # FlateDecode展開
+│   │   └── trailer/index.ts    # xrefストリームからTrailerDict構築
+│   ├── trailer/
+│   │   ├── parser/index.ts     # TrailerParser
+│   │   └── dict-builder/index.ts # TrailerDict構築
+│   └── merger/
+│       └── index.ts            # XRefMerger（/Prevチェーン走査・マージ）
 └── types/
-    └── index.ts              # XRefEntry, XRefTable, TrailerDict 追加
+    └── pdf-types/index.ts      # XRefEntry, XRefTable, TrailerDict
 ```
 
 ## 関連仕様
