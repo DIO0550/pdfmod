@@ -1,6 +1,10 @@
 import type { PdfError, PdfParseError } from "../../errors/index";
+import { NumberEx } from "../../number-ex/index";
+import { PdfFilter } from "../../pdf-filter/index";
+import { PdfType } from "../../pdf-type/index";
 import type { Result } from "../../result/index";
 import { err, ok } from "../../result/index";
+import { StringEx } from "../../string-ex/index";
 import { ByteOffset } from "../../types/byte-offset/index";
 import { ObjectNumber } from "../../types/object-number/index";
 import type { PdfObject } from "../../types/pdf-types/index";
@@ -53,28 +57,6 @@ export const createFlateDecompressor = (): StreamDecompressor => ({
 export interface ObjectStreamHeader {
   readonly objNum: ObjectNumber;
   readonly offset: ByteOffset;
-}
-
-const DECIMAL_INTEGER = /^[0-9]+$/;
-
-/**
- * ヘッダトークンを10進整数としてパースする。
- *
- * @param token - パース対象のトークン文字列
- * @param label - エラーメッセージ用のラベル（"objNum" | "offset"）
- * @returns パース成功時は数値、失敗時は OBJECT_STREAM_HEADER_INVALID エラー
- */
-function parseHeaderInt(
-  token: string,
-  label: string,
-): Result<number, PdfParseError> {
-  if (!DECIMAL_INTEGER.test(token) || !Number.isSafeInteger(Number(token))) {
-    return err({
-      code: "OBJECT_STREAM_HEADER_INVALID",
-      message: `Invalid ${label} in ObjStm header: "${token}"`,
-    });
-  }
-  return ok(Number(token));
 }
 
 /**
@@ -143,19 +125,25 @@ export function parseHeader(
 
   const entries: ObjectStreamHeader[] = [];
   for (let i = 0; i < tokens.length; i += 2) {
-    const objNumResult = parseHeaderInt(tokens[i], "objNum");
-    if (!objNumResult.ok) {
-      return objNumResult;
+    const objNum = StringEx.toSafeIntegerAtLeastZero(tokens[i]);
+    if (objNum === undefined) {
+      return err({
+        code: "OBJECT_STREAM_HEADER_INVALID",
+        message: `Invalid objNum in ObjStm header: "${tokens[i]}"`,
+      });
     }
 
-    const offsetResult = parseHeaderInt(tokens[i + 1], "offset");
-    if (!offsetResult.ok) {
-      return offsetResult;
+    const offset = StringEx.toSafeIntegerAtLeastZero(tokens[i + 1]);
+    if (offset === undefined) {
+      return err({
+        code: "OBJECT_STREAM_HEADER_INVALID",
+        message: `Invalid offset in ObjStm header: "${tokens[i + 1]}"`,
+      });
     }
 
     entries.push({
-      objNum: ObjectNumber.of(objNumResult.value),
-      offset: ByteOffset.of(offsetResult.value),
+      objNum: ObjectNumber.of(objNum),
+      offset: ByteOffset.of(offset),
     });
   }
 
@@ -176,18 +164,9 @@ export interface ValidatedStreamDict {
 export function validateStreamDict(
   entries: Map<string, PdfObject>,
 ): Result<ValidatedStreamDict, PdfParseError> {
-  const typeEntry = entries.get("Type");
-  if (typeEntry === undefined || typeEntry.type !== "name") {
-    return err({
-      code: "OBJECT_STREAM_INVALID",
-      message: "ObjStm dictionary missing /Type or /Type is not a name",
-    });
-  }
-  if (typeEntry.value !== "ObjStm") {
-    return err({
-      code: "OBJECT_STREAM_INVALID",
-      message: `ObjStm /Type must be /ObjStm, got /${typeEntry.value}`,
-    });
+  const typeResult = PdfType.validate(entries, "ObjStm");
+  if (!typeResult.ok) {
+    return typeResult;
   }
 
   const firstEntry = entries.get("First");
@@ -203,7 +182,7 @@ export function validateStreamDict(
       message: "ObjStm /First must be an integer",
     });
   }
-  if (!Number.isSafeInteger(firstEntry.value) || firstEntry.value < 0) {
+  if (!NumberEx.isSafeIntegerAtLeastZero(firstEntry.value)) {
     return err({
       code: "OBJECT_STREAM_INVALID",
       message: `ObjStm /First must be a non-negative safe integer, got ${firstEntry.value}`,
@@ -223,7 +202,7 @@ export function validateStreamDict(
       message: "ObjStm /N must be an integer",
     });
   }
-  if (!Number.isSafeInteger(nEntry.value) || nEntry.value < 0) {
+  if (!NumberEx.isSafeIntegerAtLeastZero(nEntry.value)) {
     return err({
       code: "OBJECT_STREAM_INVALID",
       message: `ObjStm /N must be a non-negative safe integer, got ${nEntry.value}`,
@@ -238,37 +217,15 @@ export function validateStreamDict(
     });
   }
 
-  const filterEntry = entries.get("Filter");
-  if (filterEntry === undefined) {
-    return ok({
-      first: firstEntry.value,
-      n: nEntry.value,
-      needsDecompress: false,
-    });
-  }
-  if (filterEntry.type === "array") {
-    return err({
-      code: "OBJECT_STREAM_INVALID",
-      message: "ObjStm /Filter as array (multi-stage filter) is not supported",
-    });
-  }
-  if (filterEntry.type !== "name") {
-    return err({
-      code: "OBJECT_STREAM_INVALID",
-      message: "ObjStm /Filter must be a name",
-    });
-  }
-  if (filterEntry.value !== "FlateDecode") {
-    return err({
-      code: "OBJECT_STREAM_INVALID",
-      message: `ObjStm /Filter /${filterEntry.value} is not supported`,
-    });
+  const filterResult = PdfFilter.validate(entries);
+  if (!filterResult.ok) {
+    return filterResult;
   }
 
   return ok({
     first: firstEntry.value,
     n: nEntry.value,
-    needsDecompress: true,
+    needsDecompress: filterResult.value !== undefined,
   });
 }
 
