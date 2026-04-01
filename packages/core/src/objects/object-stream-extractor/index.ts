@@ -92,18 +92,33 @@ export function parseHeader(
     });
   }
 
+  const DECIMAL_INTEGER = /^[0-9]+$/;
+
   const entries: HeaderEntry[] = [];
   for (let i = 0; i < tokens.length; i += 2) {
-    const objNum = Number(tokens[i]);
-    const offset = Number(tokens[i + 1]);
-
-    if (!Number.isSafeInteger(objNum) || objNum < 0) {
+    if (!DECIMAL_INTEGER.test(tokens[i])) {
       return err({
         code: "OBJECT_STREAM_HEADER_INVALID",
         message: `Invalid objNum in ObjStm header: "${tokens[i]}"`,
       });
     }
-    if (!Number.isSafeInteger(offset) || offset < 0) {
+    if (!DECIMAL_INTEGER.test(tokens[i + 1])) {
+      return err({
+        code: "OBJECT_STREAM_HEADER_INVALID",
+        message: `Invalid offset in ObjStm header: "${tokens[i + 1]}"`,
+      });
+    }
+
+    const objNum = Number(tokens[i]);
+    const offset = Number(tokens[i + 1]);
+
+    if (!Number.isSafeInteger(objNum)) {
+      return err({
+        code: "OBJECT_STREAM_HEADER_INVALID",
+        message: `Invalid objNum in ObjStm header: "${tokens[i]}"`,
+      });
+    }
+    if (!Number.isSafeInteger(offset)) {
       return err({
         code: "OBJECT_STREAM_HEADER_INVALID",
         message: `Invalid offset in ObjStm header: "${tokens[i + 1]}"`,
