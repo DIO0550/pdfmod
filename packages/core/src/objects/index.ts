@@ -5,8 +5,8 @@
  */
 export { LRUCache } from "./lru-cache/index";
 export type {
-  HeaderEntry,
   ObjectStreamExtractorDeps,
+  ObjectStreamHeader,
   StreamDecompressor,
   StreamObjectParser,
   StreamResolver,

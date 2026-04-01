@@ -1,7 +1,8 @@
 import type { PdfError, PdfParseError } from "../../errors/index";
 import type { Result } from "../../result/index";
 import { err, ok } from "../../result/index";
-import type { ObjectNumber } from "../../types/object-number/index";
+import { ByteOffset } from "../../types/byte-offset/index";
+import { ObjectNumber } from "../../types/object-number/index";
 import type { PdfObject } from "../../types/pdf-types/index";
 import { decompressFlate } from "../../xref/stream/flatedecode/index";
 import { LRUCache } from "../lru-cache/index";
@@ -48,10 +49,10 @@ export const createFlateDecompressor = (): StreamDecompressor => ({
   decompress: (data: Uint8Array) => decompressFlate(data),
 });
 
-/** ヘッダパース結果の1エントリ */
-export interface HeaderEntry {
-  readonly objNum: number;
-  readonly offset: number;
+/** ObjStm ヘッダの1ペア（オブジェクト番号とオフセット） */
+export interface ObjectStreamHeader {
+  readonly objNum: ObjectNumber;
+  readonly offset: ByteOffset;
 }
 
 /**
@@ -62,7 +63,7 @@ export function parseHeader(
   data: Uint8Array,
   first: number,
   n: number,
-): Result<readonly HeaderEntry[], PdfParseError> {
+): Result<readonly ObjectStreamHeader[], PdfParseError> {
   if (first < 0 || first > data.length) {
     return err({
       code: "OBJECT_STREAM_HEADER_INVALID",
@@ -94,7 +95,7 @@ export function parseHeader(
 
   const DECIMAL_INTEGER = /^[0-9]+$/;
 
-  const entries: HeaderEntry[] = [];
+  const entries: ObjectStreamHeader[] = [];
   for (let i = 0; i < tokens.length; i += 2) {
     if (!DECIMAL_INTEGER.test(tokens[i])) {
       return err({
@@ -125,7 +126,10 @@ export function parseHeader(
       });
     }
 
-    entries.push({ objNum, offset });
+    entries.push({
+      objNum: ObjectNumber.of(objNum),
+      offset: ByteOffset.of(offset),
+    });
   }
 
   if (entries.length !== n) {
@@ -354,14 +358,14 @@ export class ObjectStreamExtractor {
     const headers = headerResult.value;
 
     const targetHeader = headers[indexInStream];
-    if (targetHeader.objNum !== (targetObjNum as number)) {
+    if (targetHeader.objNum !== targetObjNum) {
       return err({
         code: "OBJECT_STREAM_INVALID",
-        message: `ObjStm header objNum ${targetHeader.objNum} does not match target ${targetObjNum as number}`,
+        message: `ObjStm header objNum ${targetHeader.objNum as number} does not match target ${targetObjNum as number}`,
       });
     }
 
-    const startOffset = first + targetHeader.offset;
+    const startOffset = first + (targetHeader.offset as number);
     if (startOffset > decompressedData.length) {
       return err({
         code: "OBJECT_STREAM_INVALID",
@@ -375,10 +379,10 @@ export class ObjectStreamExtractor {
       if (nextHeader.offset < targetHeader.offset) {
         return err({
           code: "OBJECT_STREAM_INVALID",
-          message: `ObjStm header offsets are not monotonic: next offset ${nextHeader.offset} < current offset ${targetHeader.offset}`,
+          message: `ObjStm header offsets are not monotonic: next offset ${nextHeader.offset as number} < current offset ${targetHeader.offset as number}`,
         });
       }
-      endOffset = first + nextHeader.offset;
+      endOffset = first + (nextHeader.offset as number);
       if (endOffset > decompressedData.length) {
         return err({
           code: "OBJECT_STREAM_INVALID",

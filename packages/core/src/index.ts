@@ -17,8 +17,8 @@ export type {
 export { Tokenizer } from "./lexer/index";
 export { NumberEx } from "./number-ex/index";
 export type {
-  HeaderEntry,
   ObjectStreamExtractorDeps,
+  ObjectStreamHeader,
   StreamDecompressor,
   StreamObjectParser,
   StreamResolver,
