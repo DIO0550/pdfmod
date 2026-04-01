@@ -2,6 +2,7 @@ import { assert, expect, test } from "vitest";
 import type { PdfError, PdfParseError } from "../../errors/index";
 import type { Result } from "../../result/index";
 import { err, ok } from "../../result/index";
+import { GenerationNumber } from "../../types/generation-number/index";
 import { ObjectNumber } from "../../types/object-number/index";
 import type { PdfDictionary, PdfObject } from "../../types/pdf-types/index";
 import type {
@@ -159,7 +160,7 @@ test("StreamResolverがエラーを返した場合にエラーを伝播する", 
         message: "circular",
         objectId: {
           objectNumber: ObjectNumber.of(15),
-          generationNumber: 0 as never,
+          generationNumber: GenerationNumber.of(0),
         },
       }),
     ),
