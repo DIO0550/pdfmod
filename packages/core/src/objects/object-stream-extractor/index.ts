@@ -369,10 +369,25 @@ export class ObjectStreamExtractor {
       });
     }
 
-    const endOffset =
-      indexInStream + 1 < headers.length
-        ? first + headers[indexInStream + 1].offset
-        : decompressedData.length;
+    let endOffset: number;
+    if (indexInStream + 1 < headers.length) {
+      const nextHeader = headers[indexInStream + 1];
+      if (nextHeader.offset < targetHeader.offset) {
+        return err({
+          code: "OBJECT_STREAM_INVALID",
+          message: `ObjStm header offsets are not monotonic: next offset ${nextHeader.offset} < current offset ${targetHeader.offset}`,
+        });
+      }
+      endOffset = first + nextHeader.offset;
+      if (endOffset > decompressedData.length) {
+        return err({
+          code: "OBJECT_STREAM_INVALID",
+          message: `Next object offset ${endOffset} exceeds decompressed data length (${decompressedData.length})`,
+        });
+      }
+    } else {
+      endOffset = decompressedData.length;
+    }
 
     const objectData = decompressedData.subarray(startOffset, endOffset);
     const parseResult = this.parser.parse(objectData, 0);
