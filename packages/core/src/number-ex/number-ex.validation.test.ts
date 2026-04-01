@@ -32,3 +32,27 @@ test("安全でない整数に対して false を返す", () => {
     false,
   );
 });
+
+test("isSafeIntegerAtLeastZero: 0 に対して true を返す", () => {
+  expect(NumberEx.isSafeIntegerAtLeastZero(0)).toBe(true);
+});
+
+test("isSafeIntegerAtLeastZero: 正の安全な整数に対して true を返す", () => {
+  expect(NumberEx.isSafeIntegerAtLeastZero(1)).toBe(true);
+  expect(NumberEx.isSafeIntegerAtLeastZero(42)).toBe(true);
+  expect(NumberEx.isSafeIntegerAtLeastZero(Number.MAX_SAFE_INTEGER)).toBe(true);
+});
+
+test("isSafeIntegerAtLeastZero: 負の整数に対して false を返す", () => {
+  expect(NumberEx.isSafeIntegerAtLeastZero(-1)).toBe(false);
+});
+
+test("isSafeIntegerAtLeastZero: 小数に対して false を返す", () => {
+  expect(NumberEx.isSafeIntegerAtLeastZero(1.5)).toBe(false);
+  expect(NumberEx.isSafeIntegerAtLeastZero(0.1)).toBe(false);
+});
+
+test("isSafeIntegerAtLeastZero: 非有限値に対して false を返す", () => {
+  expect(NumberEx.isSafeIntegerAtLeastZero(Infinity)).toBe(false);
+  expect(NumberEx.isSafeIntegerAtLeastZero(NaN)).toBe(false);
+});
