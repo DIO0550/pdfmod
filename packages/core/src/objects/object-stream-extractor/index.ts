@@ -55,15 +55,39 @@ export interface ObjectStreamHeader {
   readonly offset: ByteOffset;
 }
 
+const DECIMAL_INTEGER = /^[0-9]+$/;
+
 /**
- * ObjStm のオフセットテーブルをパースする。
- * 展開済みデータの先頭 first バイトから N 組の (objNum, offset) ペアを読み取る。
+ * ヘッダトークンを10進整数としてパースする。
+ *
+ * @param token - パース対象のトークン文字列
+ * @param label - エラーメッセージ用のラベル（"objNum" | "offset"）
+ * @returns パース成功時は数値、失敗時は OBJECT_STREAM_HEADER_INVALID エラー
  */
-export function parseHeader(
+function parseHeaderInt(
+  token: string,
+  label: string,
+): Result<number, PdfParseError> {
+  if (!DECIMAL_INTEGER.test(token) || !Number.isSafeInteger(Number(token))) {
+    return err({
+      code: "OBJECT_STREAM_HEADER_INVALID",
+      message: `Invalid ${label} in ObjStm header: "${token}"`,
+    });
+  }
+  return ok(Number(token));
+}
+
+/**
+ * ObjStm ヘッダ領域をトークン列に分割する。
+ *
+ * @param data - 展開済みストリームデータ
+ * @param first - ヘッダ領域の終端バイト位置
+ * @returns トークン文字列の配列、または OBJECT_STREAM_HEADER_INVALID エラー
+ */
+function tokenizeHeader(
   data: Uint8Array,
   first: number,
-  n: number,
-): Result<readonly ObjectStreamHeader[], PdfParseError> {
+): Result<string[], PdfParseError> {
   if (first < 0 || first > data.length) {
     return err({
       code: "OBJECT_STREAM_HEADER_INVALID",
@@ -71,12 +95,7 @@ export function parseHeader(
     });
   }
 
-  if (n === 0) {
-    return ok([]);
-  }
-
-  const headerBytes = data.subarray(0, first);
-  const headerText = new TextDecoder().decode(headerBytes);
+  const headerText = new TextDecoder().decode(data.subarray(0, first));
   const tokens = headerText.trim().split(/\s+/);
 
   if (tokens.length === 1 && tokens[0] === "") {
@@ -93,49 +112,50 @@ export function parseHeader(
     });
   }
 
-  const DECIMAL_INTEGER = /^[0-9]+$/;
+  return ok(tokens);
+}
 
-  const entries: ObjectStreamHeader[] = [];
-  for (let i = 0; i < tokens.length; i += 2) {
-    if (!DECIMAL_INTEGER.test(tokens[i])) {
-      return err({
-        code: "OBJECT_STREAM_HEADER_INVALID",
-        message: `Invalid objNum in ObjStm header: "${tokens[i]}"`,
-      });
-    }
-    if (!DECIMAL_INTEGER.test(tokens[i + 1])) {
-      return err({
-        code: "OBJECT_STREAM_HEADER_INVALID",
-        message: `Invalid offset in ObjStm header: "${tokens[i + 1]}"`,
-      });
-    }
+/**
+ * ObjStm のオフセットテーブルをパースする。
+ * 展開済みデータの先頭 first バイトから N 組の (objNum, offset) ペアを読み取る。
+ */
+export function parseHeader(
+  data: Uint8Array,
+  first: number,
+  n: number,
+): Result<readonly ObjectStreamHeader[], PdfParseError> {
+  if (n === 0) {
+    return ok([]);
+  }
 
-    const objNum = Number(tokens[i]);
-    const offset = Number(tokens[i + 1]);
+  const tokenResult = tokenizeHeader(data, first);
+  if (!tokenResult.ok) {
+    return tokenResult;
+  }
+  const tokens = tokenResult.value;
 
-    if (!Number.isSafeInteger(objNum)) {
-      return err({
-        code: "OBJECT_STREAM_HEADER_INVALID",
-        message: `Invalid objNum in ObjStm header: "${tokens[i]}"`,
-      });
-    }
-    if (!Number.isSafeInteger(offset)) {
-      return err({
-        code: "OBJECT_STREAM_HEADER_INVALID",
-        message: `Invalid offset in ObjStm header: "${tokens[i + 1]}"`,
-      });
-    }
-
-    entries.push({
-      objNum: ObjectNumber.of(objNum),
-      offset: ByteOffset.of(offset),
+  if (tokens.length / 2 !== n) {
+    return err({
+      code: "OBJECT_STREAM_HEADER_INVALID",
+      message: `ObjStm header has ${tokens.length / 2} pairs, expected ${n}`,
     });
   }
 
-  if (entries.length !== n) {
-    return err({
-      code: "OBJECT_STREAM_HEADER_INVALID",
-      message: `ObjStm header has ${entries.length} pairs, expected ${n}`,
+  const entries: ObjectStreamHeader[] = [];
+  for (let i = 0; i < tokens.length; i += 2) {
+    const objNumResult = parseHeaderInt(tokens[i], "objNum");
+    if (!objNumResult.ok) {
+      return objNumResult;
+    }
+
+    const offsetResult = parseHeaderInt(tokens[i + 1], "offset");
+    if (!offsetResult.ok) {
+      return offsetResult;
+    }
+
+    entries.push({
+      objNum: ObjectNumber.of(objNumResult.value),
+      offset: ByteOffset.of(offsetResult.value),
     });
   }
 
