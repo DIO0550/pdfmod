@@ -11,16 +11,12 @@ export const PdfFilter = {
     if (entry === undefined) {
       return ok(undefined);
     }
-    if (entry.type === "array") {
-      return err({
-        code: "OBJECT_STREAM_INVALID",
-        message: "/Filter as array (multi-stage filter) is not supported",
-      });
-    }
+    // array（マルチステージフィルタ）は未サポート。
+    // 実用上 ObjStm では /FlateDecode 単体がほぼ全てのため、name のみ受理する。
     if (entry.type !== "name") {
       return err({
         code: "OBJECT_STREAM_INVALID",
-        message: "/Filter must be a name",
+        message: `/Filter must be a name, got ${entry.type}`,
       });
     }
     if (entry.value !== "FlateDecode") {
