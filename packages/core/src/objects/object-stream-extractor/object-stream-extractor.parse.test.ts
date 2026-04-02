@@ -31,6 +31,13 @@ test("parseHeaderはN=0の場合に空配列を返す", () => {
   expect(result.value).toEqual([]);
 });
 
+test("parseHeaderはN=0でもfirstが範囲外の場合にエラーを返す", () => {
+  const data = enc("10 0");
+  const result = parseHeader(data, 999, 0);
+  assert(!result.ok);
+  expect(result.error.code).toBe("OBJECT_STREAM_HEADER_INVALID");
+});
+
 test("parseHeaderは空のデータでエラーを返す", () => {
   const data = enc("");
   const result = parseHeader(data, 0, 1);

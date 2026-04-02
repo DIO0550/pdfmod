@@ -106,6 +106,13 @@ export function parseHeader(
   first: number,
   n: number,
 ): Result<readonly ObjectStreamHeader[], PdfParseError> {
+  if (first < 0 || first > data.length) {
+    return err({
+      code: "OBJECT_STREAM_HEADER_INVALID",
+      message: `ObjStm header range is invalid: first=${first}, length=${data.length}`,
+    });
+  }
+
   if (n === 0) {
     return ok([]);
   }
