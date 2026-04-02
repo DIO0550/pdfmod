@@ -125,16 +125,16 @@ export function parseHeader(
 
   const entries: ObjectStreamHeader[] = [];
   for (let i = 0; i < tokens.length; i += 2) {
-    const objNum = StringEx.toSafeIntegerAtLeastZero(tokens[i]);
-    if (objNum === undefined) {
+    const objNumOpt = StringEx.toSafeIntegerAtLeastZero(tokens[i]);
+    if (!objNumOpt.some) {
       return err({
         code: "OBJECT_STREAM_HEADER_INVALID",
         message: `Invalid objNum in ObjStm header: "${tokens[i]}"`,
       });
     }
 
-    const offset = StringEx.toSafeIntegerAtLeastZero(tokens[i + 1]);
-    if (offset === undefined) {
+    const offsetOpt = StringEx.toSafeIntegerAtLeastZero(tokens[i + 1]);
+    if (!offsetOpt.some) {
       return err({
         code: "OBJECT_STREAM_HEADER_INVALID",
         message: `Invalid offset in ObjStm header: "${tokens[i + 1]}"`,
@@ -142,8 +142,8 @@ export function parseHeader(
     }
 
     entries.push({
-      objNum: ObjectNumber.of(objNum),
-      offset: ByteOffset.of(offset),
+      objNum: ObjectNumber.of(objNumOpt.value),
+      offset: ByteOffset.of(offsetOpt.value),
     });
   }
 
