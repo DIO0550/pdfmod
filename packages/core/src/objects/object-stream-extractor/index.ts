@@ -59,6 +59,8 @@ export interface ObjectStreamHeader {
   readonly offset: ByteOffset;
 }
 
+const textDecoder = new TextDecoder();
+
 /**
  * ObjStm ヘッダ領域をトークン列に分割する。
  *
@@ -77,7 +79,7 @@ function tokenizeHeader(
     });
   }
 
-  const headerText = new TextDecoder().decode(data.subarray(0, first));
+  const headerText = textDecoder.decode(data.subarray(0, first));
   const tokens = headerText.trim().split(/\s+/);
 
   if (tokens.length === 1 && tokens[0] === "") {
