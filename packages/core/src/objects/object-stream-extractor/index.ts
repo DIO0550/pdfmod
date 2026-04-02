@@ -377,6 +377,13 @@ export class ObjectStreamExtractor {
       endOffset = decompressedData.length;
     }
 
+    if (startOffset >= endOffset) {
+      return err({
+        code: "OBJECT_STREAM_INVALID",
+        message: `Object data range is empty: startOffset=${startOffset}, endOffset=${endOffset}`,
+      });
+    }
+
     const objectData = decompressedData.subarray(startOffset, endOffset);
     const parseResult = this.parser.parse(objectData, 0);
     if (!parseResult.ok) {
