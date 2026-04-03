@@ -336,7 +336,8 @@ export class ObjectStreamExtractor {
       });
     }
 
-    const headerResult = parseHeader(decompressedData, first, n);
+    const parseCount = Math.min(indexInStream + 2, n);
+    const headerResult = parseHeader(decompressedData, first, parseCount);
     if (!headerResult.ok) {
       return headerResult;
     }
@@ -360,7 +361,7 @@ export class ObjectStreamExtractor {
     }
 
     let endOffset: number;
-    if (indexInStream + 1 < headers.length) {
+    if (indexInStream + 1 < n && indexInStream + 1 < headers.length) {
       const nextHeader = headers[indexInStream + 1];
       if (nextHeader.offset < targetHeader.offset) {
         return err({
