@@ -128,6 +128,18 @@ test("validateStreamDictは/Nが存在しない辞書でエラーを返す", () 
   expect(result.error.message).toContain("/N");
 });
 
+test("validateStreamDictは/Nが/Firstに対して大きすぎる場合にエラーを返す", () => {
+  const result = validateStreamDict(
+    makeDict({
+      First: { type: "integer", value: 4 },
+      N: { type: "integer", value: 100 },
+    }),
+  );
+  assert(!result.ok);
+  expect(result.error.code).toBe("OBJECT_STREAM_INVALID");
+  expect(result.error.message).toContain("exceeds maximum");
+});
+
 test("validateStreamDictは/Typeが存在しない辞書でエラーを返す", () => {
   const dict = makeDict();
   dict.delete("Type");
