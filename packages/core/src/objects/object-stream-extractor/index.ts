@@ -72,13 +72,6 @@ function tokenizeHeader(
   data: Uint8Array,
   first: number,
 ): Result<string[], PdfParseError> {
-  if (first < 0 || first > data.length) {
-    return err({
-      code: "OBJECT_STREAM_HEADER_INVALID",
-      message: `ObjStm header range is invalid: first=${first}, length=${data.length}`,
-    });
-  }
-
   const headerText = textDecoder.decode(data.subarray(0, first));
   const tokens = headerText.trim().split(/\s+/);
 
