@@ -1,4 +1,4 @@
-import type { PdfParseError } from "../errors/index";
+import type { PdfParseError, PdfParseErrorCode } from "../errors/index";
 import type { Result } from "../result/index";
 import { err, ok } from "../result/index";
 import type { PdfObject } from "../types/pdf-types/index";
@@ -6,6 +6,7 @@ import type { PdfObject } from "../types/pdf-types/index";
 export const PdfFilter = {
   validate(
     entries: Map<string, PdfObject>,
+    errorCode: PdfParseErrorCode = "OBJECT_STREAM_INVALID",
   ): Result<string | undefined, PdfParseError> {
     const entry = entries.get("Filter");
     if (entry === undefined) {
@@ -15,13 +16,13 @@ export const PdfFilter = {
     // 実用上 ObjStm では /FlateDecode 単体がほぼ全てのため、name のみ受理する。
     if (entry.type !== "name") {
       return err({
-        code: "OBJECT_STREAM_INVALID",
+        code: errorCode,
         message: `/Filter must be a name, got ${entry.type}`,
       });
     }
     if (entry.value !== "FlateDecode") {
       return err({
-        code: "OBJECT_STREAM_INVALID",
+        code: errorCode,
         message: `/Filter /${entry.value} is not supported`,
       });
     }
