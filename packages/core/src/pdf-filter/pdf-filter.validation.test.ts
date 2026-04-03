@@ -39,3 +39,17 @@ test("/Filter が未サポートの名前の場合 err を返す", () => {
   const result = PdfFilter.validate(entries);
   expect(result.ok).toBe(false);
 });
+
+test("errorCode を指定した場合そのコードが使われる", () => {
+  const entries = new Map<string, PdfObject>([
+    ["Filter", { type: "integer", value: 1 }],
+  ]);
+  const result = PdfFilter.validate(entries, "XREF_STREAM_INVALID");
+  expect(result).toStrictEqual({
+    ok: false,
+    error: {
+      code: "XREF_STREAM_INVALID",
+      message: "/Filter must be a name, got integer",
+    },
+  });
+});
