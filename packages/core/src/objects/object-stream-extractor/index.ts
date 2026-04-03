@@ -184,6 +184,18 @@ export function validateStreamDict(
     });
   }
 
+  const minBytesPerPair = 3;
+  const maxN =
+    firstEntry.value === 0
+      ? 0
+      : Math.floor((firstEntry.value + 1) / minBytesPerPair);
+  if (nEntry.value > maxN) {
+    return err({
+      code: "OBJECT_STREAM_INVALID",
+      message: `ObjStm /N (${nEntry.value}) exceeds maximum possible pairs for /First (${firstEntry.value})`,
+    });
+  }
+
   const extendsEntry = entries.get("Extends");
   if (extendsEntry !== undefined) {
     return err({
