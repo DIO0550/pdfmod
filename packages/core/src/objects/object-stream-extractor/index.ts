@@ -184,15 +184,20 @@ export function validateStreamDict(
     });
   }
 
-  const minBytesPerPair = 3;
-  const maxN =
+  const minBytesPerPair = 4;
+  const maxObjectStreamPairs = 100_000;
+  const maxNByFirst =
     firstEntry.value === 0
       ? 0
       : Math.floor((firstEntry.value + 1) / minBytesPerPair);
+  const maxN = Math.min(maxNByFirst, maxObjectStreamPairs);
   if (nEntry.value > maxN) {
     return err({
       code: "OBJECT_STREAM_INVALID",
-      message: `ObjStm /N (${nEntry.value}) exceeds maximum possible pairs for /First (${firstEntry.value})`,
+      message:
+        maxNByFirst > maxObjectStreamPairs
+          ? `ObjStm /N (${nEntry.value}) exceeds hard limit (${maxObjectStreamPairs})`
+          : `ObjStm /N (${nEntry.value}) exceeds maximum possible pairs for /First (${firstEntry.value})`,
     });
   }
 
