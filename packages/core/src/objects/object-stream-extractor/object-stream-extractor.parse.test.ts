@@ -38,6 +38,20 @@ test("parseHeaderはN=0でもfirstが範囲外の場合にエラーを返す", (
   expect(result.error.code).toBe("OBJECT_STREAM_HEADER_INVALID");
 });
 
+test("parseHeaderはfirstが小数の場合にエラーを返す", () => {
+  const data = enc("10 0 true");
+  const result = parseHeader(data, 2.5, 1);
+  assert(!result.ok);
+  expect(result.error.code).toBe("OBJECT_STREAM_HEADER_INVALID");
+});
+
+test("parseHeaderはnが負数の場合にエラーを返す", () => {
+  const data = enc("10 0 true");
+  const result = parseHeader(data, 4, -1);
+  assert(!result.ok);
+  expect(result.error.code).toBe("OBJECT_STREAM_HEADER_INVALID");
+});
+
 test("parseHeaderは空のデータでエラーを返す", () => {
   const data = enc("");
   const result = parseHeader(data, 0, 1);
