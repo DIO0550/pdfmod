@@ -305,21 +305,22 @@ export class ObjectStreamExtractor {
     }
 
     let decompressedData: Uint8Array;
-    const cached = this.cache.get(streamObjNum);
-    if (cached !== undefined) {
-      decompressedData = cached;
-    } else if (needsDecompress) {
-      const decompressResult = await this.decompressor.decompress(
-        streamObj.data,
-      );
-      if (!decompressResult.ok) {
-        return decompressResult;
+    if (needsDecompress) {
+      const cached = this.cache.get(streamObjNum);
+      if (cached !== undefined) {
+        decompressedData = cached;
+      } else {
+        const decompressResult = await this.decompressor.decompress(
+          streamObj.data,
+        );
+        if (!decompressResult.ok) {
+          return decompressResult;
+        }
+        decompressedData = decompressResult.value;
+        this.cache.set(streamObjNum, decompressedData);
       }
-      decompressedData = decompressResult.value;
-      this.cache.set(streamObjNum, decompressedData);
     } else {
       decompressedData = streamObj.data;
-      this.cache.set(streamObjNum, decompressedData);
     }
 
     if (first > decompressedData.length) {
