@@ -211,6 +211,14 @@ export function validateStreamDict(
     });
   }
 
+  const extendsEntry = entries.get("Extends");
+  if (extendsEntry !== undefined) {
+    return err({
+      code: "OBJECT_STREAM_INVALID",
+      message: "ObjStm with /Extends is not supported in current scope",
+    });
+  }
+
   const decodeParmsEntry = entries.get("DecodeParms");
   if (decodeParmsEntry !== undefined) {
     return err({
