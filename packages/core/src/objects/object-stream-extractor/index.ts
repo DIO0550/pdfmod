@@ -212,7 +212,7 @@ export function validateStreamDict(
   });
 }
 
-const DEFAULT_CACHE_CAPACITY = 64;
+const DEFAULT_CACHE_CAPACITY = 8;
 
 /**
  * オブジェクトストリーム内のオブジェクトを抽出するクラス。
@@ -221,11 +221,11 @@ export class ObjectStreamExtractor {
   private readonly resolver: StreamResolver;
   private readonly parser: StreamObjectParser;
   private readonly decompressor: StreamDecompressor;
-  private readonly cache: LRUCache<ObjectNumber, Uint8Array>;
+  private readonly cache: LRUCache<ObjectNumber, Uint8Array> | undefined;
 
   private constructor(
     deps: ObjectStreamExtractorDeps,
-    cache: LRUCache<ObjectNumber, Uint8Array>,
+    cache: LRUCache<ObjectNumber, Uint8Array> | undefined,
   ) {
     this.resolver = deps.resolver;
     this.parser = deps.parser;
@@ -233,10 +233,18 @@ export class ObjectStreamExtractor {
     this.cache = cache;
   }
 
+  /**
+   * ObjectStreamExtractor を生成する。
+   *
+   * @param cacheCapacity - 展開済みストリームのキャッシュ容量。0 でキャッシュ無効化。
+   */
   static create(
     deps: ObjectStreamExtractorDeps,
     cacheCapacity: number = DEFAULT_CACHE_CAPACITY,
   ): Result<ObjectStreamExtractor, RangeError> {
+    if (cacheCapacity === 0) {
+      return ok(new ObjectStreamExtractor(deps, undefined));
+    }
     const cacheResult = LRUCache.create<ObjectNumber, Uint8Array>(
       cacheCapacity,
     );
@@ -287,7 +295,7 @@ export class ObjectStreamExtractor {
 
     let decompressedData: Uint8Array;
     if (needsDecompress) {
-      const cached = this.cache.get(streamObjNum);
+      const cached = this.cache?.get(streamObjNum);
       if (cached !== undefined) {
         decompressedData = cached;
       } else {
@@ -298,7 +306,7 @@ export class ObjectStreamExtractor {
           return decompressResult;
         }
         decompressedData = decompressResult.value;
-        this.cache.set(streamObjNum, decompressedData);
+        this.cache?.set(streamObjNum, decompressedData);
       }
     } else {
       decompressedData = streamObj.data;
