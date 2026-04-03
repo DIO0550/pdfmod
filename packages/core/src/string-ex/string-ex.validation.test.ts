@@ -32,3 +32,8 @@ test("toSafeIntegerAtLeastZero: 空白を含む文字列に対して none を返
   expect(StringEx.toSafeIntegerAtLeastZero(" 1")).toBe(none);
   expect(StringEx.toSafeIntegerAtLeastZero("1 ")).toBe(none);
 });
+
+test("toSafeIntegerAtLeastZero: 先頭 + 付き整数文字列に対して some を返す", () => {
+  expect(StringEx.toSafeIntegerAtLeastZero("+10")).toStrictEqual(some(10));
+  expect(StringEx.toSafeIntegerAtLeastZero("+0")).toStrictEqual(some(0));
+});

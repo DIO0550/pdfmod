@@ -2,7 +2,7 @@ import { NumberEx } from "../number-ex/index";
 import type { Option } from "../option/index";
 import { none, some } from "../option/index";
 
-const DECIMAL_INTEGER = /^[0-9]+$/;
+const DECIMAL_INTEGER = /^\+?[0-9]+$/;
 
 export const StringEx = {
   toSafeIntegerAtLeastZero: (s: string): Option<number> => {
