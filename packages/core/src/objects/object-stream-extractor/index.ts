@@ -1,13 +1,14 @@
 import type { PdfError, PdfParseError } from "../../errors/index";
+import { Tokenizer } from "../../lexer/index";
 import { NumberEx } from "../../number-ex/index";
 import { PdfFilter } from "../../pdf-filter/index";
 import { PdfType } from "../../pdf-type/index";
 import type { Result } from "../../result/index";
 import { err, ok } from "../../result/index";
-import { StringEx } from "../../string-ex/index";
 import { ByteOffset } from "../../types/byte-offset/index";
 import { ObjectNumber } from "../../types/object-number/index";
 import type { PdfObject } from "../../types/pdf-types/index";
+import { TokenType } from "../../types/pdf-types/index";
 import { decompressFlate } from "../../xref/stream/flatedecode/index";
 import { LRUCache } from "../lru-cache/index";
 
@@ -59,42 +60,10 @@ export interface ObjectStreamHeader {
   readonly offset: ByteOffset;
 }
 
-const textDecoder = new TextDecoder();
-
-/**
- * ObjStm ヘッダ領域をトークン列に分割する。
- *
- * @param data - 展開済みストリームデータ
- * @param first - ヘッダ領域の終端バイト位置
- * @returns トークン文字列の配列、または OBJECT_STREAM_HEADER_INVALID エラー
- */
-function tokenizeHeader(
-  data: Uint8Array,
-  first: number,
-): Result<string[], PdfParseError> {
-  const headerText = textDecoder.decode(data.subarray(0, first));
-  const tokens = headerText.trim().split(/\s+/);
-
-  if (tokens.length === 1 && tokens[0] === "") {
-    return err({
-      code: "OBJECT_STREAM_HEADER_INVALID",
-      message: "ObjStm header is empty",
-    });
-  }
-
-  if (tokens.length % 2 !== 0) {
-    return err({
-      code: "OBJECT_STREAM_HEADER_INVALID",
-      message: `ObjStm header has odd number of tokens: ${tokens.length}`,
-    });
-  }
-
-  return ok(tokens);
-}
-
 /**
  * ObjStm のオフセットテーブルをパースする。
- * 展開済みデータの先頭 first バイトから N 組の (objNum, offset) ペアを読み取る。
+ * 展開済みデータの先頭 first バイトから N 組の (objNum, offset) ペアを
+ * Tokenizer（ISO 32000-1 準拠の字句解析器）で読み取る。
  */
 export function parseHeader(
   data: Uint8Array,
@@ -112,40 +81,44 @@ export function parseHeader(
     return ok([]);
   }
 
-  const tokenResult = tokenizeHeader(data, first);
-  if (!tokenResult.ok) {
-    return tokenResult;
-  }
-  const tokens = tokenResult.value;
-
-  if (tokens.length / 2 !== n) {
-    return err({
-      code: "OBJECT_STREAM_HEADER_INVALID",
-      message: `ObjStm header has ${tokens.length / 2} pairs, expected ${n}`,
-    });
-  }
-
+  const headerData = data.subarray(0, first);
+  const tokenizer = new Tokenizer(headerData);
   const entries: ObjectStreamHeader[] = [];
-  for (let i = 0; i < tokens.length; i += 2) {
-    const objNumOpt = StringEx.toSafeIntegerAtLeastZero(tokens[i]);
-    if (!objNumOpt.some) {
+
+  for (let i = 0; i < n; i++) {
+    const objNumToken = tokenizer.nextToken();
+    if (objNumToken.type !== TokenType.Integer) {
       return err({
         code: "OBJECT_STREAM_HEADER_INVALID",
-        message: `Invalid objNum in ObjStm header: "${tokens[i]}"`,
+        message: `Expected integer objNum at pair ${i}, got ${objNumToken.type}`,
+      });
+    }
+    const objNumValue = objNumToken.value as number;
+    if (!NumberEx.isSafeIntegerAtLeastZero(objNumValue)) {
+      return err({
+        code: "OBJECT_STREAM_HEADER_INVALID",
+        message: `Invalid objNum in ObjStm header: ${objNumValue}`,
       });
     }
 
-    const offsetOpt = StringEx.toSafeIntegerAtLeastZero(tokens[i + 1]);
-    if (!offsetOpt.some) {
+    const offsetToken = tokenizer.nextToken();
+    if (offsetToken.type !== TokenType.Integer) {
       return err({
         code: "OBJECT_STREAM_HEADER_INVALID",
-        message: `Invalid offset in ObjStm header: "${tokens[i + 1]}"`,
+        message: `Expected integer offset at pair ${i}, got ${offsetToken.type}`,
+      });
+    }
+    const offsetValue = offsetToken.value as number;
+    if (!NumberEx.isSafeIntegerAtLeastZero(offsetValue)) {
+      return err({
+        code: "OBJECT_STREAM_HEADER_INVALID",
+        message: `Invalid offset in ObjStm header: ${offsetValue}`,
       });
     }
 
     entries.push({
-      objNum: ObjectNumber.of(objNumOpt.value),
-      offset: ByteOffset.of(offsetOpt.value),
+      objNum: ObjectNumber.of(objNumValue),
+      offset: ByteOffset.of(offsetValue),
     });
   }
 

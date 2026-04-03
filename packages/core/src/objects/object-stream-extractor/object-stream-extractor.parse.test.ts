@@ -50,23 +50,22 @@ test("parseHeaderは数値でないトークンが含まれる場合にエラー
   const result = parseHeader(data, 6, 1);
   assert(!result.ok);
   expect(result.error.code).toBe("OBJECT_STREAM_HEADER_INVALID");
-  expect(result.error.message).toContain("abc");
+  expect(result.error.message).toContain("Expected integer offset");
 });
 
-test("parseHeaderは奇数個のトークンでエラーを返す", () => {
+test("parseHeaderはトークンが足りない場合にエラーを返す", () => {
   const data = enc("10 0 11");
-  const result = parseHeader(data, 7, 1);
+  const result = parseHeader(data, 7, 2);
   assert(!result.ok);
   expect(result.error.code).toBe("OBJECT_STREAM_HEADER_INVALID");
-  expect(result.error.message).toContain("odd");
+  expect(result.error.message).toContain("Expected integer offset");
 });
 
-test("parseHeaderはペア数がNと不一致の場合にエラーを返す", () => {
+test("parseHeaderはNより多いペアがあっても要求分だけ読み取る", () => {
   const data = enc("10 0 11 15");
   const result = parseHeader(data, 10, 1);
-  assert(!result.ok);
-  expect(result.error.code).toBe("OBJECT_STREAM_HEADER_INVALID");
-  expect(result.error.message).toContain("2 pairs, expected 1");
+  assert(result.ok);
+  expect(result.value).toEqual([{ objNum: 10, offset: 0 }]);
 });
 
 test("parseHeaderは負のobjNumでエラーを返す", () => {

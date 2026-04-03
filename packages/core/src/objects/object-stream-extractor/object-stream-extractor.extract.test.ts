@@ -260,11 +260,11 @@ test("/Firstが展開済みデータ長を超える場合にエラーを返す",
   expect(result.error.message).toContain("/First");
 });
 
-test("ヘッダのペア数が/Nと一致しない場合にエラーを返す", async () => {
-  const decompressed = enc("10 0 11 15 extra_object_data");
+test("ヘッダのトークンが不足している場合にエラーを返す", async () => {
+  const decompressed = enc("10 extra_object_data");
   const dict = makeObjStmDict({
     N: { type: "integer", value: 1 },
-    First: { type: "integer", value: 10 },
+    First: { type: "integer", value: 3 },
   });
 
   const extractor = createExtractor({
