@@ -31,3 +31,15 @@ test("/Type の値が期待と異なる場合 err を返す", () => {
   const result = PdfType.validate(entries, "ObjStm");
   expect(result.ok).toBe(false);
 });
+
+test("errorCode を指定した場合そのコードが使われる", () => {
+  const entries = new Map<string, PdfObject>();
+  const result = PdfType.validate(entries, "ObjStm", "XREF_STREAM_INVALID");
+  expect(result).toStrictEqual({
+    ok: false,
+    error: {
+      code: "XREF_STREAM_INVALID",
+      message: "Dictionary missing /Type or /Type is not a name",
+    },
+  });
+});
