@@ -16,7 +16,21 @@ export type {
 } from "./errors/index";
 export { Tokenizer } from "./lexer/index";
 export { NumberEx } from "./number-ex/index";
-export { LRUCache } from "./objects/index";
+export type {
+  ObjectStreamExtractorDeps,
+  ObjectStreamHeader,
+  StreamDecompressor,
+  StreamObjectParser,
+  StreamResolver,
+  ValidatedStreamDict,
+} from "./objects/index";
+export {
+  createFlateDecompressor,
+  LRUCache,
+  ObjectStreamExtractor,
+  parseHeader,
+  validateStreamDict,
+} from "./objects/index";
 export * as Option from "./option/index";
 export * as Result from "./result/index";
 export type {
