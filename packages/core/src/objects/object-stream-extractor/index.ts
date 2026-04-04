@@ -97,6 +97,11 @@ export interface ObjectStreamHeader {
  * ObjStm のオフセットテーブルをパースする。
  * 展開済みデータの先頭 first バイトから N 組の (objNum, offset) ペアを
  * Tokenizer（ISO 32000-1 準拠の字句解析器）で読み取る。
+ *
+ * @param data - 展開済みストリームデータ
+ * @param first - ヘッダ領域のバイト長（/First の値）
+ * @param n - 読み取るペア数
+ * @returns ヘッダペアの配列、またはエラー
  */
 export function parseHeader(
   data: Uint8Array,
@@ -175,6 +180,9 @@ export interface ValidatedStreamDict {
 /**
  * ObjStm ストリーム辞書をバリデーションする。
  * /Type, /N, /First, /Filter, /DecodeParms を検証する。
+ *
+ * @param entries - ストリーム辞書のエントリ
+ * @returns バリデーション済み辞書情報、またはエラー
  */
 export function validateStreamDict(
   entries: Map<string, PdfObject>,
@@ -297,7 +305,9 @@ export class ObjectStreamExtractor {
   /**
    * ObjectStreamExtractor を生成する。
    *
+   * @param deps - 依存オブジェクト
    * @param cacheCapacity - 展開済みストリームのキャッシュ容量。0 でキャッシュ無効化。
+   * @returns ObjectStreamExtractor インスタンス、またはエラー
    */
   static create(
     deps: ObjectStreamExtractorDeps,
@@ -315,6 +325,14 @@ export class ObjectStreamExtractor {
     return ok(new ObjectStreamExtractor(deps, cacheResult.value));
   }
 
+  /**
+   * オブジェクトストリーム（ObjStm）から指定オブジェクトを抽出する。
+   *
+   * @param targetObjNum - 抽出対象のオブジェクト番号
+   * @param streamObjNum - ObjStm 自体のオブジェクト番号
+   * @param indexInStream - ObjStm 内でのインデックス（0始まり）
+   * @returns 抽出されたPDFオブジェクト、またはエラー
+   */
   async extract(
     targetObjNum: ObjectNumber,
     streamObjNum: ObjectNumber,
