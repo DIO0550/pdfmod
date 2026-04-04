@@ -343,7 +343,8 @@ export class ObjectStreamExtractor {
       });
     }
 
-    const parseCount = Math.min(indexInStream + 2, n);
+    const needNext = indexInStream + 1 < n;
+    const parseCount = indexInStream + 1 + (needNext ? 1 : 0);
     const headerResult = parseHeader(decompressedData, first, parseCount);
     if (!headerResult.ok) {
       return headerResult;
