@@ -7,7 +7,7 @@ export const PdfType = {
   validate(
     entries: Map<string, PdfObject>,
     expected: string,
-    errorCode: PdfParseErrorCode = "OBJECT_STREAM_INVALID",
+    errorCode: PdfParseErrorCode,
   ): Result<void, PdfParseError> {
     const entry = entries.get("Type");
     if (entry === undefined || entry.type !== "name") {

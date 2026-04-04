@@ -179,7 +179,11 @@ export interface ValidatedStreamDict {
 export function validateStreamDict(
   entries: Map<string, PdfObject>,
 ): Result<ValidatedStreamDict, PdfParseError> {
-  const typeResult = PdfType.validate(entries, "ObjStm");
+  const typeResult = PdfType.validate(
+    entries,
+    "ObjStm",
+    "OBJECT_STREAM_INVALID",
+  );
   if (!typeResult.ok) {
     return typeResult;
   }
