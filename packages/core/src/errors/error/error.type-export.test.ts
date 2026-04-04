@@ -26,6 +26,9 @@ const allPdfParseErrorCodes = [
   "MEDIABOX_NOT_FOUND",
   "NESTING_TOO_DEEP",
   "FLATEDECODE_FAILED",
+  "OBJECT_STREAM_INVALID",
+  "OBJECT_STREAM_INDEX_OUT_OF_RANGE",
+  "OBJECT_STREAM_HEADER_INVALID",
 ] as const satisfies readonly PdfParseErrorCode[];
 
 // 配列の要素型がPdfParseErrorCodeと完全一致することを型レベルで保証
@@ -37,7 +40,7 @@ const _exhaustive: Exact<
 
 test("PdfParseErrorCodeは網羅的に列挙されている", () => {
   expect(_exhaustive).toBe(true);
-  expect(allPdfParseErrorCodes).toHaveLength(11);
+  expect(allPdfParseErrorCodes).toHaveLength(14);
 });
 
 test("型エクスポートが利用可能", () => {

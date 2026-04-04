@@ -1,14 +1,18 @@
 import { expect, test } from "vitest";
 import {
   ByteOffset,
+  createFlateDecompressor,
   GenerationNumber,
   LRUCache,
   ObjectNumber,
+  ObjectStreamExtractor,
+  parseHeader,
   parseTrailer,
   parseXRefTable,
   scanStartXRef,
   Tokenizer,
   TokenType,
+  validateStreamDict,
 } from "./index";
 
 test.each([
@@ -17,6 +21,10 @@ test.each([
   { name: "scanStartXRef", value: scanStartXRef },
   { name: "parseXRefTable", value: parseXRefTable },
   { name: "parseTrailer", value: parseTrailer },
+  { name: "ObjectStreamExtractor.create", value: ObjectStreamExtractor.create },
+  { name: "parseHeader", value: parseHeader },
+  { name: "validateStreamDict", value: validateStreamDict },
+  { name: "createFlateDecompressor", value: createFlateDecompressor },
 ])("$nameがルートからexportされている", ({ value }) => {
   expect(typeof value).toBe("function");
 });
