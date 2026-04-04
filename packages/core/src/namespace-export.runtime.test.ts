@@ -6,13 +6,12 @@ import {
   LRUCache,
   ObjectNumber,
   ObjectStreamExtractor,
-  parseHeader,
+  ObjectStreamHeader,
   parseTrailer,
   parseXRefTable,
   scanStartXRef,
   Tokenizer,
   TokenType,
-  validateStreamDict,
 } from "./index";
 
 test.each([
@@ -22,8 +21,7 @@ test.each([
   { name: "parseXRefTable", value: parseXRefTable },
   { name: "parseTrailer", value: parseTrailer },
   { name: "ObjectStreamExtractor.create", value: ObjectStreamExtractor.create },
-  { name: "parseHeader", value: parseHeader },
-  { name: "validateStreamDict", value: validateStreamDict },
+  { name: "ObjectStreamHeader.parse", value: ObjectStreamHeader.parse },
   { name: "createFlateDecompressor", value: createFlateDecompressor },
 ])("$nameがルートからexportされている", ({ value }) => {
   expect(typeof value).toBe("function");

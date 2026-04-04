@@ -1,72 +1,17 @@
 import { assert, expect, test } from "vitest";
-import type { PdfError, PdfParseError } from "../../errors/index";
-import type { Result } from "../../result/index";
-import { err, ok } from "../../result/index";
-import { GenerationNumber } from "../../types/generation-number/index";
-import { ObjectNumber } from "../../types/object-number/index";
-import type { PdfDictionary, PdfObject } from "../../types/pdf-types/index";
-import type {
-  ObjectStreamExtractorDeps,
-  StreamDecompressor,
-  StreamObjectParser,
-  StreamResolver,
-} from "./index";
+import { err, ok } from "../../../result/index";
+import { GenerationNumber } from "../../../types/generation-number/index";
+import { ObjectNumber } from "../../../types/object-number/index";
 import { ObjectStreamExtractor } from "./index";
-
-const enc = (s: string): Uint8Array => new TextEncoder().encode(s);
-
-function makeObjStmDict(
-  overrides: Record<string, PdfObject> = {},
-): PdfDictionary {
-  const defaults: Record<string, PdfObject> = {
-    Type: { type: "name", value: "ObjStm" },
-    First: { type: "integer", value: 4 },
-    N: { type: "integer", value: 1 },
-    Filter: { type: "name", value: "FlateDecode" },
-  };
-  return {
-    type: "dictionary",
-    entries: new Map(Object.entries({ ...defaults, ...overrides })),
-  };
-}
-
-function makeStreamObj(data: Uint8Array, dict?: PdfDictionary): PdfObject {
-  return {
-    type: "stream",
-    dictionary: dict ?? makeObjStmDict(),
-    data,
-  };
-}
-
-function stubResolver(result: Result<PdfObject, PdfError>): StreamResolver {
-  return { resolve: () => Promise.resolve(result) };
-}
-
-function stubDecompressor(
-  result: Result<Uint8Array, PdfParseError>,
-): StreamDecompressor {
-  return { decompress: () => Promise.resolve(result) };
-}
-
-function stubParser(
-  result: Result<PdfObject, PdfParseError>,
-): StreamObjectParser {
-  return { parse: () => result };
-}
-
-function createExtractor(
-  deps: Partial<ObjectStreamExtractorDeps> = {},
-): ObjectStreamExtractor {
-  const defaultDeps: ObjectStreamExtractorDeps = {
-    resolver: stubResolver(ok(makeStreamObj(enc("10 0 true")))),
-    decompressor: stubDecompressor(ok(enc("10 0 true"))),
-    parser: stubParser(ok({ type: "boolean", value: true })),
-    ...deps,
-  };
-  const result = ObjectStreamExtractor.create(defaultDeps);
-  assert(result.ok);
-  return result.value;
-}
+import {
+  createExtractor,
+  enc,
+  makeObjStmDict,
+  makeStreamObj,
+  stubDecompressor,
+  stubParser,
+  stubResolver,
+} from "./object-stream-extractor.test-helpers";
 
 test("オブジェクトストリームから指定インデックスのオブジェクトを抽出できる", async () => {
   const decompressed = enc("10 0 true");

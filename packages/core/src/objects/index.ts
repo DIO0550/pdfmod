@@ -5,16 +5,16 @@
  */
 export { LRUCache } from "./lru-cache/index";
 export type {
+  CreateFlateDecompressorOptions,
   ObjectStreamExtractorDeps,
-  ObjectStreamHeader,
+  ObjectStreamHeaderEntry,
   StreamDecompressor,
   StreamObjectParser,
   StreamResolver,
-  ValidatedStreamDict,
 } from "./object-stream-extractor/index";
 export {
   createFlateDecompressor,
+  DEFAULT_OBJECT_STREAM_MAX_DECOMPRESSED_SIZE,
   ObjectStreamExtractor,
-  parseHeader,
-  validateStreamDict,
+  ObjectStreamHeader,
 } from "./object-stream-extractor/index";
