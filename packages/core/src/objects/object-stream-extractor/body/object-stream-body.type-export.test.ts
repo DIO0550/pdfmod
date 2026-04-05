@@ -7,7 +7,12 @@ import type {
   StreamObjectParser,
   StreamResolver,
 } from "../../../index";
-import { ObjectStreamBody, ObjectStreamHeader } from "../../../index";
+import {
+  ByteOffset,
+  ObjectNumber,
+  ObjectStreamBody,
+  ObjectStreamHeader,
+} from "../../../index";
 
 test("公開型がルートからインポート可能である", () => {
   const resolver: StreamResolver = {
@@ -38,9 +43,9 @@ test("ObjectStreamHeader.parseがルートからインポート可能である",
 
 test("ObjectStreamHeaderEntryが型として利用可能である", () => {
   const entry: ObjectStreamHeaderEntry = {
-    objNum: 10 as never,
-    offset: 0 as never,
+    objNum: ObjectNumber.of(10),
+    offset: ByteOffset.of(0),
   };
-  expect(entry.objNum).toBe(10);
-  expect(entry.offset).toBe(0);
+  expect(entry.objNum).toBe(ObjectNumber.of(10));
+  expect(entry.offset).toBe(ByteOffset.of(0));
 });
