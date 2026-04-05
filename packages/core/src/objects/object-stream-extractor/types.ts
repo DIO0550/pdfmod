@@ -5,7 +5,7 @@ import type { PdfObject } from "../../types/pdf-types/index";
 
 /**
  * ストリームオブジェクトを解決するインタフェース。
- * ObjectResolver が実装される際に具象クラスを注入する。
+ * 具象実装を ObjectStreamBody に注入して使用する。
  */
 export interface StreamResolver {
   resolve(objNum: ObjectNumber): Promise<Result<PdfObject, PdfError>>;
