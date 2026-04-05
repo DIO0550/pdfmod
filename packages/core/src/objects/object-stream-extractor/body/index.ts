@@ -3,69 +3,28 @@ import type { Result } from "../../../result/index";
 import { err, ok } from "../../../result/index";
 import type { ObjectNumber } from "../../../types/object-number/index";
 import type { PdfObject } from "../../../types/pdf-types/index";
-import { LRUCache } from "../../lru-cache/index";
+import type { LRUCache } from "../../lru-cache/index";
 import { ObjectStreamDict } from "../dict/index";
 import { ObjectStreamHeader } from "../header/index";
-import type {
-  ObjectStreamExtractorDeps,
-  StreamDecompressor,
-  StreamObjectParser,
-  StreamResolver,
-} from "../types";
-
-const DEFAULT_CACHE_CAPACITY = 8;
+import type { ObjectStreamBodyDeps } from "../types";
 
 /**
- * オブジェクトストリーム内のオブジェクトを抽出するクラス。
+ * ObjStm ボディ部からオブジェクトを抽出するコンパニオンオブジェクト。
  */
-export class ObjectStreamExtractor {
-  private readonly resolver: StreamResolver;
-  private readonly parser: StreamObjectParser;
-  private readonly decompressor: StreamDecompressor;
-  private readonly cache: LRUCache<ObjectNumber, Uint8Array> | undefined;
-
-  private constructor(
-    deps: ObjectStreamExtractorDeps,
-    cache: LRUCache<ObjectNumber, Uint8Array> | undefined,
-  ) {
-    this.resolver = deps.resolver;
-    this.parser = deps.parser;
-    this.decompressor = deps.decompressor;
-    this.cache = cache;
-  }
-
-  /**
-   * ObjectStreamExtractor を生成する。
-   *
-   * @param deps - 依存オブジェクト
-   * @param cacheCapacity - 展開済みストリームのキャッシュ容量。0 でキャッシュ無効化。
-   * @returns ObjectStreamExtractor インスタンス、またはエラー
-   */
-  static create(
-    deps: ObjectStreamExtractorDeps,
-    cacheCapacity: number = DEFAULT_CACHE_CAPACITY,
-  ): Result<ObjectStreamExtractor, RangeError> {
-    if (cacheCapacity === 0) {
-      return ok(new ObjectStreamExtractor(deps, undefined));
-    }
-    const cacheResult = LRUCache.create<ObjectNumber, Uint8Array>(
-      cacheCapacity,
-    );
-    if (!cacheResult.ok) {
-      return err(cacheResult.error);
-    }
-    return ok(new ObjectStreamExtractor(deps, cacheResult.value));
-  }
-
+export const ObjectStreamBody = {
   /**
    * オブジェクトストリーム（ObjStm）から指定オブジェクトを抽出する。
    *
+   * @param deps - 依存オブジェクト（resolver, parser, decompressor）
+   * @param cache - 展開済みストリームのキャッシュ（undefined でキャッシュ無効）
    * @param targetObjNum - 抽出対象のオブジェクト番号
    * @param streamObjNum - ObjStm 自体のオブジェクト番号
    * @param indexInStream - ObjStm 内でのインデックス（0始まり）
    * @returns 抽出されたPDFオブジェクト、またはエラー
    */
   async extract(
+    deps: ObjectStreamBodyDeps,
+    cache: LRUCache<ObjectNumber, Uint8Array> | undefined,
     targetObjNum: ObjectNumber,
     streamObjNum: ObjectNumber,
     indexInStream: number,
@@ -77,7 +36,7 @@ export class ObjectStreamExtractor {
       });
     }
 
-    const resolveResult = await this.resolver.resolve(streamObjNum);
+    const resolveResult = await deps.resolver.resolve(streamObjNum);
     if (!resolveResult.ok) {
       return resolveResult;
     }
@@ -106,18 +65,18 @@ export class ObjectStreamExtractor {
 
     let decompressedData: Uint8Array;
     if (needsDecompress) {
-      const cached = this.cache?.get(streamObjNum);
+      const cached = cache?.get(streamObjNum);
       if (cached !== undefined) {
         decompressedData = cached;
       } else {
-        const decompressResult = await this.decompressor.decompress(
+        const decompressResult = await deps.decompressor.decompress(
           streamObj.data,
         );
         if (!decompressResult.ok) {
           return decompressResult;
         }
         decompressedData = decompressResult.value;
-        this.cache?.set(streamObjNum, decompressedData);
+        cache?.set(streamObjNum, decompressedData);
       }
     } else {
       decompressedData = streamObj.data;
@@ -187,7 +146,7 @@ export class ObjectStreamExtractor {
     }
 
     const objectData = decompressedData.subarray(startOffset, endOffset);
-    const parseResult = this.parser.parse(objectData, 0);
+    const parseResult = deps.parser.parse(objectData, 0);
     if (!parseResult.ok) {
       return parseResult;
     }
@@ -201,5 +160,5 @@ export class ObjectStreamExtractor {
     }
 
     return ok(parsed);
-  }
-}
+  },
+} as const;

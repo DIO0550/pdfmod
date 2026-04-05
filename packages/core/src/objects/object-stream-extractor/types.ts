@@ -27,9 +27,9 @@ export interface StreamDecompressor {
 }
 
 /**
- * ObjectStreamExtractor の依存を束ねる型。
+ * ObjectStreamBody の依存を束ねる型。
  */
-export interface ObjectStreamExtractorDeps {
+export interface ObjectStreamBodyDeps {
   readonly resolver: StreamResolver;
   readonly parser: StreamObjectParser;
   readonly decompressor: StreamDecompressor;

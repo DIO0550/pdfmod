@@ -5,7 +5,7 @@ import {
   GenerationNumber,
   LRUCache,
   ObjectNumber,
-  ObjectStreamExtractor,
+  ObjectStreamBody,
   ObjectStreamHeader,
   parseTrailer,
   parseXRefTable,
@@ -20,7 +20,7 @@ test.each([
   { name: "scanStartXRef", value: scanStartXRef },
   { name: "parseXRefTable", value: parseXRefTable },
   { name: "parseTrailer", value: parseTrailer },
-  { name: "ObjectStreamExtractor.create", value: ObjectStreamExtractor.create },
+  { name: "ObjectStreamBody.extract", value: ObjectStreamBody.extract },
   { name: "ObjectStreamHeader.parse", value: ObjectStreamHeader.parse },
   { name: "createFlateDecompressor", value: createFlateDecompressor },
 ])("$nameがルートからexportされている", ({ value }) => {

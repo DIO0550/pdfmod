@@ -18,7 +18,7 @@ export { Tokenizer } from "./lexer/index";
 export { NumberEx } from "./number-ex/index";
 export type {
   CreateFlateDecompressorOptions,
-  ObjectStreamExtractorDeps,
+  ObjectStreamBodyDeps,
   ObjectStreamHeaderEntry,
   StreamDecompressor,
   StreamObjectParser,
@@ -28,7 +28,7 @@ export {
   createFlateDecompressor,
   DEFAULT_OBJECT_STREAM_MAX_DECOMPRESSED_SIZE,
   LRUCache,
-  ObjectStreamExtractor,
+  ObjectStreamBody,
   ObjectStreamHeader,
 } from "./objects/index";
 export * as Option from "./option/index";

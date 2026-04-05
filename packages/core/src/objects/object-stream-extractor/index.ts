@@ -1,4 +1,4 @@
-export { ObjectStreamExtractor } from "./extractor/index";
+export { ObjectStreamBody } from "./body/index";
 export {
   createFlateDecompressor,
   DEFAULT_OBJECT_STREAM_MAX_DECOMPRESSED_SIZE,
@@ -7,7 +7,7 @@ export type { ObjectStreamHeaderEntry } from "./header/index";
 export { ObjectStreamHeader } from "./header/index";
 export type {
   CreateFlateDecompressorOptions,
-  ObjectStreamExtractorDeps,
+  ObjectStreamBodyDeps,
   StreamDecompressor,
   StreamObjectParser,
   StreamResolver,

@@ -1,11 +1,9 @@
-import { assert } from "vitest";
 import type { PdfError, PdfParseError } from "../../../errors/index";
 import type { Result } from "../../../result/index";
 import { ok } from "../../../result/index";
 import type { PdfDictionary, PdfObject } from "../../../types/pdf-types/index";
-import { ObjectStreamExtractor } from "../index";
 import type {
-  ObjectStreamExtractorDeps,
+  ObjectStreamBodyDeps,
   StreamDecompressor,
   StreamObjectParser,
   StreamResolver,
@@ -113,21 +111,18 @@ export function stubParser(
 }
 
 /**
- * デフォルト deps でテスト用 ObjectStreamExtractor を生成する。
+ * デフォルト deps を生成する。
  *
  * @param deps - 上書きする依存（省略可）
- * @returns ObjectStreamExtractor インスタンス
+ * @returns ObjectStreamBodyDeps
  */
-export function createExtractor(
-  deps: Partial<ObjectStreamExtractorDeps> = {},
-): ObjectStreamExtractor {
-  const defaultDeps: ObjectStreamExtractorDeps = {
+export function makeDeps(
+  deps: Partial<ObjectStreamBodyDeps> = {},
+): ObjectStreamBodyDeps {
+  return {
     resolver: stubResolver(ok(makeStreamObj(enc("10 0 true")))),
     decompressor: stubDecompressor(ok(enc("10 0 true"))),
     parser: stubParser(ok({ type: "boolean", value: true })),
     ...deps,
   };
-  const result = ObjectStreamExtractor.create(defaultDeps);
-  assert(result.ok);
-  return result.value;
 }
