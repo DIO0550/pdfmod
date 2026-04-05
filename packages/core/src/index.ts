@@ -17,19 +17,19 @@ export type {
 export { Tokenizer } from "./lexer/index";
 export { NumberEx } from "./number-ex/index";
 export type {
-  ObjectStreamExtractorDeps,
-  ObjectStreamHeader,
+  CreateFlateDecompressorOptions,
+  ObjectStreamBodyDeps,
+  ObjectStreamHeaderEntry,
   StreamDecompressor,
   StreamObjectParser,
   StreamResolver,
-  ValidatedStreamDict,
 } from "./objects/index";
 export {
   createFlateDecompressor,
+  DEFAULT_OBJECT_STREAM_MAX_DECOMPRESSED_SIZE,
   LRUCache,
-  ObjectStreamExtractor,
-  parseHeader,
-  validateStreamDict,
+  ObjectStreamBody,
+  ObjectStreamHeader,
 } from "./objects/index";
 export * as Option from "./option/index";
 export * as Result from "./result/index";
