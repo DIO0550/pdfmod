@@ -1,5 +1,5 @@
 import { assert, expect, test } from "vitest";
-import { makeDict } from "../extractor/object-stream-extractor.test-helpers";
+import { makeDict } from "../body/object-stream-body.test-helpers";
 import { ObjectStreamDict } from "./index";
 
 test("validateは正しい辞書から/First,/N,needsDecompressを取得できる", () => {

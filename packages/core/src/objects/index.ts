@@ -6,7 +6,7 @@
 export { LRUCache } from "./lru-cache/index";
 export type {
   CreateFlateDecompressorOptions,
-  ObjectStreamExtractorDeps,
+  ObjectStreamBodyDeps,
   ObjectStreamHeaderEntry,
   StreamDecompressor,
   StreamObjectParser,
@@ -15,6 +15,6 @@ export type {
 export {
   createFlateDecompressor,
   DEFAULT_OBJECT_STREAM_MAX_DECOMPRESSED_SIZE,
-  ObjectStreamExtractor,
+  ObjectStreamBody,
   ObjectStreamHeader,
 } from "./object-stream-extractor/index";

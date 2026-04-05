@@ -1,5 +1,5 @@
 import { assert, expect, test } from "vitest";
-import { enc } from "../extractor/object-stream-extractor.test-helpers";
+import { enc } from "../body/object-stream-body.test-helpers";
 import { ObjectStreamHeader } from "./index";
 
 test("parseは1つのobjNum/offsetペアを持つヘッダをパースできる", () => {
