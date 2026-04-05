@@ -12,7 +12,7 @@ import {
   stubDecompressor,
   stubParser,
   stubResolver,
-} from "./object-stream-body.test-helpers";
+} from "./object-stream-body.test.helpers";
 
 test("オブジェクトストリームから指定インデックスのオブジェクトを抽出できる", async () => {
   const decompressed = enc("10 0 true");
