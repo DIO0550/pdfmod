@@ -14,15 +14,52 @@ import {
 } from "./object-resolver.test.helpers";
 
 test("キャッシュ容量1で2つの異なる ref を resolve すると1つ目が evict される", async () => {
+  const compressedEntry1: XRefCompressedEntry = {
+    type: 2,
+    streamObject: ObjectNumber.of(10),
+    indexInStream: 0,
+  };
+  const compressedEntry2: XRefCompressedEntry = {
+    type: 2,
+    streamObject: ObjectNumber.of(10),
+    indexInStream: 1,
+  };
+  const streamDeps = makeStreamExtractDeps({});
   const resolver = unwrapOk(
-    ObjectResolver.create(makeDeps({ xref: makeXRefTable([]) }), {
-      cacheCapacity: 1,
-    }),
+    ObjectResolver.create(
+      makeDeps({
+        xref: makeXRefTable([
+          [1, compressedEntry1],
+          [2, compressedEntry2],
+        ]),
+      }),
+      { cacheCapacity: 1 },
+      streamDeps,
+    ),
   );
-  const first = await resolver.resolve(makeRef(1));
-  const second = await resolver.resolve(makeRef(2));
-  expect(unwrapOk(first).type).toBe("null");
-  expect(unwrapOk(second).type).toBe("null");
+  const extractSpy = vi
+    .spyOn(ObjectStreamBody, "extract")
+    .mockResolvedValue({ ok: true, value: { type: "null" } });
+
+  try {
+    const first = await resolver.resolve(makeRef(1));
+    expect(unwrapOk(first).type).toBe("null");
+    expect(extractSpy).toHaveBeenCalledTimes(1);
+
+    const firstAgain = await resolver.resolve(makeRef(1));
+    expect(unwrapOk(firstAgain).type).toBe("null");
+    expect(extractSpy).toHaveBeenCalledTimes(1);
+
+    const second = await resolver.resolve(makeRef(2));
+    expect(unwrapOk(second).type).toBe("null");
+    expect(extractSpy).toHaveBeenCalledTimes(2);
+
+    const firstAfterEvict = await resolver.resolve(makeRef(1));
+    expect(unwrapOk(firstAfterEvict).type).toBe("null");
+    expect(extractSpy).toHaveBeenCalledTimes(3);
+  } finally {
+    extractSpy.mockRestore();
+  }
 });
 
 test("xref.entries が空テーブルの場合、すべての ref で PdfNull が返る", async () => {
