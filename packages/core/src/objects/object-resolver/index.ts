@@ -196,8 +196,8 @@ export class ObjectResolver {
           return ok({ type: "null" });
         }
         return err({
-          code: "OBJECT_STREAM_INVALID" as PdfError["code"],
-          message: "type=1 (Used) resolution is not yet implemented",
+          code: "XREF_TABLE_INVALID" as PdfError["code"],
+          message: "type=1 (Used) xref entry resolution is not yet implemented",
         } as PdfError);
       }
 
