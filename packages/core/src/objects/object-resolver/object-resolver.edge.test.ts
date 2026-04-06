@@ -145,12 +145,15 @@ test("type=2 で ObjectStreamBody.extract に正しい引数が渡される", as
   const resolver = unwrapOk(ObjectResolver.create(deps, undefined, streamDeps));
 
   const spy = vi.spyOn(ObjectStreamBody, "extract");
-  await resolver.resolve(makeRef(5));
+  try {
+    await resolver.resolve(makeRef(5));
 
-  expect(spy).toHaveBeenCalledOnce();
-  const args = spy.mock.calls[0];
-  expect(args[2]).toBe(ObjectNumber.of(5));
-  expect(args[3]).toBe(ObjectNumber.of(10));
-  expect(args[4]).toBe(3);
-  spy.mockRestore();
+    expect(spy).toHaveBeenCalledOnce();
+    const args = spy.mock.calls[0];
+    expect(args[2]).toBe(ObjectNumber.of(5));
+    expect(args[3]).toBe(ObjectNumber.of(10));
+    expect(args[4]).toBe(3);
+  } finally {
+    spy.mockRestore();
+  }
 });
