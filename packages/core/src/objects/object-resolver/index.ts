@@ -70,7 +70,10 @@ export class ObjectResolver {
     }
 
     let streamCache: LRUCache<ObjectNumber, Uint8Array> | undefined;
-    if (config?.streamCacheCapacity !== false) {
+    if (
+      streamExtractDeps !== undefined &&
+      config?.streamCacheCapacity !== false
+    ) {
       const streamCacheResult = LRUCache.create<ObjectNumber, Uint8Array>(
         config?.streamCacheCapacity ?? DEFAULT_STREAM_CACHE_CAPACITY,
       );
