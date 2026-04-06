@@ -1,13 +1,19 @@
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import type { PdfTypeMismatchError } from "../../errors/index";
 import { ByteOffset } from "../../types/byte-offset/index";
 import { GenerationNumber } from "../../types/generation-number/index";
 import { ObjectNumber } from "../../types/object-number/index";
-import type { XRefFreeEntry, XRefUsedEntry } from "../../types/pdf-types/index";
+import type {
+  XRefCompressedEntry,
+  XRefFreeEntry,
+  XRefUsedEntry,
+} from "../../types/pdf-types/index";
+import { ObjectStreamBody } from "../object-stream-extractor/index";
 import { ObjectResolver } from "./index";
 import {
   makeDeps,
   makeRef,
+  makeStreamExtractDeps,
   makeXRefTable,
   unwrapErr,
   unwrapOk,
@@ -37,13 +43,33 @@ test("create は cacheCapacity 未指定でデフォルト 1024 で生成され�
   expect(result.ok).toBe(true);
 });
 
-test("resolve 2回目の結果は1回目と同一である（キャッシュヒット）", async () => {
+test("resolve 2回目はキャッシュヒットし extract が呼ばれない", async () => {
+  const entry: XRefCompressedEntry = {
+    type: 2,
+    streamObject: ObjectNumber.of(10),
+    indexInStream: 0,
+  };
+  const streamDeps = makeStreamExtractDeps({});
   const resolver = unwrapOk(
-    ObjectResolver.create(makeDeps({ xref: makeXRefTable([]) })),
+    ObjectResolver.create(
+      makeDeps({ xref: makeXRefTable([[5, entry]]) }),
+      undefined,
+      streamDeps,
+    ),
   );
-  const first = await resolver.resolve(makeRef(99));
-  const second = await resolver.resolve(makeRef(99));
-  expect(first).toEqual(second);
+  const extractSpy = vi
+    .spyOn(ObjectStreamBody, "extract")
+    .mockResolvedValue({ ok: true, value: { type: "null" } });
+
+  try {
+    await resolver.resolve(makeRef(5));
+    expect(extractSpy).toHaveBeenCalledTimes(1);
+
+    await resolver.resolve(makeRef(5));
+    expect(extractSpy).toHaveBeenCalledTimes(1);
+  } finally {
+    extractSpy.mockRestore();
+  }
 });
 
 test("xref に存在しない ref で resolve すると PdfNull が返る", async () => {
