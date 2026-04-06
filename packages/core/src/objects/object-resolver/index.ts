@@ -130,7 +130,7 @@ export class ObjectResolver {
    * 内部解決ロジック。循環検出・重複排除・xref type 分岐を行う。
    *
    * @param ref - 解決対象の間接参照
-   * @param ctx - 呼び出しコンテキスト（ancestors, inFlight）
+   * @param ctx - 呼び出しコンテキスト（ancestors）
    * @returns 解決された PdfObject、またはエラー
    */
   private async resolveImpl(
