@@ -4,6 +4,12 @@
  * オブジェクトストリーム（ObjStm）からのオブジェクト抽出機能を提供する。
  */
 export { LRUCache } from "./lru-cache/index";
+export { ObjectResolver } from "./object-resolver/index";
+export type {
+  ObjectResolverConfig,
+  ObjectResolverDeps,
+  ObjectStreamExtractDeps,
+} from "./object-resolver/types";
 export type {
   CreateFlateDecompressorOptions,
   ObjectStreamBodyDeps,
