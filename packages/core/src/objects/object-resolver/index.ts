@@ -199,9 +199,9 @@ export class ObjectResolver {
           return ok({ type: "null" });
         }
         return err({
-          code: "XREF_TABLE_INVALID" as PdfError["code"],
+          code: "NOT_IMPLEMENTED",
           message: "type=1 (Used) xref entry resolution is not yet implemented",
-        } as PdfError);
+        });
       }
 
       case 2: {
