@@ -29,6 +29,7 @@ const allPdfParseErrorCodes = [
   "OBJECT_STREAM_INVALID",
   "OBJECT_STREAM_INDEX_OUT_OF_RANGE",
   "OBJECT_STREAM_HEADER_INVALID",
+  "NOT_IMPLEMENTED",
 ] as const satisfies readonly PdfParseErrorCode[];
 
 // 配列の要素型がPdfParseErrorCodeと完全一致することを型レベルで保証
@@ -40,7 +41,7 @@ const _exhaustive: Exact<
 
 test("PdfParseErrorCodeは網羅的に列挙されている", () => {
   expect(_exhaustive).toBe(true);
-  expect(allPdfParseErrorCodes).toHaveLength(14);
+  expect(allPdfParseErrorCodes).toHaveLength(15);
 });
 
 test("型エクスポートが利用可能", () => {
