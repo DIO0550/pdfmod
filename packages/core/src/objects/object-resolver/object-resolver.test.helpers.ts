@@ -15,7 +15,6 @@ import type {
   ObjectStreamBodyDeps,
   StreamDecompressor,
   StreamObjectParser,
-  StreamResolver,
 } from "../object-stream-extractor/index";
 import type { ObjectResolverDeps, ObjectStreamExtractDeps } from "./types";
 
@@ -65,15 +64,10 @@ export const makeDeps = (
 });
 
 export const makeStreamExtractDeps = (overrides: {
-  resolver?: StreamResolver;
   parser?: StreamObjectParser;
   decompressor?: StreamDecompressor;
 }): ObjectStreamExtractDeps => ({
   streamBodyDeps: {
-    resolver: overrides.resolver ?? {
-      resolve: () =>
-        Promise.resolve(ok({ type: "null" }) as Result<PdfObject, PdfError>),
-    },
     parser: overrides.parser ?? {
       parse: () => ok({ type: "null" } as PdfObject),
     },
