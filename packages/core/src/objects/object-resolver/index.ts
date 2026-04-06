@@ -210,10 +210,10 @@ export class ObjectResolver {
         }
         if (this.streamExtractDeps === undefined) {
           return err({
-            code: "OBJECT_STREAM_INVALID" as PdfError["code"],
+            code: "OBJECT_STREAM_INVALID",
             message:
               "ObjectStreamBody dependencies not provided for type=2 resolution",
-          } as PdfError);
+          });
         }
 
         const adapter: StreamResolver = {
