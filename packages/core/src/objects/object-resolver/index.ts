@@ -210,9 +210,9 @@ export class ObjectResolver {
         }
         if (this.streamExtractDeps === undefined) {
           return err({
-            code: "OBJECT_STREAM_INVALID",
+            code: "NOT_IMPLEMENTED",
             message:
-              "ObjectStreamBody dependencies not provided for type=2 resolution",
+              "type=2 xref entry resolution requires ObjectStreamBody dependencies and is not supported without them",
           });
         }
 
