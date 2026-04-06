@@ -140,7 +140,7 @@ export class ObjectResolver {
     ref: IndirectRef,
     ctx: ResolveContext,
   ): Promise<Result<PdfObject, PdfError>> {
-    const cacheKey = `${ref.objectNumber as number}-${ref.generationNumber as number}`;
+    const cacheKey = `${ref.objectNumber}-${ref.generationNumber}`;
 
     const cached = this.cache.get(cacheKey);
     if (cached !== undefined) {
@@ -150,7 +150,7 @@ export class ObjectResolver {
     if (ctx.ancestors.has(cacheKey)) {
       return err({
         code: "CIRCULAR_REFERENCE" as const,
-        message: `Circular reference detected for object ${ref.objectNumber as number} gen ${ref.generationNumber as number}`,
+        message: `Circular reference detected for object ${ref.objectNumber} gen ${ref.generationNumber}`,
         objectId: ref,
       });
     }
