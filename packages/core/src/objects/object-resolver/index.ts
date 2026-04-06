@@ -205,7 +205,7 @@ export class ObjectResolver {
       }
 
       case 2: {
-        if ((ref.generationNumber as number) !== 0) {
+        if (ref.generationNumber !== GenerationNumber.of(0)) {
           return ok({ type: "null" });
         }
         if (this.streamExtractDeps === undefined) {
