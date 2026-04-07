@@ -3,7 +3,7 @@ import type { ObjectId } from "../../types/index";
 
 /**
  * PDFパースエラーのエラーコード。
- * 構造的・構文的な問題を分類する。
+ * 構造的・構文的な問題、および未実装機能など実装側都合の致命的エラーを分類する。
  *
  * @example
  * ```ts
@@ -24,7 +24,8 @@ export type PdfParseErrorCode =
   | "FLATEDECODE_FAILED"
   | "OBJECT_STREAM_INVALID"
   | "OBJECT_STREAM_INDEX_OUT_OF_RANGE"
-  | "OBJECT_STREAM_HEADER_INVALID";
+  | "OBJECT_STREAM_HEADER_INVALID"
+  | "NOT_IMPLEMENTED";
 
 /**
  * 全致命的PDFエラーコードの共用体型。

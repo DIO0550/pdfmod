@@ -18,7 +18,10 @@ export { Tokenizer } from "./lexer/index";
 export { NumberEx } from "./number-ex/index";
 export type {
   CreateFlateDecompressorOptions,
+  ObjectResolverConfig,
+  ObjectResolverDeps,
   ObjectStreamBodyDeps,
+  ObjectStreamExtractDeps,
   ObjectStreamHeaderEntry,
   StreamDecompressor,
   StreamObjectParser,
@@ -28,6 +31,7 @@ export {
   createFlateDecompressor,
   DEFAULT_OBJECT_STREAM_MAX_DECOMPRESSED_SIZE,
   LRUCache,
+  ObjectResolver,
   ObjectStreamBody,
   ObjectStreamHeader,
 } from "./objects/index";

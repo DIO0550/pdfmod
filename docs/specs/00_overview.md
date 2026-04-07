@@ -23,6 +23,7 @@
 |:----|:-----------|:-----|
 | 01 | [01_lexical_conventions.md](./01_lexical_conventions.md) | レキシカル規約とプリミティブデータ型 |
 | 02 | [02_file_structure.md](./02_file_structure.md) | 物理ファイル構造とランダムアクセス機構 |
+| 02a | [02a_object_resolution.md](./02a_object_resolution.md) | インダイレクトオブジェクト解決の仕組み |
 | 03 | [03_document_architecture.md](./03_document_architecture.md) | 論理ドキュメントアーキテクチャとページツリー |
 | 04 | [04_resources_graphics_state.md](./04_resources_graphics_state.md) | リソース辞書とグラフィックスステート |
 | 05 | [05_content_streams.md](./05_content_streams.md) | コンテンツストリームと描画オペレータ |
