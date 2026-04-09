@@ -4,8 +4,10 @@ import { Tokenizer } from "../../lexer/tokenizer/index";
 import type { Result } from "../../result/index";
 import { err, ok } from "../../result/index";
 import { ByteOffset } from "../../types/byte-offset/index";
+import { GenerationNumber } from "../../types/generation-number/index";
 import type { Token } from "../../types/index";
 import { TokenType } from "../../types/index";
+import { ObjectNumber } from "../../types/object-number/index";
 import type { PdfDictionary, PdfObject } from "../../types/pdf-types/index";
 
 /**
@@ -17,8 +19,8 @@ import type { PdfDictionary, PdfObject } from "../../types/pdf-types/index";
  * @returns 解決された長さ、またはエラー
  */
 export type ResolveLength = (
-  objectNumber: number,
-  generationNumber: number,
+  objectNumber: ObjectNumber,
+  generationNumber: GenerationNumber,
 ) => Promise<Result<number, PdfError>>;
 
 /**
@@ -26,8 +28,8 @@ export type ResolveLength = (
  * objNum/genNum はパースした obj ヘッダから取得。
  */
 export interface IndirectObjectResult {
-  readonly objectNumber: number;
-  readonly generationNumber: number;
+  readonly objectNumber: ObjectNumber;
+  readonly generationNumber: GenerationNumber;
   readonly value: PdfObject;
 }
 
@@ -579,8 +581,8 @@ async function getStreamLengthAsync(
       );
     }
     const resolved = await resolveLength(
-      lengthObj.objectNumber,
-      lengthObj.generationNumber,
+      ObjectNumber.of(lengthObj.objectNumber),
+      GenerationNumber.of(lengthObj.generationNumber),
     );
     if (!resolved.ok) {
       return err(
@@ -763,7 +765,10 @@ export const ObjectParser = {
 function readObjHeader(
   bt: BufferedTokenizer,
   baseOffset: number,
-): Result<{ objectNumber: number; generationNumber: number }, PdfParseError> {
+): Result<
+  { objectNumber: ObjectNumber; generationNumber: GenerationNumber },
+  PdfParseError
+> {
   const objNumToken = bt.next();
   if (
     objNumToken.type !== TokenType.Integer ||
@@ -804,8 +809,8 @@ function readObjHeader(
   }
 
   return ok({
-    objectNumber: objNumToken.value as number,
-    generationNumber: genNumToken.value as number,
+    objectNumber: ObjectNumber.of(objNumToken.value as number),
+    generationNumber: GenerationNumber.of(genNumToken.value as number),
   });
 }
 
@@ -822,8 +827,8 @@ function readObjHeader(
 function expectEndobj(
   bt: BufferedTokenizer,
   baseOffset: number,
-  objectNumber: number,
-  generationNumber: number,
+  objectNumber: ObjectNumber,
+  generationNumber: GenerationNumber,
   value: PdfObject,
 ): Result<IndirectObjectResult, PdfError> {
   const endobjToken = bt.next();
@@ -867,8 +872,8 @@ function expectEndobjAfterStream(
   baseOffset: number,
   value: PdfObject,
   afterEndstreamAbsPos: number,
-  objectNumber: number,
-  generationNumber: number,
+  objectNumber: ObjectNumber,
+  generationNumber: GenerationNumber,
 ): Result<IndirectObjectResult, PdfError> {
   const endobjBt = new BufferedTokenizer(
     new Tokenizer(fullData.subarray(afterEndstreamAbsPos)),

@@ -200,12 +200,12 @@ export class ObjectResolver {
           return ok({ type: "null" });
         }
         const resolveLengthAdapter = async (
-          objNum: number,
-          genNum: number,
+          objNum: ObjectNumber,
+          genNum: GenerationNumber,
         ): Promise<Result<number, PdfError>> => {
           const lengthRef: IndirectRef = {
-            objectNumber: objNum as ObjectNumber,
-            generationNumber: genNum as GenerationNumber,
+            objectNumber: objNum,
+            generationNumber: genNum,
           };
           const r = await this.resolveImpl(lengthRef, ctx);
           if (!r.ok) {
@@ -231,9 +231,8 @@ export class ObjectResolver {
           return parseResult;
         }
         if (
-          parseResult.value.objectNumber !== (ref.objectNumber as number) ||
-          parseResult.value.generationNumber !==
-            (ref.generationNumber as number)
+          parseResult.value.objectNumber !== ref.objectNumber ||
+          parseResult.value.generationNumber !== ref.generationNumber
         ) {
           return err({
             code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
