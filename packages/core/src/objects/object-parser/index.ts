@@ -84,66 +84,6 @@ class BufferedTokenizer {
 }
 
 /**
- * OBJECT_PARSE_UNEXPECTED_TOKEN エラーを生成する。
- *
- * @param message - エラーメッセージ
- * @param baseOffset - 呼び出し元 data 基準の開始オフセット
- * @param tokenOffset - トークンの相対オフセット
- * @returns PdfParseError
- */
-function unexpectedTokenError(
-  message: string,
-  baseOffset: number,
-  tokenOffset: number,
-): PdfParseError {
-  return {
-    code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
-    message,
-    offset: ByteOffset.of(baseOffset + tokenOffset),
-  };
-}
-
-/**
- * OBJECT_PARSE_UNTERMINATED エラーを生成する。
- *
- * @param message - エラーメッセージ
- * @param baseOffset - 呼び出し元 data 基準の開始オフセット
- * @param tokenOffset - トークンの相対オフセット
- * @returns PdfParseError
- */
-function unterminatedError(
-  message: string,
-  baseOffset: number,
-  tokenOffset: number,
-): PdfParseError {
-  return {
-    code: "OBJECT_PARSE_UNTERMINATED",
-    message,
-    offset: ByteOffset.of(baseOffset + tokenOffset),
-  };
-}
-
-/**
- * OBJECT_PARSE_STREAM_LENGTH エラーを生成する。
- *
- * @param message - エラーメッセージ
- * @param baseOffset - 呼び出し元 data 基準の開始オフセット
- * @param tokenOffset - トークンの相対オフセット
- * @returns PdfParseError
- */
-function streamLengthError(
-  message: string,
-  baseOffset: number,
-  tokenOffset: number,
-): PdfParseError {
-  return {
-    code: "OBJECT_PARSE_STREAM_LENGTH",
-    message,
-    offset: ByteOffset.of(baseOffset + tokenOffset),
-  };
-}
-
-/**
  * 16進文字列をバイト配列に変換する。奇数桁の場合は末尾に 0 を補う。
  *
  * @param hex - 16進文字列
@@ -197,13 +137,11 @@ function readValue(
     case TokenType.Integer: {
       const intVal = token.value as number;
       if (Number.isNaN(intVal)) {
-        return err(
-          unexpectedTokenError(
-            `NaN integer token at offset ${token.offset}`,
-            baseOffset,
-            token.offset as number,
-          ),
-        );
+        return err({
+          code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
+          message: `NaN integer token at offset ${token.offset}`,
+          offset: ByteOffset.of(baseOffset + (token.offset as number)),
+        });
       }
       return readIntegerOrIndirectRef(bt, baseOffset, intVal);
     }
@@ -211,13 +149,11 @@ function readValue(
     case TokenType.Real: {
       const realVal = token.value as number;
       if (Number.isNaN(realVal)) {
-        return err(
-          unexpectedTokenError(
-            `NaN real token at offset ${token.offset}`,
-            baseOffset,
-            token.offset as number,
-          ),
-        );
+        return err({
+          code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
+          message: `NaN real token at offset ${token.offset}`,
+          offset: ByteOffset.of(baseOffset + (token.offset as number)),
+        });
       }
       return ok({ type: "real", value: realVal });
     }
@@ -246,18 +182,18 @@ function readValue(
       return readDictEntries(bt, baseOffset, depth + 1, token);
 
     case TokenType.EOF:
-      return err(
-        unterminatedError("Unexpected EOF", baseOffset, token.offset as number),
-      );
+      return err({
+        code: "OBJECT_PARSE_UNTERMINATED",
+        message: "Unexpected EOF",
+        offset: ByteOffset.of(baseOffset + (token.offset as number)),
+      });
 
     default:
-      return err(
-        unexpectedTokenError(
-          `Unexpected token type ${token.type}: ${String(token.value)}`,
-          baseOffset,
-          token.offset as number,
-        ),
-      );
+      return err({
+        code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
+        message: `Unexpected token type ${token.type}: ${String(token.value)}`,
+        offset: ByteOffset.of(baseOffset + (token.offset as number)),
+      });
   }
 }
 
@@ -331,13 +267,11 @@ function readArrayElements(
       return ok({ type: "array", elements });
     }
     if (token.type === TokenType.EOF) {
-      return err(
-        unterminatedError(
-          "Unterminated array",
-          baseOffset,
-          openToken.offset as number,
-        ),
-      );
+      return err({
+        code: "OBJECT_PARSE_UNTERMINATED",
+        message: "Unterminated array",
+        offset: ByteOffset.of(baseOffset + (openToken.offset as number)),
+      });
     }
     bt.pushBack(token);
     const elemResult = readValue(bt, baseOffset, depth);
@@ -378,22 +312,18 @@ function readDictEntries(
       return ok({ type: "dictionary", entries });
     }
     if (keyToken.type === TokenType.EOF) {
-      return err(
-        unterminatedError(
-          "Unterminated dictionary",
-          baseOffset,
-          openToken.offset as number,
-        ),
-      );
+      return err({
+        code: "OBJECT_PARSE_UNTERMINATED",
+        message: "Unterminated dictionary",
+        offset: ByteOffset.of(baseOffset + (openToken.offset as number)),
+      });
     }
     if (keyToken.type !== TokenType.Name) {
-      return err(
-        unexpectedTokenError(
-          `Dictionary key must be a name, got ${keyToken.type}`,
-          baseOffset,
-          keyToken.offset as number,
-        ),
-      );
+      return err({
+        code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
+        message: `Dictionary key must be a name, got ${keyToken.type}`,
+        offset: ByteOffset.of(baseOffset + (keyToken.offset as number)),
+      });
     }
 
     const valResult = readValue(bt, baseOffset, depth);
@@ -428,13 +358,11 @@ function extractStream(
   length: number,
 ): Result<StreamExtractResult, PdfParseError> {
   if (!Number.isSafeInteger(length) || length < 0) {
-    return err(
-      streamLengthError(
-        `/Length value is invalid: ${length}`,
-        baseOffset,
-        relPos,
-      ),
-    );
+    return err({
+      code: "OBJECT_PARSE_STREAM_LENGTH",
+      message: `/Length value is invalid: ${length}`,
+      offset: ByteOffset.of(baseOffset + relPos),
+    });
   }
 
   const absPos = baseOffset + relPos;
@@ -446,32 +374,26 @@ function extractStream(
     if (fullData[absPos + 1] === LF) {
       streamStart = absPos + 2;
     } else {
-      return err(
-        streamLengthError(
-          "stream keyword must be followed by LF or CRLF, got CR alone",
-          baseOffset,
-          relPos,
-        ),
-      );
+      return err({
+        code: "OBJECT_PARSE_STREAM_LENGTH",
+        message: "stream keyword must be followed by LF or CRLF, got CR alone",
+        offset: ByteOffset.of(baseOffset + relPos),
+      });
     }
   } else {
-    return err(
-      streamLengthError(
-        "stream keyword must be followed by LF or CRLF",
-        baseOffset,
-        relPos,
-      ),
-    );
+    return err({
+      code: "OBJECT_PARSE_STREAM_LENGTH",
+      message: "stream keyword must be followed by LF or CRLF",
+      offset: ByteOffset.of(baseOffset + relPos),
+    });
   }
 
   if (streamStart + length > fullData.length) {
-    return err(
-      streamLengthError(
-        `/Length ${length} exceeds available data`,
-        baseOffset,
-        relPos,
-      ),
-    );
+    return err({
+      code: "OBJECT_PARSE_STREAM_LENGTH",
+      message: `/Length ${length} exceeds available data`,
+      offset: ByteOffset.of(baseOffset + relPos),
+    });
   }
 
   const streamData = fullData.subarray(streamStart, streamStart + length);
@@ -485,13 +407,11 @@ function extractStream(
     endstreamToken.type !== TokenType.Keyword ||
     endstreamToken.value !== "endstream"
   ) {
-    return err(
-      streamLengthError(
-        `Expected "endstream", got ${String(endstreamToken.value)}`,
-        baseOffset,
-        afterStreamPos - baseOffset,
-      ),
-    );
+    return err({
+      code: "OBJECT_PARSE_STREAM_LENGTH",
+      message: `Expected "endstream", got ${String(endstreamToken.value)}`,
+      offset: ByteOffset.of(afterStreamPos),
+    });
   }
 
   const afterEndstreamAbsPos = afterStreamPos + afterBt.position;
@@ -517,25 +437,21 @@ function getStreamLengthSync(
 ): Result<number, PdfParseError> | null {
   const lengthObj = dict.entries.get("Length");
   if (lengthObj === undefined) {
-    return err(
-      streamLengthError(
-        "/Length entry is missing from stream dictionary",
-        baseOffset,
-        relPos,
-      ),
-    );
+    return err({
+      code: "OBJECT_PARSE_STREAM_LENGTH",
+      message: "/Length entry is missing from stream dictionary",
+      offset: ByteOffset.of(baseOffset + relPos),
+    });
   }
   if (lengthObj.type === "indirect-ref") {
     return null;
   }
   if (lengthObj.type !== "integer") {
-    return err(
-      streamLengthError(
-        `/Length has unexpected type: ${lengthObj.type}`,
-        baseOffset,
-        relPos,
-      ),
-    );
+    return err({
+      code: "OBJECT_PARSE_STREAM_LENGTH",
+      message: `/Length has unexpected type: ${lengthObj.type}`,
+      offset: ByteOffset.of(baseOffset + relPos),
+    });
   }
   return ok(lengthObj.value);
 }
@@ -557,13 +473,11 @@ async function getStreamLengthAsync(
 ): Promise<Result<number, PdfError>> {
   const lengthObj = dict.entries.get("Length");
   if (lengthObj === undefined) {
-    return err(
-      streamLengthError(
-        "/Length entry is missing from stream dictionary",
-        baseOffset,
-        relPos,
-      ),
-    );
+    return err({
+      code: "OBJECT_PARSE_STREAM_LENGTH",
+      message: "/Length entry is missing from stream dictionary",
+      offset: ByteOffset.of(baseOffset + relPos),
+    });
   }
 
   if (lengthObj.type === "integer") {
@@ -572,37 +486,32 @@ async function getStreamLengthAsync(
 
   if (lengthObj.type === "indirect-ref") {
     if (resolveLength === undefined) {
-      return err(
-        streamLengthError(
+      return err({
+        code: "OBJECT_PARSE_STREAM_LENGTH",
+        message:
           "/Length is an indirect reference but resolveLength was not provided",
-          baseOffset,
-          relPos,
-        ),
-      );
+        offset: ByteOffset.of(baseOffset + relPos),
+      });
     }
     const resolved = await resolveLength(
       ObjectNumber.of(lengthObj.objectNumber),
       GenerationNumber.of(lengthObj.generationNumber),
     );
     if (!resolved.ok) {
-      return err(
-        streamLengthError(
-          `/Length indirect reference resolution failed: ${resolved.error.message}`,
-          baseOffset,
-          relPos,
-        ),
-      );
+      return err({
+        code: "OBJECT_PARSE_STREAM_LENGTH",
+        message: `/Length indirect reference resolution failed: ${resolved.error.message}`,
+        offset: ByteOffset.of(baseOffset + relPos),
+      });
     }
     return ok(resolved.value);
   }
 
-  return err(
-    streamLengthError(
-      `/Length has unexpected type: ${lengthObj.type}`,
-      baseOffset,
-      relPos,
-    ),
-  );
+  return err({
+    code: "OBJECT_PARSE_STREAM_LENGTH",
+    message: `/Length has unexpected type: ${lengthObj.type}`,
+    offset: ByteOffset.of(baseOffset + relPos),
+  });
 }
 
 export const ObjectParser = {
@@ -617,13 +526,11 @@ export const ObjectParser = {
    */
   parse(data: Uint8Array, offset: number): Result<PdfObject, PdfParseError> {
     if (offset < 0 || offset >= data.length) {
-      return err(
-        unexpectedTokenError(
-          `Offset ${offset} is out of range [0, ${data.length})`,
-          0,
-          Math.max(0, offset),
-        ),
-      );
+      return err({
+        code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
+        message: `Offset ${offset} is out of range [0, ${data.length})`,
+        offset: ByteOffset.of(Math.max(0, offset)),
+      });
     }
 
     const subData = data.subarray(offset);
@@ -645,13 +552,12 @@ export const ObjectParser = {
           bt.position,
         );
         if (lengthResult === null) {
-          return err(
-            streamLengthError(
+          return err({
+            code: "OBJECT_PARSE_STREAM_LENGTH",
+            message:
               "/Length is an indirect reference; use parseIndirectObject for indirect /Length resolution",
-              offset,
-              bt.position,
-            ),
-          );
+            offset: ByteOffset.of(offset + bt.position),
+          });
         }
         if (!lengthResult.ok) {
           return lengthResult;
@@ -688,13 +594,11 @@ export const ObjectParser = {
     resolveLength?: ResolveLength,
   ): Promise<Result<IndirectObjectResult, PdfError>> {
     if (offset < 0 || offset >= data.length) {
-      return err(
-        unexpectedTokenError(
-          `Offset ${offset} is out of range [0, ${data.length})`,
-          0,
-          Math.max(0, offset),
-        ),
-      );
+      return err({
+        code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
+        message: `Offset ${offset} is out of range [0, ${data.length})`,
+        offset: ByteOffset.of(Math.max(0, offset)),
+      });
     }
 
     const subData = data.subarray(offset);
@@ -740,7 +644,6 @@ export const ObjectParser = {
         }
         return expectEndobjAfterStream(
           data,
-          offset,
           streamResult.value.object,
           streamResult.value.afterEndstreamAbsPos,
           objectNumber,
@@ -774,13 +677,11 @@ function readObjHeader(
     objNumToken.type !== TokenType.Integer ||
     Number.isNaN(objNumToken.value as number)
   ) {
-    return err(
-      unexpectedTokenError(
-        `Expected object number (integer), got ${objNumToken.type}: ${String(objNumToken.value)}`,
-        baseOffset,
-        objNumToken.offset as number,
-      ),
-    );
+    return err({
+      code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
+      message: `Expected object number (integer), got ${objNumToken.type}: ${String(objNumToken.value)}`,
+      offset: ByteOffset.of(baseOffset + (objNumToken.offset as number)),
+    });
   }
 
   const genNumToken = bt.next();
@@ -788,24 +689,20 @@ function readObjHeader(
     genNumToken.type !== TokenType.Integer ||
     Number.isNaN(genNumToken.value as number)
   ) {
-    return err(
-      unexpectedTokenError(
-        `Expected generation number (integer), got ${genNumToken.type}: ${String(genNumToken.value)}`,
-        baseOffset,
-        genNumToken.offset as number,
-      ),
-    );
+    return err({
+      code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
+      message: `Expected generation number (integer), got ${genNumToken.type}: ${String(genNumToken.value)}`,
+      offset: ByteOffset.of(baseOffset + (genNumToken.offset as number)),
+    });
   }
 
   const objKeyword = bt.next();
   if (objKeyword.type !== TokenType.Keyword || objKeyword.value !== "obj") {
-    return err(
-      unexpectedTokenError(
-        `Expected "obj" keyword, got ${String(objKeyword.value)}`,
-        baseOffset,
-        objKeyword.offset as number,
-      ),
-    );
+    return err({
+      code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
+      message: `Expected "obj" keyword, got ${String(objKeyword.value)}`,
+      offset: ByteOffset.of(baseOffset + (objKeyword.offset as number)),
+    });
   }
 
   return ok({
@@ -839,28 +736,23 @@ function expectEndobj(
     return ok({ objectNumber, generationNumber, value });
   }
   if (endobjToken.type === TokenType.EOF) {
-    return err(
-      unterminatedError(
-        "Expected endobj but reached EOF",
-        baseOffset,
-        endobjToken.offset as number,
-      ),
-    );
+    return err({
+      code: "OBJECT_PARSE_UNTERMINATED",
+      message: "Expected endobj but reached EOF",
+      offset: ByteOffset.of(baseOffset + (endobjToken.offset as number)),
+    });
   }
-  return err(
-    unexpectedTokenError(
-      `Expected "endobj", got ${String(endobjToken.value)}`,
-      baseOffset,
-      endobjToken.offset as number,
-    ),
-  );
+  return err({
+    code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
+    message: `Expected "endobj", got ${String(endobjToken.value)}`,
+    offset: ByteOffset.of(baseOffset + (endobjToken.offset as number)),
+  });
 }
 
 /**
  * stream 後の endobj を afterEndstreamAbsPos から検証する。
  *
  * @param fullData - PDF ファイル全体のバイト配列
- * @param baseOffset - エラー報告用の基準オフセット
  * @param value - パース済みの stream PdfObject
  * @param afterEndstreamAbsPos - endstream 後の絶対バイト位置
  * @param objectNumber - オブジェクト番号
@@ -869,7 +761,6 @@ function expectEndobj(
  */
 function expectEndobjAfterStream(
   fullData: Uint8Array,
-  baseOffset: number,
   value: PdfObject,
   afterEndstreamAbsPos: number,
   objectNumber: ObjectNumber,
@@ -886,19 +777,17 @@ function expectEndobjAfterStream(
     return ok({ objectNumber, generationNumber, value });
   }
   if (endobjToken.type === TokenType.EOF) {
-    return err(
-      unterminatedError(
-        "Expected endobj after endstream but reached EOF",
-        baseOffset,
-        afterEndstreamAbsPos - baseOffset,
-      ),
-    );
+    return err({
+      code: "OBJECT_PARSE_UNTERMINATED",
+      message: "Expected endobj after endstream but reached EOF",
+      offset: ByteOffset.of(afterEndstreamAbsPos),
+    });
   }
-  return err(
-    unexpectedTokenError(
-      `Expected "endobj" after endstream, got ${String(endobjToken.value)}`,
-      baseOffset,
-      afterEndstreamAbsPos - baseOffset + (endobjToken.offset as number),
+  return err({
+    code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
+    message: `Expected "endobj" after endstream, got ${String(endobjToken.value)}`,
+    offset: ByteOffset.of(
+      afterEndstreamAbsPos + (endobjToken.offset as number),
     ),
-  );
+  });
 }
