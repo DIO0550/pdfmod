@@ -410,7 +410,7 @@ function extractStream(
     return err({
       code: "OBJECT_PARSE_STREAM_LENGTH",
       message: `Expected "endstream", got ${String(endstreamToken.value)}`,
-      offset: ByteOffset.of(afterStreamPos),
+      offset: ByteOffset.of(afterStreamPos + (endstreamToken.offset as number)),
     });
   }
 
