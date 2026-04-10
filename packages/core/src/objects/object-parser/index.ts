@@ -493,9 +493,27 @@ async function getStreamLengthAsync(
         offset: ByteOffset.of(baseOffset + relPos),
       });
     }
+    const objectNumber = ObjectNumber.create(lengthObj.objectNumber);
+    if (!objectNumber.ok) {
+      return err({
+        code: "OBJECT_PARSE_STREAM_LENGTH",
+        message: `/Length indirect reference has invalid object number: ${objectNumber.error}`,
+        offset: ByteOffset.of(baseOffset + relPos),
+      });
+    }
+    const generationNumber = GenerationNumber.create(
+      lengthObj.generationNumber,
+    );
+    if (!generationNumber.ok) {
+      return err({
+        code: "OBJECT_PARSE_STREAM_LENGTH",
+        message: `/Length indirect reference has invalid generation number: ${generationNumber.error}`,
+        offset: ByteOffset.of(baseOffset + relPos),
+      });
+    }
     const resolved = await resolveLength(
-      ObjectNumber.of(lengthObj.objectNumber),
-      GenerationNumber.of(lengthObj.generationNumber),
+      objectNumber.value,
+      generationNumber.value,
     );
     if (!resolved.ok) {
       return err({
