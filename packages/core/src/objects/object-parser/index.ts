@@ -87,15 +87,20 @@ class BufferedTokenizer {
  * 16進文字列をバイト配列に変換する。奇数桁の場合は末尾に 0 を補う。
  *
  * @param hex - 16進文字列
- * @returns バイト配列
+ * @returns バイト配列、または不正文字を含む場合はエラー
  */
-function hexStringToBytes(hex: string): Uint8Array {
+function hexStringToBytes(hex: string): Result<Uint8Array, string> {
   const padded = hex.length % 2 === 1 ? `${hex}0` : hex;
   const bytes = new Uint8Array(padded.length / 2);
   for (let i = 0; i < padded.length; i += 2) {
-    bytes[i / 2] = parseInt(padded.substring(i, i + 2), 16);
+    const chunk = padded.substring(i, i + 2);
+    const parsed = parseInt(chunk, 16);
+    if (Number.isNaN(parsed)) {
+      return err(`Invalid hex digits in hex string: "${chunk}"`);
+    }
+    bytes[i / 2] = parsed;
   }
-  return bytes;
+  return ok(bytes);
 }
 
 /**
@@ -168,12 +173,21 @@ function readValue(
         encoding: "literal" as const,
       });
 
-    case TokenType.HexString:
+    case TokenType.HexString: {
+      const hexResult = hexStringToBytes(token.value as string);
+      if (!hexResult.ok) {
+        return err({
+          code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
+          message: hexResult.error,
+          offset: ByteOffset.of(baseOffset + (token.offset as number)),
+        });
+      }
       return ok({
         type: "string",
-        value: hexStringToBytes(token.value as string),
+        value: hexResult.value,
         encoding: "hex" as const,
       });
+    }
 
     case TokenType.ArrayBegin:
       return readArrayElements(bt, baseOffset, depth + 1, token);
