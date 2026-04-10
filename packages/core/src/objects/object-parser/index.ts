@@ -705,9 +705,29 @@ function readObjHeader(
     });
   }
 
+  const objectNumberResult = ObjectNumber.create(objNumToken.value as number);
+  if (!objectNumberResult.ok) {
+    return err({
+      code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
+      message: `Invalid object number: ${objectNumberResult.error}`,
+      offset: ByteOffset.of(baseOffset + (objNumToken.offset as number)),
+    });
+  }
+
+  const generationNumberResult = GenerationNumber.create(
+    genNumToken.value as number,
+  );
+  if (!generationNumberResult.ok) {
+    return err({
+      code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
+      message: `Invalid generation number: ${generationNumberResult.error}`,
+      offset: ByteOffset.of(baseOffset + (genNumToken.offset as number)),
+    });
+  }
+
   return ok({
-    objectNumber: ObjectNumber.of(objNumToken.value as number),
-    generationNumber: GenerationNumber.of(genNumToken.value as number),
+    objectNumber: objectNumberResult.value,
+    generationNumber: generationNumberResult.value,
   });
 }
 
