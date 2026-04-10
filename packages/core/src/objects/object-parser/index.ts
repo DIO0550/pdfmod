@@ -222,7 +222,7 @@ function readValue(
  */
 function readIntegerOrIndirectRef(
   bt: BufferedTokenizer,
-  _baseOffset: number,
+  baseOffset: number,
   intVal: number,
 ): Result<PdfObject, PdfParseError> {
   const second = bt.next();
@@ -239,10 +239,26 @@ function readIntegerOrIndirectRef(
 
   const third = bt.next();
   if (third.type === TokenType.Keyword && third.value === "R") {
+    const objectNumber = ObjectNumber.create(intVal);
+    if (!objectNumber.ok) {
+      return err({
+        code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
+        message: `Invalid indirect reference object number: ${objectNumber.error}`,
+        offset: ByteOffset.of(baseOffset + (third.offset as number)),
+      });
+    }
+    const generationNumber = GenerationNumber.create(secondVal);
+    if (!generationNumber.ok) {
+      return err({
+        code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
+        message: `Invalid indirect reference generation number: ${generationNumber.error}`,
+        offset: ByteOffset.of(baseOffset + (third.offset as number)),
+      });
+    }
     return ok({
       type: "indirect-ref",
-      objectNumber: intVal,
-      generationNumber: secondVal,
+      objectNumber: objectNumber.value,
+      generationNumber: generationNumber.value,
     });
   }
 
