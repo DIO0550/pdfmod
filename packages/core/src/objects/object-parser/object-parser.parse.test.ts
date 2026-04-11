@@ -91,6 +91,11 @@ test("hex string 奇数桁をパースする", () => {
   expect(strObj.value).toEqual(new Uint8Array([0xab, 0xc0]));
 });
 
+test("hex string に不正な文字が含まれる場合エラー", () => {
+  const error = unwrapErr(parse("<1G>"));
+  expect(error.code).toBe("OBJECT_PARSE_UNEXPECTED_TOKEN");
+});
+
 test("空配列をパースする", () => {
   const obj = unwrapOk(parse("[]"));
   expect(obj).toEqual({ type: "array", elements: [] });

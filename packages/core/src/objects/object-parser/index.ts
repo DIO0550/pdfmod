@@ -82,6 +82,8 @@ class BufferedTokenizer {
   }
 }
 
+const HEX_PAIR_PATTERN = /^[0-9A-Fa-f]{2}$/;
+
 /**
  * 16進文字列をバイト配列に変換する。奇数桁の場合は末尾に 0 を補う。
  *
@@ -93,11 +95,10 @@ function hexStringToBytes(hex: string): Result<Uint8Array, string> {
   const bytes = new Uint8Array(padded.length / 2);
   for (let i = 0; i < padded.length; i += 2) {
     const chunk = padded.substring(i, i + 2);
-    const parsed = parseInt(chunk, 16);
-    if (Number.isNaN(parsed)) {
+    if (!HEX_PAIR_PATTERN.test(chunk)) {
       return err(`Invalid hex digits in hex string: "${chunk}"`);
     }
-    bytes[i / 2] = parsed;
+    bytes[i / 2] = parseInt(chunk, 16);
   }
   return ok(bytes);
 }
