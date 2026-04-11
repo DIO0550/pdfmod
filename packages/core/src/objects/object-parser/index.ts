@@ -429,26 +429,62 @@ function extractStream(
   const streamData = fullData.subarray(streamStart, streamStart + length);
 
   const afterStreamPos = streamStart + length;
-  const afterBt = new BufferedTokenizer(
-    new Tokenizer(fullData.subarray(afterStreamPos)),
-  );
-  const endstreamToken = afterBt.next();
-  if (
-    endstreamToken.type !== TokenType.Keyword ||
-    endstreamToken.value !== "endstream"
+  let endstreamPos: number;
+  if (fullData[afterStreamPos] === LF) {
+    endstreamPos = afterStreamPos + 1;
+  } else if (
+    fullData[afterStreamPos] === CR &&
+    fullData[afterStreamPos + 1] === LF
   ) {
+    endstreamPos = afterStreamPos + 2;
+  } else {
     return err({
       code: "OBJECT_PARSE_STREAM_LENGTH",
-      message: `Expected "endstream", got ${String(endstreamToken.value)}`,
-      offset: ByteOffset.of(afterStreamPos + (endstreamToken.offset as number)),
+      message: 'Expected LF or CRLF before "endstream"',
+      offset: ByteOffset.of(afterStreamPos),
     });
   }
 
-  const afterEndstreamAbsPos = afterStreamPos + afterBt.position;
+  if (!matchesAsciiAt(fullData, endstreamPos, ENDSTREAM_KEYWORD)) {
+    return err({
+      code: "OBJECT_PARSE_STREAM_LENGTH",
+      message: 'Expected "endstream" immediately after stream data terminator',
+      offset: ByteOffset.of(endstreamPos),
+    });
+  }
+
+  const afterEndstreamAbsPos = endstreamPos + ENDSTREAM_KEYWORD.length;
   return ok({
     object: { type: "stream", dictionary: dict, data: streamData },
     afterEndstreamAbsPos,
   });
+}
+
+const ENDSTREAM_KEYWORD = "endstream";
+
+/**
+ * data の start 位置から text と一致する ASCII バイト列があるか判定する。
+ * Tokenizer を使わず raw byte で比較するため、コメント/空白のスキップは行わない。
+ *
+ * @param data - 検査対象のバイト配列
+ * @param start - 比較開始位置
+ * @param text - ASCII 文字列
+ * @returns 完全一致すれば true
+ */
+function matchesAsciiAt(
+  data: Uint8Array,
+  start: number,
+  text: string,
+): boolean {
+  if (start < 0 || start + text.length > data.length) {
+    return false;
+  }
+  for (let i = 0; i < text.length; i++) {
+    if (data[start + i] !== text.charCodeAt(i)) {
+      return false;
+    }
+  }
+  return true;
 }
 
 /**
