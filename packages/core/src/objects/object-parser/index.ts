@@ -649,11 +649,19 @@ export const ObjectParser = {
     offset: number,
     resolveLength?: ResolveLength,
   ): Promise<Result<IndirectObjectResult, PdfError>> {
-    if (offset < 0 || offset >= data.length) {
+    if (!Number.isSafeInteger(offset) || offset < 0) {
+      return err({
+        code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
+        message: `Offset ${offset} is invalid; expected a non-negative safe integer within [0, ${data.length})`,
+        offset: ByteOffset.of(0),
+      });
+    }
+
+    if (offset >= data.length) {
       return err({
         code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
         message: `Offset ${offset} is out of range [0, ${data.length})`,
-        offset: ByteOffset.of(Math.max(0, offset)),
+        offset: ByteOffset.of(offset),
       });
     }
 
