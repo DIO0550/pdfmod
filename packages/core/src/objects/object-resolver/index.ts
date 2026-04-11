@@ -237,6 +237,7 @@ export class ObjectResolver {
           return err({
             code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
             message: `obj header mismatch: expected ${ref.objectNumber} ${ref.generationNumber}, got ${parseResult.value.objectNumber} ${parseResult.value.generationNumber}`,
+            offset: entry.offset,
           });
         }
         const resolvedObj = parseResult.value.value;
