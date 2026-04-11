@@ -224,7 +224,7 @@ export class ObjectResolver {
 
         const parseResult = await ObjectParser.parseIndirectObject(
           this.deps.data,
-          entry.offset as number,
+          entry.offset,
           resolveLengthAdapter,
         );
         if (!parseResult.ok) {
