@@ -1,5 +1,4 @@
-import type { PdfParseError } from "../../errors/error/index";
-import type { PdfError } from "../../errors/index";
+import type { PdfError, PdfParseError } from "../../errors/index";
 import { Tokenizer } from "../../lexer/tokenizer/index";
 import type { Result } from "../../result/index";
 import { err, ok } from "../../result/index";
