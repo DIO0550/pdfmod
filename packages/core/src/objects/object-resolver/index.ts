@@ -5,6 +5,7 @@ import { GenerationNumber } from "../../types/generation-number/index";
 import type { ObjectNumber } from "../../types/object-number/index";
 import type { IndirectRef, PdfObject } from "../../types/pdf-types/index";
 import { LRUCache } from "../lru-cache/index";
+import { ObjectParser } from "../object-parser/index";
 import type { StreamResolver } from "../object-stream-extractor/index";
 import { ObjectStreamBody } from "../object-stream-extractor/index";
 import type {
@@ -198,10 +199,50 @@ export class ObjectResolver {
         if (entry.generationNumber !== ref.generationNumber) {
           return ok({ type: "null" });
         }
-        return err({
-          code: "NOT_IMPLEMENTED",
-          message: "type=1 (Used) xref entry resolution is not yet implemented",
-        });
+        const resolveLengthAdapter = async (
+          objNum: ObjectNumber,
+          genNum: GenerationNumber,
+        ): Promise<Result<number, PdfError>> => {
+          const lengthRef: IndirectRef = {
+            objectNumber: objNum,
+            generationNumber: genNum,
+          };
+          const r = await this.resolveImpl(lengthRef, ctx);
+          if (!r.ok) {
+            return r;
+          }
+          if (r.value.type !== "integer") {
+            return err({
+              code: "TYPE_MISMATCH" as const,
+              message: `Expected integer for /Length, got ${r.value.type}`,
+              expected: "integer",
+              actual: r.value.type,
+            });
+          }
+          return ok(r.value.value);
+        };
+
+        const parseResult = await ObjectParser.parseIndirectObject(
+          this.deps.data,
+          entry.offset,
+          resolveLengthAdapter,
+        );
+        if (!parseResult.ok) {
+          return parseResult;
+        }
+        if (
+          parseResult.value.objectNumber !== ref.objectNumber ||
+          parseResult.value.generationNumber !== ref.generationNumber
+        ) {
+          return err({
+            code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
+            message: `obj header mismatch: expected ${ref.objectNumber} ${ref.generationNumber}, got ${parseResult.value.objectNumber} ${parseResult.value.generationNumber}`,
+            offset: entry.offset,
+          });
+        }
+        const resolvedObj = parseResult.value.value;
+        this.cache.set(cacheKey, resolvedObj);
+        return ok(resolvedObj);
       }
 
       case 2: {
