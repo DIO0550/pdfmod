@@ -96,6 +96,12 @@ test("hex string に不正な文字が含まれる場合エラー", () => {
   expect(error.code).toBe("OBJECT_PARSE_UNEXPECTED_TOKEN");
 });
 
+test("literal string のオクタルエスケープが 0xff を超える場合エラー", () => {
+  const error = unwrapErr(parse("(\\777)"));
+  expect(error.code).toBe("OBJECT_PARSE_UNEXPECTED_TOKEN");
+  expect(error.message).toContain("Invalid literal string byte value");
+});
+
 test("空配列をパースする", () => {
   const obj = unwrapOk(parse("[]"));
   expect(obj).toEqual({ type: "array", elements: [] });

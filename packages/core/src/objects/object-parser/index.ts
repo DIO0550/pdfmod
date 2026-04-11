@@ -83,6 +83,7 @@ class BufferedTokenizer {
 }
 
 const HEX_PAIR_PATTERN = /^[0-9A-Fa-f]{2}$/;
+const MAX_BYTE_VALUE = 0xff;
 
 /**
  * 16進文字列をバイト配列に変換する。奇数桁の場合は末尾に 0 を補う。
@@ -107,14 +108,20 @@ function hexStringToBytes(hex: string): Result<Uint8Array, string> {
  * リテラル文字列をバイト配列に変換する。
  *
  * @param str - リテラル文字列
- * @returns バイト配列
+ * @returns バイト配列、または 1 バイト範囲外の code unit を含む場合はエラー
  */
-function literalStringToBytes(str: string): Uint8Array {
+function literalStringToBytes(str: string): Result<Uint8Array, string> {
   const bytes = new Uint8Array(str.length);
   for (let i = 0; i < str.length; i++) {
-    bytes[i] = str.charCodeAt(i);
+    const codeUnit = str.charCodeAt(i);
+    if (codeUnit > MAX_BYTE_VALUE) {
+      return err(
+        `Invalid literal string byte value: ${codeUnit} at index ${i}`,
+      );
+    }
+    bytes[i] = codeUnit;
   }
-  return bytes;
+  return ok(bytes);
 }
 
 /**
@@ -166,12 +173,21 @@ function readValue(
     case TokenType.Name:
       return ok({ type: "name", value: token.value as string });
 
-    case TokenType.LiteralString:
+    case TokenType.LiteralString: {
+      const literalResult = literalStringToBytes(token.value as string);
+      if (!literalResult.ok) {
+        return err({
+          code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
+          message: literalResult.error,
+          offset: ByteOffset.of(baseOffset + (token.offset as number)),
+        });
+      }
       return ok({
         type: "string",
-        value: literalStringToBytes(token.value as string),
+        value: literalResult.value,
         encoding: "literal" as const,
       });
+    }
 
     case TokenType.HexString: {
       const hexResult = hexStringToBytes(token.value as string);
