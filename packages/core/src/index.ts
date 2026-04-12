@@ -18,8 +18,8 @@ export { Tokenizer } from "./lexer/index";
 export { NumberEx } from "./number-ex/index";
 export type {
   IndirectObjectResult,
-  ObjectResolverConfig,
-  ObjectResolverDeps,
+  ObjectStoreOptions,
+  ObjectStoreSource,
   ObjectStreamHeaderEntry,
   ResolveLength,
   StreamResolver,
@@ -27,7 +27,7 @@ export type {
 export {
   LRUCache,
   ObjectParser,
-  ObjectResolver,
+  ObjectStore,
   ObjectStreamBody,
   ObjectStreamHeader,
 } from "./objects/index";

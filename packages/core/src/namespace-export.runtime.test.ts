@@ -5,7 +5,7 @@ import {
   LRUCache,
   ObjectNumber,
   ObjectParser,
-  ObjectResolver,
+  ObjectStore,
   ObjectStreamBody,
   ObjectStreamHeader,
   parseTrailer,
@@ -26,7 +26,7 @@ test.each([
     name: "ObjectParser.parseIndirectObject",
     value: ObjectParser.parseIndirectObject,
   },
-  { name: "ObjectResolver.create", value: ObjectResolver.create },
+  { name: "ObjectStore.create", value: ObjectStore.create },
   { name: "ObjectStreamBody.extract", value: ObjectStreamBody.extract },
   { name: "ObjectStreamHeader.parse", value: ObjectStreamHeader.parse },
 ])("$nameがルートからexportされている", ({ value }) => {
