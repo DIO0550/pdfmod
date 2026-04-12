@@ -1,8 +1,7 @@
+import type { PdfParseError } from "../../../errors/index";
+import type { Result } from "../../../result/index";
 import { decompressFlate } from "../../../xref/stream/flatedecode/index";
-import type {
-  CreateFlateDecompressorOptions,
-  StreamDecompressor,
-} from "../types";
+import type { CreateFlateDecompressorOptions } from "../types";
 
 const BYTES_PER_KB = 1024;
 const BYTES_PER_MB = BYTES_PER_KB * BYTES_PER_KB;
@@ -18,14 +17,16 @@ export const DEFAULT_OBJECT_STREAM_MAX_DECOMPRESSED_SIZE =
 
 /**
  * FlateDecode アダプタ。
- * decompressFlate をラップして StreamDecompressor インタフェースに適合させる。
+ * decompressFlate をラップして ObjStm 展開用のインタフェースに適合させる。
  *
  * @param options - アダプタ生成オプション
- * @returns StreamDecompressor インタフェースの FlateDecode 実装
+ * @returns decompress メソッドを持つオブジェクト
  */
 export const createFlateDecompressor = (
   options: CreateFlateDecompressorOptions = {},
-): StreamDecompressor => {
+): {
+  decompress(data: Uint8Array): Promise<Result<Uint8Array, PdfParseError>>;
+} => {
   const maxDecompressedSize =
     options.maxDecompressedSize ?? DEFAULT_OBJECT_STREAM_MAX_DECOMPRESSED_SIZE;
 

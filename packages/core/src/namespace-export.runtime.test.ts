@@ -1,7 +1,6 @@
 import { expect, test } from "vitest";
 import {
   ByteOffset,
-  createFlateDecompressor,
   GenerationNumber,
   LRUCache,
   ObjectNumber,
@@ -30,7 +29,6 @@ test.each([
   { name: "ObjectResolver.create", value: ObjectResolver.create },
   { name: "ObjectStreamBody.extract", value: ObjectStreamBody.extract },
   { name: "ObjectStreamHeader.parse", value: ObjectStreamHeader.parse },
-  { name: "createFlateDecompressor", value: createFlateDecompressor },
 ])("$nameがルートからexportされている", ({ value }) => {
   expect(typeof value).toBe("function");
 });
