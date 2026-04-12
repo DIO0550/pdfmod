@@ -1,12 +1,5 @@
 import { expect, test } from "vitest";
-import type {
-  CreateFlateDecompressorOptions,
-  ObjectStreamBodyDeps,
-  ObjectStreamHeaderEntry,
-  StreamDecompressor,
-  StreamObjectParser,
-  StreamResolver,
-} from "../../../index";
+import type { ObjectStreamHeaderEntry, StreamResolver } from "../../../index";
 import {
   ByteOffset,
   ObjectNumber,
@@ -18,19 +11,8 @@ test("公開型がルートからインポート可能である", () => {
   const resolver: StreamResolver = {
     resolve: () => Promise.resolve({ ok: true, value: { type: "null" } }),
   };
-  const parser: StreamObjectParser = {
-    parse: () => ({ ok: true, value: { type: "null" } }),
-  };
-  const decompressor: StreamDecompressor = {
-    decompress: () => Promise.resolve({ ok: true, value: new Uint8Array() }),
-  };
-  const deps: ObjectStreamBodyDeps = { resolver, parser, decompressor };
-  const options: CreateFlateDecompressorOptions = { maxDecompressedSize: 1024 };
 
-  expect(deps.resolver).toBe(resolver);
-  expect(deps.parser).toBe(parser);
-  expect(deps.decompressor).toBe(decompressor);
-  expect(options.maxDecompressedSize).toBe(1024);
+  expect(resolver.resolve).toBeDefined();
 });
 
 test("ObjectStreamBody.extractがルートからインポート可能である", () => {

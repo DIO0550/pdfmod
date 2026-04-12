@@ -5,78 +5,65 @@ import { GenerationNumber } from "../../types/generation-number/index";
 import type { ObjectNumber } from "../../types/object-number/index";
 import type { IndirectRef, PdfObject } from "../../types/pdf-types/index";
 import { LRUCache } from "../lru-cache/index";
-import { ObjectParser } from "../object-parser/index";
 import type { StreamResolver } from "../object-stream-extractor/index";
-import { ObjectStreamBody } from "../object-stream-extractor/index";
-import type {
-  ObjectResolverConfig,
-  ObjectResolverDeps,
-  ObjectStreamExtractDeps,
-  ResolveContext,
-} from "./types";
+import { readInlineEntry } from "./entry-readers/inline";
+import { readObjectStreamEntry } from "./entry-readers/object-stream";
+import type { ObjectStoreOptions, ObjectStoreSource } from "./types";
 
 const DEFAULT_CACHE_CAPACITY = 1024;
 const DEFAULT_STREAM_CACHE_CAPACITY = 64;
 
 /**
- * XRefTable を用いて IndirectRef を実体の PdfObject に解決するリゾルバ。
+ * XRefTable を用いて IndirectRef を実体の PdfObject に解決するストア。
  * LRUCache によるメモ化、循環参照検出、XRefEntry の type 別分岐を備える。
+ * ObjStm は常時サポート（discriminated union 不要）。
  */
-export class ObjectResolver {
-  private readonly deps: ObjectResolverDeps;
+export class ObjectStore {
+  private readonly source: ObjectStoreSource;
   private readonly cache: LRUCache<string, PdfObject>;
   private readonly streamCache: LRUCache<ObjectNumber, Uint8Array> | undefined;
-  private readonly streamExtractDeps: ObjectStreamExtractDeps | undefined;
   private readonly inFlight = new Map<
     string,
     Promise<Result<PdfObject, PdfError>>
   >();
 
   /**
-   * @param deps - 外部依存（xref, data）
+   * @param source - データソース（xref, data）
    * @param cache - 解決結果キャッシュ
    * @param streamCache - ObjStm 展開済みデータキャッシュ
-   * @param streamExtractDeps - ObjStm 抽出用依存（undefined の場合 type=2 は未サポート）
    */
   private constructor(
-    deps: ObjectResolverDeps,
+    source: ObjectStoreSource,
     cache: LRUCache<string, PdfObject>,
     streamCache: LRUCache<ObjectNumber, Uint8Array> | undefined,
-    streamExtractDeps: ObjectStreamExtractDeps | undefined,
   ) {
-    this.deps = deps;
+    this.source = source;
     this.cache = cache;
     this.streamCache = streamCache;
-    this.streamExtractDeps = streamExtractDeps;
   }
 
   /**
-   * ObjectResolver インスタンスを生成する。
+   * ObjectStore インスタンスを生成する。
    *
-   * @param deps - 外部依存（xref, data）
-   * @param config - キャッシュ容量等の設定（省略可）
-   * @param streamExtractDeps - ObjStm 抽出用依存（省略可）
-   * @returns 成功時は Ok<ObjectResolver>、失敗時は Err<PdfError | RangeError>
+   * @param source - データソース（xref, data）
+   * @param options - キャッシュ容量等の設定（省略可）
+   * @returns 成功時は Ok<ObjectStore>、失敗時は Err<RangeError>
    */
   static create(
-    deps: ObjectResolverDeps,
-    config?: ObjectResolverConfig,
-    streamExtractDeps?: ObjectStreamExtractDeps,
-  ): Result<ObjectResolver, PdfError | RangeError> {
+    source: ObjectStoreSource,
+    options?: ObjectStoreOptions,
+  ): Result<ObjectStore, RangeError> {
     const cacheResult = LRUCache.create<string, PdfObject>(
-      config?.cacheCapacity ?? DEFAULT_CACHE_CAPACITY,
+      options?.cacheCapacity ?? DEFAULT_CACHE_CAPACITY,
     );
     if (!cacheResult.ok) {
       return cacheResult;
     }
 
     let streamCache: LRUCache<ObjectNumber, Uint8Array> | undefined;
-    if (
-      streamExtractDeps !== undefined &&
-      config?.streamCacheCapacity !== false
-    ) {
+    if (options?.streamCacheCapacity !== false) {
       const streamCacheResult = LRUCache.create<ObjectNumber, Uint8Array>(
-        config?.streamCacheCapacity ?? DEFAULT_STREAM_CACHE_CAPACITY,
+        options?.streamCacheCapacity ?? DEFAULT_STREAM_CACHE_CAPACITY,
       );
       if (!streamCacheResult.ok) {
         return streamCacheResult;
@@ -84,14 +71,7 @@ export class ObjectResolver {
       streamCache = streamCacheResult.value;
     }
 
-    return ok(
-      new ObjectResolver(
-        deps,
-        cacheResult.value,
-        streamCache,
-        streamExtractDeps,
-      ),
-    );
+    return ok(new ObjectStore(source, cacheResult.value, streamCache));
   }
 
   /**
@@ -100,8 +80,8 @@ export class ObjectResolver {
    * @param ref - 解決対象の間接参照
    * @returns 解決された PdfObject、またはエラー
    */
-  async resolve(ref: IndirectRef): Promise<Result<PdfObject, PdfError>> {
-    return this.resolveImpl(ref, { ancestors: new Set() });
+  async get(ref: IndirectRef): Promise<Result<PdfObject, PdfError>> {
+    return this.resolveImpl(ref, new Set());
   }
 
   /**
@@ -111,11 +91,11 @@ export class ObjectResolver {
    * @param expectedType - 期待する PdfObject の type
    * @returns 期待型の PdfObject、または型不一致エラー
    */
-  async resolveAs<T extends PdfObject["type"]>(
+  async getAs<T extends PdfObject["type"]>(
     ref: IndirectRef,
     expectedType: T,
   ): Promise<Result<Extract<PdfObject, { type: T }>, PdfError>> {
-    const result = await this.resolve(ref);
+    const result = await this.get(ref);
     if (!result.ok) {
       return result;
     }
@@ -134,12 +114,12 @@ export class ObjectResolver {
    * 内部解決ロジック。循環検出・重複排除・xref type 分岐を行う。
    *
    * @param ref - 解決対象の間接参照
-   * @param ctx - 呼び出しコンテキスト（ancestors）
+   * @param ancestors - 呼び出しチェーンの祖先キー（循環検出用）
    * @returns 解決された PdfObject、またはエラー
    */
   private async resolveImpl(
     ref: IndirectRef,
-    ctx: ResolveContext,
+    ancestors: Set<string>,
   ): Promise<Result<PdfObject, PdfError>> {
     const cacheKey = `${ref.objectNumber}-${ref.generationNumber}`;
 
@@ -148,7 +128,7 @@ export class ObjectResolver {
       return ok(cached);
     }
 
-    if (ctx.ancestors.has(cacheKey)) {
+    if (ancestors.has(cacheKey)) {
       return err({
         code: "CIRCULAR_REFERENCE" as const,
         message: `Circular reference detected for object ${ref.objectNumber} gen ${ref.generationNumber}`,
@@ -161,14 +141,14 @@ export class ObjectResolver {
       return existing;
     }
 
-    ctx.ancestors.add(cacheKey);
-    const promise = this.doResolve(ref, ctx, cacheKey);
+    ancestors.add(cacheKey);
+    const promise = this.dispatch(ref, ancestors, cacheKey);
     this.inFlight.set(cacheKey, promise);
 
     try {
       return await promise;
     } finally {
-      ctx.ancestors.delete(cacheKey);
+      ancestors.delete(cacheKey);
       this.inFlight.delete(cacheKey);
     }
   }
@@ -177,16 +157,16 @@ export class ObjectResolver {
    * xref エントリの type 別分岐を行う。
    *
    * @param ref - 解決対象の間接参照
-   * @param ctx - 呼び出しコンテキスト
+   * @param ancestors - 呼び出しチェーンの祖先キー
    * @param cacheKey - キャッシュキー文字列
    * @returns 解決された PdfObject、またはエラー
    */
-  private async doResolve(
+  private async dispatch(
     ref: IndirectRef,
-    ctx: ResolveContext,
+    ancestors: Set<string>,
     cacheKey: string,
   ): Promise<Result<PdfObject, PdfError>> {
-    const entry = this.deps.xref.entries.get(ref.objectNumber);
+    const entry = this.source.xref.entries.get(ref.objectNumber);
     if (entry === undefined) {
       return ok({ type: "null" });
     }
@@ -199,7 +179,14 @@ export class ObjectResolver {
         if (entry.generationNumber !== ref.generationNumber) {
           return ok({ type: "null" });
         }
-        const resolveLengthAdapter = async (
+        /**
+         * /Length 間接参照を解決するアダプタ。
+         *
+         * @param objNum - オブジェクト番号
+         * @param genNum - 世代番号
+         * @returns 解決された長さ、またはエラー
+         */
+        const resolveLength = async (
           objNum: ObjectNumber,
           genNum: GenerationNumber,
         ): Promise<Result<number, PdfError>> => {
@@ -207,7 +194,7 @@ export class ObjectResolver {
             objectNumber: objNum,
             generationNumber: genNum,
           };
-          const r = await this.resolveImpl(lengthRef, ctx);
+          const r = await this.resolveImpl(lengthRef, ancestors);
           if (!r.ok) {
             return r;
           }
@@ -222,62 +209,41 @@ export class ObjectResolver {
           return ok(r.value.value);
         };
 
-        const parseResult = await ObjectParser.parseIndirectObject(
-          this.deps.data,
-          entry.offset,
-          resolveLengthAdapter,
+        const inlineResult = await readInlineEntry(
+          this.source.data,
+          entry,
+          ref,
+          resolveLength,
         );
-        if (!parseResult.ok) {
-          return parseResult;
+
+        if (inlineResult.ok) {
+          this.cache.set(cacheKey, inlineResult.value);
         }
-        if (
-          parseResult.value.objectNumber !== ref.objectNumber ||
-          parseResult.value.generationNumber !== ref.generationNumber
-        ) {
-          return err({
-            code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
-            message: `obj header mismatch: expected ${ref.objectNumber} ${ref.generationNumber}, got ${parseResult.value.objectNumber} ${parseResult.value.generationNumber}`,
-            offset: entry.offset,
-          });
-        }
-        const resolvedObj = parseResult.value.value;
-        this.cache.set(cacheKey, resolvedObj);
-        return ok(resolvedObj);
+
+        return inlineResult;
       }
 
       case 2: {
         if (ref.generationNumber !== GenerationNumber.of(0)) {
           return ok({ type: "null" });
         }
-        if (this.streamExtractDeps === undefined) {
-          return err({
-            code: "NOT_IMPLEMENTED",
-            message:
-              "type=2 xref entry resolution requires ObjectStreamBody dependencies and is not supported without them",
-          });
-        }
 
         const adapter: StreamResolver = {
+          /** @param objNum - 解決対象のオブジェクト番号 */
           resolve: (objNum: ObjectNumber) => {
             const adapterRef: IndirectRef = {
               objectNumber: objNum,
               generationNumber: GenerationNumber.of(0),
             };
-            return this.resolveImpl(adapterRef, ctx);
+            return this.resolveImpl(adapterRef, ancestors);
           },
         };
 
-        const depsWithAdapter = {
-          ...this.streamExtractDeps.streamBodyDeps,
-          resolver: adapter,
-        };
-
-        const extractResult = await ObjectStreamBody.extract(
-          depsWithAdapter,
+        const extractResult = await readObjectStreamEntry(
+          adapter,
           this.streamCache,
-          ref.objectNumber,
-          entry.streamObject,
-          entry.indexInStream,
+          ref,
+          entry,
         );
 
         if (extractResult.ok) {

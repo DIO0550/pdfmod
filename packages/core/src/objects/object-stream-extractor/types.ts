@@ -1,4 +1,4 @@
-import type { PdfError, PdfParseError } from "../../errors/index";
+import type { PdfError } from "../../errors/index";
 import type { Result } from "../../result/index";
 import type { ObjectNumber } from "../../types/object-number/index";
 import type { PdfObject } from "../../types/pdf-types/index";
@@ -9,30 +9,6 @@ import type { PdfObject } from "../../types/pdf-types/index";
  */
 export interface StreamResolver {
   resolve(objNum: ObjectNumber): Promise<Result<PdfObject, PdfError>>;
-}
-
-/**
- * ストリーム内オブジェクトをパースするインタフェース。
- * data の offset 位置から1オブジェクトを読み取って返す。
- */
-export interface StreamObjectParser {
-  parse(data: Uint8Array, offset: number): Result<PdfObject, PdfParseError>;
-}
-
-/**
- * ストリームデータを展開するインタフェース。
- */
-export interface StreamDecompressor {
-  decompress(data: Uint8Array): Promise<Result<Uint8Array, PdfParseError>>;
-}
-
-/**
- * ObjectStreamBody の依存を束ねる型。
- */
-export interface ObjectStreamBodyDeps {
-  readonly resolver: StreamResolver;
-  readonly parser: StreamObjectParser;
-  readonly decompressor: StreamDecompressor;
 }
 
 /**

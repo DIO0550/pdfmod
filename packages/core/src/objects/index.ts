@@ -9,23 +9,16 @@ export type {
   ResolveLength,
 } from "./object-parser/index";
 export { ObjectParser } from "./object-parser/index";
-export { ObjectResolver } from "./object-resolver/index";
+export { ObjectStore } from "./object-store/index";
 export type {
-  ObjectResolverConfig,
-  ObjectResolverDeps,
-  ObjectStreamExtractDeps,
-} from "./object-resolver/types";
+  ObjectStoreOptions,
+  ObjectStoreSource,
+} from "./object-store/types";
 export type {
-  CreateFlateDecompressorOptions,
-  ObjectStreamBodyDeps,
   ObjectStreamHeaderEntry,
-  StreamDecompressor,
-  StreamObjectParser,
   StreamResolver,
 } from "./object-stream-extractor/index";
 export {
-  createFlateDecompressor,
-  DEFAULT_OBJECT_STREAM_MAX_DECOMPRESSED_SIZE,
   ObjectStreamBody,
   ObjectStreamHeader,
 } from "./object-stream-extractor/index";
