@@ -4,9 +4,11 @@ import { err, ok } from "../../../result/index";
 import type { ObjectNumber } from "../../../types/object-number/index";
 import type { PdfObject } from "../../../types/pdf-types/index";
 import type { LRUCache } from "../../lru-cache/index";
+import { ObjectParser } from "../../object-parser/index";
 import { ObjectStreamDict } from "../dict/index";
+import { createFlateDecompressor } from "../flate-decompressor/index";
 import { ObjectStreamHeader } from "../header/index";
-import type { ObjectStreamBodyDeps } from "../types";
+import type { StreamResolver } from "../types";
 
 /**
  * ObjStm ボディ部からオブジェクトを抽出するコンパニオンオブジェクト。
@@ -15,7 +17,7 @@ export const ObjectStreamBody = {
   /**
    * オブジェクトストリーム（ObjStm）から指定オブジェクトを抽出する。
    *
-   * @param deps - 依存オブジェクト（resolver, parser, decompressor）
+   * @param resolver - ストリームオブジェクトを解決するリゾルバ
    * @param cache - 展開済みストリームのキャッシュ（undefined でキャッシュ無効）
    * @param targetObjNum - 抽出対象のオブジェクト番号
    * @param streamObjNum - ObjStm 自体のオブジェクト番号
@@ -23,7 +25,7 @@ export const ObjectStreamBody = {
    * @returns 抽出されたPDFオブジェクト、またはエラー
    */
   async extract(
-    deps: ObjectStreamBodyDeps,
+    resolver: StreamResolver,
     cache: LRUCache<ObjectNumber, Uint8Array> | undefined,
     targetObjNum: ObjectNumber,
     streamObjNum: ObjectNumber,
@@ -36,7 +38,7 @@ export const ObjectStreamBody = {
       });
     }
 
-    const resolveResult = await deps.resolver.resolve(streamObjNum);
+    const resolveResult = await resolver.resolve(streamObjNum);
     if (!resolveResult.ok) {
       return resolveResult;
     }
@@ -69,7 +71,7 @@ export const ObjectStreamBody = {
       if (cached !== undefined) {
         decompressedData = cached;
       } else {
-        const decompressResult = await deps.decompressor.decompress(
+        const decompressResult = await createFlateDecompressor().decompress(
           streamObj.data,
         );
         if (!decompressResult.ok) {
@@ -146,7 +148,7 @@ export const ObjectStreamBody = {
     }
 
     const objectData = decompressedData.subarray(startOffset, endOffset);
-    const parseResult = deps.parser.parse(objectData, 0);
+    const parseResult = ObjectParser.parse(objectData, 0);
     if (!parseResult.ok) {
       return parseResult;
     }
