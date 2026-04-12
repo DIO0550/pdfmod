@@ -9,11 +9,11 @@ export type {
   ResolveLength,
 } from "./object-parser/index";
 export { ObjectParser } from "./object-parser/index";
-export { ObjectResolver } from "./object-resolver/index";
+export { ObjectStore } from "./object-store/index";
 export type {
-  ObjectResolverConfig,
-  ObjectResolverDeps,
-} from "./object-resolver/types";
+  ObjectStoreOptions,
+  ObjectStoreSource,
+} from "./object-store/types";
 export type {
   ObjectStreamHeaderEntry,
   StreamResolver,
