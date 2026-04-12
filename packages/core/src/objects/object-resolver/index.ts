@@ -11,7 +11,6 @@ import { ObjectStreamBody } from "../object-stream-extractor/index";
 import type {
   ObjectResolverConfig,
   ObjectResolverDeps,
-  ObjectStreamExtractDeps,
   ResolveContext,
 } from "./types";
 
@@ -26,7 +25,6 @@ export class ObjectResolver {
   private readonly deps: ObjectResolverDeps;
   private readonly cache: LRUCache<string, PdfObject>;
   private readonly streamCache: LRUCache<ObjectNumber, Uint8Array> | undefined;
-  private readonly streamExtractDeps: ObjectStreamExtractDeps | undefined;
   private readonly inFlight = new Map<
     string,
     Promise<Result<PdfObject, PdfError>>
@@ -36,18 +34,15 @@ export class ObjectResolver {
    * @param deps - 外部依存（xref, data）
    * @param cache - 解決結果キャッシュ
    * @param streamCache - ObjStm 展開済みデータキャッシュ
-   * @param streamExtractDeps - ObjStm 抽出用依存（undefined の場合 type=2 は未サポート）
    */
   private constructor(
     deps: ObjectResolverDeps,
     cache: LRUCache<string, PdfObject>,
     streamCache: LRUCache<ObjectNumber, Uint8Array> | undefined,
-    streamExtractDeps: ObjectStreamExtractDeps | undefined,
   ) {
     this.deps = deps;
     this.cache = cache;
     this.streamCache = streamCache;
-    this.streamExtractDeps = streamExtractDeps;
   }
 
   /**
@@ -55,13 +50,11 @@ export class ObjectResolver {
    *
    * @param deps - 外部依存（xref, data）
    * @param config - キャッシュ容量等の設定（省略可）
-   * @param streamExtractDeps - ObjStm 抽出用依存（省略可）
    * @returns 成功時は Ok<ObjectResolver>、失敗時は Err<PdfError | RangeError>
    */
   static create(
     deps: ObjectResolverDeps,
     config?: ObjectResolverConfig,
-    streamExtractDeps?: ObjectStreamExtractDeps,
   ): Result<ObjectResolver, PdfError | RangeError> {
     const cacheResult = LRUCache.create<string, PdfObject>(
       config?.cacheCapacity ?? DEFAULT_CACHE_CAPACITY,
@@ -71,10 +64,7 @@ export class ObjectResolver {
     }
 
     let streamCache: LRUCache<ObjectNumber, Uint8Array> | undefined;
-    if (
-      streamExtractDeps !== undefined &&
-      config?.streamCacheCapacity !== false
-    ) {
+    if (config?.streamCacheCapacity !== false) {
       const streamCacheResult = LRUCache.create<ObjectNumber, Uint8Array>(
         config?.streamCacheCapacity ?? DEFAULT_STREAM_CACHE_CAPACITY,
       );
@@ -84,14 +74,7 @@ export class ObjectResolver {
       streamCache = streamCacheResult.value;
     }
 
-    return ok(
-      new ObjectResolver(
-        deps,
-        cacheResult.value,
-        streamCache,
-        streamExtractDeps,
-      ),
-    );
+    return ok(new ObjectResolver(deps, cacheResult.value, streamCache));
   }
 
   /**
@@ -249,14 +232,6 @@ export class ObjectResolver {
         if (ref.generationNumber !== GenerationNumber.of(0)) {
           return ok({ type: "null" });
         }
-        if (this.streamExtractDeps === undefined) {
-          return err({
-            code: "NOT_IMPLEMENTED",
-            message:
-              "type=2 xref entry resolution requires ObjectStreamBody dependencies and is not supported without them",
-          });
-        }
-
         const adapter: StreamResolver = {
           resolve: (objNum: ObjectNumber) => {
             const adapterRef: IndirectRef = {
@@ -267,13 +242,8 @@ export class ObjectResolver {
           },
         };
 
-        const depsWithAdapter = {
-          ...this.streamExtractDeps.streamBodyDeps,
-          resolver: adapter,
-        };
-
         const extractResult = await ObjectStreamBody.extract(
-          depsWithAdapter,
+          adapter,
           this.streamCache,
           ref.objectNumber,
           entry.streamObject,

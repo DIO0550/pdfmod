@@ -13,7 +13,6 @@ import { ObjectResolver } from "./index";
 import {
   makeDeps,
   makeRef,
-  makeStreamExtractDeps,
   makeXRefTable,
   unwrapErr,
   unwrapOk,
@@ -49,13 +48,8 @@ test("resolve 2回目はキャッシュヒットし extract が呼ばれない",
     streamObject: ObjectNumber.of(10),
     indexInStream: 0,
   };
-  const streamDeps = makeStreamExtractDeps({});
   const resolver = unwrapOk(
-    ObjectResolver.create(
-      makeDeps({ xref: makeXRefTable([[5, entry]]) }),
-      undefined,
-      streamDeps,
-    ),
+    ObjectResolver.create(makeDeps({ xref: makeXRefTable([[5, entry]]) })),
   );
   const extractSpy = vi
     .spyOn(ObjectStreamBody, "extract")

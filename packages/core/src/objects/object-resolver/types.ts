@@ -1,5 +1,4 @@
 import type { XRefTable } from "../../types/pdf-types/index";
-import type { ObjectStreamBodyDeps } from "../object-stream-extractor/index";
 
 /**
  * ObjectResolver の設定。
@@ -19,15 +18,6 @@ export interface ObjectResolverDeps {
   readonly xref: XRefTable;
   /** PDF バイナリデータ */
   readonly data: Uint8Array;
-}
-
-/**
- * ObjectStreamBody.extract に渡す依存セット。
- * ObjectResolver が type=2 分岐で使用する。
- * resolver は ObjectResolver 側でアダプタに差し替えるため受け取らない。
- */
-export interface ObjectStreamExtractDeps {
-  readonly streamBodyDeps: Omit<ObjectStreamBodyDeps, "resolver">;
 }
 
 /**

@@ -1,13 +1,7 @@
-import type { PdfError, PdfParseError } from "../../../errors/index";
+import type { PdfError } from "../../../errors/index";
 import type { Result } from "../../../result/index";
-import { ok } from "../../../result/index";
 import type { PdfDictionary, PdfObject } from "../../../types/pdf-types/index";
-import type {
-  ObjectStreamBodyDeps,
-  StreamDecompressor,
-  StreamObjectParser,
-  StreamResolver,
-} from "../types";
+import type { StreamResolver } from "../types";
 
 /**
  * 文字列を UTF-8 バイト列にエンコードする。
@@ -84,45 +78,4 @@ export function stubResolver(
   result: Result<PdfObject, PdfError>,
 ): StreamResolver {
   return { resolve: () => Promise.resolve(result) };
-}
-
-/**
- * StreamDecompressor のテスト用スタブを生成する。
- *
- * @param result - decompress() が返す固定値
- * @returns StreamDecompressor スタブ
- */
-export function stubDecompressor(
-  result: Result<Uint8Array, PdfParseError>,
-): StreamDecompressor {
-  return { decompress: () => Promise.resolve(result) };
-}
-
-/**
- * StreamObjectParser のテスト用スタブを生成する。
- *
- * @param result - parse() が返す固定値
- * @returns StreamObjectParser スタブ
- */
-export function stubParser(
-  result: Result<PdfObject, PdfParseError>,
-): StreamObjectParser {
-  return { parse: () => result };
-}
-
-/**
- * デフォルト deps を生成する。
- *
- * @param deps - 上書きする依存（省略可）
- * @returns ObjectStreamBodyDeps
- */
-export function makeDeps(
-  deps: Partial<ObjectStreamBodyDeps> = {},
-): ObjectStreamBodyDeps {
-  return {
-    resolver: stubResolver(ok(makeStreamObj(enc("10 0 true")))),
-    decompressor: stubDecompressor(ok(enc("10 0 true"))),
-    parser: stubParser(ok({ type: "boolean", value: true })),
-    ...deps,
-  };
 }

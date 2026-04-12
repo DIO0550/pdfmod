@@ -1,22 +1,13 @@
 import { expect } from "vitest";
-import type { PdfError } from "../../errors/index";
 import type { Result } from "../../result/index";
-import { ok } from "../../result/index";
 import { GenerationNumber } from "../../types/generation-number/index";
 import { ObjectNumber } from "../../types/object-number/index";
 import type {
   IndirectRef,
-  PdfObject,
   XRefEntry,
   XRefTable,
 } from "../../types/pdf-types/index";
-import type { LRUCache } from "../lru-cache/index";
-import type {
-  ObjectStreamBodyDeps,
-  StreamDecompressor,
-  StreamObjectParser,
-} from "../object-stream-extractor/index";
-import type { ObjectResolverDeps, ObjectStreamExtractDeps } from "./types";
+import type { ObjectResolverDeps } from "./types";
 
 /**
  * Result が ok であることをアサートし value を返す。
@@ -40,11 +31,24 @@ export const unwrapErr = <E>(result: Result<unknown, E>): E => {
   return (result as { error: E }).error;
 };
 
+/**
+ * テスト用の IndirectRef を生成する。
+ *
+ * @param objNum - オブジェクト番号
+ * @param genNum - 世代番号（デフォルト 0）
+ * @returns IndirectRef
+ */
 export const makeRef = (objNum: number, genNum: number = 0): IndirectRef => ({
   objectNumber: ObjectNumber.of(objNum),
   generationNumber: GenerationNumber.of(genNum),
 });
 
+/**
+ * テスト用の XRefTable を生成する。
+ *
+ * @param entries - エントリ配列
+ * @returns XRefTable
+ */
 export const makeXRefTable = (
   entries: ReadonlyArray<readonly [number, XRefEntry]>,
 ): XRefTable => {
@@ -56,61 +60,15 @@ export const makeXRefTable = (
   return { entries: map, size: maxNum + 1 };
 };
 
+/**
+ * テスト用の ObjectResolverDeps を生成する。
+ *
+ * @param overrides - 上書きするプロパティ
+ * @returns ObjectResolverDeps
+ */
 export const makeDeps = (
   overrides: Partial<ObjectResolverDeps> = {},
 ): ObjectResolverDeps => ({
   xref: overrides.xref ?? makeXRefTable([]),
   data: overrides.data ?? new Uint8Array(0),
 });
-
-export const makeStreamExtractDeps = (overrides: {
-  parser?: StreamObjectParser;
-  decompressor?: StreamDecompressor;
-}): ObjectStreamExtractDeps => ({
-  streamBodyDeps: {
-    parser: overrides.parser ?? {
-      parse: () => ok({ type: "null" } as PdfObject),
-    },
-    decompressor: overrides.decompressor ?? {
-      decompress: (data: Uint8Array) => Promise.resolve(ok(data)),
-    },
-  },
-});
-
-export const stubExtract = (
-  result: Result<PdfObject, PdfError>,
-): {
-  extract: (
-    deps: ObjectStreamBodyDeps,
-    cache: LRUCache<ObjectNumber, Uint8Array> | undefined,
-    targetObjNum: ObjectNumber,
-    streamObjNum: ObjectNumber,
-    indexInStream: number,
-  ) => Promise<Result<PdfObject, PdfError>>;
-  calls: Array<{
-    deps: ObjectStreamBodyDeps;
-    targetObjNum: ObjectNumber;
-    streamObjNum: ObjectNumber;
-    indexInStream: number;
-  }>;
-} => {
-  const calls: Array<{
-    deps: ObjectStreamBodyDeps;
-    targetObjNum: ObjectNumber;
-    streamObjNum: ObjectNumber;
-    indexInStream: number;
-  }> = [];
-  return {
-    extract: (
-      deps: ObjectStreamBodyDeps,
-      _cache: LRUCache<ObjectNumber, Uint8Array> | undefined,
-      targetObjNum: ObjectNumber,
-      streamObjNum: ObjectNumber,
-      indexInStream: number,
-    ) => {
-      calls.push({ deps, targetObjNum, streamObjNum, indexInStream });
-      return Promise.resolve(result);
-    },
-    calls,
-  };
-};
