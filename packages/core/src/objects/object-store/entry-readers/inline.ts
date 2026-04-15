@@ -1,7 +1,6 @@
 import type { PdfError } from "../../../errors/index";
 import type { Result } from "../../../result/index";
 import { err } from "../../../result/index";
-import { ByteOffset } from "../../../types/byte-offset/index";
 import type {
   IndirectRef,
   PdfObject,
@@ -27,7 +26,7 @@ export async function readInlineEntry(
 ): Promise<Result<PdfObject, PdfError>> {
   const parseResult = await ObjectParser.parseIndirectObject(
     data,
-    ByteOffset.of(entry.offset as number),
+    entry.offset,
     resolver,
   );
   if (!parseResult.ok) {
