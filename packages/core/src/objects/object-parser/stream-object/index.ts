@@ -203,13 +203,15 @@ export const StreamObject = {
       });
     }
 
-    const afterEndstreamAbsPos = endstreamPos + ENDSTREAM_KEYWORD.length;
-    const nextByte = fullData[afterEndstreamAbsPos];
+    const afterEndstreamAbsPos = ByteOffset.of(
+      endstreamPos + ENDSTREAM_KEYWORD.length,
+    );
+    const nextByte = fullData[afterEndstreamAbsPos as number];
     if (nextByte !== undefined && !isPdfTokenBoundary(nextByte)) {
       return err({
         code: "OBJECT_PARSE_STREAM_LENGTH",
         message: '"endstream" must be followed by a token boundary',
-        offset: ByteOffset.of(afterEndstreamAbsPos),
+        offset: afterEndstreamAbsPos,
       });
     }
     return ok({

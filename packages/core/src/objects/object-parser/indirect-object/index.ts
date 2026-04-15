@@ -126,10 +126,11 @@ export const IndirectObject = {
    */
   expectEndobjAfter(
     fullData: Uint8Array,
-    afterEndstreamAbsPos: number,
+    afterEndstreamAbsPos: ByteOffset,
   ): Result<void, PdfParseError> {
+    const absPos = afterEndstreamAbsPos as number;
     const endobjBt = new BufferedTokenizer(
-      new Tokenizer(fullData.subarray(afterEndstreamAbsPos)),
+      new Tokenizer(fullData.subarray(absPos)),
     );
     const endobjToken = endobjBt.next();
     if (
@@ -142,15 +143,13 @@ export const IndirectObject = {
       return err({
         code: "OBJECT_PARSE_UNTERMINATED",
         message: "Expected endobj after endstream but reached EOF",
-        offset: ByteOffset.of(afterEndstreamAbsPos),
+        offset: afterEndstreamAbsPos,
       });
     }
     return err({
       code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
       message: `Expected "endobj" after endstream, got ${String(endobjToken.value)}`,
-      offset: ByteOffset.of(
-        afterEndstreamAbsPos + (endobjToken.offset as number),
-      ),
+      offset: ByteOffset.of(absPos + (endobjToken.offset as number)),
     });
   },
 } as const;
