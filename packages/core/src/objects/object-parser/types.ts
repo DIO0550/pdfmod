@@ -1,5 +1,6 @@
 import type { PdfError } from "../../errors/index";
 import type { Result } from "../../result/index";
+import type { ByteOffset } from "../../types/byte-offset/index";
 import type { GenerationNumber } from "../../types/generation-number/index";
 import type { ObjectNumber } from "../../types/object-number/index";
 import type {
@@ -33,5 +34,5 @@ export type StreamLength =
  */
 export interface StreamExtractResult {
   readonly object: PdfStream;
-  readonly afterEndstreamAbsPos: number;
+  readonly afterEndstreamAbsPos: ByteOffset;
 }
