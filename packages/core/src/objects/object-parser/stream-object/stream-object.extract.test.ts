@@ -46,3 +46,24 @@ test("endstream キーワード不一致でエラー", () => {
   assert(!result.ok);
   expect(result.error.code).toBe("OBJECT_PARSE_STREAM_LENGTH");
 });
+
+test("endstream の後続が識別子文字（例: endstreaming）でエラー", () => {
+  const data = enc("\nhello\nendstreaming");
+  const result = StreamObject.extract(data, 0, 0, emptyDict, 5);
+  assert(!result.ok);
+  expect(result.error.code).toBe("OBJECT_PARSE_STREAM_LENGTH");
+});
+
+test("endstream の後続が whitespace なら正常抽出", () => {
+  const data = enc("\nhello\nendstream ");
+  const result = StreamObject.extract(data, 0, 0, emptyDict, 5);
+  assert(result.ok);
+  expect(new TextDecoder().decode(result.value.object.data)).toBe("hello");
+});
+
+test("endstream の後続が EOF なら正常抽出", () => {
+  const data = enc("\nhello\nendstream");
+  const result = StreamObject.extract(data, 0, 0, emptyDict, 5);
+  assert(result.ok);
+  expect(new TextDecoder().decode(result.value.object.data)).toBe("hello");
+});
