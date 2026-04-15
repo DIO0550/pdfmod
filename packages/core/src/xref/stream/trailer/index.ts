@@ -1,6 +1,6 @@
 import type { PdfParseError } from "../../../errors/index";
 import type { Result } from "../../../result/index";
-import type { PdfObject, TrailerDict } from "../../../types/index";
+import type { PdfValue, TrailerDict } from "../../../types/index";
 import { trailerDictBuilder } from "../../trailer/dict-builder/index";
 
 /**
@@ -14,7 +14,7 @@ import { trailerDictBuilder } from "../../trailer/dict-builder/index";
  * @returns 成功時は `Ok<TrailerDict>`、失敗時は `Err<PdfParseError>`
  */
 export function buildXRefStreamTrailerDict(
-  dict: ReadonlyMap<string, PdfObject>,
+  dict: ReadonlyMap<string, PdfValue>,
 ): Result<TrailerDict, PdfParseError> {
   return trailerDictBuilder("XREF_STREAM_INVALID")
     .root(dict.get("Root"))

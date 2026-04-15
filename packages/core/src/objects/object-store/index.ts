@@ -5,6 +5,7 @@ import { GenerationNumber } from "../../types/generation-number/index";
 import type { ObjectNumber } from "../../types/object-number/index";
 import type { IndirectRef, PdfObject } from "../../types/pdf-types/index";
 import { LRUCache } from "../lru-cache/index";
+import type { ObjectResolver } from "../object-parser/index";
 import type { StreamResolver } from "../object-stream-extractor/index";
 import { readInlineEntry } from "./entry-readers/inline";
 import { readObjectStreamEntry } from "./entry-readers/object-stream";
@@ -179,41 +180,22 @@ export class ObjectStore {
         if (entry.generationNumber !== ref.generationNumber) {
           return ok({ type: "null" });
         }
-        /**
-         * /Length 間接参照を解決するアダプタ。
-         *
-         * @param objNum - オブジェクト番号
-         * @param genNum - 世代番号
-         * @returns 解決された長さ、またはエラー
-         */
-        const resolveLength = async (
+        const resolver: ObjectResolver = (
           objNum: ObjectNumber,
           genNum: GenerationNumber,
-        ): Promise<Result<number, PdfError>> => {
+        ): Promise<Result<PdfObject, PdfError>> => {
           const lengthRef: IndirectRef = {
             objectNumber: objNum,
             generationNumber: genNum,
           };
-          const r = await this.resolveImpl(lengthRef, ancestors);
-          if (!r.ok) {
-            return r;
-          }
-          if (r.value.type !== "integer") {
-            return err({
-              code: "TYPE_MISMATCH" as const,
-              message: `Expected integer for /Length, got ${r.value.type}`,
-              expected: "integer",
-              actual: r.value.type,
-            });
-          }
-          return ok(r.value.value);
+          return this.resolveImpl(lengthRef, ancestors);
         };
 
         const inlineResult = await readInlineEntry(
           this.source.data,
           entry,
           ref,
-          resolveLength,
+          resolver,
         );
 
         if (inlineResult.ok) {

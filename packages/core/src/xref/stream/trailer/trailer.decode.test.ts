@@ -1,9 +1,9 @@
 import { assert, expect, test } from "vitest";
-import type { PdfObject } from "../../../types/index";
+import type { PdfValue } from "../../../types/index";
 import { buildXRefStreamTrailerDict } from "./index";
 
 test("/Rootと/Sizeのみの最小辞書からTrailerDictを構築する", () => {
-  const dict = new Map<string, PdfObject>([
+  const dict = new Map<string, PdfValue>([
     ["Root", { type: "indirect-ref", objectNumber: 1, generationNumber: 0 }],
     ["Size", { type: "integer", value: 10 }],
   ]);
@@ -18,7 +18,7 @@ test("/Rootと/Sizeのみの最小辞書からTrailerDictを構築する", () =>
 });
 
 test("/Root, /Size, /Prev, /Info, /IDすべてを含む辞書からTrailerDictを構築する", () => {
-  const dict = new Map<string, PdfObject>([
+  const dict = new Map<string, PdfValue>([
     ["Root", { type: "indirect-ref", objectNumber: 1, generationNumber: 0 }],
     ["Size", { type: "integer", value: 100 }],
     ["Prev", { type: "integer", value: 512 }],

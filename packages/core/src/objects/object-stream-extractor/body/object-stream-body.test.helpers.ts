@@ -1,6 +1,10 @@
 import type { PdfError } from "../../../errors/index";
 import type { Result } from "../../../result/index";
-import type { PdfDictionary, PdfObject } from "../../../types/pdf-types/index";
+import type {
+  PdfDictionary,
+  PdfObject,
+  PdfValue,
+} from "../../../types/pdf-types/index";
 import type { StreamResolver } from "../types";
 
 /**
@@ -18,9 +22,9 @@ export const enc = (s: string): Uint8Array => new TextEncoder().encode(s);
  * @returns ObjStm 辞書
  */
 export function makeObjStmDict(
-  overrides: Record<string, PdfObject> = {},
+  overrides: Record<string, PdfValue> = {},
 ): PdfDictionary {
-  const defaults: Record<string, PdfObject> = {
+  const defaults: Record<string, PdfValue> = {
     Type: { type: "name", value: "ObjStm" },
     First: { type: "integer", value: 4 },
     N: { type: "integer", value: 1 },
@@ -57,9 +61,9 @@ export function makeStreamObj(
  * @returns 辞書エントリの Map
  */
 export function makeDict(
-  overrides: Record<string, PdfObject> = {},
-): Map<string, PdfObject> {
-  const defaults: Record<string, PdfObject> = {
+  overrides: Record<string, PdfValue> = {},
+): Map<string, PdfValue> {
+  const defaults: Record<string, PdfValue> = {
     Type: { type: "name", value: "ObjStm" },
     First: { type: "integer", value: 24 },
     N: { type: "integer", value: 3 },
