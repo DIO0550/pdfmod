@@ -11,7 +11,7 @@ import {
   ByteOffset as BO,
   type ByteOffset,
 } from "../../../types/byte-offset/index";
-import type { PdfObject, Token, TrailerDict } from "../../../types/index";
+import type { PdfValue, Token, TrailerDict } from "../../../types/index";
 import { TokenType } from "../../../types/index";
 import { trailerDictBuilder } from "../dict-builder/index";
 
@@ -236,7 +236,7 @@ function skipNestedDict(
 }
 
 interface DictEntry {
-  value: PdfObject;
+  value: PdfValue;
   offset: ByteOffset;
 }
 
@@ -262,7 +262,7 @@ class BufferedTokenizer {
 }
 
 /**
- * トークンから PdfObject を読み取る。Integer の場合は間接参照 (Int Int R) を先読み判定する。
+ * トークンから PdfValue を読み取る。Integer の場合は間接参照 (Int Int R) を先読み判定する。
  *
  * @param firstToken - 読み取り済みの先頭トークン
  * @param tokens - バッファ付きトークナイザ
@@ -384,19 +384,19 @@ function readValue(
 }
 
 /**
- * `[` 直後から `]` までの配列要素を読み取り PdfObject 配列として返す。
+ * `[` 直後から `]` までの配列要素を読み取り PdfValue 配列として返す。
  *
  * @param tokens - バッファ付きトークナイザ
  * @param baseOffset - エラー報告用のベースオフセット
  * @param depth - 現在のネスト深さ
- * @returns 成功時は `Ok<PdfObject[]>`、失敗時は `Err<PdfParseError>`
+ * @returns 成功時は `Ok<PdfValue[]>`、失敗時は `Err<PdfParseError>`
  */
 function readArrayElements(
   tokens: BufferedTokenizer,
   baseOffset: ByteOffset,
   depth = 0,
-): Result<PdfObject[], PdfParseError> {
-  const elements: PdfObject[] = [];
+): Result<PdfValue[], PdfParseError> {
+  const elements: PdfValue[] = [];
   while (true) {
     const token = tokens.next();
     if (token.type === TokenType.ArrayEnd) {
@@ -442,7 +442,7 @@ function readIdArray(
       offset,
     });
   }
-  const elements: PdfObject[] = [];
+  const elements: PdfValue[] = [];
   while (true) {
     const token = tokens.next();
     if (token.type === TokenType.ArrayEnd) {

@@ -1,7 +1,7 @@
 import type { PdfParseError, PdfParseErrorCode } from "../errors/index";
 import type { Result } from "../result/index";
 import { err, ok } from "../result/index";
-import type { PdfObject } from "../types/pdf-types/index";
+import type { PdfValue } from "../types/pdf-types/index";
 
 /** PDF 辞書の /Type エントリを検証するユーティリティ。 */
 export const PdfType = {
@@ -14,7 +14,7 @@ export const PdfType = {
    * @returns 成功時は void、失敗時はエラー
    */
   validate(
-    entries: Map<string, PdfObject>,
+    entries: Map<string, PdfValue>,
     expected: string,
     errorCode: PdfParseErrorCode,
   ): Result<void, PdfParseError> {

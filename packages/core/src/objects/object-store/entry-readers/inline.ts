@@ -1,12 +1,13 @@
 import type { PdfError } from "../../../errors/index";
 import type { Result } from "../../../result/index";
 import { err } from "../../../result/index";
+import { ByteOffset } from "../../../types/byte-offset/index";
 import type {
   IndirectRef,
   PdfObject,
   XRefUsedEntry,
 } from "../../../types/pdf-types/index";
-import type { ResolveLength } from "../../object-parser/index";
+import type { ObjectResolver } from "../../object-parser/index";
 import { ObjectParser } from "../../object-parser/index";
 
 /**
@@ -15,19 +16,19 @@ import { ObjectParser } from "../../object-parser/index";
  * @param data - PDF バイナリデータ
  * @param entry - type=1 の XRefEntry（offset を含む）
  * @param ref - 解決対象の間接参照（obj ヘッダ検証用）
- * @param resolveLength - /Length 間接参照解決コールバック
+ * @param resolver - 間接参照解決コールバック（stream の /Length 解決用）
  * @returns パースされた PdfObject、またはエラー
  */
 export async function readInlineEntry(
   data: Uint8Array,
   entry: XRefUsedEntry,
   ref: IndirectRef,
-  resolveLength: ResolveLength,
+  resolver: ObjectResolver,
 ): Promise<Result<PdfObject, PdfError>> {
   const parseResult = await ObjectParser.parseIndirectObject(
     data,
-    entry.offset as number,
-    resolveLength,
+    ByteOffset.of(entry.offset as number),
+    resolver,
   );
   if (!parseResult.ok) {
     return parseResult;
@@ -44,5 +45,5 @@ export async function readInlineEntry(
     });
   }
 
-  return { ok: true, value: parseResult.value.value };
+  return { ok: true, value: parseResult.value.body };
 }

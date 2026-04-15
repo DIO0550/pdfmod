@@ -110,8 +110,66 @@ export interface XRefCompressedEntry {
 export type XRefEntry = XRefFreeEntry | XRefUsedEntry | XRefCompressedEntry;
 
 /**
- * PDF辞書オブジェクト。
- * キーと値のペアを保持するPDFの基本データ構造。
+ * null オブジェクト (ISO 32000 7.3.9)。
+ */
+export interface PdfNull {
+  type: "null";
+}
+
+/**
+ * 真偽値オブジェクト (ISO 32000 7.3.2)。
+ */
+export interface PdfBoolean {
+  type: "boolean";
+  value: boolean;
+}
+
+/**
+ * 整数オブジェクト (ISO 32000 7.3.3)。
+ */
+export interface PdfInteger {
+  type: "integer";
+  value: number;
+}
+
+/**
+ * 実数オブジェクト (ISO 32000 7.3.3)。
+ */
+export interface PdfReal {
+  type: "real";
+  value: number;
+}
+
+/**
+ * 文字列オブジェクト (ISO 32000 7.3.4)。
+ * リテラル形式・16進形式の両方を扱う。
+ */
+export interface PdfString {
+  type: "string";
+  value: Uint8Array;
+  encoding: "literal" | "hex";
+}
+
+/**
+ * 名前オブジェクト (ISO 32000 7.3.5)。
+ */
+export interface PdfName {
+  type: "name";
+  value: string;
+}
+
+/**
+ * 配列オブジェクト (ISO 32000 7.3.6)。
+ * 要素は PdfValue に限定され、stream を含むことはできない。
+ */
+export interface PdfArray {
+  type: "array";
+  elements: PdfValue[];
+}
+
+/**
+ * PDF辞書オブジェクト (ISO 32000 7.3.7)。
+ * entries の値は PdfValue に限定され、stream を含むことはできない。
  *
  * @example
  * ```ts
@@ -124,33 +182,65 @@ export type XRefEntry = XRefFreeEntry | XRefUsedEntry | XRefCompressedEntry;
 export interface PdfDictionary {
   /** オブジェクト種別識別子 */
   type: "dictionary";
-  /** 辞書エントリのマップ（キー: 名前文字列, 値: PDFオブジェクト） */
-  entries: Map<string, PdfObject>;
+  /** 辞書エントリのマップ（キー: 名前文字列, 値: PDF値） */
+  entries: Map<string, PdfValue>;
 }
 
 /**
- * PDFオブジェクトの判別共用体型 (ISO 32000 7.3)。
- * PDFファイル内の全オブジェクト型を網羅する。
- *
- * @example
- * ```ts
- * const obj: PdfObject = { type: "integer", value: 42 };
- * if (obj.type === "name") {
- *   console.log(obj.value);
- * }
- * ```
+ * 間接参照 (ISO 32000 7.3.10)。
+ * 値として配列・辞書・トップレベルに現れる。
  */
-export type PdfObject =
-  | { type: "null" }
-  | { type: "boolean"; value: boolean }
-  | { type: "integer"; value: number }
-  | { type: "real"; value: number }
-  | { type: "string"; value: Uint8Array; encoding: "literal" | "hex" }
-  | { type: "name"; value: string }
-  | { type: "array"; elements: PdfObject[] }
+export interface PdfIndirectRef {
+  type: "indirect-ref";
+  objectNumber: number;
+  generationNumber: number;
+}
+
+/**
+ * ストリームオブジェクト (ISO 32000 7.3.8)。
+ * 間接オブジェクトの本体にのみ現れる。
+ */
+export interface PdfStream {
+  type: "stream";
+  dictionary: PdfDictionary;
+  data: Uint8Array;
+}
+
+/**
+ * PDF 値型 (ISO 32000 7.3)。
+ * 配列・辞書の中や、トップレベルの値として現れる型。
+ * stream は含まない（stream は間接オブジェクト本体のみに現れる）。
+ */
+export type PdfValue =
+  | PdfNull
+  | PdfBoolean
+  | PdfInteger
+  | PdfReal
+  | PdfString
+  | PdfName
+  | PdfArray
   | PdfDictionary
-  | { type: "stream"; dictionary: PdfDictionary; data: Uint8Array }
-  | { type: "indirect-ref"; objectNumber: number; generationNumber: number };
+  | PdfIndirectRef;
+
+/**
+ * PDF object 全体型 (ISO 32000 7.3)。
+ * PDF 仕様の "PDF object" 概念に対応。9つの基本型 + 間接参照 + stream をすべて含む。
+ * `parseIndirectObject` の body（間接オブジェクトの中身）として使われる。
+ */
+export type PdfObject = PdfValue | PdfStream;
+
+/**
+ * 間接オブジェクト (ISO 32000 7.3.10)。
+ * `N G obj ... endobj` の定義全体を表す。
+ */
+export interface PdfIndirectObject {
+  /** N: オブジェクト番号 */
+  objectNumber: ObjectNumber;
+  /** G: 世代番号 */
+  generationNumber: GenerationNumber;
+  /** 中身（値または stream） */
+  body: PdfObject;
+}
 
 /**
  * 相互参照テーブル。

@@ -1,5 +1,6 @@
 import { assert, expect, test, vi } from "vitest";
 import { err, ok } from "../../../result/index";
+import { ByteOffset } from "../../../types/byte-offset/index";
 import { GenerationNumber } from "../../../types/generation-number/index";
 import { ObjectNumber } from "../../../types/object-number/index";
 import { LRUCache } from "../../lru-cache/index";
@@ -377,9 +378,9 @@ test("同一ストリームの異なるインデックスのオブジェクト�
   let parseCallData: Uint8Array = new Uint8Array(0);
   const parseSpy = vi
     .spyOn(ObjectParser, "parse")
-    .mockImplementation((callData: Uint8Array, offset: number) => {
+    .mockImplementation((callData: Uint8Array, offset: ByteOffset) => {
       parseCallData = callData;
-      expect(offset).toBe(0);
+      expect(offset).toBe(ByteOffset.of(0));
       return ok({ type: "boolean", value: true });
     });
 

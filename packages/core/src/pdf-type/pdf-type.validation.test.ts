@@ -1,9 +1,9 @@
 import { expect, test } from "vitest";
-import type { PdfObject } from "../types/pdf-types/index";
+import type { PdfValue } from "../types/pdf-types/index";
 import { PdfType } from "./index";
 
 test("期待する名前の /Type がある場合 ok を返す", () => {
-  const entries = new Map<string, PdfObject>([
+  const entries = new Map<string, PdfValue>([
     ["Type", { type: "name", value: "ObjStm" }],
   ]);
   const result = PdfType.validate(entries, "ObjStm", "OBJECT_STREAM_INVALID");
@@ -11,13 +11,13 @@ test("期待する名前の /Type がある場合 ok を返す", () => {
 });
 
 test("/Type がない場合 err を返す", () => {
-  const entries = new Map<string, PdfObject>();
+  const entries = new Map<string, PdfValue>();
   const result = PdfType.validate(entries, "ObjStm", "OBJECT_STREAM_INVALID");
   expect(result.ok).toBe(false);
 });
 
 test("/Type が name でない場合 err を返す", () => {
-  const entries = new Map<string, PdfObject>([
+  const entries = new Map<string, PdfValue>([
     ["Type", { type: "integer", value: 1 }],
   ]);
   const result = PdfType.validate(entries, "ObjStm", "OBJECT_STREAM_INVALID");
@@ -25,7 +25,7 @@ test("/Type が name でない場合 err を返す", () => {
 });
 
 test("/Type の値が期待と異なる場合 err を返す", () => {
-  const entries = new Map<string, PdfObject>([
+  const entries = new Map<string, PdfValue>([
     ["Type", { type: "name", value: "XRef" }],
   ]);
   const result = PdfType.validate(entries, "ObjStm", "OBJECT_STREAM_INVALID");
@@ -33,7 +33,7 @@ test("/Type の値が期待と異なる場合 err を返す", () => {
 });
 
 test("errorCode を指定した場合そのコードが使われる", () => {
-  const entries = new Map<string, PdfObject>();
+  const entries = new Map<string, PdfValue>();
   const result = PdfType.validate(entries, "ObjStm", "XREF_STREAM_INVALID");
   expect(result).toStrictEqual({
     ok: false,

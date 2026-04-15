@@ -1,16 +1,16 @@
 import { assert, expect, test } from "vitest";
-import type { PdfObject } from "../../../types/index";
+import type { PdfValue } from "../../../types/index";
 import { buildXRefStreamTrailerDict } from "./index";
 
-const validRoot: PdfObject = {
+const validRoot: PdfValue = {
   type: "indirect-ref",
   objectNumber: 1,
   generationNumber: 0,
 };
-const validSize: PdfObject = { type: "integer", value: 10 };
+const validSize: PdfValue = { type: "integer", value: 10 };
 
 test("未知のキーが含まれていても無視して正常に構築する", () => {
-  const dict = new Map<string, PdfObject>([
+  const dict = new Map<string, PdfValue>([
     ["Root", validRoot],
     ["Size", validSize],
     ["Type", { type: "name", value: "XRef" }],
@@ -24,7 +24,7 @@ test("未知のキーが含まれていても無視して正常に構築する",
 });
 
 test("/Prevが0の場合に正常にByteOffsetとして扱う（境界値）", () => {
-  const dict = new Map<string, PdfObject>([
+  const dict = new Map<string, PdfValue>([
     ["Root", validRoot],
     ["Size", validSize],
     ["Prev", { type: "integer", value: 0 }],
@@ -35,7 +35,7 @@ test("/Prevが0の場合に正常にByteOffsetとして扱う（境界値）", (
 });
 
 test("/Sizeが0の場合に正常に構築する（境界値）", () => {
-  const dict = new Map<string, PdfObject>([
+  const dict = new Map<string, PdfValue>([
     ["Root", validRoot],
     ["Size", { type: "integer", value: 0 }],
   ]);

@@ -5,7 +5,10 @@ import { ObjectNumber } from "../object-number/index";
 import type {
   IndirectRef,
   PdfDictionary,
+  PdfIndirectObject,
   PdfObject,
+  PdfStream,
+  PdfValue,
   TrailerDict,
   XRefCompressedEntry,
   XRefEntry,
@@ -69,10 +72,10 @@ test("typeフィールドでdiscriminated unionのナローイングが動作す
 test("typeフィールドでdiscriminated unionのナローイングが動作する - dictionary", () => {
   const dict = {
     type: "dictionary" as const,
-    entries: new Map<string, PdfObject>(),
+    entries: new Map<string, PdfValue>(),
   };
   const narrowed: Extract<PdfObject, { type: "dictionary" }> = dict;
-  const entries: Map<string, PdfObject> = narrowed.entries;
+  const entries: Map<string, PdfValue> = narrowed.entries;
   expect(entries.size).toBe(0);
 });
 
@@ -85,6 +88,63 @@ test("PdfDictionary型がdictionaryバリアントと一致する", () => {
 
   expect(obj.type).toBe("dictionary");
   expect(dict.type).toBe("dictionary");
+});
+
+test("PdfValue は PdfObject のサブタイプである", () => {
+  const v: PdfValue = { type: "integer", value: 1 };
+  const o: PdfObject = v;
+  expect(o.type).toBe("integer");
+});
+
+test("PdfStream は PdfObject に代入できる", () => {
+  const s: PdfStream = {
+    type: "stream",
+    dictionary: { type: "dictionary", entries: new Map() },
+    data: new Uint8Array(),
+  };
+  const o: PdfObject = s;
+  expect(o.type).toBe("stream");
+});
+
+test("PdfValue 配列に stream を入れると型エラーになる", () => {
+  const stream = {
+    type: "stream" as const,
+    dictionary: { type: "dictionary" as const, entries: new Map() },
+    data: new Uint8Array(),
+  };
+  const arr: PdfValue = {
+    type: "array",
+    // @ts-expect-error stream is not assignable to PdfValue element
+    elements: [stream],
+  };
+  expect(arr.type).toBe("array");
+});
+
+test("PdfDictionary.entries に stream を入れると型エラーになる", () => {
+  const stream = {
+    type: "stream" as const,
+    dictionary: { type: "dictionary" as const, entries: new Map() },
+    data: new Uint8Array(),
+  };
+  const dict: PdfDictionary = {
+    type: "dictionary",
+    // @ts-expect-error stream is not assignable to PdfDictionary value
+    entries: new Map<string, PdfValue>([["Key", stream]]),
+  };
+  expect(dict.entries.size).toBe(1);
+});
+
+test("PdfIndirectObject の body には stream を入れられる", () => {
+  const indirect: PdfIndirectObject = {
+    objectNumber: ObjectNumber.of(1),
+    generationNumber: GenerationNumber.of(0),
+    body: {
+      type: "stream",
+      dictionary: { type: "dictionary", entries: new Map() },
+      data: new Uint8Array(),
+    },
+  };
+  expect(indirect.body.type).toBe("stream");
 });
 
 test("XRefFreeEntry を構築できる", () => {
