@@ -1,4 +1,5 @@
 import type { PdfError, PdfParseError } from "../../../errors/index";
+import { isPdfTokenBoundary } from "../../../lexer/bytes/index";
 import type { Result } from "../../../result/index";
 import { err, ok } from "../../../result/index";
 import { ByteOffset } from "../../../types/byte-offset/index";
@@ -203,6 +204,14 @@ export const StreamObject = {
     }
 
     const afterEndstreamAbsPos = endstreamPos + ENDSTREAM_KEYWORD.length;
+    const nextByte = fullData[afterEndstreamAbsPos];
+    if (nextByte !== undefined && !isPdfTokenBoundary(nextByte)) {
+      return err({
+        code: "OBJECT_PARSE_STREAM_LENGTH",
+        message: '"endstream" must be followed by a token boundary',
+        offset: ByteOffset.of(afterEndstreamAbsPos),
+      });
+    }
     return ok({
       object: { type: "stream", dictionary: dict, data: streamData },
       afterEndstreamAbsPos,
