@@ -25,7 +25,7 @@ function validateOffset(
   data: Uint8Array,
   offset: ByteOffset,
 ): Result<number, PdfParseError> {
-  const n = offset as unknown as number;
+  const n = offset as number;
   if (!Number.isSafeInteger(n) || n < 0) {
     return err({
       code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
