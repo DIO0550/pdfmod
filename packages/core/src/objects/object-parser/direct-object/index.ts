@@ -222,7 +222,7 @@ function readArrayElements(
   }
 
   const elements: PdfValue[] = [];
-  for (;;) {
+  while (true) {
     const token = bt.next();
     if (token.type === TokenType.ArrayEnd) {
       return ok({ type: "array", elements });
@@ -267,7 +267,7 @@ function readDictEntries(
   }
 
   const entries = new Map<string, PdfValue>();
-  for (;;) {
+  while (true) {
     const keyToken = bt.next();
     if (keyToken.type === TokenType.DictEnd) {
       return ok({ type: "dictionary", entries });
