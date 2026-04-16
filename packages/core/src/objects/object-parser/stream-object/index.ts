@@ -31,7 +31,7 @@ export const StreamObject = {
    */
   readLength(
     dict: PdfDictionary,
-    baseOffset: number,
+    baseOffset: ByteOffset,
     relPos: number,
   ): Result<StreamLength, PdfParseError> {
     const lengthObj = dict.entries.get("Length");
@@ -39,7 +39,7 @@ export const StreamObject = {
       return err({
         code: "OBJECT_PARSE_STREAM_LENGTH",
         message: "/Length entry is missing from stream dictionary",
-        offset: ByteOffset.of(baseOffset + relPos),
+        offset: ByteOffset.add(baseOffset, ByteOffset.of(relPos)),
       });
     }
     if (lengthObj.type === "integer") {
@@ -51,7 +51,7 @@ export const StreamObject = {
     return err({
       code: "OBJECT_PARSE_STREAM_LENGTH",
       message: `/Length has unexpected type: ${lengthObj.type}`,
-      offset: ByteOffset.of(baseOffset + relPos),
+      offset: ByteOffset.add(baseOffset, ByteOffset.of(relPos)),
     });
   },
 
@@ -67,7 +67,7 @@ export const StreamObject = {
    */
   async resolveLength(
     length: StreamLength,
-    baseOffset: number,
+    baseOffset: ByteOffset,
     relPos: number,
     resolver?: ObjectResolver,
   ): Promise<Result<number, PdfError>> {
@@ -79,7 +79,7 @@ export const StreamObject = {
         code: "OBJECT_PARSE_STREAM_LENGTH",
         message:
           "/Length is an indirect reference but resolver was not provided",
-        offset: ByteOffset.of(baseOffset + relPos),
+        offset: ByteOffset.add(baseOffset, ByteOffset.of(relPos)),
       });
     }
     const objectNumber = ObjectNumber.create(length.ref.objectNumber);
@@ -87,7 +87,7 @@ export const StreamObject = {
       return err({
         code: "OBJECT_PARSE_STREAM_LENGTH",
         message: `/Length indirect reference has invalid object number: ${objectNumber.error}`,
-        offset: ByteOffset.of(baseOffset + relPos),
+        offset: ByteOffset.add(baseOffset, ByteOffset.of(relPos)),
       });
     }
     const generationNumber = GenerationNumber.create(
@@ -97,7 +97,7 @@ export const StreamObject = {
       return err({
         code: "OBJECT_PARSE_STREAM_LENGTH",
         message: `/Length indirect reference has invalid generation number: ${generationNumber.error}`,
-        offset: ByteOffset.of(baseOffset + relPos),
+        offset: ByteOffset.add(baseOffset, ByteOffset.of(relPos)),
       });
     }
     const resolved = await resolver(objectNumber.value, generationNumber.value);
@@ -105,7 +105,7 @@ export const StreamObject = {
       return err({
         code: "OBJECT_PARSE_STREAM_LENGTH",
         message: `/Length indirect reference resolution failed: ${resolved.error.message}`,
-        offset: ByteOffset.of(baseOffset + relPos),
+        offset: ByteOffset.add(baseOffset, ByteOffset.of(relPos)),
       });
     }
     if (resolved.value.type !== "integer") {
@@ -131,7 +131,7 @@ export const StreamObject = {
    */
   extract(
     fullData: Uint8Array,
-    baseOffset: number,
+    baseOffset: ByteOffset,
     relPos: number,
     dict: PdfDictionary,
     length: number,
@@ -140,11 +140,11 @@ export const StreamObject = {
       return err({
         code: "OBJECT_PARSE_STREAM_LENGTH",
         message: `/Length value is invalid: ${length}`,
-        offset: ByteOffset.of(baseOffset + relPos),
+        offset: ByteOffset.add(baseOffset, ByteOffset.of(relPos)),
       });
     }
 
-    const absPos = baseOffset + relPos;
+    const absPos = (baseOffset as number) + relPos;
     let streamStart: number;
 
     if (fullData[absPos] === LF) {
@@ -157,14 +157,14 @@ export const StreamObject = {
           code: "OBJECT_PARSE_STREAM_LENGTH",
           message:
             "stream keyword must be followed by LF or CRLF, got CR alone",
-          offset: ByteOffset.of(baseOffset + relPos),
+          offset: ByteOffset.add(baseOffset, ByteOffset.of(relPos)),
         });
       }
     } else {
       return err({
         code: "OBJECT_PARSE_STREAM_LENGTH",
         message: "stream keyword must be followed by LF or CRLF",
-        offset: ByteOffset.of(baseOffset + relPos),
+        offset: ByteOffset.add(baseOffset, ByteOffset.of(relPos)),
       });
     }
 
@@ -172,7 +172,7 @@ export const StreamObject = {
       return err({
         code: "OBJECT_PARSE_STREAM_LENGTH",
         message: `/Length ${length} exceeds available data`,
-        offset: ByteOffset.of(baseOffset + relPos),
+        offset: ByteOffset.add(baseOffset, ByteOffset.of(relPos)),
       });
     }
 

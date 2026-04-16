@@ -19,12 +19,12 @@ export type { ObjectResolver } from "./types";
  *
  * @param data - パース対象のバイト配列
  * @param offset - 検証対象のオフセット
- * @returns 検証済みの number、または検証エラー
+ * @returns 検証済みの ByteOffset、または検証エラー
  */
 function validateOffset(
   data: Uint8Array,
   offset: ByteOffset,
-): Result<number, PdfParseError> {
+): Result<ByteOffset, PdfParseError> {
   const n = offset as number;
   if (!Number.isSafeInteger(n) || n < 0) {
     return err({
@@ -40,7 +40,7 @@ function validateOffset(
       offset: ByteOffset.of(n),
     });
   }
-  return ok(n);
+  return ok(offset);
 }
 
 export const ObjectParser = {
@@ -63,7 +63,7 @@ export const ObjectParser = {
     }
     const baseOffset = offsetResult.value;
 
-    const subData = data.subarray(baseOffset);
+    const subData = data.subarray(baseOffset as number);
     const bt = new BufferedTokenizer(new Tokenizer(subData));
     const result = DirectObject.parse(bt, baseOffset, 0);
     if (!result.ok) {
@@ -89,7 +89,7 @@ export const ObjectParser = {
             code: "OBJECT_PARSE_STREAM_LENGTH",
             message:
               "/Length is an indirect reference; use parseIndirectObject for indirect /Length resolution",
-            offset: ByteOffset.of(baseOffset + bt.position),
+            offset: ByteOffset.add(baseOffset, ByteOffset.of(bt.position)),
           });
         }
         const streamResult = StreamObject.extract(
@@ -129,7 +129,7 @@ export const ObjectParser = {
     }
     const baseOffset = offsetResult.value;
 
-    const subData = data.subarray(baseOffset);
+    const subData = data.subarray(baseOffset as number);
     const bt = new BufferedTokenizer(new Tokenizer(subData));
 
     const headerResult = IndirectObject.parseHeader(bt, baseOffset);
