@@ -21,7 +21,7 @@ export const IndirectObject = {
    */
   parseHeader(
     bt: BufferedTokenizer,
-    baseOffset: number,
+    baseOffset: ByteOffset,
   ): Result<
     { objectNumber: ObjectNumber; generationNumber: GenerationNumber },
     PdfParseError
@@ -34,7 +34,7 @@ export const IndirectObject = {
       return err({
         code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
         message: `Expected object number (integer), got ${objNumToken.type}: ${String(objNumToken.value)}`,
-        offset: ByteOffset.of(baseOffset + (objNumToken.offset as number)),
+        offset: ByteOffset.add(baseOffset, objNumToken.offset),
       });
     }
 
@@ -46,7 +46,7 @@ export const IndirectObject = {
       return err({
         code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
         message: `Expected generation number (integer), got ${genNumToken.type}: ${String(genNumToken.value)}`,
-        offset: ByteOffset.of(baseOffset + (genNumToken.offset as number)),
+        offset: ByteOffset.add(baseOffset, genNumToken.offset),
       });
     }
 
@@ -55,7 +55,7 @@ export const IndirectObject = {
       return err({
         code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
         message: `Expected "obj" keyword, got ${objKeyword.type}: ${String(objKeyword.value)}`,
-        offset: ByteOffset.of(baseOffset + (objKeyword.offset as number)),
+        offset: ByteOffset.add(baseOffset, objKeyword.offset),
       });
     }
 
@@ -64,7 +64,7 @@ export const IndirectObject = {
       return err({
         code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
         message: `Invalid object number: ${objectNumberResult.error}`,
-        offset: ByteOffset.of(baseOffset + (objNumToken.offset as number)),
+        offset: ByteOffset.add(baseOffset, objNumToken.offset),
       });
     }
 
@@ -75,7 +75,7 @@ export const IndirectObject = {
       return err({
         code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
         message: `Invalid generation number: ${generationNumberResult.error}`,
-        offset: ByteOffset.of(baseOffset + (genNumToken.offset as number)),
+        offset: ByteOffset.add(baseOffset, genNumToken.offset),
       });
     }
 
@@ -94,7 +94,7 @@ export const IndirectObject = {
    */
   expectEndobj(
     bt: BufferedTokenizer,
-    baseOffset: number,
+    baseOffset: ByteOffset,
   ): Result<void, PdfParseError> {
     const endobjToken = bt.next();
     if (
@@ -107,13 +107,13 @@ export const IndirectObject = {
       return err({
         code: "OBJECT_PARSE_UNTERMINATED",
         message: "Expected endobj but reached EOF",
-        offset: ByteOffset.of(baseOffset + (endobjToken.offset as number)),
+        offset: ByteOffset.add(baseOffset, endobjToken.offset),
       });
     }
     return err({
       code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
       message: `Expected "endobj", got ${String(endobjToken.value)}`,
-      offset: ByteOffset.of(baseOffset + (endobjToken.offset as number)),
+      offset: ByteOffset.add(baseOffset, endobjToken.offset),
     });
   },
 

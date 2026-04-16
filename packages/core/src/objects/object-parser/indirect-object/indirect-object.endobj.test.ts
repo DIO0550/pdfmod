@@ -9,18 +9,18 @@ const btOf = (s: string): BufferedTokenizer =>
   new BufferedTokenizer(new Tokenizer(enc(s)));
 
 test("expectEndobj: 正常", () => {
-  const result = IndirectObject.expectEndobj(btOf("endobj"), 0);
+  const result = IndirectObject.expectEndobj(btOf("endobj"), ByteOffset.of(0));
   expect(result.ok).toBe(true);
 });
 
 test("expectEndobj: EOF で OBJECT_PARSE_UNTERMINATED", () => {
-  const result = IndirectObject.expectEndobj(btOf(""), 0);
+  const result = IndirectObject.expectEndobj(btOf(""), ByteOffset.of(0));
   assert(!result.ok);
   expect(result.error.code).toBe("OBJECT_PARSE_UNTERMINATED");
 });
 
 test("expectEndobj: 誤トークンで OBJECT_PARSE_UNEXPECTED_TOKEN", () => {
-  const result = IndirectObject.expectEndobj(btOf("foo"), 0);
+  const result = IndirectObject.expectEndobj(btOf("foo"), ByteOffset.of(0));
   assert(!result.ok);
   expect(result.error.code).toBe("OBJECT_PARSE_UNEXPECTED_TOKEN");
 });

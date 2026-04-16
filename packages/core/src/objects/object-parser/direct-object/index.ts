@@ -28,7 +28,7 @@ export const DirectObject = {
    */
   parse(
     bt: BufferedTokenizer,
-    baseOffset: number,
+    baseOffset: ByteOffset,
     depth: number,
   ): Result<PdfValue, PdfParseError> {
     return readValue(bt, baseOffset, depth);
@@ -45,7 +45,7 @@ export const DirectObject = {
  */
 function readValue(
   bt: BufferedTokenizer,
-  baseOffset: number,
+  baseOffset: ByteOffset,
   depth: number,
 ): Result<PdfValue, PdfParseError> {
   const token = bt.next();
@@ -63,7 +63,7 @@ function readValue(
         return err({
           code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
           message: `NaN integer token at offset ${token.offset}`,
-          offset: ByteOffset.of(baseOffset + (token.offset as number)),
+          offset: ByteOffset.add(baseOffset, token.offset),
         });
       }
       const refResult = tryReadIndirectRef(bt, baseOffset, intVal);
@@ -79,7 +79,7 @@ function readValue(
         return err({
           code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
           message: `NaN real token at offset ${token.offset}`,
-          offset: ByteOffset.of(baseOffset + (token.offset as number)),
+          offset: ByteOffset.add(baseOffset, token.offset),
         });
       }
       return ok({ type: "real", value: realVal });
@@ -94,7 +94,7 @@ function readValue(
         return err({
           code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
           message: literalResult.error,
-          offset: ByteOffset.of(baseOffset + (token.offset as number)),
+          offset: ByteOffset.add(baseOffset, token.offset),
         });
       }
       return ok({
@@ -110,7 +110,7 @@ function readValue(
         return err({
           code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
           message: hexResult.error,
-          offset: ByteOffset.of(baseOffset + (token.offset as number)),
+          offset: ByteOffset.add(baseOffset, token.offset),
         });
       }
       return ok({
@@ -130,14 +130,14 @@ function readValue(
       return err({
         code: "OBJECT_PARSE_UNTERMINATED",
         message: "Unexpected EOF",
-        offset: ByteOffset.of(baseOffset + (token.offset as number)),
+        offset: ByteOffset.add(baseOffset, token.offset),
       });
 
     default:
       return err({
         code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
         message: `Unexpected token type ${token.type}: ${String(token.value)}`,
-        offset: ByteOffset.of(baseOffset + (token.offset as number)),
+        offset: ByteOffset.add(baseOffset, token.offset),
       });
   }
 }
@@ -153,7 +153,7 @@ function readValue(
  */
 function tryReadIndirectRef(
   bt: BufferedTokenizer,
-  baseOffset: number,
+  baseOffset: ByteOffset,
   intVal: number,
 ): Result<PdfValue, PdfParseError> | null {
   const second = bt.next();
@@ -175,7 +175,7 @@ function tryReadIndirectRef(
       return err({
         code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
         message: `Invalid indirect reference object number: ${objectNumber.error}`,
-        offset: ByteOffset.of(baseOffset + (third.offset as number)),
+        offset: ByteOffset.add(baseOffset, third.offset),
       });
     }
     const generationNumber = GenerationNumber.create(secondVal);
@@ -183,7 +183,7 @@ function tryReadIndirectRef(
       return err({
         code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
         message: `Invalid indirect reference generation number: ${generationNumber.error}`,
-        offset: ByteOffset.of(baseOffset + (third.offset as number)),
+        offset: ByteOffset.add(baseOffset, third.offset),
       });
     }
     return ok({
@@ -209,7 +209,7 @@ function tryReadIndirectRef(
  */
 function readArrayElements(
   bt: BufferedTokenizer,
-  baseOffset: number,
+  baseOffset: ByteOffset,
   depth: number,
   openToken: Token,
 ): Result<PdfValue, PdfParseError> {
@@ -217,7 +217,7 @@ function readArrayElements(
     return err({
       code: "NESTING_TOO_DEEP",
       message: `Array nesting depth ${depth} exceeds maximum ${MAX_NESTING_DEPTH}`,
-      offset: ByteOffset.of(baseOffset + (openToken.offset as number)),
+      offset: ByteOffset.add(baseOffset, openToken.offset),
     });
   }
 
@@ -231,7 +231,7 @@ function readArrayElements(
       return err({
         code: "OBJECT_PARSE_UNTERMINATED",
         message: "Unterminated array",
-        offset: ByteOffset.of(baseOffset + (openToken.offset as number)),
+        offset: ByteOffset.add(baseOffset, openToken.offset),
       });
     }
     bt.pushBack(token);
@@ -254,7 +254,7 @@ function readArrayElements(
  */
 function readDictEntries(
   bt: BufferedTokenizer,
-  baseOffset: number,
+  baseOffset: ByteOffset,
   depth: number,
   openToken: Token,
 ): Result<PdfDictionary, PdfParseError> {
@@ -262,7 +262,7 @@ function readDictEntries(
     return err({
       code: "NESTING_TOO_DEEP",
       message: `Dictionary nesting depth ${depth} exceeds maximum ${MAX_NESTING_DEPTH}`,
-      offset: ByteOffset.of(baseOffset + (openToken.offset as number)),
+      offset: ByteOffset.add(baseOffset, openToken.offset),
     });
   }
 
@@ -276,14 +276,14 @@ function readDictEntries(
       return err({
         code: "OBJECT_PARSE_UNTERMINATED",
         message: "Unterminated dictionary",
-        offset: ByteOffset.of(baseOffset + (openToken.offset as number)),
+        offset: ByteOffset.add(baseOffset, openToken.offset),
       });
     }
     if (keyToken.type !== TokenType.Name) {
       return err({
         code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
         message: `Dictionary key must be a name, got ${keyToken.type}`,
-        offset: ByteOffset.of(baseOffset + (keyToken.offset as number)),
+        offset: ByteOffset.add(baseOffset, keyToken.offset),
       });
     }
 
