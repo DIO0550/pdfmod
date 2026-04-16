@@ -1,7 +1,7 @@
 import { assert, expect, test } from "vitest";
 import { decodeHexString } from "./index";
 
-test("偶数桁の16進文字列をバイト配列に変換する", () => {
+test("偶数桁の16進文字列は対応するバイト配列を返す", () => {
   const result = decodeHexString("48656C6C6F");
   assert(result.ok);
   expect(new TextDecoder().decode(result.value)).toBe("Hello");
