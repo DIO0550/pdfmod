@@ -110,9 +110,10 @@ export const StreamObject = {
     }
     if (resolved.value.type !== "integer") {
       return err({
-        code: "OBJECT_PARSE_STREAM_LENGTH",
-        message: `/Length indirect reference resolved to unexpected type: ${resolved.value.type}`,
-        offset: ByteOffset.of(baseOffset + relPos),
+        code: "TYPE_MISMATCH" as const,
+        message: "/Length indirect reference resolved to unexpected type",
+        expected: "integer",
+        actual: resolved.value.type,
       });
     }
     return ok(resolved.value.value);

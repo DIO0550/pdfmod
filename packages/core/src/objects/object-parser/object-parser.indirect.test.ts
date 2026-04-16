@@ -114,7 +114,7 @@ test("parseIndirectObject stream（resolver が integer 以外を返す）", asy
     resolver,
   );
   const error = unwrapErr(result);
-  expect(error.code).toBe("OBJECT_PARSE_STREAM_LENGTH");
+  expect(error.code).toBe("TYPE_MISMATCH");
 });
 
 test("parseIndirectObject obj ヘッダ不正", async () => {
