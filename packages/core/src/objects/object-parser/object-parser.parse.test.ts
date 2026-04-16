@@ -1,12 +1,17 @@
 import { expect, test } from "vitest";
 import type { PdfError } from "../../errors/index";
 import type { Result } from "../../result/index";
-import type { PdfDictionary, PdfObject } from "../../types/pdf-types/index";
+import { ByteOffset } from "../../types/byte-offset/index";
+import type {
+  PdfDictionary,
+  PdfObject,
+  PdfValue,
+} from "../../types/pdf-types/index";
 import { ObjectParser } from "./index";
 
 const enc = (s: string): Uint8Array => new TextEncoder().encode(s);
 const parse = (s: string): Result<PdfObject, PdfError> =>
-  ObjectParser.parse(enc(s), 0);
+  ObjectParser.parse(enc(s), ByteOffset.of(0));
 
 const unwrapOk = <T>(result: Result<T, unknown>): T => {
   expect(result.ok).toBe(true);
@@ -110,7 +115,7 @@ test("空配列をパースする", () => {
 test("要素あり配列をパースする", () => {
   const obj = unwrapOk(parse("[1 2 3]"));
   expect(obj.type).toBe("array");
-  const arr = obj as { type: "array"; elements: PdfObject[] };
+  const arr = obj as { type: "array"; elements: PdfValue[] };
   expect(arr.elements).toHaveLength(3);
   expect(arr.elements[0]).toEqual({ type: "integer", value: 1 });
 });
@@ -118,7 +123,7 @@ test("要素あり配列をパースする", () => {
 test("混合型配列をパースする", () => {
   const obj = unwrapOk(parse("[/Type true null]"));
   expect(obj.type).toBe("array");
-  const arr = obj as { type: "array"; elements: PdfObject[] };
+  const arr = obj as { type: "array"; elements: PdfValue[] };
   expect(arr.elements).toHaveLength(3);
   expect(arr.elements[0]).toEqual({ type: "name", value: "Type" });
   expect(arr.elements[1]).toEqual({ type: "boolean", value: true });
@@ -146,7 +151,7 @@ test("複数エントリ辞書をパースする", () => {
   expect(dict.entries.get("Count")).toEqual({ type: "integer", value: 3 });
   const kids = dict.entries.get("Kids") as {
     type: "array";
-    elements: PdfObject[];
+    elements: PdfValue[];
   };
   expect(kids.elements).toHaveLength(1);
   expect(kids.elements[0]).toEqual({
@@ -159,7 +164,7 @@ test("複数エントリ辞書をパースする", () => {
 test("ネスト配列をパースする", () => {
   const obj = unwrapOk(parse("[[1] [2]]"));
   expect(obj.type).toBe("array");
-  const arr = obj as { type: "array"; elements: PdfObject[] };
+  const arr = obj as { type: "array"; elements: PdfValue[] };
   expect(arr.elements).toHaveLength(2);
 });
 
@@ -209,7 +214,7 @@ test("Integer の後に非 Integer が続く場合は integer を返す", () => 
 
 test("Integer Integer 非R の場合は integer を返す", () => {
   const data = enc("5 0 obj");
-  const result = ObjectParser.parse(data, 0);
+  const result = ObjectParser.parse(data, ByteOffset.of(0));
   const obj = unwrapOk(result);
   expect(obj).toEqual({ type: "integer", value: 5 });
 });
@@ -217,7 +222,7 @@ test("Integer Integer 非R の場合は integer を返す", () => {
 test("配列内で indirect-ref と integer が正しく区別される", () => {
   const obj = unwrapOk(parse("[5 0 R 10]"));
   expect(obj.type).toBe("array");
-  const arr = obj as { type: "array"; elements: PdfObject[] };
+  const arr = obj as { type: "array"; elements: PdfValue[] };
   expect(arr.elements).toHaveLength(2);
   expect(arr.elements[0]).toEqual({
     type: "indirect-ref",
@@ -274,19 +279,19 @@ test("parse() で stream 後 CR 単独はエラー", () => {
 });
 
 test("offset が負の場合 OBJECT_PARSE_UNEXPECTED_TOKEN が返る", () => {
-  const error = unwrapErr(ObjectParser.parse(enc("null"), -1));
+  const error = unwrapErr(ObjectParser.parse(enc("null"), ByteOffset.of(-1)));
   expect(error.code).toBe("OBJECT_PARSE_UNEXPECTED_TOKEN");
 });
 
 test("offset が data.length 以上の場合 OBJECT_PARSE_UNEXPECTED_TOKEN が返る", () => {
   const data = enc("null");
-  const error = unwrapErr(ObjectParser.parse(data, data.length));
+  const error = unwrapErr(ObjectParser.parse(data, ByteOffset.of(data.length)));
   expect(error.code).toBe("OBJECT_PARSE_UNEXPECTED_TOKEN");
 });
 
 test("offset を指定してパースできる", () => {
   const data = enc("   42");
-  const obj = unwrapOk(ObjectParser.parse(data, 3));
+  const obj = unwrapOk(ObjectParser.parse(data, ByteOffset.of(3)));
   expect(obj).toEqual({ type: "integer", value: 42 });
 });
 

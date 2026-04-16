@@ -1,8 +1,9 @@
 import type { PdfError } from "../../../errors/index";
 import type { Result } from "../../../result/index";
 import { err, ok } from "../../../result/index";
+import { ByteOffset } from "../../../types/byte-offset/index";
 import type { ObjectNumber } from "../../../types/object-number/index";
-import type { PdfObject } from "../../../types/pdf-types/index";
+import type { PdfValue } from "../../../types/pdf-types/index";
 import type { LRUCache } from "../../lru-cache/index";
 import { ObjectParser } from "../../object-parser/index";
 import { ObjectStreamDict } from "../dict/index";
@@ -30,7 +31,7 @@ export const ObjectStreamBody = {
     targetObjNum: ObjectNumber,
     streamObjNum: ObjectNumber,
     indexInStream: number,
-  ): Promise<Result<PdfObject, PdfError>> {
+  ): Promise<Result<PdfValue, PdfError>> {
     if (!Number.isSafeInteger(indexInStream) || indexInStream < 0) {
       return err({
         code: "OBJECT_STREAM_INVALID",
@@ -148,7 +149,7 @@ export const ObjectStreamBody = {
     }
 
     const objectData = decompressedData.subarray(startOffset, endOffset);
-    const parseResult = ObjectParser.parse(objectData, 0);
+    const parseResult = ObjectParser.parse(objectData, ByteOffset.of(0));
     if (!parseResult.ok) {
       return parseResult;
     }

@@ -17,11 +17,10 @@ export type {
 export { Tokenizer } from "./lexer/index";
 export { NumberEx } from "./number-ex/index";
 export type {
-  IndirectObjectResult,
+  ObjectResolver,
   ObjectStoreOptions,
   ObjectStoreSource,
   ObjectStreamHeaderEntry,
-  ResolveLength,
   StreamResolver,
 } from "./objects/index";
 export {
@@ -37,8 +36,19 @@ export type {
   Brand,
   IndirectRef,
   ObjectId,
+  PdfArray,
+  PdfBoolean,
   PdfDictionary,
+  PdfIndirectObject,
+  PdfIndirectRef,
+  PdfInteger,
+  PdfName,
+  PdfNull,
   PdfObject,
+  PdfReal,
+  PdfStream,
+  PdfString,
+  PdfValue,
   Token,
   TrailerDict,
   XRefCompressedEntry,

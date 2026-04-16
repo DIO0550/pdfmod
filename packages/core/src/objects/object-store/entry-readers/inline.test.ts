@@ -3,14 +3,15 @@ import { err, ok } from "../../../result/index";
 import { ByteOffset } from "../../../types/byte-offset/index";
 import { GenerationNumber } from "../../../types/generation-number/index";
 import type { XRefUsedEntry } from "../../../types/pdf-types/index";
-import type { ResolveLength } from "../../object-parser/index";
+import type { ObjectResolver } from "../../object-parser/index";
 import { ObjectParser } from "../../object-parser/index";
 import { makeRef } from "../object-store.test.helpers";
 import { readInlineEntry } from "./inline";
 
-const dummyResolveLength: ResolveLength = () => Promise.resolve(ok(0));
+const dummyResolver: ObjectResolver = () =>
+  Promise.resolve(ok({ type: "integer", value: 0 }));
 
-test("readInlineEntry は offset から indirect object をパースし value を返す", async () => {
+test("readInlineEntry は offset から indirect object をパースし body を返す", async () => {
   const data = new TextEncoder().encode("7 0 obj\n42\nendobj");
   const entry: XRefUsedEntry = {
     type: 1,
@@ -18,12 +19,7 @@ test("readInlineEntry は offset から indirect object をパースし value �
     generationNumber: GenerationNumber.of(0),
   };
 
-  const result = await readInlineEntry(
-    data,
-    entry,
-    makeRef(7),
-    dummyResolveLength,
-  );
+  const result = await readInlineEntry(data, entry, makeRef(7), dummyResolver);
   assert(result.ok);
   expect(result.value).toEqual({ type: "integer", value: 42 });
 });
@@ -36,12 +32,7 @@ test("readInlineEntry は obj header の objectNumber 不一致で OBJECT_PARSE_
     generationNumber: GenerationNumber.of(0),
   };
 
-  const result = await readInlineEntry(
-    data,
-    entry,
-    makeRef(7),
-    dummyResolveLength,
-  );
+  const result = await readInlineEntry(data, entry, makeRef(7), dummyResolver);
   assert(!result.ok);
   expect(result.error.code).toBe("OBJECT_PARSE_UNEXPECTED_TOKEN");
   expect(result.error.message).toContain("mismatch");
@@ -66,7 +57,7 @@ test("readInlineEntry は parseIndirectObject のエラーをそのまま返す"
       new Uint8Array(0),
       entry,
       makeRef(1),
-      dummyResolveLength,
+      dummyResolver,
     );
     assert(!result.ok);
     expect(result.error.code).toBe("OBJECT_PARSE_UNEXPECTED_TOKEN");
@@ -75,20 +66,21 @@ test("readInlineEntry は parseIndirectObject のエラーをそのまま返す"
   }
 });
 
-test("readInlineEntry は resolveLength を parseIndirectObject に渡す", async () => {
+test("readInlineEntry は resolver を parseIndirectObject に渡す", async () => {
   const data = new TextEncoder().encode("7 0 obj\n42\nendobj");
   const entry: XRefUsedEntry = {
     type: 1,
     offset: ByteOffset.of(0),
     generationNumber: GenerationNumber.of(0),
   };
-  const customResolveLength: ResolveLength = () => Promise.resolve(ok(100));
+  const customResolver: ObjectResolver = () =>
+    Promise.resolve(ok({ type: "integer", value: 100 }));
 
   const spy = vi.spyOn(ObjectParser, "parseIndirectObject");
 
   try {
-    await readInlineEntry(data, entry, makeRef(7), customResolveLength);
-    expect(spy).toHaveBeenCalledWith(data, 0, customResolveLength);
+    await readInlineEntry(data, entry, makeRef(7), customResolver);
+    expect(spy).toHaveBeenCalledWith(data, ByteOffset.of(0), customResolver);
   } finally {
     spy.mockRestore();
   }
