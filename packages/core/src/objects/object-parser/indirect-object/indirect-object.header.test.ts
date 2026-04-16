@@ -7,7 +7,7 @@ const enc = (s: string): Uint8Array => new TextEncoder().encode(s);
 const btOf = (s: string): BufferedTokenizer =>
   new BufferedTokenizer(new Tokenizer(enc(s)));
 
-test("正常な N G obj ヘッダをパースする", () => {
+test("正常な N G obj ヘッダから objectNumber と generationNumber が返る", () => {
   const result = IndirectObject.parseHeader(btOf("10 0 obj"), 0);
   assert(result.ok);
   expect(result.value.objectNumber).toBe(10);

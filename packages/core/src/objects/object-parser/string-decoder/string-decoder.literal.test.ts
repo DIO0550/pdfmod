@@ -1,7 +1,7 @@
 import { assert, expect, test } from "vitest";
 import { decodeLiteralString } from "./index";
 
-test("リテラル文字列をバイト配列に変換する", () => {
+test("リテラル文字列は各文字の code unit をバイト配列として返す", () => {
   const result = decodeLiteralString("hello");
   assert(result.ok);
   expect(new TextDecoder().decode(result.value)).toBe("hello");

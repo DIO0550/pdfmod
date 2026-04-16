@@ -8,21 +8,21 @@ const enc = (s: string): Uint8Array => new TextEncoder().encode(s);
 const btOf = (s: string): BufferedTokenizer =>
   new BufferedTokenizer(new Tokenizer(enc(s)));
 
-test("空辞書をパースする", () => {
+test("空辞書 <<>> に対して空の entries を返す", () => {
   const result = DirectObject.parse(btOf("<<>>"), 0, 0);
   assert(result.ok);
   expect(result.value.type).toBe("dictionary");
   expect((result.value as PdfDictionary).entries.size).toBe(0);
 });
 
-test("エントリあり辞書をパースする", () => {
+test("エントリあり辞書は Name-Value ペアを entries に保持する", () => {
   const result = DirectObject.parse(btOf("<</Type /Page>>"), 0, 0);
   assert(result.ok);
   const dict = result.value as PdfDictionary;
   expect(dict.entries.get("Type")).toEqual({ type: "name", value: "Page" });
 });
 
-test("ネスト辞書をパースする", () => {
+test("ネスト辞書は再帰的にパースされた entries を返す", () => {
   const result = DirectObject.parse(btOf("<</A <</B 1>>>>"), 0, 0);
   assert(result.ok);
   const dict = result.value as PdfDictionary;
