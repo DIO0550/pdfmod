@@ -1,4 +1,6 @@
 import type { PdfParseError } from "../../../errors/index";
+import type { Option } from "../../../option/index";
+import { none, some } from "../../../option/index";
 import type { Result } from "../../../result/index";
 import { err, ok } from "../../../result/index";
 import { ByteOffset } from "../../../types/byte-offset/index";
@@ -67,8 +69,8 @@ function readValue(
         });
       }
       const refResult = tryReadIndirectRef(bt, baseOffset, intVal);
-      if (refResult !== null) {
-        return refResult;
+      if (refResult.some) {
+        return refResult.value;
       }
       return ok({ type: "integer", value: intVal });
     }
@@ -144,58 +146,64 @@ function readValue(
 
 /**
  * Integer トークン後の `N G R` パターンを試行する。
- * 3トークン先読みしパターン不一致なら pushBack して null を返す。
+ * 3トークン先読みしパターン不一致なら pushBack して None を返す。
  *
  * @param bt - バッファ付きトークナイザ
  * @param baseOffset - 呼び出し元 data 基準の開始オフセット
  * @param intVal - 先頭の integer 値（オブジェクト番号候補）
- * @returns 成立: indirect-ref の Result、不成立: null、N/G 不正: err Result
+ * @returns 成立: Some(ok(indirect-ref))、不成立: None、N/G 不正: Some(err(...))
  */
 function tryReadIndirectRef(
   bt: BufferedTokenizer,
   baseOffset: ByteOffset,
   intVal: number,
-): Result<PdfValue, PdfParseError> | null {
+): Option<Result<PdfValue, PdfParseError>> {
   const second = bt.next();
   if (second.type !== TokenType.Integer) {
     bt.pushBack(second);
-    return null;
+    return none;
   }
 
   const secondVal = second.value as number;
   if (Number.isNaN(secondVal)) {
     bt.pushBack(second);
-    return null;
+    return none;
   }
 
   const third = bt.next();
   if (third.type === TokenType.Keyword && third.value === "R") {
     const objectNumber = ObjectNumber.create(intVal);
     if (!objectNumber.ok) {
-      return err({
-        code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
-        message: `Invalid indirect reference object number: ${objectNumber.error}`,
-        offset: ByteOffset.add(baseOffset, third.offset),
-      });
+      return some(
+        err({
+          code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
+          message: `Invalid indirect reference object number: ${objectNumber.error}`,
+          offset: ByteOffset.add(baseOffset, third.offset),
+        }),
+      );
     }
     const generationNumber = GenerationNumber.create(secondVal);
     if (!generationNumber.ok) {
-      return err({
-        code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
-        message: `Invalid indirect reference generation number: ${generationNumber.error}`,
-        offset: ByteOffset.add(baseOffset, third.offset),
-      });
+      return some(
+        err({
+          code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
+          message: `Invalid indirect reference generation number: ${generationNumber.error}`,
+          offset: ByteOffset.add(baseOffset, third.offset),
+        }),
+      );
     }
-    return ok({
-      type: "indirect-ref",
-      objectNumber: objectNumber.value,
-      generationNumber: generationNumber.value,
-    });
+    return some(
+      ok({
+        type: "indirect-ref",
+        objectNumber: objectNumber.value,
+        generationNumber: generationNumber.value,
+      }),
+    );
   }
 
   bt.pushBack(third);
   bt.pushBack(second);
-  return null;
+  return none;
 }
 
 /**
