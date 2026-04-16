@@ -6,15 +6,15 @@ import {
   type ByteOffset,
 } from "../../../types/byte-offset/index";
 import { GenerationNumber } from "../../../types/generation-number/index";
-import type { PdfObject, TrailerDict } from "../../../types/index";
+import type { PdfValue, TrailerDict } from "../../../types/index";
 import { ObjectNumber } from "../../../types/object-number/index";
 
 interface TrailerDictBuilderChain {
-  root(value?: PdfObject, offset?: ByteOffset): TrailerDictBuilderChain;
-  size(value?: PdfObject, offset?: ByteOffset): TrailerDictBuilderChain;
-  prev(value?: PdfObject, offset?: ByteOffset): TrailerDictBuilderChain;
-  info(value?: PdfObject, offset?: ByteOffset): TrailerDictBuilderChain;
-  id(value?: PdfObject, offset?: ByteOffset): TrailerDictBuilderChain;
+  root(value?: PdfValue, offset?: ByteOffset): TrailerDictBuilderChain;
+  size(value?: PdfValue, offset?: ByteOffset): TrailerDictBuilderChain;
+  prev(value?: PdfValue, offset?: ByteOffset): TrailerDictBuilderChain;
+  info(value?: PdfValue, offset?: ByteOffset): TrailerDictBuilderChain;
+  id(value?: PdfValue, offset?: ByteOffset): TrailerDictBuilderChain;
   build(): Result<TrailerDict, PdfParseError>;
 }
 
@@ -31,39 +31,39 @@ interface TrailerDictBuilderChain {
 export function trailerDictBuilder(
   optionalFieldErrorCode: PdfParseErrorCode,
 ): TrailerDictBuilderChain {
-  let _root: PdfObject | undefined;
+  let _root: PdfValue | undefined;
   let _rootOffset: ByteOffset | undefined;
-  let _size: PdfObject | undefined;
+  let _size: PdfValue | undefined;
   let _sizeOffset: ByteOffset | undefined;
-  let _prev: PdfObject | undefined;
+  let _prev: PdfValue | undefined;
   let _prevOffset: ByteOffset | undefined;
-  let _info: PdfObject | undefined;
+  let _info: PdfValue | undefined;
   let _infoOffset: ByteOffset | undefined;
-  let _id: PdfObject | undefined;
+  let _id: PdfValue | undefined;
   let _idOffset: ByteOffset | undefined;
 
   const chain: TrailerDictBuilderChain = {
-    root(value?: PdfObject, offset?: ByteOffset) {
+    root(value?: PdfValue, offset?: ByteOffset) {
       _root = value;
       _rootOffset = offset;
       return chain;
     },
-    size(value?: PdfObject, offset?: ByteOffset) {
+    size(value?: PdfValue, offset?: ByteOffset) {
       _size = value;
       _sizeOffset = offset;
       return chain;
     },
-    prev(value?: PdfObject, offset?: ByteOffset) {
+    prev(value?: PdfValue, offset?: ByteOffset) {
       _prev = value;
       _prevOffset = offset;
       return chain;
     },
-    info(value?: PdfObject, offset?: ByteOffset) {
+    info(value?: PdfValue, offset?: ByteOffset) {
       _info = value;
       _infoOffset = offset;
       return chain;
     },
-    id(value?: PdfObject, offset?: ByteOffset) {
+    id(value?: PdfValue, offset?: ByteOffset) {
       _id = value;
       _idOffset = offset;
       return chain;

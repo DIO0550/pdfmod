@@ -1,7 +1,7 @@
 import type { PdfParseError, PdfParseErrorCode } from "../errors/index";
 import type { Result } from "../result/index";
 import { err, ok } from "../result/index";
-import type { PdfObject } from "../types/pdf-types/index";
+import type { PdfValue } from "../types/pdf-types/index";
 
 /** PDF ストリーム辞書の /Filter エントリを検証するユーティリティ。 */
 export const PdfFilter = {
@@ -14,7 +14,7 @@ export const PdfFilter = {
    * @returns フィルタ名（未指定時は undefined）、またはエラー
    */
   validate(
-    entries: Map<string, PdfObject>,
+    entries: Map<string, PdfValue>,
     errorCode: PdfParseErrorCode = "OBJECT_STREAM_INVALID",
   ): Result<string | undefined, PdfParseError> {
     const entry = entries.get("Filter");
