@@ -51,5 +51,5 @@ test("kind='indirect' で resolver が integer 以外を返したときエラー
     Promise.resolve(ok({ type: "name", value: "not-integer" }));
   const result = await StreamObject.resolveLength(indirectLen, 0, 0, resolver);
   assert(!result.ok);
-  expect(result.error.code).toBe("OBJECT_PARSE_STREAM_LENGTH");
+  expect(result.error.code).toBe("TYPE_MISMATCH");
 });
