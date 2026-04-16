@@ -54,7 +54,7 @@ export const IndirectObject = {
     if (objKeyword.type !== TokenType.Keyword || objKeyword.value !== "obj") {
       return err({
         code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
-        message: `Expected "obj" keyword, got ${String(objKeyword.value)}`,
+        message: `Expected "obj" keyword, got ${objKeyword.type}: ${String(objKeyword.value)}`,
         offset: ByteOffset.of(baseOffset + (objKeyword.offset as number)),
       });
     }
