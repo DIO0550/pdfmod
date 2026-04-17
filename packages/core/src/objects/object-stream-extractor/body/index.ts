@@ -1,4 +1,5 @@
 import type { PdfError } from "../../../errors/index";
+import { NumberEx } from "../../../ext/number/index";
 import { ByteOffset } from "../../../types/byte-offset/index";
 import type { ObjectNumber } from "../../../types/object-number/index";
 import type { PdfValue } from "../../../types/pdf-types/index";
@@ -32,7 +33,7 @@ export const ObjectStreamBody = {
     streamObjNum: ObjectNumber,
     indexInStream: number,
   ): Promise<Result<PdfValue, PdfError>> {
-    if (!Number.isSafeInteger(indexInStream) || indexInStream < 0) {
+    if (!NumberEx.isSafeIntegerAtLeastZero(indexInStream)) {
       return err({
         code: "OBJECT_STREAM_INVALID",
         message: `indexInStream must be a non-negative safe integer, got ${indexInStream}`,

@@ -32,14 +32,14 @@ export const ObjectStreamHeader = {
     first: number,
     n: number,
   ): Result<readonly ObjectStreamHeaderEntry[], PdfParseError> {
-    if (!Number.isSafeInteger(first) || first < 0 || first > data.length) {
+    if (!NumberEx.isSafeIntegerAtLeastZero(first) || first > data.length) {
       return err({
         code: "OBJECT_STREAM_HEADER_INVALID",
         message: `ObjStm header range is invalid: first=${first}, length=${data.length}`,
       });
     }
 
-    if (!Number.isSafeInteger(n) || n < 0) {
+    if (!NumberEx.isSafeIntegerAtLeastZero(n)) {
       return err({
         code: "OBJECT_STREAM_HEADER_INVALID",
         message: `ObjStm header n is invalid: ${n}`,
