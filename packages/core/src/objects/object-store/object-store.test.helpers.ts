@@ -1,5 +1,4 @@
 import { expect } from "vitest";
-import type { Result } from "../../utils/result/index";
 import { GenerationNumber } from "../../types/generation-number/index";
 import { ObjectNumber } from "../../types/object-number/index";
 import type {
@@ -7,6 +6,7 @@ import type {
   XRefEntry,
   XRefTable,
 } from "../../types/pdf-types/index";
+import type { Result } from "../../utils/result/index";
 import type { ObjectStoreSource } from "./types";
 
 /**

@@ -1,11 +1,11 @@
 import { assert, expect, test } from "vitest";
 import type { PdfParseError } from "../../errors/index";
-import type { Result } from "../../utils/result/index";
-import { ok } from "../../utils/result/index";
 import { ByteOffset } from "../../types/byte-offset/index";
 import { GenerationNumber } from "../../types/generation-number/index";
 import type { TrailerDict, XRefEntry, XRefTable } from "../../types/index";
 import { ObjectNumber } from "../../types/object-number/index";
+import type { Result } from "../../utils/result/index";
+import { ok } from "../../utils/result/index";
 import { mergeXRefChain } from "./index";
 
 const dummyRoot = {

@@ -1,11 +1,11 @@
 import type { PdfParseError } from "../../../errors/index";
-import type { Result } from "../../../utils/result/index";
-import { err, ok } from "../../../utils/result/index";
 import type { ByteOffset } from "../../../types/byte-offset/index";
 import { ByteOffset as ByteOffsetNs } from "../../../types/byte-offset/index";
 import { GenerationNumber } from "../../../types/generation-number/index";
 import type { XRefEntry, XRefTable } from "../../../types/index";
 import { ObjectNumber } from "../../../types/object-number/index";
+import type { Result } from "../../../utils/result/index";
+import { err, ok } from "../../../utils/result/index";
 
 const BYTE_BASE = 256;
 const W_ARRAY_LENGTH = 3;

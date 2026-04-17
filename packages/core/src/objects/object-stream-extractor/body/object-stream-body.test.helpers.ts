@@ -1,10 +1,10 @@
 import type { PdfError } from "../../../errors/index";
-import type { Result } from "../../../utils/result/index";
 import type {
   PdfDictionary,
   PdfObject,
   PdfValue,
 } from "../../../types/pdf-types/index";
+import type { Result } from "../../../utils/result/index";
 import type { StreamResolver } from "../types";
 
 /**

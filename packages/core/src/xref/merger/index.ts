@@ -1,10 +1,10 @@
 import type { PdfParseError } from "../../errors/index";
 import { NumberEx } from "../../ext/number/index";
-import type { Err, Result } from "../../utils/result/index";
-import { err, ok } from "../../utils/result/index";
 import type { ByteOffset } from "../../types/byte-offset/index";
 import type { TrailerDict, XRefEntry, XRefTable } from "../../types/index";
 import type { ObjectNumber } from "../../types/object-number/index";
+import type { Err, Result } from "../../utils/result/index";
+import { err, ok } from "../../utils/result/index";
 
 const DEFAULT_MAX_PREV_CHAIN_DEPTH = 100;
 
