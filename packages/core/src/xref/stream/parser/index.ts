@@ -1,4 +1,5 @@
 import type { PdfParseError } from "../../../errors/index";
+import { NumberEx } from "../../../ext/number/index";
 import type { ByteOffset } from "../../../types/byte-offset/index";
 import { ByteOffset as ByteOffsetNs } from "../../../types/byte-offset/index";
 import { GenerationNumber } from "../../../types/generation-number/index";
@@ -145,7 +146,7 @@ function decodeEntry(
       if (!streamObjResult.ok) {
         return failXRefStream(streamObjResult.error, absField2Offset);
       }
-      if (!Number.isSafeInteger(field3) || field3 < 0) {
+      if (!NumberEx.isSafeIntegerAtLeastZero(field3)) {
         return failXRefStream(
           `invalid indexInStream: ${field3}`,
           absField3Offset,
@@ -182,7 +183,7 @@ export function decodeXRefStreamEntries(
     return failXRefStream("/W array must have exactly 3 elements");
   }
   for (let i = 0; i < W_ARRAY_LENGTH; i++) {
-    if (!Number.isSafeInteger(w[i]) || w[i] < 0) {
+    if (!NumberEx.isSafeIntegerAtLeastZero(w[i])) {
       return failXRefStream(
         "/W array element must be non-negative safe integer",
       );
@@ -194,7 +195,7 @@ export function decodeXRefStreamEntries(
     }
   }
 
-  if (!Number.isSafeInteger(size) || size < 0) {
+  if (!NumberEx.isSafeIntegerAtLeastZero(size)) {
     return failXRefStream("invalid /Size value");
   }
 
@@ -215,12 +216,12 @@ export function decodeXRefStreamEntries(
     const firstObj = index[i];
     const count = index[i + 1];
 
-    if (!Number.isSafeInteger(firstObj) || firstObj < 0) {
+    if (!NumberEx.isSafeIntegerAtLeastZero(firstObj)) {
       return failXRefStream(
         "/Index firstObj must be non-negative safe integer",
       );
     }
-    if (!Number.isSafeInteger(count) || count < 0) {
+    if (!NumberEx.isSafeIntegerAtLeastZero(count)) {
       return failXRefStream("/Index count must be non-negative safe integer");
     }
     if (firstObj + count > size) {
