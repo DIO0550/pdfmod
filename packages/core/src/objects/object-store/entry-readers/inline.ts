@@ -1,6 +1,6 @@
 import type { PdfError } from "../../../errors/index";
-import type { Result } from "../../../result/index";
-import { err } from "../../../result/index";
+import type { Result } from "../../../utils/result/index";
+import { err } from "../../../utils/result/index";
 import type {
   IndirectRef,
   PdfObject,

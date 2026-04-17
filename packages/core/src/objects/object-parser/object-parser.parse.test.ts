@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import type { PdfError } from "../../errors/index";
-import type { Result } from "../../result/index";
+import type { Result } from "../../utils/result/index";
 import { ByteOffset } from "../../types/byte-offset/index";
 import type {
   PdfDictionary,
