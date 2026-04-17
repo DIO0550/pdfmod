@@ -1,6 +1,6 @@
 import type { PdfParseError, PdfParseErrorCode } from "../../../errors/index";
-import type { Result } from "../../../result/index";
-import { err, ok } from "../../../result/index";
+import type { Result } from "../../../utils/result/index";
+import { err, ok } from "../../../utils/result/index";
 import {
   ByteOffset as BO,
   type ByteOffset,

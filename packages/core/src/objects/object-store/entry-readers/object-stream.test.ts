@@ -1,5 +1,5 @@
 import { assert, expect, test, vi } from "vitest";
-import { err, ok } from "../../../result/index";
+import { err, ok } from "../../../utils/result/index";
 import { ObjectNumber } from "../../../types/object-number/index";
 import type { XRefCompressedEntry } from "../../../types/pdf-types/index";
 import { ObjectStreamBody } from "../../object-stream-extractor/index";
