@@ -20,6 +20,13 @@ pnpmモノレポ構成で `@pdfmod/core`（PDF処理エンジン）と `@pdfmod/
 - テキスト抽出には `/ToUnicode` CMAPが必須
 - 圧縮: `/FlateDecode`（zlib）が最も一般的。フィルタは配列でカスケード可能
 
+## Result / Option の使い分け
+
+- **`Result<T, E>`** — 値を生成するか、エラー情報付きで失敗する操作に使う
+- **`Option<T>`** — 値の有無を表す。エラー情報は不要な場合（検索結果がない、パターン不一致など）
+- **`null` は使わない** — `Option` で代替する（例: `tryReadIndirectRef` の「パターン不一致」は `None`）
+- **`Result<void, E>` は避ける** — 成功時に値がない検証系は `Option<E>`（エラーがあれば `Some(error)`、なければ `None`）の方が自然（参照: #83）
+
 ## TypeScript 開発ルール
 
 TypeScript コードを変更するすべての作業で以下のスキルを参照すること。
