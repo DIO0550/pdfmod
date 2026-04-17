@@ -1,3 +1,4 @@
+import { NumberEx } from "../../ext/number/index";
 import type { Result } from "../../utils/result/index";
 import { err, ok } from "../../utils/result/index";
 import type { Brand } from "../brand/index";
@@ -8,7 +9,7 @@ type ObjectNumber = Brand<number, typeof ObjectNumberBrand>;
 
 const ObjectNumber = {
   create(n: number): Result<ObjectNumber, string> {
-    if (!Number.isSafeInteger(n) || n < 0) {
+    if (!NumberEx.isSafeIntegerAtLeastZero(n)) {
       return err(
         `Invalid ObjectNumber: ${n} (must be a non-negative safe integer)`,
       );
