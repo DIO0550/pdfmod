@@ -1,4 +1,5 @@
 import type { PdfParseError, PdfParseErrorCode } from "../../../errors/index";
+import { NumberEx } from "../../../ext/number/index";
 import {
   ByteOffset as BO,
   type ByteOffset,
@@ -83,7 +84,7 @@ export function trailerDictBuilder(
           offset: _rootOffset,
         });
       }
-      if (!Number.isSafeInteger(_root.objectNumber) || _root.objectNumber < 0) {
+      if (!NumberEx.isSafeIntegerAtLeastZero(_root.objectNumber)) {
         return err({
           code: "ROOT_NOT_FOUND",
           message:
@@ -91,10 +92,7 @@ export function trailerDictBuilder(
           offset: _rootOffset,
         });
       }
-      if (
-        !Number.isSafeInteger(_root.generationNumber) ||
-        _root.generationNumber < 0
-      ) {
+      if (!NumberEx.isSafeIntegerAtLeastZero(_root.generationNumber)) {
         return err({
           code: "ROOT_NOT_FOUND",
           message:
@@ -125,8 +123,7 @@ export function trailerDictBuilder(
       }
       if (
         _size.type !== "integer" ||
-        !Number.isSafeInteger(_size.value as number) ||
-        (_size.value as number) < 0
+        !NumberEx.isSafeIntegerAtLeastZero(_size.value as number)
       ) {
         return err({
           code: "SIZE_NOT_FOUND",
@@ -142,8 +139,7 @@ export function trailerDictBuilder(
       if (_prev) {
         if (
           _prev.type !== "integer" ||
-          !Number.isSafeInteger(_prev.value as number) ||
-          (_prev.value as number) < 0
+          !NumberEx.isSafeIntegerAtLeastZero(_prev.value as number)
         ) {
           return err({
             code: optionalFieldErrorCode,
@@ -163,10 +159,7 @@ export function trailerDictBuilder(
             offset: _infoOffset,
           });
         }
-        if (
-          !Number.isSafeInteger(_info.objectNumber) ||
-          _info.objectNumber < 0
-        ) {
+        if (!NumberEx.isSafeIntegerAtLeastZero(_info.objectNumber)) {
           return err({
             code: optionalFieldErrorCode,
             message:
@@ -174,10 +167,7 @@ export function trailerDictBuilder(
             offset: _infoOffset,
           });
         }
-        if (
-          !Number.isSafeInteger(_info.generationNumber) ||
-          _info.generationNumber < 0
-        ) {
+        if (!NumberEx.isSafeIntegerAtLeastZero(_info.generationNumber)) {
           return err({
             code: optionalFieldErrorCode,
             message:
