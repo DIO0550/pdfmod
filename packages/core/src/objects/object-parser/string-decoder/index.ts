@@ -1,5 +1,5 @@
-import type { Result } from "../../../result/index";
-import { err, ok } from "../../../result/index";
+import type { Result } from "../../../utils/result/index";
+import { err, ok } from "../../../utils/result/index";
 
 const HEX_PAIR_PATTERN = /^[0-9A-Fa-f]{2}$/;
 const MAX_BYTE_VALUE = 0xff;

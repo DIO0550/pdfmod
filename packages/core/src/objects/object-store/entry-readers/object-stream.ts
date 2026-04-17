@@ -1,11 +1,11 @@
 import type { PdfError } from "../../../errors/index";
-import type { Result } from "../../../result/index";
 import type { ObjectNumber } from "../../../types/object-number/index";
 import type {
   IndirectRef,
   PdfValue,
   XRefCompressedEntry,
 } from "../../../types/pdf-types/index";
+import type { Result } from "../../../utils/result/index";
 import type { LRUCache } from "../../lru-cache/index";
 import type { StreamResolver } from "../../object-stream-extractor/index";
 import { ObjectStreamBody } from "../../object-stream-extractor/index";

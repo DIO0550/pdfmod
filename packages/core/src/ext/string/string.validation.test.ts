@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { none, some } from "../option/index";
+import { none, some } from "../../utils/option/index";
 import { StringEx } from "./index";
 
 test("toSafeIntegerAtLeastZero: 0 に対して some(0) を返す", () => {

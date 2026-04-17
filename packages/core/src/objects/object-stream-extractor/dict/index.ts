@@ -1,10 +1,10 @@
 import type { PdfParseError } from "../../../errors/index";
-import { NumberEx } from "../../../number-ex/index";
+import { NumberEx } from "../../../ext/number/index";
 import { PdfFilter } from "../../../pdf-filter/index";
 import { PdfType } from "../../../pdf-type/index";
-import type { Result } from "../../../result/index";
-import { err, ok } from "../../../result/index";
 import type { PdfValue } from "../../../types/pdf-types/index";
+import type { Result } from "../../../utils/result/index";
+import { err, ok } from "../../../utils/result/index";
 
 /** ObjStm 辞書バリデーション成功時の結果（内部型） */
 export interface ObjectStreamDictInfo {

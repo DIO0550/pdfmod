@@ -1,7 +1,7 @@
 import type { PdfParseError } from "../../../errors/index";
-import { NumberEx } from "../../../number-ex/index";
-import type { Result } from "../../../result/index";
-import { err, ok } from "../../../result/index";
+import { NumberEx } from "../../../ext/number/index";
+import type { Result } from "../../../utils/result/index";
+import { err, ok } from "../../../utils/result/index";
 
 const DEFAULT_MAX_DECOMPRESSED_MB = 100;
 const BYTES_PER_KB = 1024;

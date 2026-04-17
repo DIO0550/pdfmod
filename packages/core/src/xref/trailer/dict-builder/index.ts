@@ -1,6 +1,4 @@
 import type { PdfParseError, PdfParseErrorCode } from "../../../errors/index";
-import type { Result } from "../../../result/index";
-import { err, ok } from "../../../result/index";
 import {
   ByteOffset as BO,
   type ByteOffset,
@@ -8,6 +6,8 @@ import {
 import { GenerationNumber } from "../../../types/generation-number/index";
 import type { PdfValue, TrailerDict } from "../../../types/index";
 import { ObjectNumber } from "../../../types/object-number/index";
+import type { Result } from "../../../utils/result/index";
+import { err, ok } from "../../../utils/result/index";
 
 interface TrailerDictBuilderChain {
   root(value?: PdfValue, offset?: ByteOffset): TrailerDictBuilderChain;

@@ -1,8 +1,8 @@
 import { assert, expect, test, vi } from "vitest";
-import { err, ok } from "../../../result/index";
 import { ByteOffset } from "../../../types/byte-offset/index";
 import { GenerationNumber } from "../../../types/generation-number/index";
 import type { XRefUsedEntry } from "../../../types/pdf-types/index";
+import { err, ok } from "../../../utils/result/index";
 import type { ObjectResolver } from "../../object-parser/index";
 import { ObjectParser } from "../../object-parser/index";
 import { makeRef } from "../object-store.test.helpers";

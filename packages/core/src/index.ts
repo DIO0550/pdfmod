@@ -14,8 +14,8 @@ export type {
   PdfWarning,
   PdfWarningCode,
 } from "./errors/index";
+export { NumberEx } from "./ext/number/index";
 export { Tokenizer } from "./lexer/index";
-export { NumberEx } from "./number-ex/index";
 export type {
   ObjectResolver,
   ObjectStoreOptions,
@@ -30,8 +30,6 @@ export {
   ObjectStreamBody,
   ObjectStreamHeader,
 } from "./objects/index";
-export * as Option from "./option/index";
-export * as Result from "./result/index";
 export type {
   Brand,
   IndirectRef,
@@ -63,4 +61,6 @@ export {
   ObjectNumber,
   TokenType,
 } from "./types/index";
+export * as Option from "./utils/option/index";
+export * as Result from "./utils/result/index";
 export { parseTrailer, parseXRefTable, scanStartXRef } from "./xref/index";

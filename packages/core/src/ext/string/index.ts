@@ -1,6 +1,6 @@
-import { NumberEx } from "../number-ex/index";
-import type { Option } from "../option/index";
-import { none, some } from "../option/index";
+import type { Option } from "../../utils/option/index";
+import { none, some } from "../../utils/option/index";
+import { NumberEx } from "../number/index";
 
 const DECIMAL_INTEGER = /^\+?[0-9]+$/;
 

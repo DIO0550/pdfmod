@@ -2,5 +2,8 @@
   "statusLine": {
     "type": "command",
     "command": "/home/vscode/.claude/plugins/marketplaces/d-market-statusline/plugins/statusline-plugin/scripts/statusline.sh"
+  },
+  "env": {
+    "CLAUDE_CODE_NO_FLICKER": "1"
   }
 }
