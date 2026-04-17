@@ -1,11 +1,11 @@
 import type { PdfParseError } from "../../../errors/index";
 import { Tokenizer } from "../../../lexer/tokenizer/index";
-import type { Result } from "../../../utils/result/index";
-import { err, ok } from "../../../utils/result/index";
 import { ByteOffset } from "../../../types/byte-offset/index";
 import { GenerationNumber } from "../../../types/generation-number/index";
 import { TokenType } from "../../../types/index";
 import { ObjectNumber } from "../../../types/object-number/index";
+import type { Result } from "../../../utils/result/index";
+import { err, ok } from "../../../utils/result/index";
 import { BufferedTokenizer } from "../buffered-tokenizer/index";
 
 /**

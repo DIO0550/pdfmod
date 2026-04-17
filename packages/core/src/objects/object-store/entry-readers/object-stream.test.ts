@@ -1,7 +1,7 @@
 import { assert, expect, test, vi } from "vitest";
-import { err, ok } from "../../../utils/result/index";
 import { ObjectNumber } from "../../../types/object-number/index";
 import type { XRefCompressedEntry } from "../../../types/pdf-types/index";
+import { err, ok } from "../../../utils/result/index";
 import { ObjectStreamBody } from "../../object-stream-extractor/index";
 import { makeRef } from "../object-store.test.helpers";
 import { readObjectStreamEntry } from "./object-stream";

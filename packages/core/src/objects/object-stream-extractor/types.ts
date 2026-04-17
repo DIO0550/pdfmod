@@ -1,7 +1,7 @@
 import type { PdfError } from "../../errors/index";
-import type { Result } from "../../utils/result/index";
 import type { ObjectNumber } from "../../types/object-number/index";
 import type { PdfObject } from "../../types/pdf-types/index";
+import type { Result } from "../../utils/result/index";
 
 /**
  * ストリームオブジェクトを解決するインタフェース。

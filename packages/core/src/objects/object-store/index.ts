@@ -1,9 +1,9 @@
 import type { PdfError } from "../../errors/index";
-import type { Result } from "../../utils/result/index";
-import { err, ok } from "../../utils/result/index";
 import { GenerationNumber } from "../../types/generation-number/index";
 import type { ObjectNumber } from "../../types/object-number/index";
 import type { IndirectRef, PdfObject } from "../../types/pdf-types/index";
+import type { Result } from "../../utils/result/index";
+import { err, ok } from "../../utils/result/index";
 import { LRUCache } from "../lru-cache/index";
 import type { ObjectResolver } from "../object-parser/index";
 import type { StreamResolver } from "../object-stream-extractor/index";

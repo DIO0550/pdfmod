@@ -4,12 +4,12 @@ import {
   matchesBytesAt,
   skipWhitespaceAndComments,
 } from "../../../lexer/bytes/index";
-import type { Result } from "../../../utils/result/index";
-import { err, ok } from "../../../utils/result/index";
 import {
   type ByteOffset,
   ByteOffset as ByteOffsetCompanion,
 } from "../../../types/byte-offset/index";
+import type { Result } from "../../../utils/result/index";
+import { err, ok } from "../../../utils/result/index";
 
 const PERCENT = 0x25;
 

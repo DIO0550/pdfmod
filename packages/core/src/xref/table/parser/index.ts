@@ -4,10 +4,6 @@ import {
   matchesBytesAt,
   skipWhitespaceAndComments,
 } from "../../../lexer/bytes/index";
-import type { Option } from "../../../utils/option/index";
-import { none, some } from "../../../utils/option/index";
-import type { Result } from "../../../utils/result/index";
-import { err, ok } from "../../../utils/result/index";
 import {
   type ByteOffset,
   ByteOffset as ByteOffsetCompanion,
@@ -20,6 +16,10 @@ import type {
   XRefUsedEntry,
 } from "../../../types/index";
 import { ObjectNumber } from "../../../types/object-number/index";
+import type { Option } from "../../../utils/option/index";
+import { none, some } from "../../../utils/option/index";
+import type { Result } from "../../../utils/result/index";
+import { err, ok } from "../../../utils/result/index";
 
 // --- バイト定数 (SCREAMING_SNAKE_CASE) ---
 

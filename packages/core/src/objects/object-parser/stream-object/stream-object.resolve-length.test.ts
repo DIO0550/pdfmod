@@ -1,6 +1,6 @@
 import { assert, expect, test } from "vitest";
-import { err, ok } from "../../../utils/result/index";
 import { ByteOffset } from "../../../types/byte-offset/index";
+import { err, ok } from "../../../utils/result/index";
 import type { ObjectResolver, StreamLength } from "../types";
 import { StreamObject } from "./index";
 
