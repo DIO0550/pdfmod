@@ -1,4 +1,5 @@
 import type { PdfError, PdfParseError } from "../../../errors/index";
+import { NumberEx } from "../../../ext/number/index";
 import { isPdfTokenBoundary } from "../../../lexer/bytes/index";
 import { ByteOffset } from "../../../types/byte-offset/index";
 import { GenerationNumber } from "../../../types/generation-number/index";
@@ -136,7 +137,7 @@ export const StreamObject = {
     dict: PdfDictionary,
     length: number,
   ): Result<StreamExtractResult, PdfParseError> {
-    if (!Number.isSafeInteger(length) || length < 0) {
+    if (!NumberEx.isSafeIntegerAtLeastZero(length)) {
       return err({
         code: "OBJECT_PARSE_STREAM_LENGTH",
         message: `/Length value is invalid: ${length}`,

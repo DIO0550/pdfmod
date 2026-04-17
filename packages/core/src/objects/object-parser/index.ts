@@ -1,4 +1,5 @@
 import type { PdfError, PdfParseError } from "../../errors/index";
+import { NumberEx } from "../../ext/number/index";
 import { Tokenizer } from "../../lexer/tokenizer/index";
 import { ByteOffset } from "../../types/byte-offset/index";
 import { TokenType } from "../../types/index";
@@ -26,7 +27,7 @@ function validateOffset(
   offset: ByteOffset,
 ): Result<ByteOffset, PdfParseError> {
   const n = offset as number;
-  if (!Number.isSafeInteger(n) || n < 0) {
+  if (!NumberEx.isSafeIntegerAtLeastZero(n)) {
     return err({
       code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
       message: `Offset ${n} is invalid; expected a non-negative safe integer within [0, ${data.length})`,

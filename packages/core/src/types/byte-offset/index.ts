@@ -1,3 +1,4 @@
+import { NumberEx } from "../../ext/number/index";
 import type { Result } from "../../utils/result/index";
 import { err, ok } from "../../utils/result/index";
 import type { Brand } from "../brand/index";
@@ -8,7 +9,7 @@ type ByteOffset = Brand<number, typeof ByteOffsetBrand>;
 
 const ByteOffset = {
   create(n: number): Result<ByteOffset, string> {
-    if (!Number.isSafeInteger(n) || n < 0) {
+    if (!NumberEx.isSafeIntegerAtLeastZero(n)) {
       return err(
         `Invalid ByteOffset: ${n} (must be a non-negative safe integer)`,
       );
