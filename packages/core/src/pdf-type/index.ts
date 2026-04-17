@@ -1,7 +1,7 @@
 import type { PdfParseError, PdfParseErrorCode } from "../errors/index";
-import type { Result } from "../result/index";
-import { err, ok } from "../result/index";
 import type { PdfValue } from "../types/pdf-types/index";
+import type { Result } from "../utils/result/index";
+import { err, ok } from "../utils/result/index";
 
 /** PDF 辞書の /Type エントリを検証するユーティリティ。 */
 export const PdfType = {

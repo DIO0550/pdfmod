@@ -1,12 +1,12 @@
 import { expect, test } from "vitest";
 import type { PdfError } from "../../errors/index";
-import type { Result } from "../../result/index";
 import { ByteOffset } from "../../types/byte-offset/index";
 import type {
   PdfDictionary,
   PdfObject,
   PdfValue,
 } from "../../types/pdf-types/index";
+import type { Result } from "../../utils/result/index";
 import { ObjectParser } from "./index";
 
 const enc = (s: string): Uint8Array => new TextEncoder().encode(s);

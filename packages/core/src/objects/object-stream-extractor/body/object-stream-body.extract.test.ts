@@ -1,8 +1,8 @@
 import { assert, expect, test, vi } from "vitest";
-import { err, ok } from "../../../result/index";
 import { ByteOffset } from "../../../types/byte-offset/index";
 import { GenerationNumber } from "../../../types/generation-number/index";
 import { ObjectNumber } from "../../../types/object-number/index";
+import { err, ok } from "../../../utils/result/index";
 import { LRUCache } from "../../lru-cache/index";
 import { ObjectParser } from "../../object-parser/index";
 import * as flateDecompressorModule from "../flate-decompressor/index";
