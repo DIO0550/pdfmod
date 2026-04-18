@@ -1,5 +1,9 @@
 import type React from "react";
 
+// US Letter (8.5" × 11") を 72 dpi で表現した PDF 既定ページサイズ
+const DEFAULT_PAGE_WIDTH = 612;
+const DEFAULT_PAGE_HEIGHT = 792;
+
 /**
  * PDFページコンポーネントのProps。
  *
@@ -31,8 +35,8 @@ export interface PdfPageProps {
  */
 export const PdfPage: React.FC<PdfPageProps> = ({
   pageNumber,
-  width = 612,
-  height = 792,
+  width = DEFAULT_PAGE_WIDTH,
+  height = DEFAULT_PAGE_HEIGHT,
 }) => {
   return (
     <div
