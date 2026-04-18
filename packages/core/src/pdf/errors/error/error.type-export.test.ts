@@ -8,7 +8,7 @@ import type {
   PdfTypeMismatchError,
   PdfWarning,
   PdfWarningCode,
-} from "../../index";
+} from "../../../index";
 import { GenerationNumber } from "../../types/generation-number/index";
 import { ObjectNumber } from "../../types/object-number/index";
 

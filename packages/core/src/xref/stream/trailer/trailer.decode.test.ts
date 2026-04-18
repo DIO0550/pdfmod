@@ -1,5 +1,5 @@
 import { assert, expect, test } from "vitest";
-import type { PdfValue } from "../../../types/index";
+import type { PdfValue } from "../../../pdf/types/index";
 import { buildXRefStreamTrailerDict } from "./index";
 
 test("/Rootと/Sizeのみの最小辞書からTrailerDictを構築する", () => {

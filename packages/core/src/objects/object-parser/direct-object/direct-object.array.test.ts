@@ -1,7 +1,7 @@
 import { assert, expect, test } from "vitest";
 import { Tokenizer } from "../../../lexer/tokenizer/index";
-import { ByteOffset } from "../../../types/byte-offset/index";
-import type { PdfValue } from "../../../types/pdf-types/index";
+import { ByteOffset } from "../../../pdf/types/byte-offset/index";
+import type { PdfValue } from "../../../pdf/types/pdf-types/index";
 import { BufferedTokenizer } from "../buffered-tokenizer/index";
 import { DirectObject } from "./index";
 

@@ -1,5 +1,5 @@
 import type { Tokenizer } from "../../../lexer/tokenizer/index";
-import type { Token } from "../../../types/index";
+import type { Token } from "../../../pdf/types/index";
 
 /**
  * Tokenizer をラップし pushBack によるトークンの巻き戻しを提供する。

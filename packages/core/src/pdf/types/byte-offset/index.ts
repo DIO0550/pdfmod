@@ -1,7 +1,7 @@
-import { NumberEx } from "../../ext/number/index";
-import type { Result } from "../../utils/result/index";
-import { err, ok } from "../../utils/result/index";
-import type { Brand } from "../brand/index";
+import { NumberEx } from "../../../ext/number/index";
+import type { Brand } from "../../../utils/brand/index";
+import type { Result } from "../../../utils/result/index";
+import { err, ok } from "../../../utils/result/index";
 
 declare const ByteOffsetBrand: unique symbol;
 

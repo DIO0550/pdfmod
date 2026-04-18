@@ -1,7 +1,7 @@
 import { assert, expect, test } from "vitest";
-import { ByteOffset } from "../../../types/byte-offset/index";
-import { GenerationNumber } from "../../../types/generation-number/index";
-import { ObjectNumber } from "../../../types/object-number/index";
+import { ByteOffset } from "../../../pdf/types/byte-offset/index";
+import { GenerationNumber } from "../../../pdf/types/generation-number/index";
+import { ObjectNumber } from "../../../pdf/types/object-number/index";
 import { parseTrailer } from "./index";
 
 const encoder = new TextEncoder();

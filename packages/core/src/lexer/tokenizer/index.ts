@@ -1,5 +1,5 @@
-import { ByteOffset } from "../../types/byte-offset/index";
-import { type Token, TokenType } from "../../types/index";
+import { ByteOffset } from "../../pdf/types/byte-offset/index";
+import { type Token, TokenType } from "../../pdf/types/index";
 import {
   isPdfDelimiter,
   isPdfWhitespace,

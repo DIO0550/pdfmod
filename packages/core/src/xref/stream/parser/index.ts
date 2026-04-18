@@ -1,10 +1,10 @@
-import type { PdfParseError } from "../../../errors/index";
 import { NumberEx } from "../../../ext/number/index";
-import type { ByteOffset } from "../../../types/byte-offset/index";
-import { ByteOffset as ByteOffsetNs } from "../../../types/byte-offset/index";
-import { GenerationNumber } from "../../../types/generation-number/index";
-import type { XRefEntry, XRefTable } from "../../../types/index";
-import { ObjectNumber } from "../../../types/object-number/index";
+import type { PdfParseError } from "../../../pdf/errors/index";
+import type { ByteOffset } from "../../../pdf/types/byte-offset/index";
+import { ByteOffset as ByteOffsetNs } from "../../../pdf/types/byte-offset/index";
+import { GenerationNumber } from "../../../pdf/types/generation-number/index";
+import type { XRefEntry, XRefTable } from "../../../pdf/types/index";
+import { ObjectNumber } from "../../../pdf/types/object-number/index";
 import type { Result } from "../../../utils/result/index";
 import { err, ok } from "../../../utils/result/index";
 

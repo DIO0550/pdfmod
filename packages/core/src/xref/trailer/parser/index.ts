@@ -1,16 +1,16 @@
-import type { PdfParseError } from "../../../errors/index";
 import {
   isPdfTokenBoundary,
   matchesBytesAt,
   skipWhitespaceAndComments,
 } from "../../../lexer/bytes/index";
 import { Tokenizer } from "../../../lexer/tokenizer/index";
+import type { PdfParseError } from "../../../pdf/errors/index";
 import {
   ByteOffset as BO,
   type ByteOffset,
-} from "../../../types/byte-offset/index";
-import type { PdfValue, Token, TrailerDict } from "../../../types/index";
-import { TokenType } from "../../../types/index";
+} from "../../../pdf/types/byte-offset/index";
+import type { PdfValue, Token, TrailerDict } from "../../../pdf/types/index";
+import { TokenType } from "../../../pdf/types/index";
 import type { Result } from "../../../utils/result/index";
 import { err, ok } from "../../../utils/result/index";
 import { trailerDictBuilder } from "../dict-builder/index";

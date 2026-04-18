@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import type { PdfWarning } from "../../index";
+import type { PdfWarning } from "../../../index";
 
 test("PdfWarningは全フィールドを持てる", () => {
   const warning: PdfWarning = {

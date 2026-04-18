@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import { Tokenizer } from "../../../lexer/tokenizer/index";
-import { TokenType } from "../../../types/index";
+import { TokenType } from "../../../pdf/types/index";
 import { BufferedTokenizer } from "./index";
 
 const enc = (s: string): Uint8Array => new TextEncoder().encode(s);

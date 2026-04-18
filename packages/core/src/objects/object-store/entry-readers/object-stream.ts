@@ -1,10 +1,10 @@
-import type { PdfError } from "../../../errors/index";
-import type { ObjectNumber } from "../../../types/object-number/index";
+import type { PdfError } from "../../../pdf/errors/index";
+import type { ObjectNumber } from "../../../pdf/types/object-number/index";
 import type {
   IndirectRef,
   PdfValue,
   XRefCompressedEntry,
-} from "../../../types/pdf-types/index";
+} from "../../../pdf/types/pdf-types/index";
 import type { Result } from "../../../utils/result/index";
 import type { LRUCache } from "../../lru-cache/index";
 import type { StreamResolver } from "../../object-stream-extractor/index";

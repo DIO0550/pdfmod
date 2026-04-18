@@ -1,5 +1,5 @@
-import type { PdfParseError } from "../../../errors/index";
 import { NumberEx } from "../../../ext/number/index";
+import type { PdfParseError } from "../../../pdf/errors/index";
 import type { Result } from "../../../utils/result/index";
 import { err, ok } from "../../../utils/result/index";
 
