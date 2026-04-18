@@ -9,6 +9,9 @@ on:
 permissions:
   contents: read
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
   ci:
     runs-on: ubuntu-latest
@@ -55,6 +58,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: coverage-summary
+          path: coverage
 
       - name: Post Coverage Comment
         uses: actions/github-script@v7
@@ -63,7 +67,7 @@ jobs:
             const fs = require('fs');
 
             // Read coverage data
-            const summaryPath = 'coverage-summary.json';
+            const summaryPath = 'coverage/coverage-summary.json';
             if (!fs.existsSync(summaryPath)) {
               core.warning('coverage-summary.json not found, skipping coverage comment');
               return;
