@@ -9,18 +9,15 @@ on:
 permissions:
   contents: read
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
-
 jobs:
   ci:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
           node-version: "24"
           cache: "pnpm"
@@ -41,7 +38,7 @@ jobs:
 
       - name: Upload Coverage
         if: github.event_name == 'pull_request' && !github.event.pull_request.head.repo.fork && success()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: coverage-summary
           path: coverage/coverage-summary.json
@@ -55,19 +52,22 @@ jobs:
       pull-requests: write
     steps:
       - name: Download Coverage
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: coverage-summary
           path: coverage
 
       - name: Post Coverage Comment
-        uses: actions/github-script@v7
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
             const fs = require('fs');
+            const path = require('path');
 
-            // Read coverage data
-            const summaryPath = 'coverage/coverage-summary.json';
+            // Read coverage data (github-script は自身のアクションディレクトリから
+            // 実行されるため、GITHUB_WORKSPACE 基準で絶対パス化する)
+            const workspace = process.env.GITHUB_WORKSPACE || process.cwd();
+            const summaryPath = path.join(workspace, 'coverage', 'coverage-summary.json');
             if (!fs.existsSync(summaryPath)) {
               core.warning('coverage-summary.json not found, skipping coverage comment');
               return;
@@ -113,7 +113,7 @@ jobs:
             const fileRows = Object.entries(summary)
               .filter(([filePath]) => filePath !== 'total' && !excludePatterns.some(p => p.test(filePath)))
               .map(([filePath, data]) => {
-                const displayPath = filePath.replace(process.cwd() + '/', '');
+                const displayPath = filePath.replace(workspace + '/', '');
                 return `| \`${displayPath}\` | ${fmt(data.lines.pct)} | ${fmt(data.branches.pct)} | ${fmt(data.functions.pct)} | ${fmt(data.statements.pct)} |`;
               });
 
