@@ -1,10 +1,10 @@
-import type { PdfError, PdfParseError } from "../../../errors/index";
 import { NumberEx } from "../../../ext/number/index";
 import { isPdfTokenBoundary } from "../../../lexer/bytes/index";
-import { ByteOffset } from "../../../types/byte-offset/index";
-import { GenerationNumber } from "../../../types/generation-number/index";
-import { ObjectNumber } from "../../../types/object-number/index";
-import type { PdfDictionary } from "../../../types/pdf-types/index";
+import type { PdfError, PdfParseError } from "../../../pdf/errors/index";
+import { ByteOffset } from "../../../pdf/types/byte-offset/index";
+import { GenerationNumber } from "../../../pdf/types/generation-number/index";
+import { ObjectNumber } from "../../../pdf/types/object-number/index";
+import type { PdfDictionary } from "../../../pdf/types/pdf-types/index";
 import type { Result } from "../../../utils/result/index";
 import { err, ok } from "../../../utils/result/index";
 import type {

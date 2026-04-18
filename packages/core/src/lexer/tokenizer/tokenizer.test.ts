@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { TokenType } from "../../types/index";
+import { TokenType } from "../../pdf/types/index";
 import { Tokenizer } from "./index";
 
 function tokenize(input: string) {

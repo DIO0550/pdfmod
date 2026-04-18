@@ -1,11 +1,11 @@
 import { expect, test } from "vitest";
-import type { PdfError } from "../../errors/index";
-import { ByteOffset } from "../../types/byte-offset/index";
+import type { PdfError } from "../../pdf/errors/index";
+import { ByteOffset } from "../../pdf/types/byte-offset/index";
 import type {
   PdfDictionary,
   PdfObject,
   PdfValue,
-} from "../../types/pdf-types/index";
+} from "../../pdf/types/pdf-types/index";
 import type { Result } from "../../utils/result/index";
 import { ObjectParser } from "./index";
 

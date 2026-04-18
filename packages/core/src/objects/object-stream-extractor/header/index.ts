@@ -1,9 +1,9 @@
-import type { PdfParseError } from "../../../errors/index";
 import { NumberEx } from "../../../ext/number/index";
 import { Tokenizer } from "../../../lexer/index";
-import { ByteOffset } from "../../../types/byte-offset/index";
-import { ObjectNumber } from "../../../types/object-number/index";
-import { TokenType } from "../../../types/pdf-types/index";
+import type { PdfParseError } from "../../../pdf/errors/index";
+import { ByteOffset } from "../../../pdf/types/byte-offset/index";
+import { ObjectNumber } from "../../../pdf/types/object-number/index";
+import { TokenType } from "../../../pdf/types/pdf-types/index";
 import type { Result } from "../../../utils/result/index";
 import { err, ok } from "../../../utils/result/index";
 
