@@ -1,9 +1,9 @@
-import type { PdfError } from "../../../errors/index";
+import type { PdfError } from "../../../pdf/errors/index";
 import type {
   IndirectRef,
   PdfObject,
   XRefUsedEntry,
-} from "../../../types/pdf-types/index";
+} from "../../../pdf/types/pdf-types/index";
 import type { Result } from "../../../utils/result/index";
 import { err } from "../../../utils/result/index";
 import type { ObjectResolver } from "../../object-parser/index";

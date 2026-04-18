@@ -1,5 +1,5 @@
 import { assert, expect, test } from "vitest";
-import { ByteOffset } from "../../../types/byte-offset/index";
+import { ByteOffset } from "../../../pdf/types/byte-offset/index";
 import { parseXRefTable } from "./index";
 
 const encoder = new TextEncoder();

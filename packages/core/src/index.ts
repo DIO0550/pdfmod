@@ -4,16 +4,7 @@
  *
  * @packageDocumentation
  */
-export type {
-  PdfCircularReferenceError,
-  PdfError,
-  PdfErrorCode,
-  PdfParseError,
-  PdfParseErrorCode,
-  PdfTypeMismatchError,
-  PdfWarning,
-  PdfWarningCode,
-} from "./errors/index";
+
 export { NumberEx } from "./ext/number/index";
 export { Tokenizer } from "./lexer/index";
 export type {
@@ -31,22 +22,29 @@ export {
   ObjectStreamHeader,
 } from "./objects/index";
 export type {
-  Brand,
   IndirectRef,
   ObjectId,
   PdfArray,
   PdfBoolean,
+  PdfCircularReferenceError,
   PdfDictionary,
+  PdfError,
+  PdfErrorCode,
   PdfIndirectObject,
   PdfIndirectRef,
   PdfInteger,
   PdfName,
   PdfNull,
   PdfObject,
+  PdfParseError,
+  PdfParseErrorCode,
   PdfReal,
   PdfStream,
   PdfString,
+  PdfTypeMismatchError,
   PdfValue,
+  PdfWarning,
+  PdfWarningCode,
   Token,
   TrailerDict,
   XRefCompressedEntry,
@@ -54,13 +52,14 @@ export type {
   XRefFreeEntry,
   XRefTable,
   XRefUsedEntry,
-} from "./types/index";
+} from "./pdf/index";
 export {
   ByteOffset,
   GenerationNumber,
   ObjectNumber,
   TokenType,
-} from "./types/index";
+} from "./pdf/index";
+export type { Brand } from "./utils/index";
 export * as Option from "./utils/option/index";
 export * as Result from "./utils/result/index";
 export { parseTrailer, parseXRefTable, scanStartXRef } from "./xref/index";

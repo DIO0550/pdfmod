@@ -1,7 +1,7 @@
-import type { PdfError } from "../../errors/index";
-import { GenerationNumber } from "../../types/generation-number/index";
-import type { ObjectNumber } from "../../types/object-number/index";
-import type { IndirectRef, PdfObject } from "../../types/pdf-types/index";
+import type { PdfError } from "../../pdf/errors/index";
+import { GenerationNumber } from "../../pdf/types/generation-number/index";
+import type { ObjectNumber } from "../../pdf/types/object-number/index";
+import type { IndirectRef, PdfObject } from "../../pdf/types/pdf-types/index";
 import type { Result } from "../../utils/result/index";
 import { err, ok } from "../../utils/result/index";
 import { LRUCache } from "../lru-cache/index";

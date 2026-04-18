@@ -1,5 +1,5 @@
-import type { PdfParseError } from "../../../errors/index";
-import type { PdfValue, TrailerDict } from "../../../types/index";
+import type { PdfParseError } from "../../../pdf/errors/index";
+import type { PdfValue, TrailerDict } from "../../../pdf/types/index";
 import type { Result } from "../../../utils/result/index";
 import { trailerDictBuilder } from "../../trailer/dict-builder/index";
 

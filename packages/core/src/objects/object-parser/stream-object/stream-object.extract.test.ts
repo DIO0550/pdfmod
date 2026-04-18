@@ -1,6 +1,6 @@
 import { assert, expect, test } from "vitest";
-import { ByteOffset } from "../../../types/byte-offset/index";
-import type { PdfDictionary } from "../../../types/pdf-types/index";
+import { ByteOffset } from "../../../pdf/types/byte-offset/index";
+import type { PdfDictionary } from "../../../pdf/types/pdf-types/index";
 import { StreamObject } from "./index";
 
 const enc = (s: string): Uint8Array => new TextEncoder().encode(s);

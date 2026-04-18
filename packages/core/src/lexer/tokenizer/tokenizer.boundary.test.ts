@@ -1,8 +1,9 @@
 import { expect, test } from "vitest";
-import { TokenType } from "../../types/index";
+import type { Token } from "../../pdf/types/index";
+import { TokenType } from "../../pdf/types/index";
 import { Tokenizer } from "./index";
 
-function tokenize(input: string) {
+function tokenize(input: string): Token[] {
   const encoder = new TextEncoder();
   const tokenizer = new Tokenizer(encoder.encode(input));
   return tokenizer.tokenize();

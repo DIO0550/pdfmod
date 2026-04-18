@@ -1,10 +1,13 @@
-import type { PdfParseError } from "../../../errors/index";
-import { ByteOffset } from "../../../types/byte-offset/index";
-import { GenerationNumber } from "../../../types/generation-number/index";
-import type { Token } from "../../../types/index";
-import { TokenType } from "../../../types/index";
-import { ObjectNumber } from "../../../types/object-number/index";
-import type { PdfDictionary, PdfValue } from "../../../types/pdf-types/index";
+import type { PdfParseError } from "../../../pdf/errors/index";
+import { ByteOffset } from "../../../pdf/types/byte-offset/index";
+import { GenerationNumber } from "../../../pdf/types/generation-number/index";
+import type { Token } from "../../../pdf/types/index";
+import { TokenType } from "../../../pdf/types/index";
+import { ObjectNumber } from "../../../pdf/types/object-number/index";
+import type {
+  PdfDictionary,
+  PdfValue,
+} from "../../../pdf/types/pdf-types/index";
 import type { Option } from "../../../utils/option/index";
 import { none, some } from "../../../utils/option/index";
 import type { Result } from "../../../utils/result/index";

@@ -13,7 +13,7 @@ import type {
   PdfStream,
   PdfString,
   PdfValue,
-} from "../../index";
+} from "../../../index";
 import { GenerationNumber } from "../generation-number/index";
 import { ObjectNumber } from "../object-number/index";
 

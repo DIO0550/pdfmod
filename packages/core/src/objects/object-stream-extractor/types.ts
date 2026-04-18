@@ -1,6 +1,6 @@
-import type { PdfError } from "../../errors/index";
-import type { ObjectNumber } from "../../types/object-number/index";
-import type { PdfObject } from "../../types/pdf-types/index";
+import type { PdfError } from "../../pdf/errors/index";
+import type { ObjectNumber } from "../../pdf/types/object-number/index";
+import type { PdfObject } from "../../pdf/types/pdf-types/index";
 import type { Result } from "../../utils/result/index";
 
 /**
