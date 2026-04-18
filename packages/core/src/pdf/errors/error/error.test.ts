@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import type { ObjectId, PdfError, PdfParseError } from "../../index";
+import type { ObjectId, PdfError, PdfParseError } from "../../../index";
 import { ByteOffset } from "../../types/byte-offset/index";
 import { GenerationNumber } from "../../types/generation-number/index";
 import { ObjectNumber } from "../../types/object-number/index";

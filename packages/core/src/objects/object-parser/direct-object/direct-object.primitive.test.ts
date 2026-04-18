@@ -1,6 +1,6 @@
 import { assert, expect, test } from "vitest";
 import { Tokenizer } from "../../../lexer/tokenizer/index";
-import { ByteOffset } from "../../../types/byte-offset/index";
+import { ByteOffset } from "../../../pdf/types/byte-offset/index";
 import { BufferedTokenizer } from "../buffered-tokenizer/index";
 import { DirectObject } from "./index";
 

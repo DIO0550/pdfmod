@@ -1,10 +1,10 @@
 import { expect, test } from "vitest";
-import type { ByteOffset } from "../byte-offset/index";
-import { ByteOffset as ByteOffsetCompanion } from "../byte-offset/index";
-import type { GenerationNumber } from "../generation-number/index";
-import { GenerationNumber as GenerationNumberCompanion } from "../generation-number/index";
-import type { ObjectNumber } from "../object-number/index";
-import { ObjectNumber as ObjectNumberCompanion } from "../object-number/index";
+import type { ByteOffset } from "../../pdf/types/byte-offset/index";
+import { ByteOffset as ByteOffsetCompanion } from "../../pdf/types/byte-offset/index";
+import type { GenerationNumber } from "../../pdf/types/generation-number/index";
+import { GenerationNumber as GenerationNumberCompanion } from "../../pdf/types/generation-number/index";
+import type { ObjectNumber } from "../../pdf/types/object-number/index";
+import { ObjectNumber as ObjectNumberCompanion } from "../../pdf/types/object-number/index";
 
 test("ObjectNumber型の値をObjectNumber型の変数に代入できる", () => {
   const a: ObjectNumber = ObjectNumberCompanion.of(1);
@@ -77,13 +77,13 @@ test("Brand型の値は算術演算に使用できる", () => {
 });
 
 test("エントリポイントから全Brand型がインポートできる", async () => {
-  const mod = await import("../index");
+  const mod = await import("../../index");
   expect(mod).toBeDefined();
 
-  const _obj: import("../index").ObjectNumber = ObjectNumberCompanion.of(1);
-  const _gen: import("../index").GenerationNumber =
+  const _obj: import("../../index").ObjectNumber = ObjectNumberCompanion.of(1);
+  const _gen: import("../../index").GenerationNumber =
     GenerationNumberCompanion.of(0);
-  const _off: import("../index").ByteOffset = ByteOffsetCompanion.of(512);
+  const _off: import("../../index").ByteOffset = ByteOffsetCompanion.of(512);
   expect(_obj).toBe(1);
   expect(_gen).toBe(0);
   expect(_off).toBe(512);

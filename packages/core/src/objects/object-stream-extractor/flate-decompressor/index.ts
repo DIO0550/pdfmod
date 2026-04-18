@@ -1,4 +1,4 @@
-import type { PdfParseError } from "../../../errors/index";
+import type { PdfParseError } from "../../../pdf/errors/index";
 import type { Result } from "../../../utils/result/index";
 import { decompressFlate } from "../../../xref/stream/flatedecode/index";
 import type { CreateFlateDecompressorOptions } from "../types";

@@ -1,13 +1,13 @@
 import { expect, test, vi } from "vitest";
-import type { PdfTypeMismatchError } from "../../errors/index";
-import { ByteOffset } from "../../types/byte-offset/index";
-import { GenerationNumber } from "../../types/generation-number/index";
-import { ObjectNumber } from "../../types/object-number/index";
+import type { PdfTypeMismatchError } from "../../pdf/errors/index";
+import { ByteOffset } from "../../pdf/types/byte-offset/index";
+import { GenerationNumber } from "../../pdf/types/generation-number/index";
+import { ObjectNumber } from "../../pdf/types/object-number/index";
 import type {
   XRefCompressedEntry,
   XRefFreeEntry,
   XRefUsedEntry,
-} from "../../types/pdf-types/index";
+} from "../../pdf/types/pdf-types/index";
 import { ObjectStreamBody } from "../object-stream-extractor/index";
 import { ObjectStore } from "./index";
 import {

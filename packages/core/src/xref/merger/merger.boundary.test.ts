@@ -1,9 +1,9 @@
 import { assert, expect, test } from "vitest";
-import type { PdfParseError } from "../../errors/index";
-import { ByteOffset } from "../../types/byte-offset/index";
-import { GenerationNumber } from "../../types/generation-number/index";
-import type { TrailerDict, XRefEntry, XRefTable } from "../../types/index";
-import { ObjectNumber } from "../../types/object-number/index";
+import type { PdfParseError } from "../../pdf/errors/index";
+import { ByteOffset } from "../../pdf/types/byte-offset/index";
+import { GenerationNumber } from "../../pdf/types/generation-number/index";
+import type { TrailerDict, XRefEntry, XRefTable } from "../../pdf/types/index";
+import { ObjectNumber } from "../../pdf/types/object-number/index";
 import type { Result } from "../../utils/result/index";
 import { ok } from "../../utils/result/index";
 import { mergeXRefChain } from "./index";

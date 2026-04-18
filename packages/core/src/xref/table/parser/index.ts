@@ -1,21 +1,21 @@
-import type { PdfParseError } from "../../../errors/index";
 import {
   isPdfTokenBoundary,
   matchesBytesAt,
   skipWhitespaceAndComments,
 } from "../../../lexer/bytes/index";
+import type { PdfParseError } from "../../../pdf/errors/index";
 import {
   type ByteOffset,
   ByteOffset as ByteOffsetCompanion,
-} from "../../../types/byte-offset/index";
-import { GenerationNumber } from "../../../types/generation-number/index";
+} from "../../../pdf/types/byte-offset/index";
+import { GenerationNumber } from "../../../pdf/types/generation-number/index";
 import type {
   XRefEntry,
   XRefFreeEntry,
   XRefTable,
   XRefUsedEntry,
-} from "../../../types/index";
-import { ObjectNumber } from "../../../types/object-number/index";
+} from "../../../pdf/types/index";
+import { ObjectNumber } from "../../../pdf/types/object-number/index";
 import type { Option } from "../../../utils/option/index";
 import { none, some } from "../../../utils/option/index";
 import type { Result } from "../../../utils/result/index";

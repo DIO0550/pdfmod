@@ -1,4 +1,4 @@
-import type { XRefTable } from "../../types/pdf-types/index";
+import type { XRefTable } from "../../pdf/types/pdf-types/index";
 
 /**
  * ObjectStore が必要とするデータソース。

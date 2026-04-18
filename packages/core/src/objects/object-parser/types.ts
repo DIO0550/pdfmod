@@ -1,12 +1,12 @@
-import type { PdfError } from "../../errors/index";
-import type { ByteOffset } from "../../types/byte-offset/index";
-import type { GenerationNumber } from "../../types/generation-number/index";
-import type { ObjectNumber } from "../../types/object-number/index";
+import type { PdfError } from "../../pdf/errors/index";
+import type { ByteOffset } from "../../pdf/types/byte-offset/index";
+import type { GenerationNumber } from "../../pdf/types/generation-number/index";
+import type { ObjectNumber } from "../../pdf/types/object-number/index";
 import type {
   PdfIndirectRef,
   PdfObject,
   PdfStream,
-} from "../../types/pdf-types/index";
+} from "../../pdf/types/pdf-types/index";
 import type { Result } from "../../utils/result/index";
 
 /**

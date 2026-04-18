@@ -1,13 +1,13 @@
-import type { PdfParseError } from "../../../errors/index";
 import {
   isPdfTokenBoundary,
   matchesBytesAt,
   skipWhitespaceAndComments,
 } from "../../../lexer/bytes/index";
+import type { PdfParseError } from "../../../pdf/errors/index";
 import {
   type ByteOffset,
   ByteOffset as ByteOffsetCompanion,
-} from "../../../types/byte-offset/index";
+} from "../../../pdf/types/byte-offset/index";
 import type { Result } from "../../../utils/result/index";
 import { err, ok } from "../../../utils/result/index";
 
