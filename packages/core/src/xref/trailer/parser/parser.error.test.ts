@@ -128,6 +128,10 @@ test("/Prevが実数の場合にXREF_TABLE_INVALIDエラーが返る", () => {
   const result = parseTrailer(data, offset);
   assert(!result.ok);
   expect(result.error.code).toBe("XREF_TABLE_INVALID");
+  expect(result.error.message).toBe(
+    "/Prev entry is not a non-negative integer",
+  );
+  expect(result.error.offset).toBeDefined();
 });
 
 test("/Prevが名前の場合にXREF_TABLE_INVALIDエラーが返る", () => {

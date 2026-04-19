@@ -137,3 +137,21 @@ test("parseは/Nが負の値の場合にエラーを返す", () => {
   assert(!result.ok);
   expect(result.error.code).toBe("OBJECT_STREAM_INVALID");
 });
+
+test("parseは/Type不一致時にPdfType由来のmessageをOBJECT_STREAM_INVALIDに保持して返す", () => {
+  const result = ObjectStreamDict.parse(
+    makeDict({ Type: { type: "name", value: "XRef" } }),
+  );
+  assert(!result.ok);
+  expect(result.error.code).toBe("OBJECT_STREAM_INVALID");
+  expect(result.error.message).toBe("/Type must be /ObjStm, got /XRef");
+});
+
+test("parseは/Filter未サポート時にPdfFilter由来のmessageをOBJECT_STREAM_INVALIDに保持して返す", () => {
+  const result = ObjectStreamDict.parse(
+    makeDict({ Filter: { type: "name", value: "LZWDecode" } }),
+  );
+  assert(!result.ok);
+  expect(result.error.code).toBe("OBJECT_STREAM_INVALID");
+  expect(result.error.message).toBe("/Filter /LZWDecode is not supported");
+});
