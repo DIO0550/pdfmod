@@ -22,7 +22,7 @@ test("parseHeader 経由: 不正 generationNumber（1 -1 obj）でエラー", as
   expect(result.error.code).toBe("OBJECT_PARSE_UNEXPECTED_TOKEN");
 });
 
-test("expectEndobj 経由: 非 stream endobj 誤トークンで OBJECT_PARSE_UNEXPECTED_TOKEN", async () => {
+test("validateEndobj 経由: 非 stream endobj 誤トークンで OBJECT_PARSE_UNEXPECTED_TOKEN", async () => {
   const result = await ObjectParser.parseIndirectObject(
     enc("1 0 obj\n42\nfoo"),
     ByteOffset.of(0),
@@ -31,7 +31,7 @@ test("expectEndobj 経由: 非 stream endobj 誤トークンで OBJECT_PARSE_UNE
   expect(result.error.code).toBe("OBJECT_PARSE_UNEXPECTED_TOKEN");
 });
 
-test("expectEndobjAfter 経由: endstream 後の endobj 欠落（EOF）で OBJECT_PARSE_UNTERMINATED", async () => {
+test("validateEndobjAt 経由: endstream 後の endobj 欠落（EOF）で OBJECT_PARSE_UNTERMINATED", async () => {
   const result = await ObjectParser.parseIndirectObject(
     enc("1 0 obj\n<</Length 5>>\nstream\nhello\nendstream\n"),
     ByteOffset.of(0),
@@ -40,7 +40,7 @@ test("expectEndobjAfter 経由: endstream 後の endobj 欠落（EOF）で OBJEC
   expect(result.error.code).toBe("OBJECT_PARSE_UNTERMINATED");
 });
 
-test("expectEndobjAfter 経由: endstream 後の誤トークンで OBJECT_PARSE_UNEXPECTED_TOKEN", async () => {
+test("validateEndobjAt 経由: endstream 後の誤トークンで OBJECT_PARSE_UNEXPECTED_TOKEN", async () => {
   const result = await ObjectParser.parseIndirectObject(
     enc("1 0 obj\n<</Length 5>>\nstream\nhello\nendstream\nfoo"),
     ByteOffset.of(0),
