@@ -4,6 +4,8 @@ import { ByteOffset } from "../../../pdf/types/byte-offset/index";
 import { GenerationNumber } from "../../../pdf/types/generation-number/index";
 import { TokenType } from "../../../pdf/types/index";
 import { ObjectNumber } from "../../../pdf/types/object-number/index";
+import type { Option } from "../../../utils/option/index";
+import { none, some } from "../../../utils/option/index";
 import type { Result } from "../../../utils/result/index";
 import { err, ok } from "../../../utils/result/index";
 import { BufferedTokenizer } from "../buffered-tokenizer/index";
@@ -86,31 +88,31 @@ export const IndirectObject = {
   },
 
   /**
-   * 非 stream の本体後に `endobj` キーワードを期待する。
+   * 非 stream の本体後に `endobj` キーワードを検査する。
    *
    * @param bt - バッファ付きトークナイザ
    * @param baseOffset - エラー報告用の基準オフセット
-   * @returns 成功時は void、失敗時はエラー
+   * @returns endobj 一致時は `none`、不一致・EOF 時は `some(PdfParseError)`
    */
-  expectEndobj(
+  validateEndobj(
     bt: BufferedTokenizer,
     baseOffset: ByteOffset,
-  ): Result<void, PdfParseError> {
+  ): Option<PdfParseError> {
     const endobjToken = bt.next();
     if (
       endobjToken.type === TokenType.Keyword &&
       endobjToken.value === "endobj"
     ) {
-      return ok(undefined);
+      return none;
     }
     if (endobjToken.type === TokenType.EOF) {
-      return err({
+      return some({
         code: "OBJECT_PARSE_UNTERMINATED",
         message: "Expected endobj but reached EOF",
         offset: ByteOffset.add(baseOffset, endobjToken.offset),
       });
     }
-    return err({
+    return some({
       code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
       message: `Expected "endobj", got ${String(endobjToken.value)}`,
       offset: ByteOffset.add(baseOffset, endobjToken.offset),
@@ -118,16 +120,16 @@ export const IndirectObject = {
   },
 
   /**
-   * endstream 後の絶対位置から `endobj` キーワードを期待する。
+   * endstream 後の絶対位置から `endobj` キーワードを検査する。
    *
    * @param fullData - PDF ファイル全体のバイト配列
    * @param afterEndstreamAbsPos - endstream 後の絶対バイト位置
-   * @returns 成功時は void、失敗時はエラー
+   * @returns endobj 一致時は `none`、不一致・EOF 時は `some(PdfParseError)`
    */
-  expectEndobjAfter(
+  validateEndobjAt(
     fullData: Uint8Array,
     afterEndstreamAbsPos: ByteOffset,
-  ): Result<void, PdfParseError> {
+  ): Option<PdfParseError> {
     const absPos = afterEndstreamAbsPos as number;
     const endobjBt = new BufferedTokenizer(
       new Tokenizer(fullData.subarray(absPos)),
@@ -137,19 +139,19 @@ export const IndirectObject = {
       endobjToken.type === TokenType.Keyword &&
       endobjToken.value === "endobj"
     ) {
-      return ok(undefined);
+      return none;
     }
     if (endobjToken.type === TokenType.EOF) {
-      return err({
+      return some({
         code: "OBJECT_PARSE_UNTERMINATED",
         message: "Expected endobj after endstream but reached EOF",
-        offset: afterEndstreamAbsPos,
+        offset: ByteOffset.add(afterEndstreamAbsPos, endobjToken.offset),
       });
     }
-    return err({
+    return some({
       code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
       message: `Expected "endobj" after endstream, got ${String(endobjToken.value)}`,
-      offset: ByteOffset.of(absPos + (endobjToken.offset as number)),
+      offset: ByteOffset.add(afterEndstreamAbsPos, endobjToken.offset),
     });
   },
 } as const;
