@@ -143,29 +143,33 @@ export const flatMap = <T, U, E>(
 ): Result<U, E> => (result.ok ? fn(result.value) : result);
 
 /**
- * エラー値を変換する。
+ * エラー値を変換する（カリー化）。
+ * 第一段階で変換関数を受け取り、第二段階で `Result` を受け取る。
  * Resultが `Err` の場合のみ変換関数を適用し、`Ok` の場合はそのまま返す。
+ *
+ * Rust の `Result::map_err` / fp-ts の `mapLeft` と同じ形式。
+ * 呼び出し文脈を知らないバリデータが固有エラーコードを返し、
+ * 呼び出し側で文脈別コードへ再ラップするパターンに適している。
  *
  * @typeParam T - 成功値の型
  * @typeParam E - 変換前のエラー値の型
  * @typeParam F - 変換後のエラー値の型
- * @param result - 変換対象のResult
  * @param fn - エラー値に適用する変換関数
- * @returns `Err` の場合は `Err<F>`、`Ok` の場合は元の `Ok<T>` をそのまま返す
+ * @returns `Result<T, E>` を受け取り `Result<T, F>` を返す関数
  *
  * @example
  * ```ts
  * import { Result } from "@pdfmod/core";
  *
  * const r = Result.err("not found");
- * const mapped = Result.mapErr(r, (e) => new Error(e));
+ * const mapped = Result.mapErr((e: string) => new Error(e))(r);
  * // mapped = { ok: false, error: Error("not found") }
  * ```
  */
-export const mapErr = <T, E, F>(
-  result: Result<T, E>,
-  fn: (error: E) => F,
-): Result<T, F> => (result.ok ? result : err(fn(result.error)));
+export const mapErr =
+  <E, F>(fn: (error: E) => F) =>
+  <T>(result: Result<T, E>): Result<T, F> =>
+    result.ok ? result : err(fn(result.error));
 
 /**
  * 成功値を取り出すか、デフォルト値を返す。
