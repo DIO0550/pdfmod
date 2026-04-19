@@ -53,7 +53,7 @@ export const ObjectStreamBody = {
       });
     }
 
-    const dictResult = ObjectStreamDict.validate(streamObj.dictionary.entries);
+    const dictResult = ObjectStreamDict.parse(streamObj.dictionary.entries);
     if (!dictResult.ok) {
       return dictResult;
     }
