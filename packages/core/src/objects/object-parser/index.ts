@@ -90,6 +90,7 @@ export const ObjectParser = {
         if (!lengthResult.ok) {
           return lengthResult;
         }
+
         if (lengthResult.value.kind === "indirect") {
           return err({
             code: "OBJECT_PARSE_STREAM_LENGTH",
@@ -98,6 +99,7 @@ export const ObjectParser = {
             offset: ByteOffset.add(baseOffset, ByteOffset.of(bt.position)),
           });
         }
+
         const streamResult = StreamObject.extract(
           data,
           baseOffset,
@@ -108,6 +110,7 @@ export const ObjectParser = {
         if (!streamResult.ok) {
           return streamResult;
         }
+
         return ok(streamResult.value.object);
       }
       bt.pushBack(peekToken);
@@ -165,6 +168,7 @@ export const ObjectParser = {
         if (!lengthTyped.ok) {
           return lengthTyped;
         }
+
         const lengthResolved = await StreamObject.resolveLength(
           lengthTyped.value,
           baseOffset,
@@ -174,6 +178,7 @@ export const ObjectParser = {
         if (!lengthResolved.ok) {
           return lengthResolved;
         }
+
         const streamResult = StreamObject.extract(
           data,
           baseOffset,
@@ -184,6 +189,7 @@ export const ObjectParser = {
         if (!streamResult.ok) {
           return streamResult;
         }
+
         const endobjResult = IndirectObject.expectEndobjAfter(
           data,
           streamResult.value.afterEndstreamAbsPos,
@@ -191,6 +197,7 @@ export const ObjectParser = {
         if (!endobjResult.ok) {
           return endobjResult;
         }
+
         return ok({
           objectNumber,
           generationNumber,
@@ -204,6 +211,7 @@ export const ObjectParser = {
     if (!endobjResult.ok) {
       return endobjResult;
     }
+
     return ok({ objectNumber, generationNumber, body: value });
   },
 } as const;

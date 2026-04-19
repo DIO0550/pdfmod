@@ -125,6 +125,7 @@ export function skipWhitespaceAndComments(
 ): number {
   const limit = end ?? data.length;
   let i = pos;
+
   while (i < limit) {
     if (isPdfWhitespace(data[i])) {
       i++;
@@ -136,6 +137,7 @@ export function skipWhitespaceAndComments(
     }
     break;
   }
+
   return i;
 }
 
@@ -155,6 +157,7 @@ export function matchesBytesAt(
   if (offset + pattern.length > data.length) {
     return false;
   }
+
   for (let j = 0; j < pattern.length; j++) {
     if (data[offset + j] !== pattern[j]) {
       return false;

@@ -185,6 +185,7 @@ function tryReadIndirectRef(
         }),
       );
     }
+
     const generationNumber = GenerationNumber.create(secondVal);
     if (!generationNumber.ok) {
       return some(
@@ -195,6 +196,7 @@ function tryReadIndirectRef(
         }),
       );
     }
+
     return some(
       ok({
         type: "indirect-ref",
