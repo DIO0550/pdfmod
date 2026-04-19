@@ -108,6 +108,7 @@ export class ObjectStore {
         actual: result.value.type,
       });
     }
+
     return ok(result.value as Extract<PdfObject, { type: T }>);
   }
 

@@ -43,12 +43,14 @@ export const StreamObject = {
         offset: ByteOffset.add(baseOffset, ByteOffset.of(relPos)),
       });
     }
+
     if (lengthObj.type === "integer") {
       return ok({ kind: "direct", value: lengthObj.value });
     }
     if (lengthObj.type === "indirect-ref") {
       return ok({ kind: "indirect", ref: lengthObj });
     }
+
     return err({
       code: "OBJECT_PARSE_STREAM_LENGTH",
       message: `/Length has unexpected type: ${lengthObj.type}`,
@@ -75,6 +77,7 @@ export const StreamObject = {
     if (length.kind === "direct") {
       return ok(length.value);
     }
+
     if (resolver === undefined) {
       return err({
         code: "OBJECT_PARSE_STREAM_LENGTH",
@@ -83,6 +86,7 @@ export const StreamObject = {
         offset: ByteOffset.add(baseOffset, ByteOffset.of(relPos)),
       });
     }
+
     const objectNumber = ObjectNumber.create(length.ref.objectNumber);
     if (!objectNumber.ok) {
       return err({
@@ -91,6 +95,7 @@ export const StreamObject = {
         offset: ByteOffset.add(baseOffset, ByteOffset.of(relPos)),
       });
     }
+
     const generationNumber = GenerationNumber.create(
       length.ref.generationNumber,
     );
@@ -101,6 +106,7 @@ export const StreamObject = {
         offset: ByteOffset.add(baseOffset, ByteOffset.of(relPos)),
       });
     }
+
     const resolved = await resolver(objectNumber.value, generationNumber.value);
     if (!resolved.ok) {
       return err({
@@ -109,6 +115,7 @@ export const StreamObject = {
         offset: ByteOffset.add(baseOffset, ByteOffset.of(relPos)),
       });
     }
+
     if (resolved.value.type !== "integer") {
       return err({
         code: "TYPE_MISMATCH" as const,
@@ -117,6 +124,7 @@ export const StreamObject = {
         actual: resolved.value.type,
       });
     }
+
     return ok(resolved.value.value);
   },
 
@@ -216,6 +224,7 @@ export const StreamObject = {
         offset: afterEndstreamAbsPos,
       });
     }
+
     return ok({
       object: { type: "stream", dictionary: dict, data: streamData },
       afterEndstreamAbsPos,
@@ -239,6 +248,7 @@ function matchesAsciiAt(
   if (start < 0 || start + text.length > data.length) {
     return false;
   }
+
   for (let i = 0; i < text.length; i++) {
     if (data[start + i] !== text.charCodeAt(i)) {
       return false;

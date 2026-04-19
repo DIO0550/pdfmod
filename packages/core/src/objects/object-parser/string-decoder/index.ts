@@ -20,6 +20,7 @@ export function decodeHexString(hex: string): Result<Uint8Array, string> {
     }
     bytes[i / 2] = parseInt(chunk, 16);
   }
+
   return ok(bytes);
 }
 
@@ -40,5 +41,6 @@ export function decodeLiteralString(str: string): Result<Uint8Array, string> {
     }
     bytes[i] = codeUnit;
   }
+
   return ok(bytes);
 }
