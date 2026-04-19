@@ -12,7 +12,7 @@ import {
 import type { PdfValue, Token, TrailerDict } from "../../../pdf/types/index";
 import { TokenType } from "../../../pdf/types/index";
 import type { Result } from "../../../utils/result/index";
-import { err, ok } from "../../../utils/result/index";
+import { err, mapErr, ok } from "../../../utils/result/index";
 import { trailerDictBuilder } from "../dict-builder/index";
 
 // --- バイト定数 (SCREAMING_SNAKE_CASE) ---
@@ -617,13 +617,19 @@ function buildTrailerDict(
   const infoEntry = entries.get("Info");
   const idEntry = entries.get("ID");
 
-  return trailerDictBuilder("XREF_TABLE_INVALID")
+  const built = trailerDictBuilder()
     .root(rootEntry?.value, rootEntry?.offset)
     .size(sizeEntry?.value, sizeEntry?.offset)
     .prev(prevEntry?.value, prevEntry?.offset)
     .info(infoEntry?.value, infoEntry?.offset)
     .id(idEntry?.value, idEntry?.offset)
     .build();
+  return mapErr(
+    (e: PdfParseError): PdfParseError =>
+      e.code === "TRAILER_DICT_INVALID"
+        ? { ...e, code: "XREF_TABLE_INVALID" }
+        : e,
+  )(built);
 }
 
 /**
