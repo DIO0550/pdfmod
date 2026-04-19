@@ -233,6 +233,7 @@ export class Tokenizer {
    */
   private readHexString(offset: number): Token {
     let hex = "";
+
     while (this.pos < this.data.length) {
       const b = this.data[this.pos];
       if (b === AsciiGreaterThan) {
@@ -244,6 +245,7 @@ export class Tokenizer {
       }
       this.pos++;
     }
+
     return {
       type: TokenType.HexString,
       value: hex,
@@ -363,6 +365,7 @@ export class Tokenizer {
    */
   private readName(offset: number): Token {
     let name = "";
+
     while (this.pos < this.data.length) {
       const b = this.data[this.pos];
       if (isWhitespace(b) || isDelimiter(b)) {
@@ -375,6 +378,7 @@ export class Tokenizer {
         this.pos++;
       }
     }
+
     return { type: TokenType.Name, value: name, offset: ByteOffset.of(offset) };
   }
 
@@ -498,10 +502,12 @@ export class Tokenizer {
   tokenize(): Token[] {
     const tokens: Token[] = [];
     let token: Token;
+
     do {
       token = this.nextToken();
       tokens.push(token);
     } while (token.type !== TokenType.EOF);
+
     return tokens;
   }
 }
