@@ -1,6 +1,6 @@
 import { expect, test, vi } from "vitest";
 import type { Result } from "./index";
-import { err, flatMap, map, mapErr, ok, unwrapOr } from "./index";
+import { err, flatMap, map, ok, unwrapOr } from "./index";
 
 // map
 
@@ -36,18 +36,6 @@ test("flatMapは関数からのerrを伝播する", () => {
   });
 });
 
-// mapErr
-
-test("mapErrはerr値を変換する", () => {
-  const result = mapErr((e: string) => `wrapped: ${e}`)(err("fail"));
-  expect(result).toEqual({ ok: false, error: "wrapped: fail" });
-});
-
-test("mapErrはokをそのまま返す", () => {
-  const result = mapErr((e: string) => `wrapped: ${e}`)(ok(42));
-  expect(result).toEqual({ ok: true, value: 42 });
-});
-
 // unwrapOr
 
 test("unwrapOrはokから値を取り出す", () => {
@@ -69,12 +57,6 @@ test("mapはerrに対してfnを呼ばない", () => {
 test("flatMapはerrに対してfnを呼ばない", () => {
   const fn = vi.fn();
   flatMap(err("e"), fn);
-  expect(fn).not.toHaveBeenCalled();
-});
-
-test("mapErrはokに対してfnを呼ばない", () => {
-  const fn = vi.fn();
-  mapErr(fn)(ok(1));
   expect(fn).not.toHaveBeenCalled();
 });
 
