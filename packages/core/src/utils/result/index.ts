@@ -143,31 +143,6 @@ export const flatMap = <T, U, E>(
 ): Result<U, E> => (result.ok ? fn(result.value) : result);
 
 /**
- * エラー値を変換する。
- * Resultが `Err` の場合のみ変換関数を適用し、`Ok` の場合はそのまま返す。
- *
- * @typeParam T - 成功値の型
- * @typeParam E - 変換前のエラー値の型
- * @typeParam F - 変換後のエラー値の型
- * @param result - 変換対象のResult
- * @param fn - エラー値に適用する変換関数
- * @returns `Err` の場合は `Err<F>`、`Ok` の場合は元の `Ok<T>` をそのまま返す
- *
- * @example
- * ```ts
- * import { Result } from "@pdfmod/core";
- *
- * const r = Result.err("not found");
- * const mapped = Result.mapErr(r, (e) => new Error(e));
- * // mapped = { ok: false, error: Error("not found") }
- * ```
- */
-export const mapErr = <T, E, F>(
-  result: Result<T, E>,
-  fn: (error: E) => F,
-): Result<T, F> => (result.ok ? result : err(fn(result.error)));
-
-/**
  * 成功値を取り出すか、デフォルト値を返す。
  *
  * @typeParam T - 成功値の型

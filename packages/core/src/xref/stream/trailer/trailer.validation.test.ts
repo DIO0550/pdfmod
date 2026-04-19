@@ -100,6 +100,9 @@ test("/Prevが非整数の場合にXREF_STREAM_INVALIDエラーを返す", () =>
   expect(result.ok).toBe(false);
   assert(!result.ok);
   expect(result.error.code).toBe("XREF_STREAM_INVALID");
+  expect(result.error.message).toBe(
+    "/Prev entry is not a non-negative integer",
+  );
 });
 
 test("/Prevが負数の場合にXREF_STREAM_INVALIDエラーを返す", () => {

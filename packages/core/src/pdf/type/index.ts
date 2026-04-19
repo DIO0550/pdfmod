@@ -1,6 +1,6 @@
-import type { Result } from "../../utils/result/index";
-import { err, ok } from "../../utils/result/index";
-import type { PdfParseError, PdfParseErrorCode } from "../errors/index";
+import type { Option } from "../../utils/option/index";
+import { none, some } from "../../utils/option/index";
+import type { PdfParseError } from "../errors/index";
 import type { PdfValue } from "../types/pdf-types/index";
 
 /** PDF 辞書の /Type エントリを検証するユーティリティ。 */
@@ -10,27 +10,25 @@ export const PdfType = {
    *
    * @param entries - 辞書のエントリ
    * @param expected - 期待する /Type の値（例: "ObjStm"）
-   * @param errorCode - バリデーション失敗時のエラーコード
-   * @returns 成功時は void、失敗時はエラー
+   * @returns 成功時は `none`、失敗時は `some(PdfParseError{code: "PDF_TYPE_INVALID"})`
    */
   validate(
     entries: Map<string, PdfValue>,
     expected: string,
-    errorCode: PdfParseErrorCode,
-  ): Result<void, PdfParseError> {
+  ): Option<PdfParseError> {
     const entry = entries.get("Type");
     if (entry === undefined || entry.type !== "name") {
-      return err({
-        code: errorCode,
+      return some({
+        code: "PDF_TYPE_INVALID",
         message: `Dictionary missing /Type or /Type is not a name`,
       });
     }
     if (entry.value !== expected) {
-      return err({
-        code: errorCode,
+      return some({
+        code: "PDF_TYPE_INVALID",
         message: `/Type must be /${expected}, got /${entry.value}`,
       });
     }
-    return ok(undefined);
+    return none;
   },
 } as const;
