@@ -190,12 +190,12 @@ export const ObjectParser = {
           return streamResult;
         }
 
-        const endobjResult = IndirectObject.expectEndobjAfter(
+        const endobjError = IndirectObject.validateEndobjAt(
           data,
           streamResult.value.afterEndstreamAbsPos,
         );
-        if (!endobjResult.ok) {
-          return endobjResult;
+        if (endobjError.some) {
+          return err(endobjError.value);
         }
 
         return ok({
@@ -207,9 +207,9 @@ export const ObjectParser = {
       bt.pushBack(peekToken);
     }
 
-    const endobjResult = IndirectObject.expectEndobj(bt, baseOffset);
-    if (!endobjResult.ok) {
-      return endobjResult;
+    const endobjError = IndirectObject.validateEndobj(bt, baseOffset);
+    if (endobjError.some) {
+      return err(endobjError.value);
     }
 
     return ok({ objectNumber, generationNumber, body: value });
