@@ -49,33 +49,36 @@ test("validateEndobjAt: 誤トークンで OBJECT_PARSE_UNEXPECTED_TOKEN", () =>
 });
 
 test("validateEndobj: 非 0 baseOffset 時の誤トークン offset は baseOffset + token.offset", () => {
-  const result = IndirectObject.validateEndobj(btOf("foo"), ByteOffset.of(10));
+  const result = IndirectObject.validateEndobj(
+    btOf("  foo"),
+    ByteOffset.of(10),
+  );
   assert(result.some);
-  expect(result.value.offset as number).toBe(10);
+  expect(result.value.offset as number).toBe(12);
 });
 
 test("validateEndobj: 非 0 baseOffset 時の EOF offset は baseOffset + token.offset", () => {
-  const result = IndirectObject.validateEndobj(btOf(""), ByteOffset.of(10));
+  const result = IndirectObject.validateEndobj(btOf("  "), ByteOffset.of(10));
   assert(result.some);
-  expect(result.value.offset as number).toBe(10);
+  expect(result.value.offset as number).toBe(12);
 });
 
 test("validateEndobjAt: 非 0 absPos 時の誤トークン offset は absPos + token.offset", () => {
   const padding = new Uint8Array(20);
   padding.fill(0x20);
-  const tail = enc("foo");
+  const tail = enc("  foo");
   const data = new Uint8Array(padding.length + tail.length);
   data.set(padding, 0);
   data.set(tail, padding.length);
   const result = IndirectObject.validateEndobjAt(data, ByteOffset.of(20));
   assert(result.some);
-  expect(result.value.offset as number).toBe(20);
+  expect(result.value.offset as number).toBe(22);
 });
 
-test("validateEndobjAt: 非 0 absPos 時の EOF offset は absPos そのまま", () => {
-  const data = new Uint8Array(20);
+test("validateEndobjAt: 非 0 absPos 時の EOF offset は absPos + token.offset", () => {
+  const data = new Uint8Array(22);
   data.fill(0x20);
   const result = IndirectObject.validateEndobjAt(data, ByteOffset.of(20));
   assert(result.some);
-  expect(result.value.offset as number).toBe(20);
+  expect(result.value.offset as number).toBe(22);
 });
