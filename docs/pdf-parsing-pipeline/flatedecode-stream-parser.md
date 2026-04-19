@@ -110,13 +110,13 @@ writePromise 完了待ち
 
 ```typescript
 function buildXRefStreamTrailerDict(
-  dict: ReadonlyMap<string, PdfObject>,
+  dict: ReadonlyMap<string, PdfValue>,
 ): Result<TrailerDict, PdfParseError>;
 ```
 
-**ファイル:** `packages/core/src/xref/stream/xref-stream-trailer.ts`
+**ファイル:** `packages/core/src/xref/stream/trailer/index.ts`
 
-パース済みの xref ストリーム辞書（`Map<string, PdfObject>`）から TrailerDict を構築する。内部で共通ビルダー `trailerDictBuilder` を呼び出し、オプションフィールドの失敗（`TRAILER_DICT_INVALID`）を `Result.mapErr` で外部契約コード `XREF_STREAM_INVALID` に再ラップする。必須フィールド由来の `ROOT_NOT_FOUND` / `SIZE_NOT_FOUND` は素通しで外部契約を維持する。
+パース済みの xref ストリーム辞書（`Map<string, PdfValue>`）から TrailerDict を構築する。内部で共通ビルダー `trailerDictBuilder` を呼び出し、オプションフィールドの失敗（`TRAILER_DICT_INVALID`）を `Result.mapErr` で外部契約コード `XREF_STREAM_INVALID` に再ラップする。必須フィールド由来の `ROOT_NOT_FOUND` / `SIZE_NOT_FOUND` は素通しで外部契約を維持する。
 
 #### 処理フロー
 
@@ -135,7 +135,7 @@ dict.get("ID")   → builder.id()
 function trailerDictBuilder(): TrailerDictBuilderChain;
 ```
 
-**ファイル:** `packages/core/src/xref/trailer/trailer-dict-builder.ts`
+**ファイル:** `packages/core/src/xref/trailer/dict-builder/index.ts`
 
 テキスト形式 trailer と xref ストリーム trailer の **TrailerDict 構築ロジックを共通化** するクロージャベースのビルダー。メソッドチェーンでフィールドを設定し、`build()` でバリデーション・構築を行う。
 
@@ -240,8 +240,8 @@ scanStartXRef
 export { decompressFlate } from "./xref/stream/flatedecode";
 
 // xref ストリーム TrailerDict 構築
-export { buildXRefStreamTrailerDict } from "./xref/stream/xref-stream-trailer";
+export { buildXRefStreamTrailerDict } from "./xref/stream/trailer";
 
 // 共通 TrailerDict ビルダー
-export { trailerDictBuilder } from "./xref/trailer/trailer-dict-builder";
+export { trailerDictBuilder } from "./xref/trailer/dict-builder";
 ```
