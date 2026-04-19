@@ -21,11 +21,14 @@ const allPdfParseErrorCodes = [
   "XREF_STREAM_INVALID",
   "XREF_PREV_CHAIN_CYCLE",
   "XREF_PREV_CHAIN_TOO_DEEP",
+  "TRAILER_DICT_INVALID",
   "ROOT_NOT_FOUND",
   "SIZE_NOT_FOUND",
   "MEDIABOX_NOT_FOUND",
   "NESTING_TOO_DEEP",
   "FLATEDECODE_FAILED",
+  "PDF_TYPE_INVALID",
+  "PDF_FILTER_UNSUPPORTED",
   "OBJECT_STREAM_INVALID",
   "OBJECT_STREAM_INDEX_OUT_OF_RANGE",
   "OBJECT_STREAM_HEADER_INVALID",
@@ -44,7 +47,7 @@ const _exhaustive: Exact<
 
 test("PdfParseErrorCodeは網羅的に列挙されている", () => {
   expect(_exhaustive).toBe(true);
-  expect(allPdfParseErrorCodes).toHaveLength(18);
+  expect(allPdfParseErrorCodes).toHaveLength(21);
 });
 
 test("型エクスポートが利用可能", () => {
