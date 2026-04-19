@@ -8,39 +8,77 @@ const enc = (s: string): Uint8Array => new TextEncoder().encode(s);
 const btOf = (s: string): BufferedTokenizer =>
   new BufferedTokenizer(new Tokenizer(enc(s)));
 
-test("expectEndobj: 正常", () => {
-  const result = IndirectObject.expectEndobj(btOf("endobj"), ByteOffset.of(0));
-  expect(result.ok).toBe(true);
+test("validateEndobj: 正常", () => {
+  const result = IndirectObject.validateEndobj(
+    btOf("endobj"),
+    ByteOffset.of(0),
+  );
+  expect(result.some).toBe(false);
 });
 
-test("expectEndobj: EOF で OBJECT_PARSE_UNTERMINATED", () => {
-  const result = IndirectObject.expectEndobj(btOf(""), ByteOffset.of(0));
-  assert(!result.ok);
-  expect(result.error.code).toBe("OBJECT_PARSE_UNTERMINATED");
+test("validateEndobj: EOF で OBJECT_PARSE_UNTERMINATED", () => {
+  const result = IndirectObject.validateEndobj(btOf(""), ByteOffset.of(0));
+  assert(result.some);
+  expect(result.value.code).toBe("OBJECT_PARSE_UNTERMINATED");
 });
 
-test("expectEndobj: 誤トークンで OBJECT_PARSE_UNEXPECTED_TOKEN", () => {
-  const result = IndirectObject.expectEndobj(btOf("foo"), ByteOffset.of(0));
-  assert(!result.ok);
-  expect(result.error.code).toBe("OBJECT_PARSE_UNEXPECTED_TOKEN");
+test("validateEndobj: 誤トークンで OBJECT_PARSE_UNEXPECTED_TOKEN", () => {
+  const result = IndirectObject.validateEndobj(btOf("foo"), ByteOffset.of(0));
+  assert(result.some);
+  expect(result.value.code).toBe("OBJECT_PARSE_UNEXPECTED_TOKEN");
 });
 
-test("expectEndobjAfter: 正常", () => {
+test("validateEndobjAt: 正常", () => {
   const data = enc("endobj");
-  const result = IndirectObject.expectEndobjAfter(data, ByteOffset.of(0));
-  expect(result.ok).toBe(true);
+  const result = IndirectObject.validateEndobjAt(data, ByteOffset.of(0));
+  expect(result.some).toBe(false);
 });
 
-test("expectEndobjAfter: EOF で OBJECT_PARSE_UNTERMINATED", () => {
+test("validateEndobjAt: EOF で OBJECT_PARSE_UNTERMINATED", () => {
   const data = enc("");
-  const result = IndirectObject.expectEndobjAfter(data, ByteOffset.of(0));
-  assert(!result.ok);
-  expect(result.error.code).toBe("OBJECT_PARSE_UNTERMINATED");
+  const result = IndirectObject.validateEndobjAt(data, ByteOffset.of(0));
+  assert(result.some);
+  expect(result.value.code).toBe("OBJECT_PARSE_UNTERMINATED");
 });
 
-test("expectEndobjAfter: 誤トークンで OBJECT_PARSE_UNEXPECTED_TOKEN", () => {
+test("validateEndobjAt: 誤トークンで OBJECT_PARSE_UNEXPECTED_TOKEN", () => {
   const data = enc("foo");
-  const result = IndirectObject.expectEndobjAfter(data, ByteOffset.of(0));
-  assert(!result.ok);
-  expect(result.error.code).toBe("OBJECT_PARSE_UNEXPECTED_TOKEN");
+  const result = IndirectObject.validateEndobjAt(data, ByteOffset.of(0));
+  assert(result.some);
+  expect(result.value.code).toBe("OBJECT_PARSE_UNEXPECTED_TOKEN");
+});
+
+test("validateEndobj: 非 0 baseOffset 時の誤トークン offset は baseOffset + token.offset", () => {
+  const result = IndirectObject.validateEndobj(
+    btOf("  foo"),
+    ByteOffset.of(10),
+  );
+  assert(result.some);
+  expect(result.value.offset as number).toBe(12);
+});
+
+test("validateEndobj: 非 0 baseOffset 時の EOF offset は baseOffset + token.offset", () => {
+  const result = IndirectObject.validateEndobj(btOf("  "), ByteOffset.of(10));
+  assert(result.some);
+  expect(result.value.offset as number).toBe(12);
+});
+
+test("validateEndobjAt: 非 0 absPos 時の誤トークン offset は absPos + token.offset（コメントスキップ込み）", () => {
+  const padding = new Uint8Array(20);
+  padding.fill(0x20);
+  const tail = enc("  %c\nfoo");
+  const data = new Uint8Array(padding.length + tail.length);
+  data.set(padding, 0);
+  data.set(tail, padding.length);
+  const result = IndirectObject.validateEndobjAt(data, ByteOffset.of(20));
+  assert(result.some);
+  expect(result.value.offset as number).toBe(25);
+});
+
+test("validateEndobjAt: 非 0 absPos 時の EOF offset は absPos + token.offset", () => {
+  const data = new Uint8Array(22);
+  data.fill(0x20);
+  const result = IndirectObject.validateEndobjAt(data, ByteOffset.of(20));
+  assert(result.some);
+  expect(result.value.offset as number).toBe(22);
 });
