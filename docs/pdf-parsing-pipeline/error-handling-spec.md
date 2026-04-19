@@ -250,7 +250,7 @@ packages/core/src/
 │   └── pdf-warning.ts    # PdfWarning インターフェース
 ├── result/
 │   ├── index.ts          # 再エクスポート
-│   └── result.ts         # Result<T, E> 型 + ok/err/map/flatMap/mapErr/unwrapOr
+│   └── result.ts         # Result<T, E> 型 + ok/err/map/flatMap/unwrapOr
 ├── xref/
 │   └── fallback-scanner.ts   # フォールバックXRefスキャナ
 ```
