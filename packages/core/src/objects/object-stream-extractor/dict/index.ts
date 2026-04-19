@@ -18,22 +18,21 @@ export interface ObjectStreamDictInfo {
  */
 export const ObjectStreamDict = {
   /**
-   * ObjStm ストリーム辞書をバリデーションする。
+   * ObjStm ストリーム辞書をパースし、/First, /N, needsDecompress を取得する。
    * /Type, /N, /First, /Filter, /DecodeParms を検証する。
    *
+   * 内部で呼び出す `PdfType.validate` / `PdfFilter.parse` 由来のエラーは
+   * `OBJECT_STREAM_INVALID` に再ラップする（元の `message` / `offset` は保持）。
+   *
    * @param entries - ストリーム辞書のエントリ
-   * @returns バリデーション済み辞書情報、またはエラー
+   * @returns パース済み辞書情報、または `OBJECT_STREAM_INVALID` エラー
    */
-  validate(
+  parse(
     entries: Map<string, PdfValue>,
   ): Result<ObjectStreamDictInfo, PdfParseError> {
-    const typeResult = PdfType.validate(
-      entries,
-      "ObjStm",
-      "OBJECT_STREAM_INVALID",
-    );
-    if (!typeResult.ok) {
-      return typeResult;
+    const typeError = PdfType.validate(entries, "ObjStm");
+    if (typeError.some) {
+      return err({ ...typeError.value, code: "OBJECT_STREAM_INVALID" });
     }
 
     const firstEntry = entries.get("First");
@@ -109,9 +108,9 @@ export const ObjectStreamDict = {
       });
     }
 
-    const filterResult = PdfFilter.validate(entries);
+    const filterResult = PdfFilter.parse(entries);
     if (!filterResult.ok) {
-      return filterResult;
+      return err({ ...filterResult.error, code: "OBJECT_STREAM_INVALID" });
     }
 
     return ok({
