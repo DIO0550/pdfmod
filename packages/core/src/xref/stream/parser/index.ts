@@ -48,12 +48,14 @@ function decodeIntBE(
   if (width === 0) {
     return ok(0);
   }
+
   const value = data
     .subarray(offset, offset + width)
     .reduce((acc, byte) => acc * BYTE_BASE + byte, 0);
   if (value > Number.MAX_SAFE_INTEGER) {
     return failXRefStream("decoded integer exceeds safe integer range");
   }
+
   return ok(value);
 }
 
