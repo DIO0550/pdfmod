@@ -145,13 +145,13 @@ export const IndirectObject = {
       return some({
         code: "OBJECT_PARSE_UNTERMINATED",
         message: "Expected endobj after endstream but reached EOF",
-        offset: afterEndstreamAbsPos,
+        offset: ByteOffset.add(afterEndstreamAbsPos, endobjToken.offset),
       });
     }
     return some({
       code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
       message: `Expected "endobj" after endstream, got ${String(endobjToken.value)}`,
-      offset: ByteOffset.of(absPos + (endobjToken.offset as number)),
+      offset: ByteOffset.add(afterEndstreamAbsPos, endobjToken.offset),
     });
   },
 } as const;
