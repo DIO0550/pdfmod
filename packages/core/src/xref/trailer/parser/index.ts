@@ -65,11 +65,13 @@ function hexStringToBytes(hex: string): Uint8Array | undefined {
   if (!/^[0-9A-Fa-f]*$/.test(hex)) {
     return undefined;
   }
+
   const padded = hex.length % 2 === 1 ? `${hex}0` : hex;
   const bytes = new Uint8Array(padded.length / 2);
   for (let i = 0; i < padded.length; i += 2) {
     bytes[i / 2] = parseInt(padded.substring(i, i + 2), 16);
   }
+
   return bytes;
 }
 
@@ -88,6 +90,7 @@ function literalStringToBytes(str: string): Uint8Array | undefined {
     }
     bytes[i] = codeUnit;
   }
+
   return bytes;
 }
 
@@ -123,6 +126,7 @@ function skipNestedArray(
   if (depth >= MAX_NESTING_DEPTH) {
     return failNestingTooDeep(entryOffset);
   }
+
   while (true) {
     const token = tokens.next();
     if (token.type === TokenType.ArrayEnd) {
@@ -184,6 +188,7 @@ function skipNestedDict(
   if (depth >= MAX_NESTING_DEPTH) {
     return failNestingTooDeep(entryOffset);
   }
+
   while (true) {
     const keyToken = tokens.next();
     if (keyToken.type === TokenType.DictEnd) {
@@ -457,6 +462,7 @@ function readIdArray(
       offset,
     });
   }
+
   const elements: PdfValue[] = [];
   while (true) {
     const token = tokens.next();
@@ -529,6 +535,7 @@ function skipValue(
     }
     tokens.pushBack(second);
   }
+
   return ok(undefined);
 }
 
@@ -642,6 +649,7 @@ function buildTrailerDict(
   if (!result.ok) {
     return err(mapErr(result.error));
   }
+
   return result;
 }
 

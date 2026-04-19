@@ -46,5 +46,6 @@ export function buildXRefStreamTrailerDict(
   if (!result.ok) {
     return err(mapErr(result.error));
   }
+
   return result;
 }

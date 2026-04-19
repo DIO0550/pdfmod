@@ -108,6 +108,7 @@ export function trailerDictBuilder(): TrailerDictBuilderChain {
           offset: _rootOffset,
         });
       }
+
       const root = {
         objectNumber: ObjectNumber.of(_root.objectNumber),
         generationNumber: rootGenResult.value,
@@ -182,6 +183,7 @@ export function trailerDictBuilder(): TrailerDictBuilderChain {
             offset: _infoOffset,
           });
         }
+
         result.info = {
           objectNumber: ObjectNumber.of(_info.objectNumber),
           generationNumber: infoGenResult.value,
@@ -220,6 +222,7 @@ export function trailerDictBuilder(): TrailerDictBuilderChain {
           }
           idPair[i] = elem.value;
         }
+
         result.id = idPair;
       }
 
