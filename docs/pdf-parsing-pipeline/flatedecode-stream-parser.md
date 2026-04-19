@@ -116,7 +116,7 @@ function buildXRefStreamTrailerDict(
 
 **ファイル:** `packages/core/src/xref/stream/trailer/index.ts`
 
-パース済みの xref ストリーム辞書（`Map<string, PdfValue>`）から TrailerDict を構築する。内部で共通ビルダー `trailerDictBuilder` を呼び出し、オプションフィールドの失敗（`TRAILER_DICT_INVALID`）を `Result.mapErr` で外部契約コード `XREF_STREAM_INVALID` に再ラップする。必須フィールド由来の `ROOT_NOT_FOUND` / `SIZE_NOT_FOUND` は素通しで外部契約を維持する。
+パース済みの xref ストリーム辞書（`Map<string, PdfValue>`）から TrailerDict を構築する。内部で共通ビルダー `trailerDictBuilder` を呼び出し、オプションフィールドの失敗（`TRAILER_DICT_INVALID`）はファイルローカルの `mapErr` ヘルパで外部契約コード `XREF_STREAM_INVALID` に書き換える。必須フィールド由来の `ROOT_NOT_FOUND` / `SIZE_NOT_FOUND` は素通しで外部契約を維持する。
 
 #### 処理フロー
 
@@ -142,7 +142,7 @@ function trailerDictBuilder(): TrailerDictBuilderChain;
 #### 設計方針
 
 - **クロージャベース:** `const chain` オブジェクトをキャプチャし、各メソッドから `chain` を返す。`this` を使わないため、メソッドがデストラクチャリング等で分離されてもチェーンが壊れない
-- **責務分離:** バリデータは呼び出し側の文脈を知らない。必須フィールド（`/Root`, `/Size`）は固有の `ROOT_NOT_FOUND` / `SIZE_NOT_FOUND` を、オプションフィールド（`/Prev`, `/Info`, `/ID`）は固有の `TRAILER_DICT_INVALID` を返す。呼び出し側は `Result.mapErr` で `TRAILER_DICT_INVALID` のみを文脈別コード（`XREF_STREAM_INVALID` / `XREF_TABLE_INVALID`）に再ラップする
+- **責務分離:** バリデータは呼び出し側の文脈を知らない。必須フィールド（`/Root`, `/Size`）は固有の `ROOT_NOT_FOUND` / `SIZE_NOT_FOUND` を、オプションフィールド（`/Prev`, `/Info`, `/ID`）は固有の `TRAILER_DICT_INVALID` を返す。呼び出し側はファイルローカルの `mapErr` ヘルパで `TRAILER_DICT_INVALID` のみを文脈別コード（`XREF_STREAM_INVALID` / `XREF_TABLE_INVALID`）に書き換える
 
 #### バリデーション詳細
 
