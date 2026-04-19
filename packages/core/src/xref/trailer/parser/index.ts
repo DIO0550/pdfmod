@@ -15,6 +15,21 @@ import type { Result } from "../../../utils/result/index";
 import { err, ok } from "../../../utils/result/index";
 import { trailerDictBuilder } from "../dict-builder/index";
 
+/**
+ * `trailerDictBuilder` 由来の `TRAILER_DICT_INVALID` を、テキスト形式
+ * trailer 経由の外部 API コード `XREF_TABLE_INVALID` に書き換える。
+ * 必須フィールド由来 (`ROOT_NOT_FOUND` / `SIZE_NOT_FOUND`) は素通しする。
+ *
+ * @param e - ビルダーが返した PdfParseError
+ * @returns 書き換え後の PdfParseError、または素通しの元エラー
+ */
+const mapErr = (e: PdfParseError): PdfParseError => {
+  if (e.code === "TRAILER_DICT_INVALID") {
+    return { ...e, code: "XREF_TABLE_INVALID" };
+  }
+  return e;
+};
+
 // --- バイト定数 (SCREAMING_SNAKE_CASE) ---
 
 const TRAILER_BYTES = Array.from(new TextEncoder().encode("trailer"));
@@ -617,13 +632,17 @@ function buildTrailerDict(
   const infoEntry = entries.get("Info");
   const idEntry = entries.get("ID");
 
-  return trailerDictBuilder("XREF_TABLE_INVALID")
+  const result = trailerDictBuilder()
     .root(rootEntry?.value, rootEntry?.offset)
     .size(sizeEntry?.value, sizeEntry?.offset)
     .prev(prevEntry?.value, prevEntry?.offset)
     .info(infoEntry?.value, infoEntry?.offset)
     .id(idEntry?.value, idEntry?.offset)
     .build();
+  if (!result.ok) {
+    return err(mapErr(result.error));
+  }
+  return result;
 }
 
 /**

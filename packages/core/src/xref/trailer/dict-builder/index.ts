@@ -1,8 +1,5 @@
 import { NumberEx } from "../../../ext/number/index";
-import type {
-  PdfParseError,
-  PdfParseErrorCode,
-} from "../../../pdf/errors/index";
+import type { PdfParseError } from "../../../pdf/errors/index";
 import {
   ByteOffset as BO,
   type ByteOffset,
@@ -25,16 +22,15 @@ interface TrailerDictBuilderChain {
 /**
  * TrailerDict 構築用のクロージャベース Builder を生成する。
  *
- * `/Root`, `/Size` のバリデーション失敗時は固定エラーコードを使用し、
+ * 必須フィールド (`/Root`, `/Size`) のバリデーション失敗時は
+ * それぞれ `ROOT_NOT_FOUND` / `SIZE_NOT_FOUND` を返す。
  * オプションフィールド (`/Prev`, `/Info`, `/ID`) のバリデーション失敗時は
- * `optionalFieldErrorCode` で指定されたエラーコードを使用する。
+ * `TRAILER_DICT_INVALID` を返す。呼び出し側は `TRAILER_DICT_INVALID` のみを
+ * 文脈別コード（例: `XREF_STREAM_INVALID`）に書き換える責務を持つ。
  *
- * @param optionalFieldErrorCode - オプションフィールドのバリデーション失敗時のエラーコード
  * @returns メソッドチェーン可能な TrailerDict ビルダー
  */
-export function trailerDictBuilder(
-  optionalFieldErrorCode: PdfParseErrorCode,
-): TrailerDictBuilderChain {
+export function trailerDictBuilder(): TrailerDictBuilderChain {
   let _root: PdfValue | undefined;
   let _rootOffset: ByteOffset | undefined;
   let _size: PdfValue | undefined;
@@ -145,7 +141,7 @@ export function trailerDictBuilder(
           !NumberEx.isSafeIntegerAtLeastZero(_prev.value as number)
         ) {
           return err({
-            code: optionalFieldErrorCode,
+            code: "TRAILER_DICT_INVALID",
             message: "/Prev entry is not a non-negative integer",
             offset: _prevOffset,
           });
@@ -157,14 +153,14 @@ export function trailerDictBuilder(
       if (_info) {
         if (_info.type !== "indirect-ref") {
           return err({
-            code: optionalFieldErrorCode,
+            code: "TRAILER_DICT_INVALID",
             message: "/Info entry is not an indirect reference",
             offset: _infoOffset,
           });
         }
         if (!NumberEx.isSafeIntegerAtLeastZero(_info.objectNumber)) {
           return err({
-            code: optionalFieldErrorCode,
+            code: "TRAILER_DICT_INVALID",
             message:
               "/Info entry has an invalid object number (must be a non-negative safe integer)",
             offset: _infoOffset,
@@ -172,7 +168,7 @@ export function trailerDictBuilder(
         }
         if (!NumberEx.isSafeIntegerAtLeastZero(_info.generationNumber)) {
           return err({
-            code: optionalFieldErrorCode,
+            code: "TRAILER_DICT_INVALID",
             message:
               "/Info entry has an invalid generation number (must be a non-negative safe integer)",
             offset: _infoOffset,
@@ -181,7 +177,7 @@ export function trailerDictBuilder(
         const infoGenResult = GenerationNumber.create(_info.generationNumber);
         if (!infoGenResult.ok) {
           return err({
-            code: optionalFieldErrorCode,
+            code: "TRAILER_DICT_INVALID",
             message: "/Info entry generation number must be in range 0-65535",
             offset: _infoOffset,
           });
@@ -196,7 +192,7 @@ export function trailerDictBuilder(
       if (_id) {
         if (_id.type !== "array") {
           return err({
-            code: optionalFieldErrorCode,
+            code: "TRAILER_DICT_INVALID",
             message: "/ID entry must be a 2-element array of strings",
             offset: _idOffset,
           });
@@ -204,7 +200,7 @@ export function trailerDictBuilder(
         const elements = _id.elements;
         if (elements.length !== 2) {
           return err({
-            code: optionalFieldErrorCode,
+            code: "TRAILER_DICT_INVALID",
             message: "/ID entry must be a 2-element array of strings",
             offset: _idOffset,
           });
@@ -217,7 +213,7 @@ export function trailerDictBuilder(
           const elem = elements[i];
           if (elem.type !== "string") {
             return err({
-              code: optionalFieldErrorCode,
+              code: "TRAILER_DICT_INVALID",
               message: "/ID entry must be a 2-element array of strings",
               offset: _idOffset,
             });

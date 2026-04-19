@@ -7,6 +7,8 @@ import type {
   PdfIndirectObject,
   PdfObject,
 } from "../../pdf/types/pdf-types/index";
+import type { Option } from "../../utils/option/index";
+import { none, some } from "../../utils/option/index";
 import type { Result } from "../../utils/result/index";
 import { err, ok } from "../../utils/result/index";
 import { BufferedTokenizer } from "./buffered-tokenizer/index";
@@ -23,28 +25,28 @@ export type { ObjectResolver } from "./types";
  *
  * @param data - パース対象のバイト配列
  * @param offset - 検証対象のオフセット
- * @returns 検証済みの ByteOffset、または検証エラー
+ * @returns 成功時は `none`、失敗時は `some(PdfParseError{code: "OBJECT_PARSE_UNEXPECTED_TOKEN"})`
  */
 function validateOffset(
   data: Uint8Array,
   offset: ByteOffset,
-): Result<ByteOffset, PdfParseError> {
+): Option<PdfParseError> {
   const n = offset as number;
   if (!NumberEx.isSafeIntegerAtLeastZero(n)) {
-    return err({
+    return some({
       code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
       message: `Offset ${n} is invalid; expected a non-negative safe integer within [0, ${data.length})`,
       offset: ByteOffset.of(0),
     });
   }
   if (n >= data.length) {
-    return err({
+    return some({
       code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
       message: `Offset ${n} is out of range [0, ${data.length})`,
       offset: ByteOffset.of(n),
     });
   }
-  return ok(offset);
+  return none;
 }
 
 export const ObjectParser = {
@@ -61,11 +63,11 @@ export const ObjectParser = {
     data: Uint8Array,
     offset: ByteOffset,
   ): Result<PdfObject, PdfParseError> {
-    const offsetResult = validateOffset(data, offset);
-    if (!offsetResult.ok) {
-      return offsetResult;
+    const offsetError = validateOffset(data, offset);
+    if (offsetError.some) {
+      return err(offsetError.value);
     }
-    const baseOffset = offsetResult.value;
+    const baseOffset = offset;
 
     const subData = data.subarray(baseOffset as number);
     const bt = new BufferedTokenizer(new Tokenizer(subData));
@@ -127,11 +129,11 @@ export const ObjectParser = {
     offset: ByteOffset,
     resolver?: ObjectResolver,
   ): Promise<Result<PdfIndirectObject, PdfError>> {
-    const offsetResult = validateOffset(data, offset);
-    if (!offsetResult.ok) {
-      return offsetResult;
+    const offsetError = validateOffset(data, offset);
+    if (offsetError.some) {
+      return err(offsetError.value);
     }
-    const baseOffset = offsetResult.value;
+    const baseOffset = offset;
 
     const subData = data.subarray(baseOffset as number);
     const bt = new BufferedTokenizer(new Tokenizer(subData));
