@@ -63,16 +63,16 @@ test("validateEndobj: 非 0 baseOffset 時の EOF offset は baseOffset + token.
   expect(result.value.offset as number).toBe(12);
 });
 
-test("validateEndobjAt: 非 0 absPos 時の誤トークン offset は absPos + token.offset", () => {
+test("validateEndobjAt: 非 0 absPos 時の誤トークン offset は absPos + token.offset（コメントスキップ込み）", () => {
   const padding = new Uint8Array(20);
   padding.fill(0x20);
-  const tail = enc("  foo");
+  const tail = enc("  %c\nfoo");
   const data = new Uint8Array(padding.length + tail.length);
   data.set(padding, 0);
   data.set(tail, padding.length);
   const result = IndirectObject.validateEndobjAt(data, ByteOffset.of(20));
   assert(result.some);
-  expect(result.value.offset as number).toBe(22);
+  expect(result.value.offset as number).toBe(25);
 });
 
 test("validateEndobjAt: 非 0 absPos 時の EOF offset は absPos + token.offset", () => {
