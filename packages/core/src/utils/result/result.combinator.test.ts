@@ -39,12 +39,12 @@ test("flatMapは関数からのerrを伝播する", () => {
 // mapErr
 
 test("mapErrはerr値を変換する", () => {
-  const result = mapErr(err("fail"), (e) => `wrapped: ${e}`);
+  const result = mapErr((e: string) => `wrapped: ${e}`)(err("fail"));
   expect(result).toEqual({ ok: false, error: "wrapped: fail" });
 });
 
 test("mapErrはokをそのまま返す", () => {
-  const result = mapErr(ok(42), (e: string) => `wrapped: ${e}`);
+  const result = mapErr((e: string) => `wrapped: ${e}`)(ok(42));
   expect(result).toEqual({ ok: true, value: 42 });
 });
 
@@ -74,7 +74,7 @@ test("flatMapはerrに対してfnを呼ばない", () => {
 
 test("mapErrはokに対してfnを呼ばない", () => {
   const fn = vi.fn();
-  mapErr(ok(1), fn);
+  mapErr(fn)(ok(1));
   expect(fn).not.toHaveBeenCalled();
 });
 
