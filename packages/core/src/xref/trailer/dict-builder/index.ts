@@ -25,9 +25,8 @@ interface TrailerDictBuilderChain {
  * 必須フィールド (`/Root`, `/Size`) のバリデーション失敗時は
  * それぞれ `ROOT_NOT_FOUND` / `SIZE_NOT_FOUND` を返す。
  * オプションフィールド (`/Prev`, `/Info`, `/ID`) のバリデーション失敗時は
- * `TRAILER_DICT_INVALID` を返す。呼び出し側は `Result.mapErr` で
- * `TRAILER_DICT_INVALID` のみを文脈別コード（例: `XREF_STREAM_INVALID`）に
- * 再ラップする責務を持つ。
+ * `TRAILER_DICT_INVALID` を返す。呼び出し側は `TRAILER_DICT_INVALID` のみを
+ * 文脈別コード（例: `XREF_STREAM_INVALID`）に書き換える責務を持つ。
  *
  * @returns メソッドチェーン可能な TrailerDict ビルダー
  */
