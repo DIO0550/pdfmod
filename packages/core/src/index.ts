@@ -5,6 +5,8 @@
  * @packageDocumentation
  */
 
+export type { ParsedCatalog, ResolveRef } from "./document/index";
+export { CatalogParser } from "./document/index";
 export { NumberEx } from "./ext/number/index";
 export { Tokenizer } from "./lexer/index";
 export type {
@@ -57,6 +59,7 @@ export {
   ByteOffset,
   GenerationNumber,
   ObjectNumber,
+  PdfVersion,
   TokenType,
 } from "./pdf/index";
 export type { Brand } from "./utils/index";
