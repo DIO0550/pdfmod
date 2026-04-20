@@ -1,6 +1,7 @@
 import { expect, test } from "vitest";
 import {
   ByteOffset,
+  CatalogParser,
   GenerationNumber,
   LRUCache,
   ObjectNumber,
@@ -8,6 +9,7 @@ import {
   ObjectStore,
   ObjectStreamBody,
   ObjectStreamHeader,
+  PdfVersion,
   parseTrailer,
   parseXRefTable,
   scanStartXRef,
@@ -29,8 +31,14 @@ test.each([
   { name: "ObjectStore.create", value: ObjectStore.create },
   { name: "ObjectStreamBody.extract", value: ObjectStreamBody.extract },
   { name: "ObjectStreamHeader.parse", value: ObjectStreamHeader.parse },
+  { name: "CatalogParser.parse", value: CatalogParser.parse },
 ])("$nameがルートからexportされている", ({ value }) => {
   expect(typeof value).toBe("function");
+});
+
+test("PdfVersionコンパニオンがルートからexportされている", () => {
+  expect(PdfVersion.create("1.7").ok).toBe(true);
+  expect(PdfVersion.create("bogus").ok).toBe(false);
 });
 
 test("ObjectNumberコンパニオンがルートからexportされている", () => {
