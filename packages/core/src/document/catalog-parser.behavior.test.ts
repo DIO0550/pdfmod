@@ -12,24 +12,6 @@ import {
   pdfVersion,
 } from "./catalog-parser.test.helpers";
 
-// TODO リスト（CT-001〜005）===
-// - [x] CT-002: /Type 欠損で CATALOG_TYPE_INVALID
-// - [x] CT-002: /Type が /Catalog でないとき CATALOG_TYPE_INVALID
-// - [x] CT-003 (a): /Pages 欠損で PAGES_NOT_FOUND
-// - [x] CT-003 (b): /Pages が indirect-ref でないとき PAGES_NOT_FOUND
-// - [x] CT-003 (c): /Pages.objectNumber が非正の safe int (0 含む) で PAGES_NOT_FOUND
-// - [x] CT-003 (d): /Pages.generationNumber が非 safe int で PAGES_NOT_FOUND
-// - [x] CT-003 (e): /Pages.generationNumber が 0..65535 範囲外 で PAGES_NOT_FOUND
-// - [x] CT-001: resolver Err をそのまま伝播
-// - [x] CT-001: resolver 解決値が辞書でないとき CATALOG_ROOT_NOT_DICTIONARY
-// - [x] CT-001 Happy: 辞書 + /Type /Catalog + /Pages indirect-ref で Ok
-// - [x] CT-005: /Version 欠損ならヘッダ採用
-// - [x] CT-005: /Version が name でない場合ヘッダ採用
-// - [x] CT-005: /Version が major.minor 形式以外ならヘッダ採用
-// - [x] CT-005: /Version がヘッダと同値ならヘッダ採用
-// - [x] CT-004: /Version が major 上位なのでカタログ採用
-// - [x] CT-004: /Version が minor 上位なのでカタログ採用
-
 const validPagesRef: PdfValue = {
   type: "indirect-ref",
   objectNumber: 2,
