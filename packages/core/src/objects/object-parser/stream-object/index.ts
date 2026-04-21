@@ -153,7 +153,7 @@ export const StreamObject = {
       });
     }
 
-    const absPos = (baseOffset as number) + relPos;
+    const absPos = relPos + (baseOffset as number);
     let streamStart: number;
 
     if (fullData[absPos] === LF) {

@@ -1,5 +1,6 @@
 import { expect, test } from "vitest";
-import { Option, Result } from "./index";
+import type { ParsedCatalog, ResolveRef } from "./index";
+import { Option, PdfVersion, Result } from "./index";
 
 test("Result.okがランタイムで動作する", () => {
   const result = Result.ok(42);
@@ -38,4 +39,31 @@ test("Result.Result型が参照できる", () => {
 test("Option.Option型が参照できる", () => {
   const o: Option.Option<number> = Option.some(42);
   expect(o.some).toBe(true);
+});
+
+test("ParsedCatalog型とResolveRef型が参照できる", () => {
+  const versionResult = PdfVersion.create("1.7");
+  expect(versionResult.ok).toBe(true);
+  const version = (
+    versionResult as {
+      ok: true;
+      value: ReturnType<typeof PdfVersion.create> extends {
+        ok: true;
+        value: infer V;
+      }
+        ? V
+        : never;
+    }
+  ).value;
+  const parsed: ParsedCatalog = {
+    catalog: { type: "dictionary", entries: new Map() },
+    pagesRef: {
+      objectNumber: 2 as ParsedCatalog["pagesRef"]["objectNumber"],
+      generationNumber: 0 as ParsedCatalog["pagesRef"]["generationNumber"],
+    },
+    version,
+  };
+  const resolver: ResolveRef = async () => Result.ok({ type: "null" as const });
+  expect(parsed.version).toBe(version);
+  expect(typeof resolver).toBe("function");
 });

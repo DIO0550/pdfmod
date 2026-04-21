@@ -14,17 +14,13 @@ test("errは失敗結果を生成する", () => {
 test("okのdiscriminantで値にアクセスできる", () => {
   const result = ok(42);
   expect(result.ok).toBe(true);
-  if (result.ok) {
-    expect(result.value).toBe(42);
-  }
+  expect((result as { ok: true; value: number }).value).toBe(42);
 });
 
 test("errのdiscriminantでエラーにアクセスできる", () => {
   const result = err("fail");
   expect(result.ok).toBe(false);
-  if (!result.ok) {
-    expect(result.error).toBe("fail");
-  }
+  expect((result as { ok: false; error: string }).error).toBe("fail");
 });
 
 // --- falsy値テスト ---

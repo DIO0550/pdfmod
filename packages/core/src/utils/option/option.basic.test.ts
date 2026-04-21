@@ -43,9 +43,8 @@ test("fromNullableはundefinedに対してNoneを返す", () => {
 
 test("discriminantによる型絞り込みができる", () => {
   const opt: Option<number> = some(42);
-  if (opt.some) {
-    expect(opt.value).toBe(42);
-  }
+  expect(opt.some).toBe(true);
+  expect((opt as { some: true; value: number }).value).toBe(42);
 });
 
 // --- falsy値テスト ---

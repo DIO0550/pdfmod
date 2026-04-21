@@ -56,6 +56,12 @@ export interface Err<E> {
  */
 export type Result<T, E> = Ok<T> | Err<E>;
 
+/** map 用の成功値変換関数型。 */
+type Mapper<T, U> = (value: T) => U;
+
+/** flatMap 用の成功値→Result 変換関数型。 */
+type Chainer<T, U, E> = (value: T) => Result<U, E>;
+
 /**
  * 成功Resultを生成する。
  *
@@ -112,7 +118,7 @@ export const err = <E>(error: E): Err<E> => ({ ok: false, error });
  */
 export const map = <T, U, E>(
   result: Result<T, E>,
-  fn: (value: T) => U,
+  fn: Mapper<T, U>,
 ): Result<U, E> => (result.ok ? ok(fn(result.value)) : result);
 
 /**
@@ -139,7 +145,7 @@ export const map = <T, U, E>(
  */
 export const flatMap = <T, U, E>(
   result: Result<T, E>,
-  fn: (value: T) => Result<U, E>,
+  fn: Chainer<T, U, E>,
 ): Result<U, E> => (result.ok ? fn(result.value) : result);
 
 /**

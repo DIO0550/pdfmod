@@ -53,6 +53,12 @@ export interface None {
  */
 export type Option<T> = Some<T> | None;
 
+/** map 用の Some 値変換関数型。 */
+type Mapper<T, U> = (value: T) => U;
+
+/** flatMap 用の Some 値→Option 変換関数型。 */
+type Chainer<T, U> = (value: T) => Option<U>;
+
 /**
  * 値が存在しないことを表すシングルトン（freeze済み）。
  *
@@ -127,7 +133,7 @@ export const fromNullable = <T>(
  */
 export const map = <T, U>(
   option: Option<T>,
-  fn: (value: T) => U,
+  fn: Mapper<T, U>,
 ): Option<NonNullable<U>> =>
   option.some ? fromNullable(fn(option.value)) : none;
 
@@ -153,7 +159,7 @@ export const map = <T, U>(
  */
 export const flatMap = <T, U>(
   option: Option<T>,
-  fn: (value: T) => Option<U>,
+  fn: Chainer<T, U>,
 ): Option<U> => (option.some ? fn(option.value) : none);
 
 /**
