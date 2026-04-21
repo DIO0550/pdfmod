@@ -9,7 +9,7 @@ import type {
   PdfValue,
   TrailerDict,
 } from "../pdf/types/pdf-types/index";
-import { PdfVersion } from "../pdf/types/pdf-version/index";
+import { PdfVersion } from "../pdf/version/index";
 import type { Result } from "../utils/result/index";
 import type { ResolveRef } from "./catalog-parser";
 
