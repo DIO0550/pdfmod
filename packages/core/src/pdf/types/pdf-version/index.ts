@@ -5,12 +5,28 @@ import { err, ok } from "../../../utils/result/index";
 declare const PdfVersionBrand: unique symbol;
 
 /**
- * PDF バージョン番号（`major.minor` 形式）を表すブランド型。
- * `PdfVersion.create` を通じてのみ構築可能で、形式検証済み。
+ * PDF バージョン番号を表すブランド型。
+ * `PdfVersion.create` を通じてのみ構築可能で、ISO 32000-1/2 の既定バージョンのみ受理する。
  */
 type PdfVersion = Brand<string, typeof PdfVersionBrand>;
 
 const VERSION_PATTERN = /^(\d+)\.(\d+)$/;
+
+/**
+ * ISO 32000-1:2008 (1.0〜1.7) および ISO 32000-2:2020 (2.0) が規定する
+ * サポート済み PDF バージョンの allowlist。将来の ISO 改訂で追加する。
+ */
+const SUPPORTED_PDF_VERSIONS: ReadonlySet<string> = new Set([
+  "1.0",
+  "1.1",
+  "1.2",
+  "1.3",
+  "1.4",
+  "1.5",
+  "1.6",
+  "1.7",
+  "2.0",
+]);
 
 /**
  * ブランド保証された `PdfVersion` を major / minor に分解する内部ヘルパー。
@@ -35,17 +51,14 @@ const PdfVersion = {
    * @returns 形式が正しければ `Ok<PdfVersion>`、そうでなければ `Err<string>`
    */
   create(s: string): Result<PdfVersion, string> {
-    const match = VERSION_PATTERN.exec(s);
-
-    if (match === null) {
+    if (!VERSION_PATTERN.test(s)) {
       return err(`Invalid PdfVersion: "${s}" (must match /^\\d+\\.\\d+$/)`);
     }
 
-    const major = Number(match[1]);
-    const minor = Number(match[2]);
-
-    if (!Number.isSafeInteger(major) || !Number.isSafeInteger(minor)) {
-      return err(`Invalid PdfVersion: "${s}" (major/minor not safe integer)`);
+    if (!SUPPORTED_PDF_VERSIONS.has(s)) {
+      return err(
+        `Unsupported PdfVersion: "${s}" (supported: ${[...SUPPORTED_PDF_VERSIONS].join(", ")})`,
+      );
     }
 
     return ok(s as PdfVersion);
