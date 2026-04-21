@@ -74,7 +74,7 @@ const extractPagesRef = (
     });
   }
 
-  if (!NumberEx.isSafeIntegerAtLeastZero(pages.objectNumber)) {
+  if (!NumberEx.isPositiveSafeInteger(pages.objectNumber)) {
     return err({
       code: "PAGES_NOT_FOUND",
       message: "Catalog /Pages has invalid object number",
