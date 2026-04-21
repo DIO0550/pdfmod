@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import type { Result } from "../../../utils/result/index";
+import type { Result } from "../../utils/result/index";
 import { PdfVersion } from "./index";
 
 const unwrapOk = <T>(result: Result<T, unknown>): T => {
