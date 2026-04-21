@@ -17,7 +17,7 @@ import {
 // - [x] CT-002: /Type が /Catalog でないとき CATALOG_TYPE_INVALID
 // - [x] CT-003 (a): /Pages 欠損で PAGES_NOT_FOUND
 // - [x] CT-003 (b): /Pages が indirect-ref でないとき PAGES_NOT_FOUND
-// - [x] CT-003 (c): /Pages.objectNumber が非 safe int で PAGES_NOT_FOUND
+// - [x] CT-003 (c): /Pages.objectNumber が非正の safe int (0 含む) で PAGES_NOT_FOUND
 // - [x] CT-003 (d): /Pages.generationNumber が非 safe int で PAGES_NOT_FOUND
 // - [x] CT-003 (e): /Pages.generationNumber が 0..65535 範囲外 で PAGES_NOT_FOUND
 // - [x] CT-001: resolver Err をそのまま伝播
@@ -102,9 +102,10 @@ test("CT-003 (b): /Pages が indirect-ref でない場合 PAGES_NOT_FOUND を返
 
 test.each([
   -1,
+  0,
   Number.NaN,
   1.5,
-])("CT-003 (c): /Pages.objectNumber が非 safe int (%s) で PAGES_NOT_FOUND", async (objectNumber) => {
+])("CT-003 (c): /Pages.objectNumber が非正の safe int (%s) で PAGES_NOT_FOUND", async (objectNumber) => {
   const entries = makeCatalogEntries({
     type: validCatalogName,
     pages: { type: "indirect-ref", objectNumber, generationNumber: 0 },
