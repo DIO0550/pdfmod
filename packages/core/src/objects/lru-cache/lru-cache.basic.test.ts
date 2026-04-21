@@ -6,10 +6,8 @@ function createCache<K, V>(capacity?: number): LRUCache<K, V> {
     capacity === undefined
       ? LRUCache.create<K, V>()
       : LRUCache.create<K, V>(capacity);
-  if (!result.ok) {
-    throw new Error(`Unexpected create failure: ${result.error.message}`);
-  }
-  return result.value;
+  expect(result.ok).toBe(true);
+  return (result as { ok: true; value: LRUCache<K, V> }).value;
 }
 
 test("setした値をgetで取得できる", () => {
@@ -129,17 +127,17 @@ test("連続した追い出しが正しく動作する", () => {
 test("容量0でErrが返される", () => {
   const result = LRUCache.create(0);
   expect(result.ok).toBe(false);
-  if (!result.ok) {
-    expect(result.error).toBeInstanceOf(RangeError);
-  }
+  expect((result as { ok: false; error: RangeError }).error).toBeInstanceOf(
+    RangeError,
+  );
 });
 
 test("負の容量でErrが返される", () => {
   const result = LRUCache.create(-1);
   expect(result.ok).toBe(false);
-  if (!result.ok) {
-    expect(result.error).toBeInstanceOf(RangeError);
-  }
+  expect((result as { ok: false; error: RangeError }).error).toBeInstanceOf(
+    RangeError,
+  );
 });
 
 test("小数の容量でErrが返される", () => {

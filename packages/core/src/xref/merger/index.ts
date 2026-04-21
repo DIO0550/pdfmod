@@ -64,6 +64,11 @@ function mergeCollectedChain(
   };
 }
 
+/** xref+trailer をオフセットからパースするコールバック。 */
+type XRefParseCallback = (
+  offset: ByteOffset,
+) => Result<{ xref: XRefTable; trailer: TrailerDict }, PdfParseError>;
+
 /**
  * /Prevチェーンを辿り、全xrefテーブルをマージする。
  * 新しいエントリが古いものを上書きし、最新のトレイラ辞書を返す。
@@ -75,9 +80,7 @@ function mergeCollectedChain(
  */
 export function mergeXRefChain(
   startOffset: ByteOffset,
-  parseCallback: (
-    offset: ByteOffset,
-  ) => Result<{ xref: XRefTable; trailer: TrailerDict }, PdfParseError>,
+  parseCallback: XRefParseCallback,
   options?: { readonly maxDepth?: number },
 ): Result<
   { mergedXRef: XRefTable; latestTrailer: TrailerDict },
