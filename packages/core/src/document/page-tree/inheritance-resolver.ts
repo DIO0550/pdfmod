@@ -116,15 +116,20 @@ const readRotateFromDict = (entries: Map<string, PdfValue>): Option<number> => {
 };
 
 /**
- * `/UserUnit` を number として取り出す（未定義・非数値時は 1.0）。
+ * `/UserUnit` を number として取り出す。
+ * 未定義・非数値・非有限・0 以下は 1.0 にフォールバック（PDF 仕様で
+ * /UserUnit は正の有限数を要求するため、不正値は寛容に既定値へ落とす）。
  *
  * @param entries - 辞書エントリ
- * @returns UserUnit 数値
+ * @returns UserUnit 数値（常に正の有限数）
  */
 const readUserUnitFromDict = (entries: Map<string, PdfValue>): number => {
   const value = entries.get("UserUnit");
   const n = getNumberValue(value);
   if (n === undefined) {
+    return DEFAULT_USER_UNIT;
+  }
+  if (!Number.isFinite(n) || n <= 0) {
     return DEFAULT_USER_UNIT;
   }
   return n;

@@ -319,6 +319,54 @@ test("userUnit: /UserUnit 未定義で 1.0", () => {
   expect(outcome.page.userUnit).toBe(1.0);
 });
 
+test("userUnit: /UserUnit が 0 なら 1.0 にフォールバック", () => {
+  const pageDict = makePageDict({
+    mediaBox: [0, 0, 10, 10],
+    userUnit: { type: "real", value: 0 },
+  });
+  const outcome = unwrapOk(
+    InheritanceResolver.resolve(
+      pageDict,
+      { mediaBox: [0, 0, 10, 10] },
+      { mediaBox: [0, 0, 10, 10] },
+      PAGE_REF,
+    ),
+  );
+  expect(outcome.page.userUnit).toBe(1.0);
+});
+
+test("userUnit: /UserUnit が負数なら 1.0 にフォールバック", () => {
+  const pageDict = makePageDict({
+    mediaBox: [0, 0, 10, 10],
+    userUnit: { type: "real", value: -3 },
+  });
+  const outcome = unwrapOk(
+    InheritanceResolver.resolve(
+      pageDict,
+      { mediaBox: [0, 0, 10, 10] },
+      { mediaBox: [0, 0, 10, 10] },
+      PAGE_REF,
+    ),
+  );
+  expect(outcome.page.userUnit).toBe(1.0);
+});
+
+test("userUnit: /UserUnit が Infinity なら 1.0 にフォールバック", () => {
+  const pageDict = makePageDict({
+    mediaBox: [0, 0, 10, 10],
+    userUnit: { type: "real", value: Number.POSITIVE_INFINITY },
+  });
+  const outcome = unwrapOk(
+    InheritanceResolver.resolve(
+      pageDict,
+      { mediaBox: [0, 0, 10, 10] },
+      { mediaBox: [0, 0, 10, 10] },
+      PAGE_REF,
+    ),
+  );
+  expect(outcome.page.userUnit).toBe(1.0);
+});
+
 test("userUnit: /UserUnit が 2.5 なら 2.5 を採用", () => {
   const pageDict = makePageDict({
     mediaBox: [0, 0, 10, 10],
