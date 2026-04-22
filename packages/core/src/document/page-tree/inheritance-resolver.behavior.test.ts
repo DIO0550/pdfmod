@@ -335,6 +335,58 @@ test("userUnit: /UserUnit が 2.5 なら 2.5 を採用", () => {
   expect(outcome.page.userUnit).toBe(2.5);
 });
 
+test("contents: 不正な objectNumber の indirect-ref は null として扱う", () => {
+  const pageDict = makePageDict({
+    mediaBox: [0, 0, 10, 10],
+    contents: { type: "indirect-ref", objectNumber: 0, generationNumber: 0 },
+  });
+  const outcome = unwrapOk(
+    InheritanceResolver.resolve(
+      pageDict,
+      { mediaBox: [0, 0, 10, 10] },
+      { mediaBox: [0, 0, 10, 10] },
+      PAGE_REF,
+    ),
+  );
+  expect(outcome.page.contents).toBeNull();
+});
+
+test("contents: 配列内の不正な indirect-ref はスキップされる", () => {
+  const pageDict = makePageDict({
+    mediaBox: [0, 0, 10, 10],
+    contents: {
+      type: "array",
+      elements: [
+        { type: "indirect-ref", objectNumber: 0, generationNumber: 0 },
+        { type: "indirect-ref", objectNumber: 7, generationNumber: 0 },
+      ],
+    },
+  });
+  const outcome = unwrapOk(
+    InheritanceResolver.resolve(
+      pageDict,
+      { mediaBox: [0, 0, 10, 10] },
+      { mediaBox: [0, 0, 10, 10] },
+      PAGE_REF,
+    ),
+  );
+  expect(Array.isArray(outcome.page.contents)).toBe(true);
+  expect((outcome.page.contents as unknown[]).length).toBe(1);
+});
+
+test("Rotate: NaN / Infinity は警告ありで 0 に正規化される", () => {
+  const outcome = unwrapOk(
+    runRotate(
+      { type: "real", value: Number.POSITIVE_INFINITY },
+      {},
+      {
+        rotate: Number.POSITIVE_INFINITY,
+      },
+    ),
+  );
+  expect(outcome.page.rotate).toBe(0);
+});
+
 test("objectRef: ResolvedPage.objectRef に渡した pageRef が入る", () => {
   const pageDict = makePageDict({ mediaBox: [0, 0, 10, 10] });
   const ref = makeRef(42, 5);
