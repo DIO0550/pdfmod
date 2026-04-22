@@ -5,8 +5,20 @@
  * @packageDocumentation
  */
 
-export type { ParsedCatalog, ResolveRef } from "./document/index";
-export { CatalogParser } from "./document/index";
+export type {
+  InheritedAttrs,
+  PageRotate,
+  ParsedCatalog,
+  ResolvedPage,
+  ResolveInheritedOutcome,
+  ResolveRef,
+  WalkPageTreeResult,
+} from "./document/index";
+export {
+  CatalogParser,
+  InheritanceResolver,
+  PageTreeWalker,
+} from "./document/index";
 export { NumberEx } from "./ext/number/index";
 export { Tokenizer } from "./lexer/index";
 export type {
