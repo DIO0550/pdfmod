@@ -1,8 +1,6 @@
 import { NumberEx } from "../../ext/number/index";
 import type { PdfError } from "../../pdf/errors/error/index";
 import type { PdfWarning } from "../../pdf/errors/warning/index";
-import { GenerationNumber } from "../../pdf/types/generation-number/index";
-import { ObjectNumber } from "../../pdf/types/object-number/index";
 import type {
   IndirectRef,
   PdfDictionary,
@@ -67,29 +65,7 @@ const dispatchType = (
   return "unknown";
 };
 
-/**
- * `PdfIndirectRef`（生）を Ok なら `IndirectRef`（ブランド付き）に変換する。
- * 番号が不正な場合 undefined。
- *
- * @param raw - 生 indirect-ref
- * @returns ブランド付き IndirectRef、または undefined
- */
-const toBrandedRef = (raw: PdfIndirectRef): IndirectRef | undefined => {
-  if (!NumberEx.isPositiveSafeInteger(raw.objectNumber)) {
-    return undefined;
-  }
-  if (!NumberEx.isSafeIntegerAtLeastZero(raw.generationNumber)) {
-    return undefined;
-  }
-  const gen = GenerationNumber.create(raw.generationNumber);
-  if (!gen.ok) {
-    return undefined;
-  }
-  return {
-    objectNumber: ObjectNumber.of(raw.objectNumber),
-    generationNumber: gen.value,
-  };
-};
+const toBrandedRef = InheritanceResolverHelpers.toBrandedRef;
 
 /** `/Kids` の解析結果。 */
 type KidsRefsResult =

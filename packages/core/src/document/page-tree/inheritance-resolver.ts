@@ -359,4 +359,5 @@ export const InheritanceResolverHelpers = {
   normalizeRotate,
   projectRotate,
   createEmptyResources,
+  toBrandedRef,
 } as const;
