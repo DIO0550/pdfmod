@@ -331,6 +331,50 @@ test("PW-004: 同一 /Page を 2 度参照する /Kids は 2 回目を PAGE_TREE
   expect(outcome.warnings.some((w) => w.code === "PAGE_TREE_CYCLE")).toBe(true);
 });
 
+test("/Pages の /Kids が非配列なら MISSING_KIDS 警告（不正型メッセージ）で空結果", async () => {
+  const root = makeRef(1, 0);
+  const objects = new Map<string, PdfObject>();
+  const dict = makePagesDict({ mediaBox: [0, 0, 10, 10] });
+  dict.entries.set("Kids", { type: "integer", value: 42 });
+  addTo(objects, root, dict);
+  const outcome = unwrapOk(
+    await PageTreeWalker.walk(root, makeResolverMap(objects)),
+  );
+  expect(outcome.pages.length).toBe(0);
+  expect(
+    outcome.warnings.some(
+      (w) => w.code === "MISSING_KIDS" && w.message.includes("not an array"),
+    ),
+  ).toBe(true);
+});
+
+test("/Pages の /Kids 配列内の非 indirect-ref 要素は UNKNOWN_PAGE_TYPE 警告でスキップ", async () => {
+  const root = makeRef(1, 0);
+  const leaf = makeRef(2, 0);
+  const objects = new Map<string, PdfObject>();
+  const dict = makePagesDict({
+    kids: [leaf],
+    mediaBox: [0, 0, 10, 10],
+  });
+  dict.entries.set("Kids", {
+    type: "array",
+    elements: [{ type: "integer", value: 99 }, indirectRefValue(2, 0)],
+  });
+  addTo(objects, root, dict);
+  addTo(objects, leaf, makePageDict({}));
+  const outcome = unwrapOk(
+    await PageTreeWalker.walk(root, makeResolverMap(objects)),
+  );
+  expect(outcome.pages.length).toBe(1);
+  expect(
+    outcome.warnings.some(
+      (w) =>
+        w.code === "UNKNOWN_PAGE_TYPE" &&
+        w.message.includes("not an indirect-ref"),
+    ),
+  ).toBe(true);
+});
+
 test("PW-005: /Pages に /Kids がない場合、MISSING_KIDS 警告で空結果", async () => {
   const root = makeRef(1, 0);
   const objects = new Map<string, PdfObject>();
