@@ -3,12 +3,14 @@ import {
   ByteOffset,
   CatalogParser,
   GenerationNumber,
+  InheritanceResolver,
   LRUCache,
   ObjectNumber,
   ObjectParser,
   ObjectStore,
   ObjectStreamBody,
   ObjectStreamHeader,
+  PageTreeWalker,
   PdfVersion,
   parseTrailer,
   parseXRefTable,
@@ -32,6 +34,8 @@ test.each([
   { name: "ObjectStreamBody.extract", value: ObjectStreamBody.extract },
   { name: "ObjectStreamHeader.parse", value: ObjectStreamHeader.parse },
   { name: "CatalogParser.parse", value: CatalogParser.parse },
+  { name: "PageTreeWalker.walk", value: PageTreeWalker.walk },
+  { name: "InheritanceResolver.resolve", value: InheritanceResolver.resolve },
 ])("$nameがルートからexportされている", ({ value }) => {
   expect(typeof value).toBe("function");
 });
