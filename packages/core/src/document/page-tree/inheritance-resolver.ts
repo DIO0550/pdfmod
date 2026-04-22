@@ -331,8 +331,15 @@ export const InheritanceResolver = {
       warnings.push(normalized.warning.value);
     }
 
-    const resources =
-      pageLeaf.resources ?? inherited.resources ?? createEmptyResources();
+    // IH-001 優先: ページ辞書に /Resources キーが存在すれば継承を見ない。
+    // pageLeaf.resources が undefined（解決失敗・非辞書 等）の場合でも
+    // 親の resources を使わず空辞書にフォールバックする。
+    let resources: PdfDictionary;
+    if (pageDict.entries.has("Resources")) {
+      resources = pageLeaf.resources ?? createEmptyResources();
+    } else {
+      resources = inherited.resources ?? createEmptyResources();
+    }
 
     const page: ResolvedPage = {
       mediaBox,

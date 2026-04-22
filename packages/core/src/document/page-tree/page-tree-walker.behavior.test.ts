@@ -529,6 +529,41 @@ test("PW-008c: /Resources 解決結果が dictionary でない場合も RESOURCE
   expect(outcome.pages[0].resources.entries.size).toBe(0);
 });
 
+test("IH-001 優先: ページ /Resources が invalid（解決失敗）でも親を継承せず空辞書", async () => {
+  const root = makeRef(1, 0);
+  const leaf = makeRef(2, 0);
+  const childResourcesRef = makeRef(10, 0);
+  const parentResources: PdfDictionary = okDict(
+    new Map<string, PdfValue>([["Font", { type: "name", value: "Parent" }]]),
+  );
+  const successMap = new Map<string, PdfObject>();
+  addTo(
+    successMap,
+    root,
+    makePagesDict({
+      kids: [leaf],
+      mediaBox: [0, 0, 10, 10],
+      resources: parentResources,
+    }),
+  );
+  addTo(successMap, leaf, makePageDict({ resourcesRef: childResourcesRef }));
+  const resolver = makeFailingResolver(
+    "10-0",
+    {
+      code: "CIRCULAR_REFERENCE",
+      message: "cycle",
+      objectId: childResourcesRef,
+    },
+    successMap,
+  );
+  const outcome = unwrapOk(await PageTreeWalker.walk(root, resolver));
+  expect(outcome.pages.length).toBe(1);
+  expect(outcome.pages[0].resources.entries.size).toBe(0);
+  expect(
+    outcome.warnings.some((w) => w.code === "RESOURCES_RESOLVE_FAILED"),
+  ).toBe(true);
+});
+
 test("IH-001 統合: ページ /Resources が indirect-ref でも親を完全シャドウイングする", async () => {
   const root = makeRef(1, 0);
   const leaf = makeRef(2, 0);
