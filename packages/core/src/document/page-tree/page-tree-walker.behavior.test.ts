@@ -489,6 +489,26 @@ test("PW-008b: /Page 側 /Resources indirect-ref で resolver Err → RESOURCES_
   expect(outcome.pages[0].resources.entries.size).toBe(0);
 });
 
+test("/Resources が直接配置の非辞書（integer 等）でも RESOURCES_RESOLVE_FAILED 警告 + 走査継続", async () => {
+  const pageRef = makeRef(2, 0);
+  const objects = new Map<string, PdfObject>();
+  const dict = makePageDict({ mediaBox: [0, 0, 10, 10] });
+  dict.entries.set("Resources", { type: "integer", value: 7 });
+  addTo(objects, pageRef, dict);
+  const outcome = unwrapOk(
+    await PageTreeWalker.walk(pageRef, makeResolverMap(objects)),
+  );
+  expect(outcome.pages.length).toBe(1);
+  expect(
+    outcome.warnings.some(
+      (w) =>
+        w.code === "RESOURCES_RESOLVE_FAILED" &&
+        w.message.includes("unexpected direct type"),
+    ),
+  ).toBe(true);
+  expect(outcome.pages[0].resources.entries.size).toBe(0);
+});
+
 test("PW-008c: /Resources 解決結果が dictionary でない場合も RESOURCES_RESOLVE_FAILED + 走査継続", async () => {
   const pageRef = makeRef(2, 0);
   const resourcesRef = makeRef(9, 0);

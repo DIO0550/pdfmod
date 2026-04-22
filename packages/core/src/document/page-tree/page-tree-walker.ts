@@ -170,6 +170,10 @@ const resolveResources = async (
     return value;
   }
   if (value.type !== "indirect-ref") {
+    warnings.push({
+      code: "RESOURCES_RESOLVE_FAILED",
+      message: `Failed to resolve /Resources: unexpected direct type=${value.type}`,
+    });
     return undefined;
   }
   const branded = toBrandedRef(value);
