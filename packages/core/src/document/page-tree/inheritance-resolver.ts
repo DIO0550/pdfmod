@@ -40,8 +40,16 @@ const ROTATE_FULL = 360;
 const BOX_ELEMENT_COUNT = 4;
 const DEFAULT_USER_UNIT = 1.0;
 
-const EMPTY_RESOURCES: PdfDictionary = Object.freeze({
-  type: "dictionary" as const,
+/**
+ * 空の `/Resources` 辞書を新規生成する。
+ * フォールバックの度にフレッシュなインスタンスを返し、ページ間で entries が
+ * 共有されないことを保証する（Object.freeze は内部 Map を不変化しないため、
+ * 単一インスタンスを使い回すと cross-page contamination の恐れがある）。
+ *
+ * @returns 新規空辞書
+ */
+const createEmptyResources = (): PdfDictionary => ({
+  type: "dictionary",
   entries: new Map<string, PdfValue>(),
 });
 
@@ -319,7 +327,7 @@ export const InheritanceResolver = {
     }
 
     const resources =
-      pageLeaf.resources ?? inherited.resources ?? EMPTY_RESOURCES;
+      pageLeaf.resources ?? inherited.resources ?? createEmptyResources();
 
     const page: ResolvedPage = {
       mediaBox,
@@ -345,5 +353,5 @@ export const InheritanceResolverHelpers = {
   readAnnotsFromDict,
   normalizeRotate,
   projectRotate,
-  EMPTY_RESOURCES,
+  createEmptyResources,
 } as const;
