@@ -91,26 +91,43 @@ const toBrandedRef = (raw: PdfIndirectRef): IndirectRef | undefined => {
   };
 };
 
+/** `/Kids` の解析結果。 */
+type KidsRefsResult =
+  | { kind: "missing" }
+  | { kind: "invalid-array" }
+  | {
+      kind: "ok";
+      refs: PdfIndirectRef[];
+      invalidElementCount: number;
+    };
+
 /**
- * `/Kids` 配列を取得する。配列でないか、そもそも存在しない場合 undefined。
+ * `/Kids` を解析する。
+ * - キー不在 → `missing`
+ * - キーが存在するが配列でない → `invalid-array`
+ * - 配列のとき → `ok`（indirect-ref のみ抽出 + 非 ref 要素数を返す）
  *
  * @param entries - 辞書エントリ
- * @returns /Kids 要素配列、または undefined
+ * @returns 解析結果
  */
-const getKidsRefs = (
-  entries: Map<string, PdfValue>,
-): PdfIndirectRef[] | undefined => {
+const getKidsRefs = (entries: Map<string, PdfValue>): KidsRefsResult => {
   const value = entries.get("Kids");
-  if (value === undefined || value.type !== "array") {
-    return undefined;
+  if (value === undefined) {
+    return { kind: "missing" };
+  }
+  if (value.type !== "array") {
+    return { kind: "invalid-array" };
   }
   const refs: PdfIndirectRef[] = [];
+  let invalidElementCount = 0;
   for (const el of value.elements) {
     if (el.type === "indirect-ref") {
       refs.push(el);
+    } else {
+      invalidElementCount += 1;
     }
   }
-  return refs;
+  return { kind: "ok", refs, invalidElementCount };
 };
 
 /**
@@ -315,21 +332,35 @@ const walkInternal = async (
   };
 
   const kids = getKidsRefs(dict.entries);
-  if (kids === undefined) {
+  if (kids.kind === "missing") {
     state.warnings.push({
       code: "MISSING_KIDS",
       message: `Pages node ${key} missing /Kids`,
     });
     return none;
   }
+  if (kids.kind === "invalid-array") {
+    state.warnings.push({
+      code: "MISSING_KIDS",
+      message: `Pages node ${key} has /Kids but it is not an array`,
+    });
+    return none;
+  }
+
+  for (let i = 0; i < kids.invalidElementCount; i += 1) {
+    state.warnings.push({
+      code: "UNKNOWN_PAGE_TYPE",
+      message: `Invalid /Kids entry in ${key}: not an indirect-ref`,
+    });
+  }
 
   let actualCount = 0;
-  for (const rawKid of kids) {
+  for (const rawKid of kids.refs) {
     const branded = toBrandedRef(rawKid);
     if (branded === undefined) {
       state.warnings.push({
         code: "UNKNOWN_PAGE_TYPE",
-        message: `Invalid /Kids entry in ${key}`,
+        message: `Invalid /Kids entry in ${key}: bad object number`,
       });
       continue;
     }
