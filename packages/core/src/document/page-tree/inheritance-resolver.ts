@@ -1,8 +1,12 @@
+import { NumberEx } from "../../ext/number/index";
 import type { PdfParseError } from "../../pdf/errors/error/index";
 import type { PdfWarning } from "../../pdf/errors/warning/index";
+import { GenerationNumber } from "../../pdf/types/generation-number/index";
+import { ObjectNumber } from "../../pdf/types/object-number/index";
 import type {
   IndirectRef,
   PdfDictionary,
+  PdfIndirectRef,
   PdfObject,
   PdfValue,
 } from "../../pdf/types/pdf-types/index";
@@ -119,7 +123,32 @@ const readUserUnitFromDict = (entries: Map<string, PdfValue>): number => {
 };
 
 /**
+ * 生 PdfIndirectRef を検証し、ブランド付き IndirectRef に変換する。
+ * 番号が不正な場合 undefined。
+ *
+ * @param raw - 生 indirect-ref
+ * @returns ブランド付き IndirectRef、または undefined
+ */
+const toBrandedRef = (raw: PdfIndirectRef): IndirectRef | undefined => {
+  if (!NumberEx.isPositiveSafeInteger(raw.objectNumber)) {
+    return undefined;
+  }
+  if (!NumberEx.isSafeIntegerAtLeastZero(raw.generationNumber)) {
+    return undefined;
+  }
+  const gen = GenerationNumber.create(raw.generationNumber);
+  if (!gen.ok) {
+    return undefined;
+  }
+  return {
+    objectNumber: ObjectNumber.of(raw.objectNumber),
+    generationNumber: gen.value,
+  };
+};
+
+/**
  * `/Contents` を IndirectRef / IndirectRef[] / null として取り出す。
+ * 不正な番号の indirect-ref は無視される（配列要素は除外、単一参照は null）。
  *
  * @param entries - 辞書エントリ
  * @returns 単一 ref / 配列 / null
@@ -132,21 +161,20 @@ const readContentsFromDict = (
     return null;
   }
   if (value.type === "indirect-ref") {
-    return {
-      objectNumber: value.objectNumber as IndirectRef["objectNumber"],
-      generationNumber:
-        value.generationNumber as IndirectRef["generationNumber"],
-    };
+    const branded = toBrandedRef(value);
+    if (branded === undefined) {
+      return null;
+    }
+    return branded;
   }
   if (value.type === "array") {
     const refs: IndirectRef[] = [];
     for (const el of value.elements) {
       if (el.type === "indirect-ref") {
-        refs.push({
-          objectNumber: el.objectNumber as IndirectRef["objectNumber"],
-          generationNumber:
-            el.generationNumber as IndirectRef["generationNumber"],
-        });
+        const branded = toBrandedRef(el);
+        if (branded !== undefined) {
+          refs.push(branded);
+        }
       }
     }
     return refs;
@@ -172,11 +200,15 @@ const readAnnotsFromDict = (
 
 /**
  * 生の /Rotate 数値を 0/90/180/270 に射影する。
+ * NaN / Infinity は 0 に丸める（寛容処理）。
  *
  * @param raw - 生数値
  * @returns 正規化後の PageRotate
  */
 const projectRotate = (raw: number): PageRotate => {
+  if (!Number.isFinite(raw)) {
+    return PAGE_ROTATE_0;
+  }
   const normalized =
     (((Math.round(raw / ROTATE_DIVISOR) * ROTATE_DIVISOR) % ROTATE_FULL) +
       ROTATE_FULL) %
