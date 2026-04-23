@@ -239,9 +239,9 @@ const projectRotate = (raw: number): PageRotate => {
 };
 
 /**
- * IH-004: `/Rotate` を正規化する。
+ * `/Rotate` を正規化する。
  *
- * ページ側 /Rotate キーの存在有無で完全に分岐する（IH-001 優先）。
+ * ページ側 /Rotate キーの存在有無で完全に分岐する（ページ直接定義を優先）。
  * - rawKeyPresent=true かつ非数値 → INVALID_ROTATE + 0（継承無視）
  * - rawKeyPresent=true かつ 90 の倍数 → 警告なし + 正規化値
  * - rawKeyPresent=true かつ 90 の非倍数 → INVALID_ROTATE + 正規化値
@@ -300,7 +300,7 @@ export const InheritanceResolver = {
    * @param inherited - 祖先から積み上げた継承可能属性
    * @param pageLeaf - Walker が事前解決したページ直属の属性
    * @param pageRef - ページオブジェクトへの参照
-   * @returns 成功時は `Ok<ResolveInheritedOutcome>`、IH-003 時は `MEDIABOX_NOT_FOUND`
+   * @returns 成功時は `Ok<ResolveInheritedOutcome>`、MediaBox 未継承時は `MEDIABOX_NOT_FOUND`
    */
   resolve(
     pageDict: PdfDictionary,
@@ -310,7 +310,7 @@ export const InheritanceResolver = {
   ): Result<ResolveInheritedOutcome, PdfParseError> {
     const warnings: PdfWarning[] = [];
 
-    // IH-001 優先: ページ辞書に /MediaBox キーが存在すれば継承を見ない。
+    // ページ辞書に /MediaBox キーが存在すれば継承を見ない（ページ直接定義を優先）。
     // 値が malformed（不正な配列形状・非数値）で pageLeaf.mediaBox が undefined
     // のまま渡されてきた場合も、親を継承せず MEDIABOX_NOT_FOUND を返す。
     let mediaBox: [number, number, number, number] | undefined;
@@ -326,8 +326,8 @@ export const InheritanceResolver = {
       });
     }
 
-    // IH-001 優先: ページ辞書に /CropBox キーが存在すれば継承を見ない（malformed
-    // で pageLeaf.cropBox が undefined のままなら mediaBox にフォールバック、IH-005）。
+    // ページ辞書に /CropBox キーが存在すれば継承を見ない（malformed
+    // で pageLeaf.cropBox が undefined のままなら mediaBox にフォールバック）。
     let cropBox: [number, number, number, number];
     if (pageDict.entries.has("CropBox")) {
       cropBox = pageLeaf.cropBox ?? mediaBox;
@@ -346,7 +346,7 @@ export const InheritanceResolver = {
       warnings.push(normalized.warning.value);
     }
 
-    // IH-001 優先: ページ辞書に /Resources キーが存在すれば継承を見ない。
+    // ページ辞書に /Resources キーが存在すれば継承を見ない（ページ直接定義を優先）。
     // pageLeaf.resources が undefined（解決失敗・非辞書 等）の場合でも
     // 親の resources を使わず空辞書にフォールバックする。
     let resources: PdfDictionary;
