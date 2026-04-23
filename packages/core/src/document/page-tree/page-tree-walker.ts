@@ -17,6 +17,8 @@ import {
 } from "./inheritance-resolver";
 import type { ResolvedPage } from "./resolved-page";
 
+const { toBrandedRef } = InheritanceResolverHelpers;
+
 /** `PageTreeWalker.walk` の出力。 */
 export interface WalkPageTreeResult {
   pages: ResolvedPage[];
@@ -64,8 +66,6 @@ const dispatchType = (
   }
   return "unknown";
 };
-
-const toBrandedRef = InheritanceResolverHelpers.toBrandedRef;
 
 /** `/Kids` の解析結果。 */
 type KidsRefsResult =
