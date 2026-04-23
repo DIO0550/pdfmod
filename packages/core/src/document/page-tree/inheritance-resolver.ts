@@ -76,7 +76,7 @@ const getNumberValue = (value: PdfValue | undefined): number | undefined => {
  * @param key - 読み取るキー名
  * @returns 4 要素 number 配列なら Some、それ以外 None
  */
-const readBoxFromDict = (
+export const readBoxFromDict = (
   entries: Map<string, PdfValue>,
   key: "MediaBox" | "CropBox",
 ): Option<[number, number, number, number]> => {
@@ -106,7 +106,9 @@ const readBoxFromDict = (
  * @param entries - 辞書エントリ
  * @returns 数値なら Some、それ以外（キー不在・非数値）は None
  */
-const readRotateFromDict = (entries: Map<string, PdfValue>): Option<number> => {
+export const readRotateFromDict = (
+  entries: Map<string, PdfValue>,
+): Option<number> => {
   const value = entries.get("Rotate");
   const n = getNumberValue(value);
   if (n === undefined) {
@@ -142,7 +144,7 @@ const readUserUnitFromDict = (entries: Map<string, PdfValue>): number => {
  * @param raw - 生 indirect-ref
  * @returns ブランド付き IndirectRef、または undefined
  */
-const toBrandedRef = (raw: PdfIndirectRef): IndirectRef | undefined => {
+export const toBrandedRef = (raw: PdfIndirectRef): IndirectRef | undefined => {
   if (!NumberEx.isPositiveSafeInteger(raw.objectNumber)) {
     return undefined;
   }
@@ -369,17 +371,4 @@ export const InheritanceResolver = {
 
     return ok({ page, warnings });
   },
-} as const;
-
-/** Walker 内部で共有する純粋ヘルパ（本モジュールのみ公開）。 */
-export const InheritanceResolverHelpers = {
-  readBoxFromDict,
-  readRotateFromDict,
-  readUserUnitFromDict,
-  readContentsFromDict,
-  readAnnotsFromDict,
-  normalizeRotate,
-  projectRotate,
-  createEmptyResources,
-  toBrandedRef,
 } as const;
