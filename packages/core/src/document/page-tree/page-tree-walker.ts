@@ -379,7 +379,7 @@ export const PageTreeWalker = {
    *
    * @param rootRef - ページツリーのルート参照（CatalogParser.parse().pagesRef）
    * @param resolveRef - 間接参照解決関数
-   * @returns 成功時は `Ok<WalkPageTreeResult>`、IH-003 / resolver Err 時は `Err<PdfError>`
+   * @returns 成功時は `Ok<WalkPageTreeResult>`、MediaBox 未継承 / resolver Err 時は `Err<PdfError>`
    */
   async walk(
     rootRef: IndirectRef,
