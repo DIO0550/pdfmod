@@ -18,7 +18,10 @@ export type PdfWarningCode =
   | "STREAM_LENGTH_MISMATCH"
   | "DUPLICATE_OBJECT"
   | "UNKNOWN_PAGE_TYPE"
-  | "DATE_PARSE_FAILED";
+  | "DATE_PARSE_FAILED"
+  | "MISSING_KIDS"
+  | "PAGE_TREE_TOO_DEEP"
+  | "RESOURCES_RESOLVE_FAILED";
 
 /**
  * 回復可能なPDF問題の警告。

@@ -56,3 +56,26 @@ test("isSafeIntegerAtLeastZero: 非有限値に対して false を返す", () =>
   expect(NumberEx.isSafeIntegerAtLeastZero(Infinity)).toBe(false);
   expect(NumberEx.isSafeIntegerAtLeastZero(NaN)).toBe(false);
 });
+
+test("isPositiveFinite: 正の有限数に対して true を返す", () => {
+  expect(NumberEx.isPositiveFinite(1)).toBe(true);
+  expect(NumberEx.isPositiveFinite(2.5)).toBe(true);
+  expect(NumberEx.isPositiveFinite(0.001)).toBe(true);
+  expect(NumberEx.isPositiveFinite(Number.MAX_VALUE)).toBe(true);
+});
+
+test("isPositiveFinite: 0 に対して false を返す", () => {
+  expect(NumberEx.isPositiveFinite(0)).toBe(false);
+  expect(NumberEx.isPositiveFinite(-0)).toBe(false);
+});
+
+test("isPositiveFinite: 負数に対して false を返す", () => {
+  expect(NumberEx.isPositiveFinite(-1)).toBe(false);
+  expect(NumberEx.isPositiveFinite(-0.5)).toBe(false);
+});
+
+test("isPositiveFinite: 非有限値に対して false を返す", () => {
+  expect(NumberEx.isPositiveFinite(Number.POSITIVE_INFINITY)).toBe(false);
+  expect(NumberEx.isPositiveFinite(Number.NEGATIVE_INFINITY)).toBe(false);
+  expect(NumberEx.isPositiveFinite(NaN)).toBe(false);
+});
