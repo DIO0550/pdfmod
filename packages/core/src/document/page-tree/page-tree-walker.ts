@@ -12,12 +12,12 @@ import { err, ok, type Result } from "../../utils/result/index";
 import type { ResolveRef } from "../catalog-parser";
 import {
   InheritanceResolver,
-  InheritanceResolverHelpers,
   type InheritedAttrs,
+  readBoxFromDict,
+  readRotateFromDict,
+  toBrandedRef,
 } from "./inheritance-resolver";
 import type { ResolvedPage } from "./resolved-page";
-
-const { toBrandedRef } = InheritanceResolverHelpers;
 
 /** `PageTreeWalker.walk` の出力。 */
 export interface WalkPageTreeResult {
@@ -194,21 +194,15 @@ const readInheritableAttrs = async (
   warnings: PdfWarning[],
 ): Promise<InheritedAttrs> => {
   const attrs: InheritedAttrs = {};
-  const mediaBox = InheritanceResolverHelpers.readBoxFromDict(
-    entries,
-    "MediaBox",
-  );
+  const mediaBox = readBoxFromDict(entries, "MediaBox");
   if (mediaBox.some) {
     attrs.mediaBox = mediaBox.value;
   }
-  const cropBox = InheritanceResolverHelpers.readBoxFromDict(
-    entries,
-    "CropBox",
-  );
+  const cropBox = readBoxFromDict(entries, "CropBox");
   if (cropBox.some) {
     attrs.cropBox = cropBox.value;
   }
-  const rotate = InheritanceResolverHelpers.readRotateFromDict(entries);
+  const rotate = readRotateFromDict(entries);
   if (rotate.some) {
     attrs.rotate = rotate.value;
   }
