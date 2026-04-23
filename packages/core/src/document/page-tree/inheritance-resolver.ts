@@ -129,7 +129,7 @@ const readUserUnitFromDict = (entries: Map<string, PdfValue>): number => {
   if (n === undefined) {
     return DEFAULT_USER_UNIT;
   }
-  if (!Number.isFinite(n) || n <= 0) {
+  if (!NumberEx.isPositiveFinite(n)) {
     return DEFAULT_USER_UNIT;
   }
   return n;
