@@ -5,4 +5,4 @@ export type {
 export { InheritanceResolver } from "./inheritance-resolver";
 export type { WalkPageTreeResult } from "./page-tree-walker";
 export { PageTreeWalker } from "./page-tree-walker";
-export type { PageRotate, ResolvedPage } from "./resolved-page";
+export type { PageRotate, PdfRectangle, ResolvedPage } from "./resolved-page";

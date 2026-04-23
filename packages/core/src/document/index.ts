@@ -3,6 +3,7 @@ export { CatalogParser } from "./catalog-parser";
 export type {
   InheritedAttrs,
   PageRotate,
+  PdfRectangle,
   ResolvedPage,
   ResolveInheritedOutcome,
   WalkPageTreeResult,

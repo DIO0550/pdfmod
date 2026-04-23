@@ -9,6 +9,7 @@ export type {
   InheritedAttrs,
   PageRotate,
   ParsedCatalog,
+  PdfRectangle,
   ResolvedPage,
   ResolveInheritedOutcome,
   ResolveRef,
