@@ -1,5 +1,11 @@
 import { expect, test } from "vitest";
-import type { ParsedCatalog, ResolveRef } from "./index";
+import type {
+  InheritedAttrs,
+  ParsedCatalog,
+  ResolvedPage,
+  ResolveRef,
+  WalkPageTreeResult,
+} from "./index";
 import { Option, PdfVersion, Result } from "./index";
 
 test("Result.okがランタイムで動作する", () => {
@@ -66,4 +72,24 @@ test("ParsedCatalog型とResolveRef型が参照できる", () => {
   const resolver: ResolveRef = async () => Result.ok({ type: "null" as const });
   expect(parsed.version).toBe(version);
   expect(typeof resolver).toBe("function");
+});
+
+test("ResolvedPage / InheritedAttrs / WalkPageTreeResult 型が参照できる", () => {
+  const page: ResolvedPage = {
+    mediaBox: [0, 0, 612, 792],
+    resources: { type: "dictionary", entries: new Map() },
+    cropBox: [0, 0, 612, 792],
+    rotate: 0,
+    contents: null,
+    annots: null,
+    userUnit: 1.0,
+    objectRef: {
+      objectNumber: 2 as ResolvedPage["objectRef"]["objectNumber"],
+      generationNumber: 0 as ResolvedPage["objectRef"]["generationNumber"],
+    },
+  };
+  const inh: InheritedAttrs = { mediaBox: [0, 0, 612, 792] };
+  const res: WalkPageTreeResult = { pages: [page], warnings: [] };
+  expect(res.pages.length).toBe(1);
+  expect(inh.mediaBox?.[2]).toBe(612);
 });
