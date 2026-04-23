@@ -12,6 +12,7 @@ import type {
 import type { Result } from "../../utils/result/index";
 import { err, ok } from "../../utils/result/index";
 import type { ResolveRef } from "../catalog-parser";
+import type { PdfRectangle } from "./resolved-page";
 
 /**
  * Result が Ok であることを `expect` で保証し、値を返す（テスト専用ヘルパ）。
@@ -91,10 +92,10 @@ export const makeNumberArray = (values: number[]): PdfValue => ({
 export interface MakePagesDictOptions {
   kids?: IndirectRef[];
   count?: number;
-  mediaBox?: [number, number, number, number];
+  mediaBox?: PdfRectangle;
   resources?: PdfDictionary;
   resourcesRef?: IndirectRef;
-  cropBox?: [number, number, number, number];
+  cropBox?: PdfRectangle;
   rotate?: PdfValue;
   type?: PdfValue;
 }
@@ -147,10 +148,10 @@ export const makePagesDict = (opts: MakePagesDictOptions): PdfDictionary => {
  * `makePageDict` のオプション。
  */
 export interface MakePageDictOptions {
-  mediaBox?: [number, number, number, number];
+  mediaBox?: PdfRectangle;
   resources?: PdfDictionary;
   resourcesRef?: IndirectRef;
-  cropBox?: [number, number, number, number];
+  cropBox?: PdfRectangle;
   rotate?: PdfValue;
   contents?: PdfValue;
   annots?: PdfValue;

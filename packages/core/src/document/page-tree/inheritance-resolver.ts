@@ -18,14 +18,15 @@ import {
   PAGE_ROTATE_180,
   PAGE_ROTATE_270,
   type PageRotate,
+  type PdfRectangle,
   type ResolvedPage,
 } from "./resolved-page";
 
 /** Walker が祖先チェーンから積み上げた継承可能属性（未設定は undefined）。 */
 export interface InheritedAttrs {
-  mediaBox?: [number, number, number, number];
+  mediaBox?: PdfRectangle;
   resources?: PdfDictionary;
-  cropBox?: [number, number, number, number];
+  cropBox?: PdfRectangle;
   rotate?: number;
 }
 
@@ -79,7 +80,7 @@ const getNumberValue = (value: PdfValue | undefined): number | undefined => {
 export const readBoxFromDict = (
   entries: Map<string, PdfValue>,
   key: "MediaBox" | "CropBox",
-): Option<[number, number, number, number]> => {
+): Option<PdfRectangle> => {
   const value = entries.get(key);
   if (value === undefined || value.type !== "array") {
     return none;
@@ -96,7 +97,7 @@ export const readBoxFromDict = (
     nums.push(n);
   }
   const [llx, lly, urx, ury] = nums;
-  return some([llx, lly, urx, ury] as [number, number, number, number]);
+  return some([llx, lly, urx, ury] as PdfRectangle);
 };
 
 /**
@@ -315,7 +316,7 @@ export const InheritanceResolver = {
     // ページ辞書に /MediaBox キーが存在すれば継承を見ない（ページ直接定義を優先）。
     // 値が malformed（不正な配列形状・非数値）で pageLeaf.mediaBox が undefined
     // のまま渡されてきた場合も、親を継承せず MEDIABOX_NOT_FOUND を返す。
-    let mediaBox: [number, number, number, number] | undefined;
+    let mediaBox: PdfRectangle | undefined;
     if (pageDict.entries.has("MediaBox")) {
       mediaBox = pageLeaf.mediaBox;
     } else {
@@ -330,7 +331,7 @@ export const InheritanceResolver = {
 
     // ページ辞書に /CropBox キーが存在すれば継承を見ない（malformed
     // で pageLeaf.cropBox が undefined のままなら mediaBox にフォールバック）。
-    let cropBox: [number, number, number, number];
+    let cropBox: PdfRectangle;
     if (pageDict.entries.has("CropBox")) {
       cropBox = pageLeaf.cropBox ?? mediaBox;
     } else {
