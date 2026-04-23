@@ -310,7 +310,15 @@ export const InheritanceResolver = {
   ): Result<ResolveInheritedOutcome, PdfParseError> {
     const warnings: PdfWarning[] = [];
 
-    const mediaBox = pageLeaf.mediaBox ?? inherited.mediaBox;
+    // IH-001 優先: ページ辞書に /MediaBox キーが存在すれば継承を見ない。
+    // 値が malformed（不正な配列形状・非数値）で pageLeaf.mediaBox が undefined
+    // のまま渡されてきた場合も、親を継承せず MEDIABOX_NOT_FOUND を返す。
+    let mediaBox: [number, number, number, number] | undefined;
+    if (pageDict.entries.has("MediaBox")) {
+      mediaBox = pageLeaf.mediaBox;
+    } else {
+      mediaBox = inherited.mediaBox;
+    }
     if (mediaBox === undefined) {
       return err({
         code: "MEDIABOX_NOT_FOUND",
@@ -318,7 +326,14 @@ export const InheritanceResolver = {
       });
     }
 
-    const cropBox = pageLeaf.cropBox ?? inherited.cropBox ?? mediaBox;
+    // IH-001 優先: ページ辞書に /CropBox キーが存在すれば継承を見ない（malformed
+    // で pageLeaf.cropBox が undefined のままなら mediaBox にフォールバック、IH-005）。
+    let cropBox: [number, number, number, number];
+    if (pageDict.entries.has("CropBox")) {
+      cropBox = pageLeaf.cropBox ?? mediaBox;
+    } else {
+      cropBox = inherited.cropBox ?? mediaBox;
+    }
 
     const rawKeyPresent = pageDict.entries.has("Rotate");
     const normalized = normalizeRotate(
