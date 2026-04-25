@@ -15,8 +15,8 @@ import type { PdfRectangle } from "./resolved-page";
  * @param pageDict - ページ辞書本体
  * @param inherited - 祖先継承属性
  * @param pageLeaf - ページ直属の事前解決属性
- * @param pageRef - 警告メッセージに含めるページ参照
- * @returns Ok(PdfRectangle) または Err(MEDIABOX_NOT_FOUND)
+ * @param pageRef - `MEDIABOX_NOT_FOUND` エラーメッセージに含めるページ参照
+ * @returns Ok(PdfRectangle) または Err(PdfParseError: `MEDIABOX_NOT_FOUND`)
  */
 export const resolveMediaBox = (
   pageDict: PdfDictionary,
