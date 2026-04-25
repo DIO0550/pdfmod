@@ -119,24 +119,36 @@ export const PDF_DOC_ENCODING: ReadonlyArray<string | undefined> = buildTable();
 /**
  * PDFDocEncoding バイト列を JavaScript 文字列にデコードする。
  *
+ * 各バイトを {@link PDF_DOC_ENCODING} で文字に変換する。未割当バイトは
+ * {@link REPLACEMENT_CHAR} に置換し、フィールドあたり 1 件だけ
+ * `STRING_DECODE_FAILED` 警告を集約して push する。
+ *
  * @param bytes - 入力バイト列
- * @param fieldName - エラーメッセージに含めるフィールド名 (`Title` 等)
+ * @param fieldName - 警告メッセージに含めるフィールド名 (`Title` 等)
  * @param warnings - 警告蓄積先（mutable）
  * @returns デコード結果文字列（未割当バイト混入時も常に string）
  */
 export const decodePdfDocEncoding = (
   bytes: Uint8Array,
-  _fieldName: string,
-  _warnings: PdfWarning[],
+  fieldName: string,
+  warnings: PdfWarning[],
 ): string => {
   let out = "";
+  let hasUnmapped = false;
   for (let i = 0; i < bytes.length; i++) {
     const ch = PDF_DOC_ENCODING[bytes[i]];
     if (ch === undefined) {
       out += REPLACEMENT_CHAR;
+      hasUnmapped = true;
       continue;
     }
     out += ch;
+  }
+  if (hasUnmapped) {
+    warnings.push({
+      code: "STRING_DECODE_FAILED",
+      message: `Unmapped PDFDocEncoding byte(s) in /${fieldName}; replaced with U+FFFD`,
+    });
   }
   return out;
 };
