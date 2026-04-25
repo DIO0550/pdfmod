@@ -5,11 +5,8 @@ import type {
   PdfDictionary,
 } from "../../pdf/types/pdf-types/index";
 import { err, ok, type Result } from "../../utils/result/index";
+import { AttrResolver } from "./attr-resolver";
 import { DictReader } from "./dict-reader";
-import { resolveCropBox } from "./resolve-crop-box";
-import { resolveMediaBox } from "./resolve-media-box";
-import { resolveResources } from "./resolve-resources";
-import { resolveRotate } from "./resolve-rotate";
 import type { PdfRectangle, ResolvedPage } from "./resolved-page";
 
 /** Walker が祖先チェーンから積み上げた継承可能属性（未設定は undefined）。 */
@@ -46,7 +43,7 @@ export const InheritanceResolver = {
     pageLeaf: InheritedAttrs,
     pageRef: IndirectRef,
   ): Result<ResolveInheritedOutcome, PdfParseError> {
-    const mediaBoxResult = resolveMediaBox(
+    const mediaBoxResult = AttrResolver.mediaBox(
       pageDict,
       inherited,
       pageLeaf,
@@ -56,9 +53,14 @@ export const InheritanceResolver = {
       return err(mediaBoxResult.error);
     }
     const mediaBox = mediaBoxResult.value;
-    const cropBox = resolveCropBox(pageDict, inherited, pageLeaf, mediaBox);
-    const rotate = resolveRotate(pageDict, inherited, pageLeaf, pageRef);
-    const resources = resolveResources(pageDict, inherited, pageLeaf);
+    const cropBox = AttrResolver.cropBox(
+      pageDict,
+      inherited,
+      pageLeaf,
+      mediaBox,
+    );
+    const rotate = AttrResolver.rotate(pageDict, inherited, pageLeaf, pageRef);
+    const resources = AttrResolver.resources(pageDict, inherited, pageLeaf);
 
     const warnings: PdfWarning[] = [];
     if (rotate.warning.some) {
