@@ -10,12 +10,11 @@ import type {
 import { none, type Option, some } from "../../utils/option/index";
 import { err, ok, type Result } from "../../utils/result/index";
 import type { ResolveRef } from "../catalog-parser";
+import { readBoxFromDict, readRotateFromDict } from "./dict-reader";
+import { IndirectRef as IndirectRefNs } from "./indirect-ref";
 import {
   InheritanceResolver,
   type InheritedAttrs,
-  readBoxFromDict,
-  readRotateFromDict,
-  toBrandedRef,
 } from "./inheritance-resolver";
 import type { ResolvedPage } from "./resolved-page";
 
@@ -152,15 +151,15 @@ const resolveResources = async (
     });
     return undefined;
   }
-  const branded = toBrandedRef(value);
-  if (branded === undefined) {
+  const indirectRef = IndirectRefNs.from(value);
+  if (!indirectRef.some) {
     warnings.push({
       code: "RESOURCES_RESOLVE_FAILED",
       message: `Failed to resolve /Resources indirect-ref ${value.objectNumber} ${value.generationNumber}: invalid object number`,
     });
     return undefined;
   }
-  const resolved = await resolveRef(branded);
+  const resolved = await resolveRef(indirectRef.value);
   if (!resolved.ok) {
     warnings.push({
       code: "RESOURCES_RESOLVE_FAILED",
@@ -330,8 +329,8 @@ const walkInternal = async (
 
   let actualCount = 0;
   for (const rawKid of kids.refs) {
-    const branded = toBrandedRef(rawKid);
-    if (branded === undefined) {
+    const indirectRef = IndirectRefNs.from(rawKid);
+    if (!indirectRef.some) {
       state.warnings.push({
         code: "UNKNOWN_PAGE_TYPE",
         message: `Invalid /Kids entry in ${key}: bad object number`,
@@ -340,7 +339,7 @@ const walkInternal = async (
     }
     const before = state.pages.length;
     const childResult = await walkInternal(
-      branded,
+      indirectRef.value,
       nextStack,
       depth + 1,
       state,
