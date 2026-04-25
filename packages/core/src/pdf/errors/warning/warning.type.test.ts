@@ -30,3 +30,8 @@ test("PdfWarningCode に INFO_NOT_DICTIONARY が含まれる", () => {
   const code: PdfWarningCode = "INFO_NOT_DICTIONARY";
   expect(code).toBe("INFO_NOT_DICTIONARY");
 });
+
+test("PdfWarningCode に STRING_DECODE_FAILED が含まれる", () => {
+  const code: PdfWarningCode = "STRING_DECODE_FAILED";
+  expect(code).toBe("STRING_DECODE_FAILED");
+});

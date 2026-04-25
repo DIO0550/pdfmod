@@ -23,7 +23,8 @@ export type PdfWarningCode =
   | "PAGE_TREE_TOO_DEEP"
   | "RESOURCES_RESOLVE_FAILED"
   | "INFO_RESOLVE_FAILED"
-  | "INFO_NOT_DICTIONARY";
+  | "INFO_NOT_DICTIONARY"
+  | "STRING_DECODE_FAILED";
 
 /**
  * 回復可能なPDF問題の警告。
