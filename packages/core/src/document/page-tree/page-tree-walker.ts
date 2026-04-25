@@ -333,7 +333,7 @@ const walkInternal = async (
     if (!indirectRef.some) {
       state.warnings.push({
         code: "UNKNOWN_PAGE_TYPE",
-        message: `Invalid /Kids entry in ${key}: bad object number`,
+        message: `Invalid /Kids entry in ${key}: invalid indirect reference (object and/or generation)`,
       });
       continue;
     }
