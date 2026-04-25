@@ -1,8 +1,14 @@
 import { expect, test } from "vitest";
-import { GenerationNumber } from "../../pdf/types/generation-number/index";
-import { ObjectNumber } from "../../pdf/types/object-number/index";
-import { IndirectRef } from "./indirect-ref";
-import { indirectRefValue } from "./page-tree-walker.test.helpers";
+import { GenerationNumber } from "../generation-number/index";
+import { ObjectNumber } from "../object-number/index";
+import type { PdfIndirectRef } from "../pdf-types/index";
+import { IndirectRef } from "./index";
+
+const indirectRefValue = (objNum: number, genNum = 0): PdfIndirectRef => ({
+  type: "indirect-ref",
+  objectNumber: objNum,
+  generationNumber: genNum,
+});
 
 test("IndirectRef.from は objectNumber が 0 のとき None を返す", () => {
   expect(IndirectRef.from(indirectRefValue(0, 0))).toEqual({ some: false });

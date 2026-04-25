@@ -1,6 +1,7 @@
 import { NumberEx } from "../../ext/number/index";
 import type { PdfError } from "../../pdf/errors/error/index";
 import type { PdfWarning } from "../../pdf/errors/warning/index";
+import { IndirectRef } from "../../pdf/types/indirect-ref/index";
 import type {
   PdfDictionary,
   PdfIndirectRef,
@@ -10,7 +11,6 @@ import { none, type Option, some } from "../../utils/option/index";
 import { err, ok, type Result } from "../../utils/result/index";
 import type { ResolveRef } from "../catalog-parser";
 import { DictReader } from "./dict-reader";
-import { IndirectRef } from "./indirect-ref";
 import {
   InheritanceResolver,
   type InheritedAttrs,
