@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import type { PdfWarning } from "../pdf/errors/warning/index";
-import { decodePdfDocEncoding } from "./pdf-doc-encoding";
+import { decodePdfDocEncoding, REPLACEMENT_CHAR } from "./pdf-doc-encoding";
 
 test("ASCII バイト列をそのままデコードする", () => {
   const warnings: PdfWarning[] = [];
@@ -86,4 +86,56 @@ test.each(
   );
   expect(result).toBe(expected);
   expect(warnings).toHaveLength(0);
+});
+
+test("未割当バイト 0x9F は U+FFFD に置換される", () => {
+  const warnings: PdfWarning[] = [];
+  const result = decodePdfDocEncoding(
+    new Uint8Array([0x9f]),
+    "Title",
+    warnings,
+  );
+  expect(result).toBe(REPLACEMENT_CHAR);
+  expect(warnings).toHaveLength(1);
+  expect(warnings[0].code).toBe("STRING_DECODE_FAILED");
+});
+
+test("未割当バイト 0xAD は U+FFFD に置換される", () => {
+  const warnings: PdfWarning[] = [];
+  const result = decodePdfDocEncoding(
+    new Uint8Array([0xad]),
+    "Title",
+    warnings,
+  );
+  expect(result).toBe(REPLACEMENT_CHAR);
+  expect(warnings).toHaveLength(1);
+  expect(warnings[0].code).toBe("STRING_DECODE_FAILED");
+});
+
+test("未割当バイトが複数あっても警告は 1 件に集約される", () => {
+  const warnings: PdfWarning[] = [];
+  const result = decodePdfDocEncoding(
+    new Uint8Array([0x9f, 0x41, 0xad, 0x42]),
+    "Subject",
+    warnings,
+  );
+  expect(result).toBe(`${REPLACEMENT_CHAR}A${REPLACEMENT_CHAR}B`);
+  expect(warnings).toHaveLength(1);
+  expect(warnings[0].code).toBe("STRING_DECODE_FAILED");
+});
+
+test("未割当が混じっていても戻り値は string", () => {
+  const warnings: PdfWarning[] = [];
+  const result = decodePdfDocEncoding(
+    new Uint8Array([0x9f]),
+    "Title",
+    warnings,
+  );
+  expect(typeof result).toBe("string");
+});
+
+test("警告メッセージに fieldName が含まれる", () => {
+  const warnings: PdfWarning[] = [];
+  decodePdfDocEncoding(new Uint8Array([0x9f]), "Author", warnings);
+  expect(warnings[0].message).toContain("Author");
 });
