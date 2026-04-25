@@ -8,8 +8,14 @@ export const REPLACEMENT_CHAR = "�";
 /** PDFDocEncoding テーブルのエントリ数（1 バイト = 256 値）。 */
 const TABLE_SIZE = 256;
 
-/** ASCII / 制御文字をそのまま U+0000..U+007F にマップする領域の上端。 */
-const PASSTHROUGH_END = 0x7f;
+/**
+ * 0x00..0x17 と 0x20..0x7F は対応する U+0000..U+0017 / U+0020..U+007F に
+ * そのまま素通しでマップする。0x18..0x1F は別領域のダイアクリティカル文字に
+ * 割り当てられるため、素通しの対象外。
+ */
+const PASSTHROUGH_LOW_END = 0x17;
+const PASSTHROUGH_HIGH_START = 0x20;
+const PASSTHROUGH_HIGH_END = 0x7f;
 
 /** 8 文字のダイアクリティカル領域の開始バイト (˘)。 */
 const DIACRITIC_START = 0x18;
@@ -89,7 +95,10 @@ const UNASSIGNED_LATIN1_HOLE = 0xad;
  */
 const buildTable = (): ReadonlyArray<string | undefined> => {
   const table: (string | undefined)[] = Array.from({ length: TABLE_SIZE });
-  for (let i = 0; i <= PASSTHROUGH_END; i++) {
+  for (let i = 0; i <= PASSTHROUGH_LOW_END; i++) {
+    table[i] = String.fromCharCode(i);
+  }
+  for (let i = PASSTHROUGH_HIGH_START; i <= PASSTHROUGH_HIGH_END; i++) {
     table[i] = String.fromCharCode(i);
   }
   for (let i = 0; i < DIACRITIC_CHARS.length; i++) {
