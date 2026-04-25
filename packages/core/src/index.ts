@@ -37,7 +37,6 @@ export {
   ObjectStreamHeader,
 } from "./objects/index";
 export type {
-  IndirectRef,
   ObjectId,
   PdfArray,
   PdfBoolean,
@@ -71,6 +70,7 @@ export type {
 export {
   ByteOffset,
   GenerationNumber,
+  IndirectRef,
   ObjectNumber,
   PdfVersion,
   TokenType,

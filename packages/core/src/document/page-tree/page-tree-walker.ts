@@ -1,8 +1,8 @@
 import { NumberEx } from "../../ext/number/index";
 import type { PdfError } from "../../pdf/errors/error/index";
 import type { PdfWarning } from "../../pdf/errors/warning/index";
+import { IndirectRef } from "../../pdf/types/indirect-ref/index";
 import type {
-  IndirectRef,
   PdfDictionary,
   PdfIndirectRef,
   PdfValue,
@@ -10,12 +10,10 @@ import type {
 import { none, type Option, some } from "../../utils/option/index";
 import { err, ok, type Result } from "../../utils/result/index";
 import type { ResolveRef } from "../catalog-parser";
+import { DictReader } from "./dict-reader";
 import {
   InheritanceResolver,
   type InheritedAttrs,
-  readBoxFromDict,
-  readRotateFromDict,
-  toBrandedRef,
 } from "./inheritance-resolver";
 import type { ResolvedPage } from "./resolved-page";
 
@@ -152,15 +150,15 @@ const resolveResources = async (
     });
     return undefined;
   }
-  const branded = toBrandedRef(value);
-  if (branded === undefined) {
+  const indirectRef = IndirectRef.from(value);
+  if (!indirectRef.some) {
     warnings.push({
       code: "RESOURCES_RESOLVE_FAILED",
-      message: `Failed to resolve /Resources indirect-ref ${value.objectNumber} ${value.generationNumber}: invalid object number`,
+      message: `Failed to resolve /Resources indirect-ref ${value.objectNumber} ${value.generationNumber}: invalid indirect reference`,
     });
     return undefined;
   }
-  const resolved = await resolveRef(branded);
+  const resolved = await resolveRef(indirectRef.value);
   if (!resolved.ok) {
     warnings.push({
       code: "RESOURCES_RESOLVE_FAILED",
@@ -194,15 +192,15 @@ const readInheritableAttrs = async (
   warnings: PdfWarning[],
 ): Promise<InheritedAttrs> => {
   const attrs: InheritedAttrs = {};
-  const mediaBox = readBoxFromDict(entries, "MediaBox");
+  const mediaBox = DictReader.box(entries, "MediaBox");
   if (mediaBox.some) {
     attrs.mediaBox = mediaBox.value;
   }
-  const cropBox = readBoxFromDict(entries, "CropBox");
+  const cropBox = DictReader.box(entries, "CropBox");
   if (cropBox.some) {
     attrs.cropBox = cropBox.value;
   }
-  const rotate = readRotateFromDict(entries);
+  const rotate = DictReader.rotate(entries);
   if (rotate.some) {
     attrs.rotate = rotate.value;
   }
@@ -330,17 +328,17 @@ const walkInternal = async (
 
   let actualCount = 0;
   for (const rawKid of kids.refs) {
-    const branded = toBrandedRef(rawKid);
-    if (branded === undefined) {
+    const indirectRef = IndirectRef.from(rawKid);
+    if (!indirectRef.some) {
       state.warnings.push({
         code: "UNKNOWN_PAGE_TYPE",
-        message: `Invalid /Kids entry in ${key}: bad object number`,
+        message: `Invalid /Kids entry in ${key}: invalid indirect reference (object and/or generation)`,
       });
       continue;
     }
     const before = state.pages.length;
     const childResult = await walkInternal(
-      branded,
+      indirectRef.value,
       nextStack,
       depth + 1,
       state,
