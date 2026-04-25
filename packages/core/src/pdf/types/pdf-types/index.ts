@@ -28,7 +28,10 @@ export enum TokenType {
 
 import type { ByteOffset } from "../byte-offset/index";
 import type { GenerationNumber } from "../generation-number/index";
+import type { IndirectRef } from "../indirect-ref/index";
 import type { ObjectNumber } from "../object-number/index";
+
+export type { IndirectRef } from "../indirect-ref/index";
 
 /**
  * 字句解析器が生成する単一のトークン。
@@ -46,22 +49,6 @@ export interface Token {
   value: string | number | boolean | null;
   /** バイトストリーム内のオフセット位置 */
   offset: ByteOffset;
-}
-
-/**
- * PDF間接オブジェクト参照 (例: "5 0 R")。
- * オブジェクト番号と世代番号の組でオブジェクトを参照する。
- *
- * @example
- * ```ts
- * const ref: IndirectRef = { objectNumber: ObjectNumber.of(5), generationNumber: GenerationNumber.of(0) };
- * ```
- */
-export interface IndirectRef {
-  /** オブジェクト番号 */
-  objectNumber: ObjectNumber;
-  /** 世代番号 */
-  generationNumber: GenerationNumber;
 }
 
 /**

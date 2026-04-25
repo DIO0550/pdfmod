@@ -1,13 +1,24 @@
-import { NumberEx } from "../../ext/number/index";
-import { GenerationNumber } from "../../pdf/types/generation-number/index";
-import { ObjectNumber } from "../../pdf/types/object-number/index";
-import type {
-  IndirectRef as IndirectRefType,
-  PdfIndirectRef,
-} from "../../pdf/types/pdf-types/index";
-import { none, type Option, some } from "../../utils/option/index";
+import { NumberEx } from "../../../ext/number/index";
+import { none, type Option, some } from "../../../utils/option/index";
+import { GenerationNumber } from "../generation-number/index";
+import { ObjectNumber } from "../object-number/index";
+import type { PdfIndirectRef } from "../pdf-types/index";
 
-type IndirectRef = IndirectRefType;
+/**
+ * PDF間接オブジェクト参照 (例: "5 0 R")。
+ * オブジェクト番号と世代番号の組でオブジェクトを参照する。
+ *
+ * @example
+ * ```ts
+ * const ref: IndirectRef = { objectNumber: ObjectNumber.of(5), generationNumber: GenerationNumber.of(0) };
+ * ```
+ */
+interface IndirectRef {
+  /** オブジェクト番号 */
+  objectNumber: ObjectNumber;
+  /** 世代番号 */
+  generationNumber: GenerationNumber;
+}
 
 /**
  * `IndirectRef` の factory / 検証 utility を束ねた namespace。
