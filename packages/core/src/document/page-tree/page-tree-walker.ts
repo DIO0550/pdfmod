@@ -2,7 +2,6 @@ import { NumberEx } from "../../ext/number/index";
 import type { PdfError } from "../../pdf/errors/error/index";
 import type { PdfWarning } from "../../pdf/errors/warning/index";
 import type {
-  IndirectRef,
   PdfDictionary,
   PdfIndirectRef,
   PdfValue,
@@ -11,7 +10,7 @@ import { none, type Option, some } from "../../utils/option/index";
 import { err, ok, type Result } from "../../utils/result/index";
 import type { ResolveRef } from "../catalog-parser";
 import { DictReader } from "./dict-reader";
-import { IndirectRef as IndirectRefNs } from "./indirect-ref";
+import { IndirectRef } from "./indirect-ref";
 import {
   InheritanceResolver,
   type InheritedAttrs,
@@ -151,7 +150,7 @@ const resolveResources = async (
     });
     return undefined;
   }
-  const indirectRef = IndirectRefNs.from(value);
+  const indirectRef = IndirectRef.from(value);
   if (!indirectRef.some) {
     warnings.push({
       code: "RESOURCES_RESOLVE_FAILED",
@@ -329,7 +328,7 @@ const walkInternal = async (
 
   let actualCount = 0;
   for (const rawKid of kids.refs) {
-    const indirectRef = IndirectRefNs.from(rawKid);
+    const indirectRef = IndirectRef.from(rawKid);
     if (!indirectRef.some) {
       state.warnings.push({
         code: "UNKNOWN_PAGE_TYPE",
