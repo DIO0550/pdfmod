@@ -35,3 +35,8 @@ test("PdfWarningCode に STRING_DECODE_FAILED が含まれる", () => {
   const code: PdfWarningCode = "STRING_DECODE_FAILED";
   expect(code).toBe("STRING_DECODE_FAILED");
 });
+
+test("PdfWarningCode に TRAPPED_INVALID が含まれる", () => {
+  const code: PdfWarningCode = "TRAPPED_INVALID";
+  expect(code).toBe("TRAPPED_INVALID");
+});
