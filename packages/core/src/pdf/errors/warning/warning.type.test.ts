@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import type { PdfWarning } from "../../../index";
+import type { PdfWarning, PdfWarningCode } from "../../../index";
 
 test("PdfWarningは全フィールドを持てる", () => {
   const warning: PdfWarning = {
@@ -19,4 +19,9 @@ test("PdfWarningのoffsetとrecoveryは省略可能", () => {
   };
   expect(warning.offset).toBeUndefined();
   expect(warning.recovery).toBeUndefined();
+});
+
+test("PdfWarningCode に INFO_RESOLVE_FAILED が含まれる", () => {
+  const code: PdfWarningCode = "INFO_RESOLVE_FAILED";
+  expect(code).toBe("INFO_RESOLVE_FAILED");
 });
