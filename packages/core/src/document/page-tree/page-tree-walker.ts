@@ -155,7 +155,7 @@ const resolveResources = async (
   if (!indirectRef.some) {
     warnings.push({
       code: "RESOURCES_RESOLVE_FAILED",
-      message: `Failed to resolve /Resources indirect-ref ${value.objectNumber} ${value.generationNumber}: invalid object number`,
+      message: `Failed to resolve /Resources indirect-ref ${value.objectNumber} ${value.generationNumber}: invalid indirect reference`,
     });
     return undefined;
   }
