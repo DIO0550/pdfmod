@@ -1,11 +1,7 @@
 import { NumberEx } from "../../ext/number/index";
-import type {
-  IndirectRef,
-  PdfObject,
-  PdfValue,
-} from "../../pdf/types/pdf-types/index";
+import type { PdfObject, PdfValue } from "../../pdf/types/pdf-types/index";
 import { none, type Option, some } from "../../utils/option/index";
-import { IndirectRef as IndirectRefNs } from "./indirect-ref";
+import { IndirectRef } from "./indirect-ref";
 import type { PdfRectangle } from "./resolved-page";
 
 const BOX_ELEMENT_COUNT = 4;
@@ -108,7 +104,7 @@ export const DictReader = {
       return null;
     }
     if (value.type === "indirect-ref") {
-      const indirectRef = IndirectRefNs.from(value);
+      const indirectRef = IndirectRef.from(value);
       if (!indirectRef.some) {
         return null;
       }
@@ -118,7 +114,7 @@ export const DictReader = {
       const refs: IndirectRef[] = [];
       for (const el of value.elements) {
         if (el.type === "indirect-ref") {
-          const indirectRef = IndirectRefNs.from(el);
+          const indirectRef = IndirectRef.from(el);
           if (indirectRef.some) {
             refs.push(indirectRef.value);
           }
