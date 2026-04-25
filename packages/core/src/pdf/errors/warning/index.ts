@@ -24,7 +24,8 @@ export type PdfWarningCode =
   | "RESOURCES_RESOLVE_FAILED"
   | "INFO_RESOLVE_FAILED"
   | "INFO_NOT_DICTIONARY"
-  | "STRING_DECODE_FAILED";
+  | "STRING_DECODE_FAILED"
+  | "TRAPPED_INVALID";
 
 /**
  * 回復可能なPDF問題の警告。
