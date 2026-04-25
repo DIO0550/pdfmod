@@ -10,7 +10,7 @@ import type {
 import { none, type Option, some } from "../../utils/option/index";
 import { err, ok, type Result } from "../../utils/result/index";
 import type { ResolveRef } from "../catalog-parser";
-import { readBoxFromDict, readRotateFromDict } from "./dict-reader";
+import { DictReader } from "./dict-reader";
 import { IndirectRef as IndirectRefNs } from "./indirect-ref";
 import {
   InheritanceResolver,
@@ -193,15 +193,15 @@ const readInheritableAttrs = async (
   warnings: PdfWarning[],
 ): Promise<InheritedAttrs> => {
   const attrs: InheritedAttrs = {};
-  const mediaBox = readBoxFromDict(entries, "MediaBox");
+  const mediaBox = DictReader.box(entries, "MediaBox");
   if (mediaBox.some) {
     attrs.mediaBox = mediaBox.value;
   }
-  const cropBox = readBoxFromDict(entries, "CropBox");
+  const cropBox = DictReader.box(entries, "CropBox");
   if (cropBox.some) {
     attrs.cropBox = cropBox.value;
   }
-  const rotate = readRotateFromDict(entries);
+  const rotate = DictReader.rotate(entries);
   if (rotate.some) {
     attrs.rotate = rotate.value;
   }
