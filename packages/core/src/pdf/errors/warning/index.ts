@@ -22,7 +22,8 @@ export type PdfWarningCode =
   | "MISSING_KIDS"
   | "PAGE_TREE_TOO_DEEP"
   | "RESOURCES_RESOLVE_FAILED"
-  | "INFO_RESOLVE_FAILED";
+  | "INFO_RESOLVE_FAILED"
+  | "INFO_NOT_DICTIONARY";
 
 /**
  * 回復可能なPDF問題の警告。

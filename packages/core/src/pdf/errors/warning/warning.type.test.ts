@@ -25,3 +25,8 @@ test("PdfWarningCode に INFO_RESOLVE_FAILED が含まれる", () => {
   const code: PdfWarningCode = "INFO_RESOLVE_FAILED";
   expect(code).toBe("INFO_RESOLVE_FAILED");
 });
+
+test("PdfWarningCode に INFO_NOT_DICTIONARY が含まれる", () => {
+  const code: PdfWarningCode = "INFO_NOT_DICTIONARY";
+  expect(code).toBe("INFO_NOT_DICTIONARY");
+});
