@@ -139,3 +139,10 @@ test("警告メッセージに fieldName が含まれる", () => {
   decodePdfDocEncoding(new Uint8Array([0x9f]), "Author", warnings);
   expect(warnings[0].message).toContain("Author");
 });
+
+test("空バイト列は空文字列を返し警告を出さない", () => {
+  const warnings: PdfWarning[] = [];
+  const result = decodePdfDocEncoding(new Uint8Array([]), "Title", warnings);
+  expect(result).toBe("");
+  expect(warnings).toHaveLength(0);
+});
