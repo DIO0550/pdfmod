@@ -5,11 +5,7 @@ import type {
   PdfDictionary,
 } from "../../pdf/types/pdf-types/index";
 import { err, ok, type Result } from "../../utils/result/index";
-import {
-  readAnnotsFromDict,
-  readContentsFromDict,
-  readUserUnitFromDict,
-} from "./dict-reader";
+import { DictReader } from "./dict-reader";
 import { resolveCropBox } from "./resolve-crop-box";
 import { resolveMediaBox } from "./resolve-media-box";
 import { resolveResources } from "./resolve-resources";
@@ -74,9 +70,9 @@ export const InheritanceResolver = {
       resources,
       cropBox,
       rotate: rotate.value,
-      contents: readContentsFromDict(pageDict.entries),
-      annots: readAnnotsFromDict(pageDict.entries),
-      userUnit: readUserUnitFromDict(pageDict.entries),
+      contents: DictReader.contents(pageDict.entries),
+      annots: DictReader.annots(pageDict.entries),
+      userUnit: DictReader.userUnit(pageDict.entries),
       objectRef: pageRef,
     };
     return ok({ page, warnings });
