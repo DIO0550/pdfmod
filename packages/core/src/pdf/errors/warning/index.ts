@@ -21,7 +21,8 @@ export type PdfWarningCode =
   | "DATE_PARSE_FAILED"
   | "MISSING_KIDS"
   | "PAGE_TREE_TOO_DEEP"
-  | "RESOURCES_RESOLVE_FAILED";
+  | "RESOURCES_RESOLVE_FAILED"
+  | "INFO_RESOLVE_FAILED";
 
 /**
  * 回復可能なPDF問題の警告。
