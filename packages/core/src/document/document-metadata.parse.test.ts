@@ -15,3 +15,10 @@ test.each([
   expect(result).toBe(literal);
   expect(warnings).toHaveLength(0);
 });
+
+test("/Trapped 値が未指定（undefined）の場合は undefined（警告なし）", () => {
+  const warnings: PdfWarning[] = [];
+  const result = parseTrappedName(undefined, warnings);
+  expect(result).toBeUndefined();
+  expect(warnings).toHaveLength(0);
+});
