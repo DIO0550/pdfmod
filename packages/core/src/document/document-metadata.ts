@@ -1,10 +1,16 @@
 import type { PdfWarning } from "../pdf/errors/warning/index";
 import type { PdfValue } from "../pdf/types/pdf-types/index";
 
+/** 内部利用: 許可される `/Trapped` 値の不変リスト（{@link TrappedState} の唯一の真実）。 */
+const TRAPPED_ALLOWED = ["True", "False", "Unknown"] as const;
+
 /**
  * `/Trapped` の許可値（ISO 32000-2:2020 § 14.3.3）。
+ *
+ * {@link TRAPPED_ALLOWED} 配列から導出することで、リテラルとランタイムリストの
+ * ドリフトを防ぐ。
  */
-export type TrappedState = "True" | "False" | "Unknown";
+export type TrappedState = (typeof TRAPPED_ALLOWED)[number];
 
 /**
  * PDF ドキュメントの `/Info` 由来メタデータ。
@@ -33,9 +39,6 @@ export interface DocumentMetadata {
   readonly trapped?: TrappedState;
 }
 
-/** 内部利用: 許可される `/Trapped` 値の不変リスト。 */
-const TRAPPED_ALLOWED = ["True", "False", "Unknown"] as const;
-
 /**
  * 文字列が {@link TrappedState} のリテラル値かを判定する型ガード。
  *
@@ -47,12 +50,34 @@ const isTrappedLiteral = (s: string): s is TrappedState => {
 };
 
 /**
+ * 非 PdfName 値の警告メッセージ用に、type と実値の要約を文字列化する。
+ *
+ * @param value - 入力 PdfValue
+ * @returns デバッグ用の `type=...; value=...` 形式の要約文字列
+ */
+const describeNonNameValue = (value: PdfValue): string => {
+  if (value.type === "boolean") {
+    return `type=boolean; value=${value.value}`;
+  }
+  if (value.type === "integer" || value.type === "real") {
+    return `type=${value.type}; value=${value.value}`;
+  }
+  if (value.type === "string") {
+    return `type=string; encoding=${value.encoding}; byteLength=${value.value.length}`;
+  }
+  if (value.type === "indirect-ref") {
+    return `type=indirect-ref; objectNumber=${value.objectNumber}; generationNumber=${value.generationNumber}`;
+  }
+  return `type=${value.type}`;
+};
+
+/**
  * `/Trapped` の Name 値を {@link TrappedState} リテラルに解釈する。
  *
  * - `value` が `undefined` → `undefined`（警告なし、未指定扱い）
  * - PdfName で値が `"True"` / `"False"` / `"Unknown"` → 該当リテラル
  * - PdfName だが未知の値 → `undefined` + `TRAPPED_INVALID` 警告
- * - PdfName 以外の型 → `undefined` + `TRAPPED_INVALID` 警告
+ * - PdfName 以外の型 → `undefined` + `TRAPPED_INVALID` 警告（type と実値要約をメッセージに含める）
  *
  * 大文字小文字を区別する（`"true"` は不正）。
  *
@@ -70,7 +95,7 @@ export const parseTrappedName = (
   if (value.type !== "name") {
     warnings.push({
       code: "TRAPPED_INVALID",
-      message: `/Trapped expected Name but got ${value.type}`,
+      message: `/Trapped expected Name but got ${describeNonNameValue(value)}`,
     });
     return undefined;
   }

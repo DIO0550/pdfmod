@@ -73,7 +73,7 @@ test.each(
   expect(warnings[0].code).toBe("TRAPPED_INVALID");
 });
 
-test("/Trapped が PdfString のとき undefined + TRAPPED_INVALID", () => {
+test("/Trapped が PdfString のとき undefined + TRAPPED_INVALID で encoding と byteLength を含む", () => {
   const warnings: PdfWarning[] = [];
   const stringValue: PdfValue = {
     type: "string",
@@ -84,17 +84,31 @@ test("/Trapped が PdfString のとき undefined + TRAPPED_INVALID", () => {
   expect(result).toBeUndefined();
   expect(warnings).toHaveLength(1);
   expect(warnings[0].code).toBe("TRAPPED_INVALID");
-  expect(warnings[0].message).toContain("string");
+  expect(warnings[0].message).toContain("type=string");
+  expect(warnings[0].message).toContain("encoding=literal");
+  expect(warnings[0].message).toContain("byteLength=4");
 });
 
-test("/Trapped が PdfBoolean のとき undefined + TRAPPED_INVALID", () => {
+test("/Trapped が PdfBoolean のとき undefined + TRAPPED_INVALID で実値が含まれる", () => {
   const warnings: PdfWarning[] = [];
   const boolValue: PdfValue = { type: "boolean", value: true };
   const result = parseTrappedName(boolValue, warnings);
   expect(result).toBeUndefined();
   expect(warnings).toHaveLength(1);
   expect(warnings[0].code).toBe("TRAPPED_INVALID");
-  expect(warnings[0].message).toContain("boolean");
+  expect(warnings[0].message).toContain("type=boolean");
+  expect(warnings[0].message).toContain("value=true");
+});
+
+test("/Trapped が PdfInteger のとき undefined + TRAPPED_INVALID で実値が含まれる", () => {
+  const warnings: PdfWarning[] = [];
+  const intValue: PdfValue = { type: "integer", value: 42 };
+  const result = parseTrappedName(intValue, warnings);
+  expect(result).toBeUndefined();
+  expect(warnings).toHaveLength(1);
+  expect(warnings[0].code).toBe("TRAPPED_INVALID");
+  expect(warnings[0].message).toContain("type=integer");
+  expect(warnings[0].message).toContain("value=42");
 });
 
 test("/Trapped 値が未指定 (undefined) の場合 undefined を返し警告は出さない", () => {
