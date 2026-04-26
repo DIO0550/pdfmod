@@ -104,7 +104,7 @@ const readDateField = (
   if (parsed === undefined) {
     warnings.push({
       code: "DATE_PARSE_FAILED",
-      message: `/${key} = ${JSON.stringify(raw)}`,
+      message: `/${key} failed to parse PDF date ${JSON.stringify(raw)}; expected pattern D:YYYYMMDDHHmmSSOHH'mm'`,
     });
     return undefined;
   }
@@ -203,7 +203,7 @@ export const DocumentInfoParser = {
     if (!resolved.ok) {
       warnings.push({
         code: "INFO_RESOLVE_FAILED",
-        message: `Failed to resolve /Info ${trailerDict.info.objectNumber} ${trailerDict.info.generationNumber}: cause=${resolved.error.code}`,
+        message: `Failed to resolve /Info ${trailerDict.info.objectNumber} ${trailerDict.info.generationNumber}: cause=${resolved.error.code}, message=${resolved.error.message}`,
       });
       return ok({ metadata: EMPTY_METADATA, warnings });
     }
