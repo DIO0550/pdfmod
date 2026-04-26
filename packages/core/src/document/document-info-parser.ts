@@ -23,8 +23,12 @@ export interface ParseDocumentInfoResult {
   readonly warnings: PdfWarning[];
 }
 
-/** `/Info` 不在・解決失敗時に返す空 metadata。複数箇所で参照するため定数化。 */
-const EMPTY_METADATA: DocumentMetadata = {};
+/**
+ * `/Info` 不在・解決失敗時に返す空 metadata。
+ * 共有しても安全なように `Object.freeze` で凍結する（複数の `parse()` 呼び出しから
+ * 返却される同一インスタンスがミューテートされて他の結果に影響しないように）。
+ */
+const EMPTY_METADATA: DocumentMetadata = Object.freeze({});
 
 /**
  * テキストフィールド共通のリーダ。値の型チェックと {@link decodePdfString} 呼び出しを束ねる。
@@ -121,17 +125,47 @@ const extractMetadata = (
   warnings: PdfWarning[],
 ): DocumentMetadata => {
   const e = dict.entries;
-  return {
-    title: readStringField(e, "Title", warnings),
-    author: readStringField(e, "Author", warnings),
-    subject: readStringField(e, "Subject", warnings),
-    keywords: readStringField(e, "Keywords", warnings),
-    creator: readStringField(e, "Creator", warnings),
-    producer: readStringField(e, "Producer", warnings),
-    creationDate: readDateField(e, "CreationDate", warnings),
-    modDate: readDateField(e, "ModDate", warnings),
-    trapped: parseTrappedName(e.get("Trapped"), warnings),
-  };
+  const metadata: {
+    -readonly [K in keyof DocumentMetadata]: DocumentMetadata[K];
+  } = {};
+
+  const title = readStringField(e, "Title", warnings);
+  if (title !== undefined) {
+    metadata.title = title;
+  }
+  const author = readStringField(e, "Author", warnings);
+  if (author !== undefined) {
+    metadata.author = author;
+  }
+  const subject = readStringField(e, "Subject", warnings);
+  if (subject !== undefined) {
+    metadata.subject = subject;
+  }
+  const keywords = readStringField(e, "Keywords", warnings);
+  if (keywords !== undefined) {
+    metadata.keywords = keywords;
+  }
+  const creator = readStringField(e, "Creator", warnings);
+  if (creator !== undefined) {
+    metadata.creator = creator;
+  }
+  const producer = readStringField(e, "Producer", warnings);
+  if (producer !== undefined) {
+    metadata.producer = producer;
+  }
+  const creationDate = readDateField(e, "CreationDate", warnings);
+  if (creationDate !== undefined) {
+    metadata.creationDate = creationDate;
+  }
+  const modDate = readDateField(e, "ModDate", warnings);
+  if (modDate !== undefined) {
+    metadata.modDate = modDate;
+  }
+  const trapped = parseTrappedName(e.get("Trapped"), warnings);
+  if (trapped !== undefined) {
+    metadata.trapped = trapped;
+  }
+  return metadata;
 };
 
 /**

@@ -16,7 +16,7 @@ export type TrappedState = (typeof TRAPPED_ALLOWED)[number];
  * PDF ドキュメントの `/Info` 由来メタデータ。
  * ISO 32000-2:2020 § 14.3.3 (Document Information Dictionary) 準拠。
  *
- * 全フィールド optional。`/Info` 不在・抽出失敗時は `undefined`。
+ * 全フィールド optional。各フィールドは、`/Info` に存在しない場合や抽出に失敗した場合は `undefined`。
  */
 export interface DocumentMetadata {
   /** `/Title` — ドキュメントのタイトル */
