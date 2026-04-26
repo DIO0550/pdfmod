@@ -59,3 +59,22 @@ test("BOM + 奇数長バイト列は undefined + STRING_DECODE_FAILED", () => {
   expect(warnings[0].code).toBe("STRING_DECODE_FAILED");
   expect(warnings[0].message).toContain("Title");
 });
+
+test("BOM + 単独 high surrogate (D8 3D + 通常文字) は undefined + STRING_DECODE_FAILED", () => {
+  const warnings: PdfWarning[] = [];
+  // 0xFE 0xFF + 0xD8 0x3D 0x00 0x41 (high surrogate の後に通常の A が続く = 不正)
+  const bytes = new Uint8Array([0xfe, 0xff, 0xd8, 0x3d, 0x00, 0x41]);
+  const result = decodePdfString(pdfString(bytes), "Title", warnings);
+  expect(result).toBeUndefined();
+  expect(warnings).toHaveLength(1);
+  expect(warnings[0].code).toBe("STRING_DECODE_FAILED");
+});
+
+test("BOM + 単独 low surrogate (DE 80 単独) は undefined + STRING_DECODE_FAILED", () => {
+  const warnings: PdfWarning[] = [];
+  const bytes = new Uint8Array([0xfe, 0xff, 0xde, 0x80]);
+  const result = decodePdfString(pdfString(bytes), "Title", warnings);
+  expect(result).toBeUndefined();
+  expect(warnings).toHaveLength(1);
+  expect(warnings[0].code).toBe("STRING_DECODE_FAILED");
+});
