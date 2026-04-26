@@ -1,9 +1,12 @@
 import { expect, test } from "vitest";
 import type {
+  DocumentMetadata,
   InheritedAttrs,
+  ParseDocumentInfoResult,
   ParsedCatalog,
   ResolvedPage,
   ResolveRef,
+  TrappedState,
   WalkPageTreeResult,
 } from "./index";
 import { Option, PdfVersion, Result } from "./index";
@@ -72,6 +75,23 @@ test("ParsedCatalog型とResolveRef型が参照できる", () => {
   const resolver: ResolveRef = async () => Result.ok({ type: "null" as const });
   expect(parsed.version).toBe(version);
   expect(typeof resolver).toBe("function");
+});
+
+test("DocumentMetadata / TrappedState / ParseDocumentInfoResult 型がルートから参照できる", () => {
+  const trapped: TrappedState = "True";
+  const meta: DocumentMetadata = {
+    title: "MyDoc",
+    author: "Alice",
+    creationDate: new Date(2023, 0, 1),
+    trapped,
+  };
+  const result: ParseDocumentInfoResult = {
+    metadata: meta,
+    warnings: [],
+  };
+  expect(result.metadata.title).toBe("MyDoc");
+  expect(result.metadata.trapped).toBe("True");
+  expect(result.warnings).toHaveLength(0);
 });
 
 test("ResolvedPage / InheritedAttrs / WalkPageTreeResult 型が参照できる", () => {

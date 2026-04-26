@@ -6,17 +6,21 @@
  */
 
 export type {
+  DocumentMetadata,
   InheritedAttrs,
   PageRotate,
+  ParseDocumentInfoResult,
   ParsedCatalog,
   PdfRectangle,
   ResolvedPage,
   ResolveInheritedOutcome,
   ResolveRef,
+  TrappedState,
   WalkPageTreeResult,
 } from "./document/index";
 export {
   CatalogParser,
+  DocumentInfoParser,
   InheritanceResolver,
   PageTreeWalker,
 } from "./document/index";

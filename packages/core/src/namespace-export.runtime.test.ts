@@ -2,6 +2,7 @@ import { expect, test } from "vitest";
 import {
   ByteOffset,
   CatalogParser,
+  DocumentInfoParser,
   GenerationNumber,
   InheritanceResolver,
   LRUCache,
@@ -34,6 +35,7 @@ test.each([
   { name: "ObjectStreamBody.extract", value: ObjectStreamBody.extract },
   { name: "ObjectStreamHeader.parse", value: ObjectStreamHeader.parse },
   { name: "CatalogParser.parse", value: CatalogParser.parse },
+  { name: "DocumentInfoParser.parse", value: DocumentInfoParser.parse },
   { name: "PageTreeWalker.walk", value: PageTreeWalker.walk },
   { name: "InheritanceResolver.resolve", value: InheritanceResolver.resolve },
 ])("$nameがルートからexportされている", ({ value }) => {
