@@ -19,7 +19,8 @@ interface ParsedDateParts {
   readonly tzMin: number;
 }
 
-const STRUCT_PATTERN = /^D:(\d{4})(\d{2})?(\d{2})?(\d{2})?(\d{2})?(\d{2})?$/;
+const STRUCT_PATTERN =
+  /^D:(\d{4})(\d{2})?(\d{2})?(\d{2})?(\d{2})?(\d{2})?(?:(Z)|([+-])(\d{2})'(\d{2})')?$/;
 
 /**
  * `"D:..."` 文字列を {@link ParsedDateParts} に分解し各成分を範囲検証する。
@@ -34,7 +35,19 @@ const extractDateParts = (raw: string): ParsedDateParts | undefined => {
   if (!match) {
     return undefined;
   }
-  const [, yearStr, monthStr, dayStr, hourStr, minStr, secStr] = match;
+  const [
+    ,
+    yearStr,
+    monthStr,
+    dayStr,
+    hourStr,
+    minStr,
+    secStr,
+    zStr,
+    signStr,
+    tzHourStr,
+    tzMinStr,
+  ] = match;
   const year = Number(yearStr);
   let month = 1;
   if (monthStr !== undefined) {
@@ -56,6 +69,16 @@ const extractDateParts = (raw: string): ParsedDateParts | undefined => {
   if (secStr !== undefined) {
     sec = Number(secStr);
   }
+  let tzSign: "+" | "-" | "Z" | undefined;
+  let tzHour = 0;
+  let tzMin = 0;
+  if (zStr === "Z") {
+    tzSign = "Z";
+  } else if (signStr === "+" || signStr === "-") {
+    tzSign = signStr;
+    tzHour = Number(tzHourStr);
+    tzMin = Number(tzMinStr);
+  }
   return {
     year,
     month,
@@ -63,9 +86,9 @@ const extractDateParts = (raw: string): ParsedDateParts | undefined => {
     hour,
     min,
     sec,
-    tzSign: undefined,
-    tzHour: 0,
-    tzMin: 0,
+    tzSign,
+    tzHour,
+    tzMin,
   };
 };
 
@@ -86,7 +109,17 @@ export const parsePdfDate = (raw: string): Date | undefined => {
   if (parsed === undefined) {
     return undefined;
   }
-  return new Date(
+  if (parsed.tzSign === undefined) {
+    return new Date(
+      parsed.year,
+      parsed.month - 1,
+      parsed.day,
+      parsed.hour,
+      parsed.min,
+      parsed.sec,
+    );
+  }
+  const utcMs = Date.UTC(
     parsed.year,
     parsed.month - 1,
     parsed.day,
@@ -94,4 +127,5 @@ export const parsePdfDate = (raw: string): Date | undefined => {
     parsed.min,
     parsed.sec,
   );
+  return new Date(utcMs);
 };
