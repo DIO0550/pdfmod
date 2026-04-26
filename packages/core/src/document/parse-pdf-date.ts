@@ -25,6 +25,8 @@ const STRUCT_PATTERN =
 const MINUTES_PER_HOUR = 60;
 const MS_PER_MINUTE = 60_000;
 
+const YEAR_MIN = 1000;
+const YEAR_MAX = 9999;
 const MONTH_MIN = 1;
 const MONTH_MAX = 12;
 const DAY_MIN = 1;
@@ -61,6 +63,9 @@ const extractDateParts = (raw: string): ParsedDateParts | undefined => {
     tzMinStr,
   ] = match;
   const year = Number(yearStr);
+  if (year < YEAR_MIN || year > YEAR_MAX) {
+    return undefined;
+  }
   let month = 1;
   if (monthStr !== undefined) {
     month = Number(monthStr);
