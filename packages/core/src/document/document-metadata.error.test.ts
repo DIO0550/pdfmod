@@ -12,3 +12,23 @@ test("/Trapped Name 'Yes' は undefined + TRAPPED_INVALID", () => {
   expect(warnings).toHaveLength(1);
   expect(warnings[0].code).toBe("TRAPPED_INVALID");
 });
+
+test.each([
+  ["true"],
+  ["false"],
+  ["unknown"],
+])("/Trapped Name '%s' (小文字) は undefined + TRAPPED_INVALID（大文字小文字を区別する）", (lowercase) => {
+  const warnings: PdfWarning[] = [];
+  const result = parseTrappedName(makeName(lowercase), warnings);
+  expect(result).toBeUndefined();
+  expect(warnings).toHaveLength(1);
+  expect(warnings[0].code).toBe("TRAPPED_INVALID");
+});
+
+test("/Trapped Name '' (空文字) は undefined + TRAPPED_INVALID", () => {
+  const warnings: PdfWarning[] = [];
+  const result = parseTrappedName(makeName(""), warnings);
+  expect(result).toBeUndefined();
+  expect(warnings).toHaveLength(1);
+  expect(warnings[0].code).toBe("TRAPPED_INVALID");
+});
