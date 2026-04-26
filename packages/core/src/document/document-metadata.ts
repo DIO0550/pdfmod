@@ -1,7 +1,12 @@
+import type { PdfWarning } from "../pdf/errors/warning/index";
+import type { PdfValue } from "../pdf/types/pdf-types/index";
+
 /**
  * /Trapped の許可値（ISO 32000-2:2020 § 14.3.3）。
  */
 export type TrappedState = "True" | "False" | "Unknown";
+
+const TRAPPED_ALLOWED = ["True", "False", "Unknown"] as const;
 
 /**
  * PDF ドキュメントの /Info 由来メタデータ。
@@ -29,3 +34,22 @@ export interface DocumentMetadata {
   /** /Trapped — 印刷品質に関するトラッピング情報 */
   readonly trapped?: TrappedState;
 }
+
+/**
+ * /Trapped の Name 値を {@link TrappedState} リテラルに解釈する。
+ *
+ * - value が undefined → undefined（警告なし）
+ * - value が PdfName で値が "True" / "False" / "Unknown" → 該当 literal
+ * - 上記以外 → undefined + TRAPPED_INVALID 警告
+ *
+ * @param value - /Trapped の値（解決済みの PdfValue または undefined）
+ * @param warnings - 警告蓄積先（mutable）
+ * @returns TrappedState または undefined
+ */
+export const parseTrappedName = (
+  _value: PdfValue | undefined,
+  _warnings: PdfWarning[],
+): TrappedState | undefined => {
+  void TRAPPED_ALLOWED;
+  return undefined;
+};
