@@ -18,6 +18,36 @@ const isTrappedLiteral = (value: string): value is TrappedState =>
   (TRAPPED_ALLOWED as readonly string[]).includes(value);
 
 /**
+ * PdfValue の診断用要約を生成する。
+ * 警告メッセージで「実値が分かる形」で残すために使う。
+ *
+ * @param value - 要約対象の PdfValue
+ * @returns 値の種別ごとの簡潔な文字列表現
+ */
+const summarizePdfValue = (value: PdfValue): string => {
+  switch (value.type) {
+    case "null":
+      return "null";
+    case "boolean":
+      return String(value.value);
+    case "integer":
+      return String(value.value);
+    case "real":
+      return String(value.value);
+    case "string":
+      return `<bytes len=${value.value.length} enc=${value.encoding}>`;
+    case "name":
+      return `'${value.value}'`;
+    case "array":
+      return `<array length=${value.elements.length}>`;
+    case "dictionary":
+      return `<dict size=${value.entries.size}>`;
+    case "indirect-ref":
+      return `<ref ${value.objectNumber} ${value.generationNumber}>`;
+  }
+};
+
+/**
  * PDF ドキュメントの /Info 由来メタデータ。
  * ISO 32000-2:2020 § 14.3.3 (Document Information Dictionary) 準拠。
  *
@@ -65,7 +95,7 @@ export const parseTrappedName = (
   if (value.type !== "name") {
     warnings.push({
       code: "TRAPPED_INVALID",
-      message: `/Trapped expected Name but got ${value.type}`,
+      message: `/Trapped expected Name but got ${value.type} (${summarizePdfValue(value)})`,
     });
     return undefined;
   }
