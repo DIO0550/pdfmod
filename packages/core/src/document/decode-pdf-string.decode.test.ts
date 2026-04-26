@@ -48,3 +48,14 @@ test("BOM + UTF-16BE のサロゲートペア（🚀 = U+1F680）が正しくデ
   expect(result).toBe("🚀");
   expect(warnings).toHaveLength(0);
 });
+
+test("BOM + 奇数長バイト列は undefined + STRING_DECODE_FAILED", () => {
+  const warnings: PdfWarning[] = [];
+  // 0xFE 0xFF + [0x00, 0x41, 0x00] (3 バイト = 奇数)
+  const bytes = new Uint8Array([0xfe, 0xff, 0x00, 0x41, 0x00]);
+  const result = decodePdfString(pdfString(bytes), "Title", warnings);
+  expect(result).toBeUndefined();
+  expect(warnings).toHaveLength(1);
+  expect(warnings[0].code).toBe("STRING_DECODE_FAILED");
+  expect(warnings[0].message).toContain("Title");
+});
