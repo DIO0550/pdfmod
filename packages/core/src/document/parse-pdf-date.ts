@@ -19,7 +19,14 @@ interface ParsedDateParts {
   readonly tzMin: number;
 }
 
-const STRUCT_PATTERN =
+/**
+ * `D:YYYY[MM[DD[HH[mm[SS]]]]][TZ]` 構造を完全一致で検証する正規表現。
+ *
+ * - 末尾 `$` アンカで trailing garbage を拒否
+ * - TZ ブロックは `Z` または `±HH'mm'` のいずれか、または省略
+ * - 末尾 `'` 必須（`+09'00` のような欠落形は不一致）
+ */
+const DATE_PATTERN =
   /^D:(\d{4})(\d{2})?(\d{2})?(\d{2})?(\d{2})?(\d{2})?(?:(Z)|([+-])(\d{2})'(\d{2})')?$/;
 
 const MINUTES_PER_HOUR = 60;
@@ -37,15 +44,17 @@ const MIN_MAX = 59;
 const SEC_MAX = 59;
 
 /**
- * `"D:..."` 文字列を {@link ParsedDateParts} に分解し各成分を範囲検証する。
+ * `"D:..."` 文字列を {@link DATE_PATTERN} で構造検証し {@link ParsedDateParts}
+ * に分解、各成分を範囲検証する。
  *
- * 構造検証は Step 15 で TZ も含む `DATE_PATTERN` 正規表現に拡張される。
+ * `RegExp.exec` が標準 API として `null` を返すため、この境界で `undefined` に
+ * 正規化する。プロジェクト内では以後 `null` を扱わない。
  *
  * @param raw - PDF 日時文字列
  * @returns 構造・範囲が妥当な場合 `ParsedDateParts`、不正な場合 `undefined`
  */
 const extractDateParts = (raw: string): ParsedDateParts | undefined => {
-  const match = STRUCT_PATTERN.exec(raw);
+  const match = DATE_PATTERN.exec(raw);
   if (!match) {
     return undefined;
   }
