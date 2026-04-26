@@ -29,10 +29,11 @@ pnpmモノレポ構成で `@pdfmod/core`（PDF処理エンジン）と `@pdfmod/
 
 ## TypeScript 開発ルール
 
-TypeScript コードを変更するすべての作業で以下のスキルを参照すること。
+TypeScript コードを変更するすべての作業で、以下のスキルを **Skill ツールで実行**すること。
+memory に過去の内容があっても省略せず、必ず Skill ツールで最新版を読み込むこと。
 
-- 実装開始時は `implementation-workflow` スキルのフローに従う
-- コーディング中は `coding-standards` スキルを参照
-- テスト作成時は `tdd` および `testing` スキルを参照
-- コードレビュー時は `typescript-code-review-skill` スキルを参照
-- パフォーマンス確認時は `typescript-performance-review-skill` スキルを参照
+- 実装開始時は `implementation-workflow` スキルを Skill ツールで実行し、フローに従う
+- コーディング中は `coding-standards` スキルを Skill ツールで実行
+- テスト作成時は `tdd` および `testing` スキルを Skill ツールで実行
+- コードレビュー時は `typescript-code-review-skill` スキルを Skill ツールで実行
+- パフォーマンス確認時は `typescript-performance-review-skill` スキルを Skill ツールで実行
