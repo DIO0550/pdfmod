@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { parsePdfDate } from "./parse-pdf-date";
+import { parsePdfDate } from "./pdf-date";
 
 test.each([
   ["20230101"],
