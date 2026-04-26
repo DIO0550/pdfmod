@@ -25,6 +25,15 @@ const STRUCT_PATTERN =
 const MINUTES_PER_HOUR = 60;
 const MS_PER_MINUTE = 60_000;
 
+const MONTH_MIN = 1;
+const MONTH_MAX = 12;
+const DAY_MIN = 1;
+const DAY_MAX = 31;
+const TIME_MIN = 0;
+const HOUR_MAX = 23;
+const MIN_MAX = 59;
+const SEC_MAX = 59;
+
 /**
  * `"D:..."` 文字列を {@link ParsedDateParts} に分解し各成分を範囲検証する。
  *
@@ -56,21 +65,36 @@ const extractDateParts = (raw: string): ParsedDateParts | undefined => {
   if (monthStr !== undefined) {
     month = Number(monthStr);
   }
+  if (month < MONTH_MIN || month > MONTH_MAX) {
+    return undefined;
+  }
   let day = 1;
   if (dayStr !== undefined) {
     day = Number(dayStr);
+  }
+  if (day < DAY_MIN || day > DAY_MAX) {
+    return undefined;
   }
   let hour = 0;
   if (hourStr !== undefined) {
     hour = Number(hourStr);
   }
+  if (hour < TIME_MIN || hour > HOUR_MAX) {
+    return undefined;
+  }
   let min = 0;
   if (minStr !== undefined) {
     min = Number(minStr);
   }
+  if (min < TIME_MIN || min > MIN_MAX) {
+    return undefined;
+  }
   let sec = 0;
   if (secStr !== undefined) {
     sec = Number(secStr);
+  }
+  if (sec < TIME_MIN || sec > SEC_MAX) {
+    return undefined;
   }
   let tzSign: "+" | "-" | "Z" | undefined;
   let tzHour = 0;
@@ -80,7 +104,13 @@ const extractDateParts = (raw: string): ParsedDateParts | undefined => {
   } else if (signStr === "+" || signStr === "-") {
     tzSign = signStr;
     tzHour = Number(tzHourStr);
+    if (tzHour < TIME_MIN || tzHour > HOUR_MAX) {
+      return undefined;
+    }
     tzMin = Number(tzMinStr);
+    if (tzMin < TIME_MIN || tzMin > MIN_MAX) {
+      return undefined;
+    }
   }
   return {
     year,
