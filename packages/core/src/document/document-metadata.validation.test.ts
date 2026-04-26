@@ -1,12 +1,12 @@
 import { expect, test } from "vitest";
-import { TrappedState } from "./document-metadata";
+import { PdfTrapped } from "./document-metadata";
 
 test.each([
   ["True"],
   ["False"],
   ["Unknown"],
-])("TrappedState.create returns Ok for %s", (s) => {
-  const result = TrappedState.create(s);
+])("PdfTrapped.create returns Ok for %s", (s) => {
+  const result = PdfTrapped.create(s);
   expect(result).toStrictEqual({ ok: true, value: s });
 });
 
@@ -16,15 +16,15 @@ test.each([
   ["false"],
   ["unknown"],
   [""],
-])("TrappedState.create returns Err for %s", (s) => {
-  const result = TrappedState.create(s);
+])("PdfTrapped.create returns Err for %s", (s) => {
+  const result = PdfTrapped.create(s);
   expect(result.ok).toBe(false);
 });
 
-test("TrappedState.create Err message lists supported values", () => {
-  const result = TrappedState.create("Yes");
+test("PdfTrapped.create Err message lists supported values", () => {
+  const result = PdfTrapped.create("Yes");
   expect(result).toStrictEqual({
     ok: false,
-    error: 'Invalid TrappedState: "Yes" (supported: True, False, Unknown)',
+    error: 'Invalid PdfTrapped: "Yes" (supported: True, False, Unknown)',
   });
 });

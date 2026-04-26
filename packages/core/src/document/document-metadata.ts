@@ -4,37 +4,34 @@ import type { Brand } from "../utils/brand/index";
 import type { Result } from "../utils/result/index";
 import { err, ok } from "../utils/result/index";
 
-declare const TrappedStateBrand: unique symbol;
+declare const PdfTrappedBrand: unique symbol;
 
 /**
  * /Trapped 値を表すブランド型（ISO 32000-2:2020 § 14.3.3）。
- * `TrappedState.create` を通じてのみ構築可能で、"True" / "False" / "Unknown" のみ受理する。
+ * `PdfTrapped.create` を通じてのみ構築可能で、"True" / "False" / "Unknown" のみ受理する。
  */
-type TrappedState = Brand<
-  "True" | "False" | "Unknown",
-  typeof TrappedStateBrand
->;
+type PdfTrapped = Brand<"True" | "False" | "Unknown", typeof PdfTrappedBrand>;
 
 const TRAPPED_ALLOWED = ["True", "False", "Unknown"] as const;
 
-const TrappedState = {
+const PdfTrapped = {
   /**
-   * 文字列から `TrappedState` を構築する。
+   * 文字列から `PdfTrapped` を構築する。
    *
    * @param s - "True" / "False" / "Unknown" のいずれか（大文字小文字区別）
-   * @returns 集合に属すれば `Ok<TrappedState>`、属さなければ `Err<string>`
+   * @returns 集合に属すれば `Ok<PdfTrapped>`、属さなければ `Err<string>`
    */
-  create(s: string): Result<TrappedState, string> {
+  create(s: string): Result<PdfTrapped, string> {
     if (!(TRAPPED_ALLOWED as readonly string[]).includes(s)) {
       return err(
-        `Invalid TrappedState: "${s}" (supported: ${TRAPPED_ALLOWED.join(", ")})`,
+        `Invalid PdfTrapped: "${s}" (supported: ${TRAPPED_ALLOWED.join(", ")})`,
       );
     }
-    return ok(s as TrappedState);
+    return ok(s as PdfTrapped);
   },
 } as const;
 
-export { TrappedState };
+export { PdfTrapped };
 
 /**
  * PdfValue の診断用要約を生成する。
@@ -90,11 +87,11 @@ export interface DocumentMetadata {
   /** /ModDate — 最終更新日時 */
   readonly modDate?: Date;
   /** /Trapped — 印刷品質に関するトラッピング情報 */
-  readonly trapped?: TrappedState;
+  readonly trapped?: PdfTrapped;
 }
 
 /**
- * /Trapped の Name 値を {@link TrappedState} リテラルに解釈する。
+ * /Trapped の Name 値を {@link PdfTrapped} リテラルに解釈する。
  *
  * - value が undefined → undefined（警告なし）
  * - value が PdfName で値が "True" / "False" / "Unknown" → 該当 literal
@@ -102,12 +99,12 @@ export interface DocumentMetadata {
  *
  * @param value - /Trapped の値（解決済みの PdfValue または undefined）
  * @param warnings - 警告蓄積先（mutable）
- * @returns TrappedState または undefined
+ * @returns PdfTrapped または undefined
  */
 export const parseTrappedName = (
   value: PdfValue | undefined,
   warnings: PdfWarning[],
-): TrappedState | undefined => {
+): PdfTrapped | undefined => {
   if (value === undefined) {
     return undefined;
   }
@@ -118,7 +115,7 @@ export const parseTrappedName = (
     });
     return undefined;
   }
-  const result = TrappedState.create(value.value);
+  const result = PdfTrapped.create(value.value);
   if (!result.ok) {
     warnings.push({
       code: "TRAPPED_INVALID",
