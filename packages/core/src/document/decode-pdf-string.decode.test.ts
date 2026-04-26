@@ -39,3 +39,12 @@ test("BOM + UTF-16BE バイト列が日本語文字列にデコードされる",
   expect(result).toBe("日本");
   expect(warnings).toHaveLength(0);
 });
+
+test("BOM + UTF-16BE のサロゲートペア（🚀 = U+1F680）が正しくデコードされる", () => {
+  const warnings: PdfWarning[] = [];
+  // 🚀 = U+1F680 → UTF-16: D83D DE80 → BE bytes: D8 3D DE 80
+  const bytes = new Uint8Array([0xfe, 0xff, 0xd8, 0x3d, 0xde, 0x80]);
+  const result = decodePdfString(pdfString(bytes), "Title", warnings);
+  expect(result).toBe("🚀");
+  expect(warnings).toHaveLength(0);
+});
