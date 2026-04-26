@@ -140,7 +140,68 @@ const extractDateParts = (raw: string): ParsedDateParts | undefined => {
 };
 
 /**
+ * `parsed` の各成分が UTC で構築した `probe` の成分と一致するかを検証する。
+ *
+ * `Date.UTC` は `Date` コンストラクタと同様に範囲外を自動繰り上がり
+ * （2/31 → 3/3 等）するため、`day` 範囲チェックを通過した不在日や、TZ 付き
+ * 不在日 (`D:20230231000000+09'00'`) を弾くために UTC 成分一致検証を行う。
+ *
+ * @param parsed - {@link extractDateParts} の戻り値
+ * @param probe - `Date.UTC(...)` で構築した {@link Date}
+ * @returns 全成分一致時 `true`
+ */
+const matchesProbe = (parsed: ParsedDateParts, probe: Date): boolean => {
+  if (probe.getUTCFullYear() !== parsed.year) {
+    return false;
+  }
+  if (probe.getUTCMonth() !== parsed.month - 1) {
+    return false;
+  }
+  if (probe.getUTCDate() !== parsed.day) {
+    return false;
+  }
+  if (probe.getUTCHours() !== parsed.hour) {
+    return false;
+  }
+  if (probe.getUTCMinutes() !== parsed.min) {
+    return false;
+  }
+  if (probe.getUTCSeconds() !== parsed.sec) {
+    return false;
+  }
+  return true;
+};
+
+/**
+ * `±HH'mm'` 形式の TZ オフセットを ms で返す。
+ *
+ * PDF の `+HH'mm'` は「ローカルが UTC より進んでいる」を意味するため、
+ * UTC ms へ戻す際は符号を反転する（`+09'00'` なら `-9 時間`）。
+ *
+ * @param sign - `"+"` または `"-"`
+ * @param tzHour - TZ 時 (0-23)
+ * @param tzMin - TZ 分 (0-59)
+ * @returns UTC ms に加算するオフセット
+ */
+const tzOffsetMs = (sign: "+" | "-", tzHour: number, tzMin: number): number => {
+  let direction = -1;
+  if (sign === "-") {
+    direction = 1;
+  }
+  return direction * (tzHour * MINUTES_PER_HOUR + tzMin) * MS_PER_MINUTE;
+};
+
+/**
  * PDF 日時文字列 `"D:YYYY[MM[DD[HH[mm[SS]]]]][TZ]"` を {@link Date} にパースする。
+ *
+ * 4 ステップで構成される:
+ *  1. `D:` プレフィックス検証
+ *  2. {@link extractDateParts} による構造・成分範囲検証
+ *  3. UTC で組んだ `probe` との成分一致検証（自動繰り上がり / 不在日防止）
+ *  4. TZ 種別に応じた最終 {@link Date} 構築
+ *      - 省略時はローカル時刻として構築
+ *      - `Z` は UTC 時刻として構築
+ *      - `±HH'mm'` は UTC へオフセット補正
  *
  * 警告 push は本関数では行わず、戻り値が `undefined` のとき呼び出し側で
  * `DATE_PARSE_FAILED` 警告を push する設計（pure 関数）。
@@ -164,15 +225,7 @@ export const parsePdfDate = (raw: string): Date | undefined => {
     parsed.min,
     parsed.sec,
   );
-  const probe = new Date(probeMs);
-  if (
-    probe.getUTCFullYear() !== parsed.year ||
-    probe.getUTCMonth() !== parsed.month - 1 ||
-    probe.getUTCDate() !== parsed.day ||
-    probe.getUTCHours() !== parsed.hour ||
-    probe.getUTCMinutes() !== parsed.min ||
-    probe.getUTCSeconds() !== parsed.sec
-  ) {
+  if (!matchesProbe(parsed, new Date(probeMs))) {
     return undefined;
   }
   if (parsed.tzSign === undefined) {
@@ -188,11 +241,7 @@ export const parsePdfDate = (raw: string): Date | undefined => {
   if (parsed.tzSign === "Z") {
     return new Date(probeMs);
   }
-  let sign = -1;
-  if (parsed.tzSign === "-") {
-    sign = 1;
-  }
-  const offsetMs =
-    sign * (parsed.tzHour * MINUTES_PER_HOUR + parsed.tzMin) * MS_PER_MINUTE;
-  return new Date(probeMs + offsetMs);
+  return new Date(
+    probeMs + tzOffsetMs(parsed.tzSign, parsed.tzHour, parsed.tzMin),
+  );
 };
