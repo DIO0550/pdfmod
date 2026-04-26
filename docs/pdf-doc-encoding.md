@@ -2,9 +2,49 @@
 
 PR #94 で実装した `packages/core/src/document/pdf-doc-encoding.ts` の対応仕様をまとめる。
 
-## なぜこの復号が必要か — `/Info` 辞書とメタデータ
+## PDFDocEncoding の位置づけ — text string 全般の符号化
 
-PDF ファイルには `/Info` という **辞書オブジェクト** があり、Title / Author / Producer / CreationDate などのメタデータが格納されている (ISO 32000-1 § 14.3.3 "Document Information Dictionary")。`DocumentInfoParser` (Issue #18) はこの `/Info` を読み取って `DocumentMetadata` 型にして返すパーサで、PR #94 (PR 2) はその下回りのバイト列復号テーブルにあたる。
+PDFDocEncoding は **PDF 全体の文字列 (text string) の汎用符号化方式** であり、`/Info` 専用ではない。ISO 32000-1 § 7.9.2.2 で「text string 型はすべて PDFDocEncoding か UTF-16BE で符号化される」と規定されている。
+
+### text string が現れる主な場所
+
+```
+PDF 内で text string が現れる場所（一例）
+├─ /Info 辞書          /Title /Author /Subject /Keywords /Creator /Producer
+├─ /Catalog            /Lang （文書言語）
+├─ ページ注釈           /Contents /T （Annotation）
+├─ アウトライン         /Title （しおり項目名）
+├─ フォーム             /TU /TM （フィールドのツールチップ等）
+├─ 構造ツリー           /Alt /ActualText （アクセシビリティ）
+├─ 暗号化辞書           /U /O （ユーザー / 所有者パスワード由来文字列）
+└─ その他               text string 型と書かれた値はすべて
+```
+
+### 適用範囲外 — content stream のテキスト描画
+
+ページに描画される本文 (`BT ... ET` 内の `TJ` / `Tj` オペレータが扱うバイト列) は PDFDocEncoding ではなく、**フォントごとの Encoding** (WinAnsi / MacRoman / カスタム CMap / `/ToUnicode`) で復号する別世界の話。これは PR 2 のスコープ外。
+
+```mermaid
+flowchart TD
+    PDF([PDF ファイル])
+    PDF --> StringObj["text string 型の値<br/>（メタデータ・注釈・しおり等）"]
+    PDF --> Content["content stream 内のテキスト描画<br/>（ページに描画される本文）"]
+
+    StringObj --> Encoding1{符号化}
+    Encoding1 -->|BOM なし| PDFDoc[PDFDocEncoding]:::current
+    Encoding1 -->|BOM あり| UTF16[UTF-16BE]
+
+    Content --> FontEnc[Font Encoding<br/>WinAnsi / CMap / ToUnicode<br/>※スコープ外]:::other
+
+    classDef current fill:#ffe4b5,stroke:#d97706,stroke-width:2px
+    classDef other fill:#e0e0e0,stroke:#888
+```
+
+オレンジが PR #94 (PR 2) の実装範囲。
+
+## 直近の利用先 — `/Info` 辞書とメタデータ
+
+PDFDocEncoding の汎用性を踏まえた上で、Issue #18 (`DocumentInfoParser`) における直近の利用先である `/Info` 辞書を例として示す。`/Info` は **辞書オブジェクト** で Title / Author / Producer / CreationDate などのメタデータが格納されている (ISO 32000-1 § 14.3.3 "Document Information Dictionary")。
 
 ### PDF ファイル構造の中の `/Info` の位置
 
