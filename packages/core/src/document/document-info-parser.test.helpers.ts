@@ -64,10 +64,14 @@ export const makeTrailerNoInfo = (): TrailerDict => ({
 });
 
 /**
- * ASCII / Latin-1 範囲のテキストを literal byte 列で表現する。
- * 多言語は {@link utf16BeString} を使用すること。
+ * ASCII 範囲のテキストを literal byte 列で表現する。
  *
- * @param text - エンコード対象のテキスト
+ * `TextEncoder` は UTF-8 でエンコードするため、非 ASCII 文字を渡すとマルチバイト
+ * 列になり PDF の literal string バイト列と一致しなくなる。日本語・絵文字など
+ * 多言語の検証には必ず {@link utf16BeString} を使用すること（こちらは BOM 付き
+ * UTF-16BE で構築する）。
+ *
+ * @param text - エンコード対象のテキスト（ASCII 範囲のみ）
  * @returns PdfString
  */
 export const literalString = (text: string): PdfString => ({
