@@ -22,6 +22,9 @@ interface ParsedDateParts {
 const STRUCT_PATTERN =
   /^D:(\d{4})(\d{2})?(\d{2})?(\d{2})?(\d{2})?(\d{2})?(?:(Z)|([+-])(\d{2})'(\d{2})')?$/;
 
+const MINUTES_PER_HOUR = 60;
+const MS_PER_MINUTE = 60_000;
+
 /**
  * `"D:..."` 文字列を {@link ParsedDateParts} に分解し各成分を範囲検証する。
  *
@@ -127,5 +130,14 @@ export const parsePdfDate = (raw: string): Date | undefined => {
     parsed.min,
     parsed.sec,
   );
-  return new Date(utcMs);
+  if (parsed.tzSign === "Z") {
+    return new Date(utcMs);
+  }
+  let sign = -1;
+  if (parsed.tzSign === "-") {
+    sign = 1;
+  }
+  const offsetMs =
+    sign * (parsed.tzHour * MINUTES_PER_HOUR + parsed.tzMin) * MS_PER_MINUTE;
+  return new Date(utcMs + offsetMs);
 };

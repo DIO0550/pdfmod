@@ -16,6 +16,28 @@ test("D:20230101000000Z は UTC 2023-01-01 00:00:00 にパースされる", () =
   expect(result?.getUTCSeconds()).toBe(0);
 });
 
+test("D:20230615120530+09'00' は UTC 03:05:30 にパースされる", () => {
+  const result = parsePdfDate("D:20230615120530+09'00'");
+  expect(result).toBeDefined();
+  expect(result?.getUTCFullYear()).toBe(2023);
+  expect(result?.getUTCMonth()).toBe(5);
+  expect(result?.getUTCDate()).toBe(15);
+  expect(result?.getUTCHours()).toBe(3);
+  expect(result?.getUTCMinutes()).toBe(5);
+  expect(result?.getUTCSeconds()).toBe(30);
+});
+
+test("D:20230615120530-05'00' は UTC 17:05:30 にパースされる", () => {
+  const result = parsePdfDate("D:20230615120530-05'00'");
+  expect(result).toBeDefined();
+  expect(result?.getUTCFullYear()).toBe(2023);
+  expect(result?.getUTCMonth()).toBe(5);
+  expect(result?.getUTCDate()).toBe(15);
+  expect(result?.getUTCHours()).toBe(17);
+  expect(result?.getUTCMinutes()).toBe(5);
+  expect(result?.getUTCSeconds()).toBe(30);
+});
+
 test.each([
   ["D:2023", { y: 2023, mo: 0, d: 1, h: 0, mi: 0, s: 0 }],
   ["D:202306", { y: 2023, mo: 5, d: 1, h: 0, mi: 0, s: 0 }],
