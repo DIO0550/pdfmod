@@ -142,6 +142,25 @@ export const parsePdfDate = (raw: string): Date | undefined => {
   if (parsed === undefined) {
     return undefined;
   }
+  const probeMs = Date.UTC(
+    parsed.year,
+    parsed.month - 1,
+    parsed.day,
+    parsed.hour,
+    parsed.min,
+    parsed.sec,
+  );
+  const probe = new Date(probeMs);
+  if (
+    probe.getUTCFullYear() !== parsed.year ||
+    probe.getUTCMonth() !== parsed.month - 1 ||
+    probe.getUTCDate() !== parsed.day ||
+    probe.getUTCHours() !== parsed.hour ||
+    probe.getUTCMinutes() !== parsed.min ||
+    probe.getUTCSeconds() !== parsed.sec
+  ) {
+    return undefined;
+  }
   if (parsed.tzSign === undefined) {
     return new Date(
       parsed.year,
@@ -152,16 +171,8 @@ export const parsePdfDate = (raw: string): Date | undefined => {
       parsed.sec,
     );
   }
-  const utcMs = Date.UTC(
-    parsed.year,
-    parsed.month - 1,
-    parsed.day,
-    parsed.hour,
-    parsed.min,
-    parsed.sec,
-  );
   if (parsed.tzSign === "Z") {
-    return new Date(utcMs);
+    return new Date(probeMs);
   }
   let sign = -1;
   if (parsed.tzSign === "-") {
@@ -169,5 +180,5 @@ export const parsePdfDate = (raw: string): Date | undefined => {
   }
   const offsetMs =
     sign * (parsed.tzHour * MINUTES_PER_HOUR + parsed.tzMin) * MS_PER_MINUTE;
-  return new Date(utcMs + offsetMs);
+  return new Date(probeMs + offsetMs);
 };
