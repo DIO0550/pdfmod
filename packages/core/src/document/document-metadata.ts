@@ -1,21 +1,40 @@
 import type { PdfWarning } from "../pdf/errors/warning/index";
 import type { PdfValue } from "../pdf/types/pdf-types/index";
+import type { Brand } from "../utils/brand/index";
+import type { Result } from "../utils/result/index";
+import { err, ok } from "../utils/result/index";
+
+declare const TrappedStateBrand: unique symbol;
 
 /**
- * /Trapped の許可値（ISO 32000-2:2020 § 14.3.3）。
+ * /Trapped 値を表すブランド型（ISO 32000-2:2020 § 14.3.3）。
+ * `TrappedState.create` を通じてのみ構築可能で、"True" / "False" / "Unknown" のみ受理する。
  */
-export type TrappedState = "True" | "False" | "Unknown";
+type TrappedState = Brand<
+  "True" | "False" | "Unknown",
+  typeof TrappedStateBrand
+>;
 
 const TRAPPED_ALLOWED = ["True", "False", "Unknown"] as const;
 
-/**
- * 文字列が {@link TrappedState} の許可リテラルに該当するかを判定する型ガード。
- *
- * @param value - 判定対象の文字列
- * @returns "True" / "False" / "Unknown" のいずれかなら true
- */
-const isTrappedLiteral = (value: string): value is TrappedState =>
-  (TRAPPED_ALLOWED as readonly string[]).includes(value);
+const TrappedState = {
+  /**
+   * 文字列から `TrappedState` を構築する。
+   *
+   * @param s - "True" / "False" / "Unknown" のいずれか（大文字小文字区別）
+   * @returns 集合に属すれば `Ok<TrappedState>`、属さなければ `Err<string>`
+   */
+  create(s: string): Result<TrappedState, string> {
+    if (!(TRAPPED_ALLOWED as readonly string[]).includes(s)) {
+      return err(
+        `Invalid TrappedState: "${s}" (supported: ${TRAPPED_ALLOWED.join(", ")})`,
+      );
+    }
+    return ok(s as TrappedState);
+  },
+} as const;
+
+export { TrappedState };
 
 /**
  * PdfValue の診断用要約を生成する。
@@ -99,12 +118,13 @@ export const parseTrappedName = (
     });
     return undefined;
   }
-  if (!isTrappedLiteral(value.value)) {
+  const result = TrappedState.create(value.value);
+  if (!result.ok) {
     warnings.push({
       code: "TRAPPED_INVALID",
       message: `/Trapped value '${value.value}' is not in {True, False, Unknown}`,
     });
     return undefined;
   }
-  return value.value;
+  return result.value;
 };
