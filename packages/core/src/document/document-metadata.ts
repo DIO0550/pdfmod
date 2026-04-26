@@ -9,6 +9,15 @@ export type TrappedState = "True" | "False" | "Unknown";
 const TRAPPED_ALLOWED = ["True", "False", "Unknown"] as const;
 
 /**
+ * 文字列が {@link TrappedState} の許可リテラルに該当するかを判定する型ガード。
+ *
+ * @param value - 判定対象の文字列
+ * @returns "True" / "False" / "Unknown" のいずれかなら true
+ */
+const isTrappedLiteral = (value: string): value is TrappedState =>
+  (TRAPPED_ALLOWED as readonly string[]).includes(value);
+
+/**
  * PDF ドキュメントの /Info 由来メタデータ。
  * ISO 32000-2:2020 § 14.3.3 (Document Information Dictionary) 準拠。
  *
@@ -53,15 +62,19 @@ export const parseTrappedName = (
   if (value === undefined) {
     return undefined;
   }
-  if (
-    value.type === "name" &&
-    (TRAPPED_ALLOWED as readonly string[]).includes(value.value)
-  ) {
-    return value.value as TrappedState;
+  if (value.type !== "name") {
+    warnings.push({
+      code: "TRAPPED_INVALID",
+      message: `/Trapped expected Name but got ${value.type}`,
+    });
+    return undefined;
   }
-  warnings.push({
-    code: "TRAPPED_INVALID",
-    message: "/Trapped: invalid value",
-  });
-  return undefined;
+  if (!isTrappedLiteral(value.value)) {
+    warnings.push({
+      code: "TRAPPED_INVALID",
+      message: `/Trapped value '${value.value}' is not in {True, False, Unknown}`,
+    });
+    return undefined;
+  }
+  return value.value;
 };
