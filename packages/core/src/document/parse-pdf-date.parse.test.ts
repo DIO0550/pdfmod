@@ -15,3 +15,14 @@ test("D:2023 はローカル 2023-01-01 00:00:00 にパースされる", () => {
   expect(result?.getMinutes()).toBe(0);
   expect(result?.getSeconds()).toBe(0);
 });
+
+test("D:20230615120530 はローカル 2023-06-15 12:05:30 にパースされる", () => {
+  const result = parsePdfDate("D:20230615120530");
+  expect(result).toBeDefined();
+  expect(result?.getFullYear()).toBe(2023);
+  expect(result?.getMonth()).toBe(5);
+  expect(result?.getDate()).toBe(15);
+  expect(result?.getHours()).toBe(12);
+  expect(result?.getMinutes()).toBe(5);
+  expect(result?.getSeconds()).toBe(30);
+});
