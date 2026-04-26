@@ -19,34 +19,50 @@ interface ParsedDateParts {
   readonly tzMin: number;
 }
 
-const PREFIX_LENGTH = 2;
-const YEAR_LENGTH = 4;
+const STRUCT_PATTERN = /^D:(\d{4})(\d{2})?(\d{2})?(\d{2})?(\d{2})?(\d{2})?$/;
 
 /**
  * `"D:..."` 文字列を {@link ParsedDateParts} に分解し各成分を範囲検証する。
  *
- * 構造検証は Step 15 で `DATE_PATTERN` 正規表現に統一される。
+ * 構造検証は Step 15 で TZ も含む `DATE_PATTERN` 正規表現に拡張される。
  *
  * @param raw - PDF 日時文字列
  * @returns 構造・範囲が妥当な場合 `ParsedDateParts`、不正な場合 `undefined`
  */
 const extractDateParts = (raw: string): ParsedDateParts | undefined => {
-  const body = raw.slice(PREFIX_LENGTH);
-  if (body.length < YEAR_LENGTH) {
+  const match = STRUCT_PATTERN.exec(raw);
+  if (!match) {
     return undefined;
   }
-  const yearStr = body.slice(0, YEAR_LENGTH);
-  if (!/^\d{4}$/.test(yearStr)) {
-    return undefined;
-  }
+  const [, yearStr, monthStr, dayStr, hourStr, minStr, secStr] = match;
   const year = Number(yearStr);
+  let month = 1;
+  if (monthStr !== undefined) {
+    month = Number(monthStr);
+  }
+  let day = 1;
+  if (dayStr !== undefined) {
+    day = Number(dayStr);
+  }
+  let hour = 0;
+  if (hourStr !== undefined) {
+    hour = Number(hourStr);
+  }
+  let min = 0;
+  if (minStr !== undefined) {
+    min = Number(minStr);
+  }
+  let sec = 0;
+  if (secStr !== undefined) {
+    sec = Number(secStr);
+  }
   return {
     year,
-    month: 1,
-    day: 1,
-    hour: 0,
-    min: 0,
-    sec: 0,
+    month,
+    day,
+    hour,
+    min,
+    sec,
     tzSign: undefined,
     tzHour: 0,
     tzMin: 0,
