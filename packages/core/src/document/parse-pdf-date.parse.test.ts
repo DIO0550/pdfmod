@@ -5,6 +5,17 @@ test("D: プレフィックスを欠いた文字列は undefined を返す", () 
   expect(parsePdfDate("20230101")).toBeUndefined();
 });
 
+test("D:20230101000000Z は UTC 2023-01-01 00:00:00 にパースされる", () => {
+  const result = parsePdfDate("D:20230101000000Z");
+  expect(result).toBeDefined();
+  expect(result?.getUTCFullYear()).toBe(2023);
+  expect(result?.getUTCMonth()).toBe(0);
+  expect(result?.getUTCDate()).toBe(1);
+  expect(result?.getUTCHours()).toBe(0);
+  expect(result?.getUTCMinutes()).toBe(0);
+  expect(result?.getUTCSeconds()).toBe(0);
+});
+
 test.each([
   ["D:2023", { y: 2023, mo: 0, d: 1, h: 0, mi: 0, s: 0 }],
   ["D:202306", { y: 2023, mo: 5, d: 1, h: 0, mi: 0, s: 0 }],
