@@ -42,7 +42,9 @@ const extractDateParts = (raw: string): ParsedDateParts | undefined => {
  * @returns 成功時は `Date`、構文・範囲・不在日いずれかで失敗した場合は `undefined`
  */
 export const parsePdfDate = (raw: string): Date | undefined => {
+  if (!raw.startsWith("D:")) {
+    return undefined;
+  }
   void extractDateParts;
-  void raw;
   return undefined;
 };
