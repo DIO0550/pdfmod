@@ -1,21 +1,37 @@
 import type { PdfWarning } from "../pdf/errors/warning/index";
 import type { PdfValue } from "../pdf/types/pdf-types/index";
+import type { Brand } from "../utils/brand/index";
+import type { Result } from "../utils/result/index";
+import { err, ok } from "../utils/result/index";
+
+declare const PdfTrappedBrand: unique symbol;
 
 /**
- * /Trapped の許可値（ISO 32000-2:2020 § 14.3.3）。
+ * /Trapped 値を表すブランド型（ISO 32000-2:2020 § 14.3.3）。
+ * `PdfTrapped.create` を通じてのみ構築可能で、"True" / "False" / "Unknown" のみ受理する。
  */
-export type TrappedState = "True" | "False" | "Unknown";
+type PdfTrapped = Brand<"True" | "False" | "Unknown", typeof PdfTrappedBrand>;
 
 const TRAPPED_ALLOWED = ["True", "False", "Unknown"] as const;
 
-/**
- * 文字列が {@link TrappedState} の許可リテラルに該当するかを判定する型ガード。
- *
- * @param value - 判定対象の文字列
- * @returns "True" / "False" / "Unknown" のいずれかなら true
- */
-const isTrappedLiteral = (value: string): value is TrappedState =>
-  (TRAPPED_ALLOWED as readonly string[]).includes(value);
+const PdfTrapped = {
+  /**
+   * 文字列から `PdfTrapped` を構築する。
+   *
+   * @param s - "True" / "False" / "Unknown" のいずれか（大文字小文字区別）
+   * @returns 集合に属すれば `Ok<PdfTrapped>`、属さなければ `Err<string>`
+   */
+  create(s: string): Result<PdfTrapped, string> {
+    if (!(TRAPPED_ALLOWED as readonly string[]).includes(s)) {
+      return err(
+        `Invalid PdfTrapped: "${s}" (supported: ${TRAPPED_ALLOWED.join(", ")})`,
+      );
+    }
+    return ok(s as PdfTrapped);
+  },
+} as const;
+
+export { PdfTrapped };
 
 /**
  * PdfValue の診断用要約を生成する。
@@ -71,11 +87,11 @@ export interface DocumentMetadata {
   /** /ModDate — 最終更新日時 */
   readonly modDate?: Date;
   /** /Trapped — 印刷品質に関するトラッピング情報 */
-  readonly trapped?: TrappedState;
+  readonly trapped?: PdfTrapped;
 }
 
 /**
- * /Trapped の Name 値を {@link TrappedState} リテラルに解釈する。
+ * /Trapped の Name 値を {@link PdfTrapped} リテラルに解釈する。
  *
  * - value が undefined → undefined（警告なし）
  * - value が PdfName で値が "True" / "False" / "Unknown" → 該当 literal
@@ -83,12 +99,12 @@ export interface DocumentMetadata {
  *
  * @param value - /Trapped の値（解決済みの PdfValue または undefined）
  * @param warnings - 警告蓄積先（mutable）
- * @returns TrappedState または undefined
+ * @returns PdfTrapped または undefined
  */
 export const parseTrappedName = (
   value: PdfValue | undefined,
   warnings: PdfWarning[],
-): TrappedState | undefined => {
+): PdfTrapped | undefined => {
   if (value === undefined) {
     return undefined;
   }
@@ -99,12 +115,13 @@ export const parseTrappedName = (
     });
     return undefined;
   }
-  if (!isTrappedLiteral(value.value)) {
+  const result = PdfTrapped.create(value.value);
+  if (!result.ok) {
     warnings.push({
       code: "TRAPPED_INVALID",
       message: `/Trapped value '${value.value}' is not in {True, False, Unknown}`,
     });
     return undefined;
   }
-  return value.value;
+  return result.value;
 };
