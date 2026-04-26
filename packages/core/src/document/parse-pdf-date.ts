@@ -22,6 +22,10 @@ const MS_PER_MINUTE = 60_000;
 /**
  * `D:YYYY[MM[DD[HH[mm[SS]]]]][TZ]` 形式の正規表現。
  *
+ * - **`D:` prefix は必須**（本プロジェクト固有の厳格仕様）。
+ *   ISO 32000-2:2020 § 7.9.4 では `D:` は省略可能とされているが、本プロジェクトでは
+ *   `D:YYYY...` 形式に統一して期待する PDF 日時オブジェクトを誤認しないようにする。
+ *   `D:` を欠いた `20230101` のような入力は `undefined` で弾く（DI-004(a)）。
  * - YYYY は 4 桁固定、必須
  * - MM, DD, HH, mm, SS は 2 桁単位で末尾から段階的に省略可能
  * - TZ は `Z` または `+HH'mm'` / `-HH'mm'`
@@ -249,7 +253,7 @@ export const parsePdfDate = (raw: string): Date | undefined => {
   }
 
   if (parsed.tzSign === undefined) {
-    return new Date(
+    const local = new Date(
       parsed.year,
       parsed.month - 1,
       parsed.day,
@@ -257,6 +261,21 @@ export const parsePdfDate = (raw: string): Date | undefined => {
       parsed.min,
       parsed.sec,
     );
+    // ローカル DST ギャップ（例: 春の 02:30 が 03:30 に繰り上がる）で
+    // 「存在しないローカル時刻」を入力された場合、`new Date(...)` が
+    // 自動補正して別時刻になる。各成分が入力と一致するか検証して
+    // 一致しない場合は undefined にして弾く。
+    if (
+      local.getFullYear() !== parsed.year ||
+      local.getMonth() !== parsed.month - 1 ||
+      local.getDate() !== parsed.day ||
+      local.getHours() !== parsed.hour ||
+      local.getMinutes() !== parsed.min ||
+      local.getSeconds() !== parsed.sec
+    ) {
+      return undefined;
+    }
+    return local;
   }
 
   if (parsed.tzSign === "Z") {

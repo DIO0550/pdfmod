@@ -1,7 +1,10 @@
 import { expect, test } from "vitest";
 import { parsePdfDate } from "./parse-pdf-date";
 
-test("D: prefix が欠落した文字列は undefined を返す", () => {
+// 本プロジェクトでは `D:` prefix を必須とする厳格仕様を採用している
+// （ISO 32000-2:2020 § 7.9.4 では省略可能だが、PDF 日時オブジェクトを
+// 誤認しないため `D:` で前置されたものだけを受理する）。
+test("D: prefix が欠落した文字列は undefined を返す（本実装の厳格仕様）", () => {
   expect(parsePdfDate("20230101")).toBeUndefined();
 });
 
