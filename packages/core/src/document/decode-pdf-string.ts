@@ -2,6 +2,13 @@ import type { PdfWarning } from "../pdf/errors/warning/index";
 import type { PdfString } from "../pdf/types/pdf-types/index";
 import { decodePdfDocEncoding } from "./pdf-doc-encoding";
 
+/** UTF-16BE BOM (Byte Order Mark) の 1 バイト目。 */
+const UTF16_BE_BOM_BYTE_0 = 0xfe;
+/** UTF-16BE BOM の 2 バイト目。 */
+const UTF16_BE_BOM_BYTE_1 = 0xff;
+/** BOM のバイト数。 */
+const BOM_LENGTH = 2;
+
 /**
  * PdfString の bytes を JavaScript 文字列に復号する。
  *
@@ -19,6 +26,15 @@ export const decodePdfString = (
   const bytes = pdfString.value;
   if (bytes.length === 0) {
     return "";
+  }
+  if (
+    bytes.length >= BOM_LENGTH &&
+    bytes[0] === UTF16_BE_BOM_BYTE_0 &&
+    bytes[1] === UTF16_BE_BOM_BYTE_1
+  ) {
+    if (bytes.length === BOM_LENGTH) {
+      return "";
+    }
   }
   return decodePdfDocEncoding(bytes, fieldName, warnings);
 };
