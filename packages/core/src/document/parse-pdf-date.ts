@@ -173,6 +173,40 @@ const matchesProbe = (parsed: ParsedDateParts, probe: Date): boolean => {
 };
 
 /**
+ * `parsed` の各成分がローカル時刻として構築した `local` の成分と一致するかを
+ * 検証する。
+ *
+ * `new Date(y, mo, d, h, mi, s)` は実行環境のローカル TZ で DST ギャップ等の
+ * 不在ローカル時刻を自動補正する（例: 02:30 → 03:30）。TZ 指定なしの分岐で
+ * これを弾くためにローカル成分一致検証を行う。
+ *
+ * @param parsed - {@link extractDateParts} の戻り値
+ * @param local - `new Date(y, mo, d, h, mi, s)` で構築した {@link Date}
+ * @returns 全成分一致時 `true`
+ */
+const matchesLocal = (parsed: ParsedDateParts, local: Date): boolean => {
+  if (local.getFullYear() !== parsed.year) {
+    return false;
+  }
+  if (local.getMonth() !== parsed.month - 1) {
+    return false;
+  }
+  if (local.getDate() !== parsed.day) {
+    return false;
+  }
+  if (local.getHours() !== parsed.hour) {
+    return false;
+  }
+  if (local.getMinutes() !== parsed.min) {
+    return false;
+  }
+  if (local.getSeconds() !== parsed.sec) {
+    return false;
+  }
+  return true;
+};
+
+/**
  * `±HH'mm'` 形式の TZ オフセットを ms で返す。
  *
  * PDF の `+HH'mm'` は「ローカルが UTC より進んでいる」を意味するため、
@@ -199,7 +233,8 @@ const tzOffsetMs = (sign: "+" | "-", tzHour: number, tzMin: number): number => {
  *  2. {@link extractDateParts} による構造・成分範囲検証
  *  3. UTC で組んだ `probe` との成分一致検証（自動繰り上がり / 不在日防止）
  *  4. TZ 種別に応じた最終 {@link Date} 構築
- *      - 省略時はローカル時刻として構築
+ *      - 省略時はローカル時刻として構築し {@link matchesLocal} で DST ギャップ
+ *        等の不在ローカル時刻を検出して弾く
  *      - `Z` は UTC 時刻として構築
  *      - `±HH'mm'` は UTC へオフセット補正
  *
@@ -229,7 +264,7 @@ export const parsePdfDate = (raw: string): Date | undefined => {
     return undefined;
   }
   if (parsed.tzSign === undefined) {
-    return new Date(
+    const local = new Date(
       parsed.year,
       parsed.month - 1,
       parsed.day,
@@ -237,6 +272,10 @@ export const parsePdfDate = (raw: string): Date | undefined => {
       parsed.min,
       parsed.sec,
     );
+    if (!matchesLocal(parsed, local)) {
+      return undefined;
+    }
+    return local;
   }
   if (parsed.tzSign === "Z") {
     return new Date(probeMs);
