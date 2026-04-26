@@ -19,6 +19,9 @@ interface ParsedDateParts {
   readonly tzMin: number;
 }
 
+const PREFIX_LENGTH = 2;
+const YEAR_LENGTH = 4;
+
 /**
  * `"D:..."` 文字列を {@link ParsedDateParts} に分解し各成分を範囲検証する。
  *
@@ -28,8 +31,26 @@ interface ParsedDateParts {
  * @returns 構造・範囲が妥当な場合 `ParsedDateParts`、不正な場合 `undefined`
  */
 const extractDateParts = (raw: string): ParsedDateParts | undefined => {
-  void raw;
-  return undefined;
+  const body = raw.slice(PREFIX_LENGTH);
+  if (body.length < YEAR_LENGTH) {
+    return undefined;
+  }
+  const yearStr = body.slice(0, YEAR_LENGTH);
+  if (!/^\d{4}$/.test(yearStr)) {
+    return undefined;
+  }
+  const year = Number(yearStr);
+  return {
+    year,
+    month: 1,
+    day: 1,
+    hour: 0,
+    min: 0,
+    sec: 0,
+    tzSign: undefined,
+    tzHour: 0,
+    tzMin: 0,
+  };
 };
 
 /**
@@ -45,6 +66,16 @@ export const parsePdfDate = (raw: string): Date | undefined => {
   if (!raw.startsWith("D:")) {
     return undefined;
   }
-  void extractDateParts;
-  return undefined;
+  const parsed = extractDateParts(raw);
+  if (parsed === undefined) {
+    return undefined;
+  }
+  return new Date(
+    parsed.year,
+    parsed.month - 1,
+    parsed.day,
+    parsed.hour,
+    parsed.min,
+    parsed.sec,
+  );
 };
