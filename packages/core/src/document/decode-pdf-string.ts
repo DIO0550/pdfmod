@@ -35,6 +35,16 @@ export const decodePdfString = (
     if (bytes.length === BOM_LENGTH) {
       return "";
     }
+    try {
+      const decoder = new TextDecoder("utf-16be", { fatal: true });
+      return decoder.decode(bytes.subarray(BOM_LENGTH));
+    } catch {
+      warnings.push({
+        code: "STRING_DECODE_FAILED",
+        message: `UTF-16BE decode failed for /${fieldName}`,
+      });
+      return undefined;
+    }
   }
   return decodePdfDocEncoding(bytes, fieldName, warnings);
 };
