@@ -49,7 +49,7 @@ const VALID_TRAPPED: ReadonlyArray<readonly [TrappedState]> = [
 
 test.each(
   VALID_TRAPPED,
-)("/Trapped Name '%s' は TrappedState '%s' に解釈される", (literal) => {
+)("/Trapped Name '%s' は該当 TrappedState に解釈される", (literal) => {
   const warnings: PdfWarning[] = [];
   const result = parseTrappedName(makeName(literal), warnings);
   expect(result).toBe(literal);
