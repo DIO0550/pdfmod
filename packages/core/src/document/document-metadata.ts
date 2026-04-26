@@ -47,9 +47,21 @@ export interface DocumentMetadata {
  * @returns TrappedState または undefined
  */
 export const parseTrappedName = (
-  _value: PdfValue | undefined,
-  _warnings: PdfWarning[],
+  value: PdfValue | undefined,
+  warnings: PdfWarning[],
 ): TrappedState | undefined => {
-  void TRAPPED_ALLOWED;
+  if (value === undefined) {
+    return undefined;
+  }
+  if (
+    value.type === "name" &&
+    (TRAPPED_ALLOWED as readonly string[]).includes(value.value)
+  ) {
+    return value.value as TrappedState;
+  }
+  warnings.push({
+    code: "TRAPPED_INVALID",
+    message: "/Trapped: invalid value",
+  });
   return undefined;
 };
