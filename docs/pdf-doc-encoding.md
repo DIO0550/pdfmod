@@ -16,9 +16,10 @@ PDF 内で text string が現れる場所（一例）
 ├─ アウトライン         /Title （しおり項目名）
 ├─ フォーム             /TU /TM （フィールドのツールチップ等）
 ├─ 構造ツリー           /Alt /ActualText （アクセシビリティ）
-├─ 暗号化辞書           /U /O （ユーザー / 所有者パスワード由来文字列）
 └─ その他               text string 型と書かれた値はすべて
 ```
+
+なお `/U` `/O` (暗号化辞書のパスワードハッシュ) や File ID は **byte string** 型で text string ではない。物理形式は同じ `(...)` `<...>` だが復号対象外。
 
 ### 適用範囲外 — content stream のテキスト描画
 
@@ -41,6 +42,85 @@ flowchart TD
 ```
 
 オレンジが PR #94 (PR 2) の実装範囲。
+
+## 判定の実態 — 何を見て PDFDocEncoding か UTF-16BE かを決めるか
+
+PDF バイナリ内には「この文字列は PDFDocEncoding です」というフラグや encoding tag は **存在しない**。実装は以下の 2 段階で判定する。
+
+### 段階 1 — 仕様書の表で「この値は text string 型か」を実装時に決め打ち
+
+ISO 32000-1 の各セクション (例: § 14.3.3 Table 317 — Info Dictionary Entries) には、各キーの値の型 (text string / byte string / ASCII string / name / date / number 等) が表で規定されている。実装者はこの表を読み、`/Title` のコードでは `decodePdfString(...)` を呼び、`/Trapped` のコードでは PdfName として扱う、という形で**ハードコード**する。実行時にはここを「見る」処理は無い。
+
+### 段階 2 — 実行時には文字列値の中身の先頭 2 バイトだけを見る
+
+text string と分かっている値について、実行時にコードが見るのは **値のバイト列の先頭 2 バイトのみ** (BOM 検出)。
+
+```
+                /Title の値の bytes
+              ┌────┬────┬────┬────┬─────
+入力 bytes:   │ ?? │ ?? │ ?? │ ?? │ ...
+              └────┴────┴────┴────┴─────
+                ↑    ↑
+                この 2 バイトだけ見て決める
+
+  bytes[0] === 0xFE && bytes[1] === 0xFF
+    ├─ true  → UTF-16BE で復号 (3 バイト目以降を 2 バイトずつ)
+    └─ false → PDFDocEncoding で復号 (全バイトをテーブル参照)
+```
+
+つまり「BOM が事実上のフラグ」で、それ以外のメタデータ的な指示は PDF バイナリには無い。
+
+### 階層の整理 — どこを見ているのか
+
+```
+8 0 obj                          ← オブジェクト全体（辞書）
+<<                                
+  /Title (Hello)                 
+                ▲▲▲▲▲             
+                これが「文字列値の中身」 = 5 バイト [48 65 6c 6c 6f]
+                ↑ ↑
+                この 2 バイトを見る  ← BOM チェックの対象（ASCII なので PDFDocEncoding 経路）
+
+  /Author <FEFF65E597E5>         
+           ▲▲▲▲▲▲▲▲▲▲▲▲          
+           hex 表記をデコード = 6 バイト [FE FF 65 E5 97 E5]
+           ↑   ↑
+           この 2 バイトを見る  ← 0xFE 0xFF なので UTF-16BE 経路
+>>
+endobj
+```
+
+| 階層 | BOM チェックの対象? |
+|---|---|
+| `8 0 obj ... endobj` (オブジェクト境界) | × 違う |
+| `<< ... >>` (辞書) | × 違う |
+| `/Title (Hello)` (キー + 値ペア) | × 違う |
+| `(Hello)` (リテラル全体、括弧含む) | × 違う |
+| **`Hello` の生バイト列 (中身)** | **○ ここの先頭 2 バイト** |
+
+辞書と文字列値を構文パースで切り出した**後**、その**中身のバイト列**の先頭 2 バイトを見る、という順序。1 つの辞書に複数の text string があっても、それぞれ独立に BOM 判定する。
+
+### 対象オブジェクト型の絞り込み
+
+PR 2 の復号が動くのは **`PdfString` 型のうち text string 型の値だけ**。物理形式が `(...)` `<...>` でも、用途が byte string や ASCII string のものは復号関数を呼ばない。
+
+```
+PDF オブジェクト型
+├─ String (literal (..) / hex <..>)        ← 物理形式
+│   ├─ text string         ★ PR 2 の対象（PDFDocEncoding/UTF-16BE 経路）
+│   ├─ byte string         × 生バイトのまま (例: /U /O / File ID)
+│   └─ ASCII string        × ASCII 確定 (復号不要)
+├─ Name        (/Title /Catalog 等)         × ASCII + #エスケープのみ
+├─ Number      (42, 3.14)                   ×
+├─ Boolean     (true, false)                ×
+├─ Null        (null)                       ×
+├─ Array       ([1 2 3])                    × (要素ごとに判定)
+├─ Dictionary  (<< /K /V >>)                × (値ごとに判定)
+├─ Stream      (<< ... >> stream ... endstream)  × (中身は別の復号系統)
+└─ Indirect Reference (8 0 R)               ×
+```
+
+ISO 32000-1 § 7.9.2 では String を 3 つのサブ型 (text / byte / ASCII) に分けており、どのサブ型として扱うかは**仕様書側で各キーごとに規定**されている。
 
 ## 直近の利用先 — `/Info` 辞書とメタデータ
 
@@ -113,23 +193,6 @@ flowchart TD
 `/Info` は PDF 2.0 で deprecated (XMP メタデータ推奨) だが、互換性のため依然として多くの PDF に存在する。
 
 ---
-
-## 全体像 — PDF 文字列の 2 系統復号
-
-PDF の文字列 (`(Hello)` の literal や `<48656c6c6f>` の hex) は 2 つの符号化のどちらかで解釈される。
-
-```mermaid
-flowchart LR
-    Bytes([raw bytes]) --> BOM{先頭 2 bytes が<br/>0xFE 0xFF?}
-    BOM -->|Yes| UTF16[UTF-16BE として復号<br/>多言語対応用]
-    BOM -->|No| PDFDoc[PDFDocEncoding として復号<br/>今回実装]
-    UTF16 --> Out([JS string])
-    PDFDoc --> Out
-
-    style PDFDoc fill:#ffe4b5,stroke:#d97706,stroke-width:2px
-```
-
-PR #94 (PR 2) は **PDFDocEncoding 経路の 1 バイト → Unicode 変換テーブル** を実装した部分。BOM 検出 / UTF-16BE 経路は PR 3 (`decode-pdf-string.ts`) で追加予定。
 
 ## PDFDocEncoding テーブル全景 (256 entries)
 
