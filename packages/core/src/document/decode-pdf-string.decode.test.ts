@@ -2,6 +2,7 @@ import { expect, test } from "vitest";
 import type { PdfWarning } from "../pdf/errors/warning/index";
 import type { PdfString } from "../pdf/types/pdf-types/index";
 import { decodePdfString } from "./decode-pdf-string";
+import { REPLACEMENT_CHAR } from "./pdf-doc-encoding";
 
 const pdfString = (bytes: Uint8Array): PdfString => ({
   type: "string",
@@ -75,6 +76,24 @@ test("BOM + 単独 low surrogate (DE 80 単独) は undefined + STRING_DECODE_FA
   const bytes = new Uint8Array([0xfe, 0xff, 0xde, 0x80]);
   const result = decodePdfString(pdfString(bytes), "Title", warnings);
   expect(result).toBeUndefined();
+  expect(warnings).toHaveLength(1);
+  expect(warnings[0].code).toBe("STRING_DECODE_FAILED");
+});
+
+test("BOM なしバイト列 (ASCII) は decodePdfDocEncoding に委譲される", () => {
+  const warnings: PdfWarning[] = [];
+  // ASCII "Hello"
+  const bytes = new Uint8Array([0x48, 0x65, 0x6c, 0x6c, 0x6f]);
+  const result = decodePdfString(pdfString(bytes), "Title", warnings);
+  expect(result).toBe("Hello");
+  expect(warnings).toHaveLength(0);
+});
+
+test("BOM なし + PDFDocEncoding 未割当バイトは U+FFFD 置換 + 警告 1 件", () => {
+  const warnings: PdfWarning[] = [];
+  const bytes = new Uint8Array([0x9f, 0x41]); // 0x9F 未割当 + "A"
+  const result = decodePdfString(pdfString(bytes), "Title", warnings);
+  expect(result).toBe(`${REPLACEMENT_CHAR}A`);
   expect(warnings).toHaveLength(1);
   expect(warnings[0].code).toBe("STRING_DECODE_FAILED");
 });
