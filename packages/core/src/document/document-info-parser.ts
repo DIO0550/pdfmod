@@ -16,7 +16,7 @@ import { parsePdfDate } from "./pdf-date";
 /**
  * `DocumentInfoParser.parse` の戻り値。
  */
-export interface ParseDocumentInfoResult {
+export interface ParsedDocumentInfo {
   /** 抽出された /Info 由来メタデータ。/Info 不在 / 抽出失敗時は空オブジェクト */
   readonly metadata: DocumentMetadata;
   /** 抽出処理中に蓄積された警告 */
@@ -194,7 +194,7 @@ export const DocumentInfoParser = {
   async parse(
     trailerDict: TrailerDict,
     resolveRef: ResolveRef,
-  ): Promise<Result<ParseDocumentInfoResult, PdfError>> {
+  ): Promise<Result<ParsedDocumentInfo, PdfError>> {
     const warnings: PdfWarning[] = [];
     if (trailerDict.info === undefined) {
       return ok({ metadata: EMPTY_METADATA, warnings });
