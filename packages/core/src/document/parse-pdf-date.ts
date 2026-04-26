@@ -7,7 +7,7 @@
  * - tzSign: `"+"` / `"-"` / `"Z"` / 省略時 `undefined`
  * - tzHour / tzMin: `tzSign` が `"+"` または `"-"` のときのみ意味を持つ
  */
-interface ParsedDateParts {
+interface PdfDateFields {
   readonly year: number;
   readonly month: number;
   readonly day: number;
@@ -44,16 +44,16 @@ const MIN_MAX = 59;
 const SEC_MAX = 59;
 
 /**
- * `"D:..."` 文字列を {@link DATE_PATTERN} で構造検証し {@link ParsedDateParts}
+ * `"D:..."` 文字列を {@link DATE_PATTERN} で構造検証し {@link PdfDateFields}
  * に分解、各成分を範囲検証する。
  *
  * `RegExp.exec` が標準 API として `null` を返すため、この境界で `undefined` に
  * 正規化する。プロジェクト内では以後 `null` を扱わない。
  *
  * @param raw - PDF 日時文字列
- * @returns 構造・範囲が妥当な場合 `ParsedDateParts`、不正な場合 `undefined`
+ * @returns 構造・範囲が妥当な場合 `PdfDateFields`、不正な場合 `undefined`
  */
-const extractDateParts = (raw: string): ParsedDateParts | undefined => {
+const extractDateFields = (raw: string): PdfDateFields | undefined => {
   const match = DATE_PATTERN.exec(raw);
   if (!match) {
     return undefined;
@@ -146,11 +146,11 @@ const extractDateParts = (raw: string): ParsedDateParts | undefined => {
  * （2/31 → 3/3 等）するため、`day` 範囲チェックを通過した不在日や、TZ 付き
  * 不在日 (`D:20230231000000+09'00'`) を弾くために UTC 成分一致検証を行う。
  *
- * @param parsed - {@link extractDateParts} の戻り値
+ * @param parsed - {@link extractDateFields} の戻り値
  * @param probe - `Date.UTC(...)` で構築した {@link Date}
  * @returns 全成分一致時 `true`
  */
-const matchesProbe = (parsed: ParsedDateParts, probe: Date): boolean => {
+const matchesProbe = (parsed: PdfDateFields, probe: Date): boolean => {
   if (probe.getUTCFullYear() !== parsed.year) {
     return false;
   }
@@ -180,11 +180,11 @@ const matchesProbe = (parsed: ParsedDateParts, probe: Date): boolean => {
  * 不在ローカル時刻を自動補正する（例: 02:30 → 03:30）。TZ 指定なしの分岐で
  * これを弾くためにローカル成分一致検証を行う。
  *
- * @param parsed - {@link extractDateParts} の戻り値
+ * @param parsed - {@link extractDateFields} の戻り値
  * @param local - `new Date(y, mo, d, h, mi, s)` で構築した {@link Date}
  * @returns 全成分一致時 `true`
  */
-const matchesLocal = (parsed: ParsedDateParts, local: Date): boolean => {
+const matchesLocal = (parsed: PdfDateFields, local: Date): boolean => {
   if (local.getFullYear() !== parsed.year) {
     return false;
   }
@@ -230,7 +230,7 @@ const tzOffsetMs = (sign: "+" | "-", tzHour: number, tzMin: number): number => {
  *
  * 4 ステップで構成される:
  *  1. `D:` プレフィックス検証
- *  2. {@link extractDateParts} による構造・成分範囲検証
+ *  2. {@link extractDateFields} による構造・成分範囲検証
  *  3. UTC で組んだ `probe` との成分一致検証（自動繰り上がり / 不在日防止）
  *  4. TZ 種別に応じた最終 {@link Date} 構築
  *      - 省略時はローカル時刻として構築し {@link matchesLocal} で DST ギャップ
@@ -248,7 +248,7 @@ export const parsePdfDate = (raw: string): Date | undefined => {
   if (!raw.startsWith("D:")) {
     return undefined;
   }
-  const parsed = extractDateParts(raw);
+  const parsed = extractDateFields(raw);
   if (parsed === undefined) {
     return undefined;
   }
