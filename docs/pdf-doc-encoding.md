@@ -235,6 +235,80 @@ byte    領域                                ISO 32000 仕様                  
 0xFF ─┘
 ```
 
+## 領域ごとの仕様詳細 (ISO 32000-1 Annex D.2)
+
+PDFDocEncoding は **ほぼ Latin-1 (ISO 8859-1) と同じだが、4 つの差し替え領域と 2 つの未割当バイトを持つ拡張**。各領域の規定根拠を以下に整理する。
+
+### 0x00..0x17 — C0 制御文字 (素通し)
+
+ISO 32000-1 Annex D.2 で `Code` 列に値が無く、Latin-1 の C0 制御文字 (U+0000..U+0017: NUL, SOH, STX, ..., ETB) と同じコードポイントに変換する規定。テキスト処理ではほぼ使われないが、技術的には `\t` (0x09 HT), `\n` (0x0A LF), `\r` (0x0D CR) などが含まれる。
+
+### 0x18..0x1F — ダイアクリティカル文字 (PDF 独自差し替え)
+
+Latin-1 では C0 制御文字 (CAN, EM, SUB, ESC, FS, GS, RS, US) が並ぶ範囲だが、**PDF はこの 8 byte をタイポグラフィのアクセント記号に再割当**している。
+
+| byte | 文字 | Unicode | 名称 |
+|---|---|---|---|
+| 0x18 | ˘ | U+02D8 | BREVE |
+| 0x19 | ˇ | U+02C7 | CARON |
+| 0x1A | ˆ | U+02C6 | MODIFIER LETTER CIRCUMFLEX ACCENT |
+| 0x1B | ˙ | U+02D9 | DOT ABOVE |
+| 0x1C | ˝ | U+02DD | DOUBLE ACUTE ACCENT |
+| 0x1D | ˛ | U+02DB | OGONEK |
+| 0x1E | ˚ | U+02DA | RING ABOVE |
+| 0x1F | ˜ | U+02DC | SMALL TILDE |
+
+PDF が出版・印刷向けの規格として欧州言語のアクセント記号を低コスト byte に詰め込んだ歴史的な経緯による。
+
+### 0x20..0x7E — ASCII 印字可能 (素通し)
+
+スペース ` ` (0x20) から `~` (0x7E) まで。完全に ASCII と一致。実用上の text string の大半 (`Title` / `Author` / 英文メタデータ) はこの範囲に収まる。
+
+### 0x7F — DEL (素通し)
+
+Latin-1 の DEL (U+007F) と同じ。Annex D.2 でも明示的に U+007F に対応。
+
+### 0x80..0x9E — Publishing 系記号 (PDF 独自差し替え)
+
+Latin-1 では C1 制御文字 (PAD, HOP, BPH, ...) の範囲だが、**PDF は publishing でよく使う記号 31 個に再割当**している。代表例:
+
+| byte | 文字 | Unicode | 名称 |
+|---|---|---|---|
+| 0x80 | • | U+2022 | BULLET |
+| 0x81 | † | U+2020 | DAGGER |
+| 0x82 | ‡ | U+2021 | DOUBLE DAGGER |
+| 0x83 | … | U+2026 | HORIZONTAL ELLIPSIS |
+| 0x84 | — | U+2014 | EM DASH |
+| 0x85 | – | U+2013 | EN DASH |
+| 0x8D | " | U+201C | LEFT DOUBLE QUOTATION MARK |
+| 0x8E | " | U+201D | RIGHT DOUBLE QUOTATION MARK |
+| 0x96 | Œ | U+0152 | LATIN CAPITAL LIGATURE OE |
+| 0x97 | Š | U+0160 | LATIN CAPITAL LETTER S WITH CARON |
+| 0x9C | œ | U+0153 | LATIN SMALL LIGATURE OE |
+| 0x9E | ž | U+017E | LATIN SMALL LETTER Z WITH CARON |
+
+(全 31 文字は実装の `UPPER_SPECIAL_CHARS` 配列を参照)
+
+### 0x9F — 未割当 (穴)
+
+Annex D.2 で `Code` 列が空欄。本実装ではテーブルを `undefined` にし、復号時に U+FFFD に置換 + `STRING_DECODE_FAILED` 警告。
+
+### 0xA0 — EURO SIGN (PDF 独自差し替え)
+
+Latin-1 では NBSP (NO-BREAK SPACE, U+00A0) の位置だが、**PDF は € (U+20AC EURO SIGN) を割り当てる**。これは 1999 年のユーロ導入を受けた追加で、Adobe PDF Reference 1.4 で初めて加わった。
+
+### 0xA1..0xAC — Latin-1 supplement (素通し)
+
+`¡` (0xA1) から `¬` (0xAC) まで Latin-1 と完全一致 (`U+00A1..U+00AC`)。
+
+### 0xAD — 未割当 (穴)
+
+Latin-1 では SOFT HYPHEN (U+00AD) の位置だが、**PDF は割当を持たない**。Annex D.2 の `Code` 列が空欄。本実装は `undefined` 扱い → U+FFFD 置換。
+
+### 0xAE..0xFF — Latin-1 supplement (素通し)
+
+`®` (0xAE) から `ÿ` (0xFF) まで Latin-1 と完全一致 (`U+00AE..U+00FF`)。アクセント付きラテン文字 (À, Á, Â, ...) が含まれる。
+
 ## ポイント
 
 ### 1. 「ほぼ Latin-1」だが穴 2 つと 3 領域の差し替えがある
