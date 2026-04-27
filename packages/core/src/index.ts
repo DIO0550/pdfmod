@@ -6,9 +6,11 @@
  */
 
 export type {
+  DocumentMetadata,
   InheritedAttrs,
   PageRotate,
   ParsedCatalog,
+  ParsedDocumentInfo,
   PdfRectangle,
   ResolvedPage,
   ResolveInheritedOutcome,
@@ -17,8 +19,10 @@ export type {
 } from "./document/index";
 export {
   CatalogParser,
+  DocumentInfoParser,
   InheritanceResolver,
   PageTreeWalker,
+  PdfTrapped,
 } from "./document/index";
 export { NumberEx } from "./ext/number/index";
 export { Tokenizer } from "./lexer/index";

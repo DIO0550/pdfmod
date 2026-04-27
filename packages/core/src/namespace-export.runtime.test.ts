@@ -2,6 +2,7 @@ import { expect, test } from "vitest";
 import {
   ByteOffset,
   CatalogParser,
+  DocumentInfoParser,
   GenerationNumber,
   InheritanceResolver,
   LRUCache,
@@ -11,6 +12,7 @@ import {
   ObjectStreamBody,
   ObjectStreamHeader,
   PageTreeWalker,
+  PdfTrapped,
   PdfVersion,
   parseTrailer,
   parseXRefTable,
@@ -36,6 +38,8 @@ test.each([
   { name: "CatalogParser.parse", value: CatalogParser.parse },
   { name: "PageTreeWalker.walk", value: PageTreeWalker.walk },
   { name: "InheritanceResolver.resolve", value: InheritanceResolver.resolve },
+  { name: "DocumentInfoParser.parse", value: DocumentInfoParser.parse },
+  { name: "PdfTrapped.create", value: PdfTrapped.create },
 ])("$nameがルートからexportされている", ({ value }) => {
   expect(typeof value).toBe("function");
 });
