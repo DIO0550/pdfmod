@@ -5,6 +5,7 @@ import type {
   PdfValue,
   TrailerDict,
 } from "../pdf/types/pdf-types/index";
+import { stripUndefined } from "../utils/object";
 import type { Result } from "../utils/result/index";
 import { ok } from "../utils/result/index";
 import type { ResolveRef } from "./catalog-parser";
@@ -127,47 +128,17 @@ const extractMetadata = (
   warnings: PdfWarning[],
 ): DocumentMetadata => {
   const e = dict.entries;
-  const metadata: {
-    -readonly [K in keyof DocumentMetadata]: DocumentMetadata[K];
-  } = {};
-
-  const title = readStringField(e, "Title", warnings);
-  if (title !== undefined) {
-    metadata.title = title;
-  }
-  const author = readStringField(e, "Author", warnings);
-  if (author !== undefined) {
-    metadata.author = author;
-  }
-  const subject = readStringField(e, "Subject", warnings);
-  if (subject !== undefined) {
-    metadata.subject = subject;
-  }
-  const keywords = readStringField(e, "Keywords", warnings);
-  if (keywords !== undefined) {
-    metadata.keywords = keywords;
-  }
-  const creator = readStringField(e, "Creator", warnings);
-  if (creator !== undefined) {
-    metadata.creator = creator;
-  }
-  const producer = readStringField(e, "Producer", warnings);
-  if (producer !== undefined) {
-    metadata.producer = producer;
-  }
-  const creationDate = readDateField(e, "CreationDate", warnings);
-  if (creationDate !== undefined) {
-    metadata.creationDate = creationDate;
-  }
-  const modDate = readDateField(e, "ModDate", warnings);
-  if (modDate !== undefined) {
-    metadata.modDate = modDate;
-  }
-  const trapped = parseTrappedName(e.get("Trapped"), warnings);
-  if (trapped !== undefined) {
-    metadata.trapped = trapped;
-  }
-  return metadata;
+  return stripUndefined<DocumentMetadata>({
+    title: readStringField(e, "Title", warnings),
+    author: readStringField(e, "Author", warnings),
+    subject: readStringField(e, "Subject", warnings),
+    keywords: readStringField(e, "Keywords", warnings),
+    creator: readStringField(e, "Creator", warnings),
+    producer: readStringField(e, "Producer", warnings),
+    creationDate: readDateField(e, "CreationDate", warnings),
+    modDate: readDateField(e, "ModDate", warnings),
+    trapped: parseTrappedName(e.get("Trapped"), warnings),
+  });
 };
 
 /**
