@@ -1,4 +1,5 @@
 import {
+  isPdfLineBreak,
   isPdfTokenBoundary,
   isPdfWhitespace,
   matchesBytesAt,
@@ -40,8 +41,6 @@ const DIGIT_0 = 0x30;
 const DIGIT_9 = 0x39;
 
 const PERCENT = 0x25;
-const LF = 0x0a;
-const CR = 0x0d;
 
 const DECIMAL_RADIX = 10;
 
@@ -71,7 +70,7 @@ function isDigit(byte: number): boolean {
  */
 function isInsideComment(data: Uint8Array, pos: number): boolean {
   for (let i = pos - 1; i >= 0; i--) {
-    if (data[i] === LF || data[i] === CR) {
+    if (isPdfLineBreak(data[i])) {
       return false;
     }
     if (data[i] === PERCENT) {
@@ -101,7 +100,7 @@ function skipWhitespaceAndCommentsBackward(
     }
     let scan = i;
     let commentStart = -1;
-    while (scan >= 0 && data[scan] !== LF && data[scan] !== CR) {
+    while (scan >= 0 && !isPdfLineBreak(data[scan])) {
       if (data[scan] === PERCENT) {
         commentStart = scan;
       }
