@@ -338,21 +338,22 @@ function findEndobjPositions(
 }
 
 /**
- * `positions` の昇順走査で、`threshold` 超えの最初の要素位置までインデックスを進める。
- * 既に `threshold` を超えている場合は `fromIdx` をそのまま返す。
+ * `endobjPositions`（昇順）の中で `hitOffset` より大きい最初の endobj 位置の
+ * インデックスを返す。`fromIdx` から先頭方向には戻らない（buildObjectScopes が
+ * 単調に hit を進める前提のため、ポインタ前進だけで線形時間に収まる）。
  *
- * @param positions - 昇順の数値列
- * @param fromIdx - 走査開始インデックス
- * @param threshold - これより大きい要素を探す閾値
- * @returns `positions[idx] > threshold` を満たす最小の `idx`（無ければ `positions.length`）
+ * @param endobjPositions - findEndobjPositions の結果（昇順）
+ * @param fromIdx - 前回の hit までで進めた index（モノトーンに増えていく）
+ * @param hitOffset - 今回の hit のオフセット
+ * @returns `endobjPositions[idx] > hitOffset` を満たす最小の `idx`（無ければ `endobjPositions.length`）
  */
-function advanceUntilGreaterThan(
-  positions: readonly number[],
+function nextEndobjIndexAfter(
+  endobjPositions: readonly number[],
   fromIdx: number,
-  threshold: number,
+  hitOffset: number,
 ): number {
   let idx = fromIdx;
-  while (idx < positions.length && positions[idx] <= threshold) {
+  while (idx < endobjPositions.length && endobjPositions[idx] <= hitOffset) {
     idx++;
   }
   return idx;
@@ -384,7 +385,7 @@ function buildObjectScopes(
   let endobjIdx = 0;
   for (let i = 0; i < sortedHits.length; i++) {
     const hit = sortedHits[i];
-    endobjIdx = advanceUntilGreaterThan(endobjPositions, endobjIdx, hit.offset);
+    endobjIdx = nextEndobjIndexAfter(endobjPositions, endobjIdx, hit.offset);
     let nextOffset = data.length;
     if (i + 1 < sortedHits.length) {
       nextOffset = sortedHits[i + 1].offset;
