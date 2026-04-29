@@ -1,1 +1,2 @@
-export { type FallbackScanResult, scanFallback } from "./fallback-scanner";
+export type { FallbackScanResult } from "./fallback-scanner";
+export { scanFallback } from "./fallback-scanner";
