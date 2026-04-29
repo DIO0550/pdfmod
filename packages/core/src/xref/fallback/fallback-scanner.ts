@@ -338,6 +338,27 @@ function findEndobjPositions(
 }
 
 /**
+ * `positions` の昇順走査で、`threshold` 超えの最初の要素位置までインデックスを進める。
+ * 既に `threshold` を超えている場合は `fromIdx` をそのまま返す。
+ *
+ * @param positions - 昇順の数値列
+ * @param fromIdx - 走査開始インデックス
+ * @param threshold - これより大きい要素を探す閾値
+ * @returns `positions[idx] > threshold` を満たす最小の `idx`（無ければ `positions.length`）
+ */
+function advanceUntilGreaterThan(
+  positions: readonly number[],
+  fromIdx: number,
+  threshold: number,
+): number {
+  let idx = fromIdx;
+  while (idx < positions.length && positions[idx] <= threshold) {
+    idx++;
+  }
+  return idx;
+}
+
+/**
  * 各 ObjectHit の本体スコープ `[hit.offset, bodyEnd)` を構築する。
  * `bodyEnd` は (a) `hit.offset` より後の最初の `endobj` 位置、(b) 次 hit の offset、
  * (c) ファイル末尾、のうち最も小さいもの。endobj 候補は best-effort のため、
@@ -363,19 +384,19 @@ function buildObjectScopes(
   let endobjIdx = 0;
   for (let i = 0; i < sortedHits.length; i++) {
     const hit = sortedHits[i];
-    while (
-      endobjIdx < endobjPositions.length &&
-      endobjPositions[endobjIdx] <= hit.offset
-    ) {
-      endobjIdx++;
+    endobjIdx = advanceUntilGreaterThan(endobjPositions, endobjIdx, hit.offset);
+    let nextOffset = data.length;
+    if (i + 1 < sortedHits.length) {
+      nextOffset = sortedHits[i + 1].offset;
     }
-    const nextOffset =
-      i + 1 < sortedHits.length ? sortedHits[i + 1].offset : data.length;
-    const endobjEnd =
-      endobjIdx < endobjPositions.length
-        ? endobjPositions[endobjIdx]
-        : data.length;
-    const bodyEnd = endobjEnd < nextOffset ? endobjEnd : nextOffset;
+    let endobjEnd = data.length;
+    if (endobjIdx < endobjPositions.length) {
+      endobjEnd = endobjPositions[endobjIdx];
+    }
+    let bodyEnd = nextOffset;
+    if (endobjEnd < nextOffset) {
+      bodyEnd = endobjEnd;
+    }
     scopes.push({ hit, bodyEnd });
   }
   return scopes;
