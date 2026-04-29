@@ -75,6 +75,21 @@ test("XRefTable.size は max(objectNumber) + 1 で計算される", () => {
   expect(result.value.xrefTable.entries.size).toBe(3);
 });
 
+test("MAX_SAFE_INTEGER のオブジェクト番号は size 超過のため skip され、recovery に size-overflow が記録される", () => {
+  const maxSafeInt = String(Number.MAX_SAFE_INTEGER);
+  const body = `1 0 obj\n<<>>\nendobj\n${maxSafeInt} 0 obj\n<<>>\nendobj\n`;
+  const data = encode(body);
+  const result = scanFallback(data);
+  assert(result.ok);
+  expect(Number.isSafeInteger(result.value.xrefTable.size)).toBe(true);
+  expect(result.value.xrefTable.size).toBe(2);
+  expect(result.value.xrefTable.entries.size).toBe(1);
+  expect(result.value.warnings).toHaveLength(1);
+  const warning = result.value.warnings[0];
+  expect(warning.code).toBe("XREF_REBUILD");
+  expect(warning.recovery).toContain("size-overflow");
+});
+
 test("skip 候補があっても warnings は XREF_REBUILD 1 件のみで recovery に集約される", () => {
   const overflow = "9".repeat(21);
   const body =
