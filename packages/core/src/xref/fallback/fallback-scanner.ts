@@ -7,6 +7,8 @@ import type {
   XRefEntry,
   XRefTable,
 } from "../../pdf/types/index";
+import type { Option } from "../../utils/option/index";
+import { none, some } from "../../utils/option/index";
 import type { Result } from "../../utils/result/index";
 import { ok } from "../../utils/result/index";
 import { parseTrailer } from "../trailer/index";
@@ -21,12 +23,12 @@ import {
  * フォールバック XRef スキャン結果。
  *
  * - `xrefTable`: 復元した XRef テーブル（空でも返す）
- * - `trailer`: trailer 直接取得 / Catalog 推定 / 取得不可（undefined）の三状態。
+ * - `trailer`: trailer 直接取得 / Catalog 推定 / 取得不可（None）の三状態を Option で表現。
  * - `warnings`: `XREF_REBUILD` を 1 件含む。skip 件数・理由カテゴリは同 warning の `recovery` に集約。
  */
 export interface FallbackScanResult {
   readonly xrefTable: XRefTable;
-  readonly trailer: TrailerDict | undefined;
+  readonly trailer: Option<TrailerDict>;
   readonly warnings: readonly PdfWarning[];
 }
 
@@ -106,14 +108,18 @@ type FallbackSkipReason = ObjectScanSkipped["reason"] | "size-overflow";
 
 /**
  * skip 候補（object-scanner 由来 + size 超過）の件数・理由カテゴリから
- * `recovery` 用の文字列を組み立てる。skip が無ければ `undefined` を返す。
+ * `recovery` 用の文字列を組み立てる。skip が無ければ `none` を返す。
+ *
+ * @param skipped - object-scanner の skip 集計
+ * @param sizeOverflowCount - `xrefTable.size` 超過のため skip した hit 数
+ * @returns 集約された recovery 文字列の Option
  */
 function formatRecoveryMessage(
   skipped: readonly ObjectScanSkipped[],
   sizeOverflowCount: number,
-): string | undefined {
+): Option<string> {
   if (skipped.length === 0 && sizeOverflowCount === 0) {
-    return undefined;
+    return none;
   }
   const counts = new Map<FallbackSkipReason, number>();
   for (const entry of skipped) {
@@ -127,7 +133,7 @@ function formatRecoveryMessage(
     parts.push(`${count} ${reason}`);
   }
   const total = skipped.length + sizeOverflowCount;
-  return `Skipped ${total} invalid candidates: ${parts.join(", ")}`;
+  return some(`Skipped ${total} invalid candidates: ${parts.join(", ")}`);
 }
 
 /**
@@ -145,10 +151,10 @@ function formatRebuildWarning(
   const recovery = formatRecoveryMessage(report.skipped, sizeOverflowCount);
   const acceptedHits = report.hits.length - sizeOverflowCount;
   const message = `Reconstructed xref by scanning ${acceptedHits} objects`;
-  if (recovery === undefined) {
+  if (!recovery.some) {
     return { code: "XREF_REBUILD", message };
   }
-  return { code: "XREF_REBUILD", message, recovery };
+  return { code: "XREF_REBUILD", message, recovery: recovery.value };
 }
 
 /**
@@ -446,18 +452,18 @@ function isInsideAnyScope(
  *
  * @param scopes - buildObjectScopes の結果
  * @param position - 判定対象のバイト位置
- * @returns 含む scope の hit、無ければ `undefined`
+ * @returns 含む scope の hit。無ければ `none`
  */
 function findScopeContaining(
   scopes: readonly ObjectScope[],
   position: number,
-): ObjectHit | undefined {
+): Option<ObjectHit> {
   for (const scope of scopes) {
     if (position >= scope.hit.offset && position < scope.bodyEnd) {
-      return scope.hit;
+      return some(scope.hit);
     }
   }
-  return undefined;
+  return none;
 }
 
 /**
@@ -467,12 +473,12 @@ function findScopeContaining(
  *
  * @param data - PDF バイト配列
  * @param scopes - obj 本体スコープ列（buildObjectScopes 由来）
- * @returns 採用した TrailerDict、すべて失敗した場合は `undefined`
+ * @returns 採用した TrailerDict の Option。すべて失敗した場合は `none`
  */
 function findValidTrailer(
   data: Uint8Array,
   scopes: readonly ObjectScope[],
-): TrailerDict | undefined {
+): Option<TrailerDict> {
   const offsets = findTrailerOffsets(data);
   for (const off of offsets) {
     if (isInsideAnyScope(scopes, off)) {
@@ -480,10 +486,10 @@ function findValidTrailer(
     }
     const result = parseTrailer(data, ByteOffset.of(off));
     if (result.ok) {
-      return result.value;
+      return some(result.value);
     }
   }
-  return undefined;
+  return none;
 }
 
 /**
@@ -523,26 +529,26 @@ function findCatalogPositions(data: Uint8Array, pattern: number[]): number[] {
  * @param scopes - obj 本体スコープ列（buildObjectScopes 由来）
  * @param streamRegions - stream 領域列（findStreamRegions 由来）
  * @param size - `xrefTable.size`（合成 trailer の `size` フィールドに用いる）
- * @returns 合成した TrailerDict、Catalog や紐付け先 obj が無ければ `undefined`
+ * @returns 合成した TrailerDict の Option。Catalog や紐付け先 obj が無ければ `none`
  */
 function inferCatalogRoot(
   data: Uint8Array,
   scopes: readonly ObjectScope[],
   streamRegions: readonly ByteRange[],
   size: number,
-): TrailerDict | undefined {
+): Option<TrailerDict> {
   const positions = [
     ...findCatalogPositions(data, CATALOG_SPACED_BYTES),
     ...findCatalogPositions(data, CATALOG_COMPACT_BYTES),
   ];
   let latestPosition = -1;
-  let latestHit: ObjectHit | undefined;
+  let latestHit: Option<ObjectHit> = none;
   for (const p of positions) {
     if (isInsideAnyRange(streamRegions, p)) {
       continue;
     }
     const hit = findScopeContaining(scopes, p);
-    if (hit === undefined) {
+    if (!hit.some) {
       continue;
     }
     if (p > latestPosition) {
@@ -550,16 +556,16 @@ function inferCatalogRoot(
       latestHit = hit;
     }
   }
-  if (latestHit === undefined) {
-    return undefined;
+  if (!latestHit.some) {
+    return none;
   }
-  return {
+  return some({
     root: {
-      objectNumber: latestHit.objectNumber,
-      generationNumber: latestHit.generation,
+      objectNumber: latestHit.value.objectNumber,
+      generationNumber: latestHit.value.generation,
     },
     size,
-  };
+  });
 }
 
 /**
@@ -579,7 +585,7 @@ export function scanFallback(
   const streamRegions = findStreamRegions(data);
   const scopes = buildObjectScopes(data, report.hits, streamRegions);
   const directTrailer = findValidTrailer(data, scopes);
-  if (directTrailer !== undefined) {
+  if (directTrailer.some) {
     return ok({
       xrefTable,
       trailer: directTrailer,
