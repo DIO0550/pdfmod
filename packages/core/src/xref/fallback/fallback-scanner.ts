@@ -111,7 +111,7 @@ function formatRecoveryMessage(
  * @param sizeOverflowCount - `xrefTable.size` 超過のため skip した hit 数
  * @returns `XREF_REBUILD` コードを持つ単一の警告
  */
-function buildRebuildWarning(
+function formatRebuildWarning(
   report: ObjectScanReport,
   sizeOverflowCount: number,
 ): PdfWarning {
@@ -136,6 +136,6 @@ export function scanFallback(
 ): Result<FallbackScanResult, PdfError> {
   const report = scanObjectHeaders(data);
   const { xrefTable, sizeOverflowCount } = rebuildXRefTable(report.hits);
-  const warning = buildRebuildWarning(report, sizeOverflowCount);
+  const warning = formatRebuildWarning(report, sizeOverflowCount);
   return ok({ xrefTable, trailer: undefined, warnings: [warning] });
 }
