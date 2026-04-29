@@ -28,17 +28,38 @@ export interface FallbackScanResult {
 }
 
 /**
+ * `XRefTable.size` は `max(objectNumber) + 1` で算出するため、
+ * `objectNumber === MAX_SAFE_INTEGER` の hit は size を不正値に押し上げる。
+ * `parseXRefTable` 側の挙動（safe integer 超過は明示的に拒否）と整合させる。
+ */
+const MAX_OBJECT_NUMBER_FOR_SIZE = Number.MAX_SAFE_INTEGER - 1;
+
+/**
+ * size 超過 hit の集計結果。
+ */
+interface RebuildResult {
+  readonly xrefTable: XRefTable;
+  readonly sizeOverflowCount: number;
+}
+
+/**
  * ObjectHit 列から XRefTable を再構築する (FB-001 + FB-003)。
  * 先頭→末尾順に `Map.set` するため、同一オブジェクト番号は末尾候補が勝つ。
- * `size` は `max(objectNumber) + 1`。hits が空の場合は size=0 の空 table。
+ * `size = max(objectNumber) + 1`。`objectNumber > MAX_SAFE_INTEGER - 1` の hit は
+ * skip して safe integer を保証する（件数は呼び出し側で warning に集約する）。
  *
  * @param hits - object-scanner が検出した ObjectHit 列
- * @returns 再構築した XRefTable
+ * @returns 再構築した XRefTable と size 超過で skip した件数
  */
-function rebuildXRefTable(hits: readonly ObjectHit[]): XRefTable {
+function rebuildXRefTable(hits: readonly ObjectHit[]): RebuildResult {
   const entries = new Map<ObjectNumber, XRefEntry>();
   let maxObjectNumber = -1;
+  let sizeOverflowCount = 0;
   for (const hit of hits) {
+    if (hit.objectNumber > MAX_OBJECT_NUMBER_FOR_SIZE) {
+      sizeOverflowCount++;
+      continue;
+    }
     entries.set(hit.objectNumber, {
       type: 1,
       offset: hit.offset,
@@ -48,29 +69,38 @@ function rebuildXRefTable(hits: readonly ObjectHit[]): XRefTable {
       maxObjectNumber = hit.objectNumber;
     }
   }
-  return { entries, size: maxObjectNumber + 1 };
+  return {
+    xrefTable: { entries, size: maxObjectNumber + 1 },
+    sizeOverflowCount,
+  };
 }
 
+type FallbackSkipReason = ObjectScanSkipped["reason"] | "size-overflow";
+
 /**
- * `ObjectScanSkipped` を理由カテゴリごとに集計し、`recovery` 用の文字列を組み立てる。
- * 例: `"Skipped 2 invalid candidates: 1 object-number-invalid, 1 generation-invalid"`
- * skipped が空の場合は `undefined` を返す。
+ * skip 候補（object-scanner 由来 + size 超過）を理由カテゴリごとに集計し、
+ * `recovery` 用の文字列を組み立てる。skip が無ければ `undefined` を返す。
  */
 function summarizeSkippedRecovery(
   skipped: readonly ObjectScanSkipped[],
+  sizeOverflowCount: number,
 ): string | undefined {
-  if (skipped.length === 0) {
+  if (skipped.length === 0 && sizeOverflowCount === 0) {
     return undefined;
   }
-  const counts = new Map<ObjectScanSkipped["reason"], number>();
+  const counts = new Map<FallbackSkipReason, number>();
   for (const entry of skipped) {
     counts.set(entry.reason, (counts.get(entry.reason) ?? 0) + 1);
+  }
+  if (sizeOverflowCount > 0) {
+    counts.set("size-overflow", sizeOverflowCount);
   }
   const parts: string[] = [];
   for (const [reason, count] of counts) {
     parts.push(`${count} ${reason}`);
   }
-  return `Skipped ${skipped.length} invalid candidates: ${parts.join(", ")}`;
+  const total = skipped.length + sizeOverflowCount;
+  return `Skipped ${total} invalid candidates: ${parts.join(", ")}`;
 }
 
 /**
@@ -78,11 +108,16 @@ function summarizeSkippedRecovery(
  * skip 候補の件数・理由カテゴリは `recovery` フィールドに集約する。
  *
  * @param report - object-scanner の走査結果（hits 件数 / skipped 集計）
+ * @param sizeOverflowCount - `xrefTable.size` 超過のため skip した hit 数
  * @returns `XREF_REBUILD` コードを持つ単一の警告
  */
-function buildRebuildWarning(report: ObjectScanReport): PdfWarning {
-  const recovery = summarizeSkippedRecovery(report.skipped);
-  const message = `Reconstructed xref by scanning ${report.hits.length} objects`;
+function buildRebuildWarning(
+  report: ObjectScanReport,
+  sizeOverflowCount: number,
+): PdfWarning {
+  const recovery = summarizeSkippedRecovery(report.skipped, sizeOverflowCount);
+  const acceptedHits = report.hits.length - sizeOverflowCount;
+  const message = `Reconstructed xref by scanning ${acceptedHits} objects`;
   if (recovery === undefined) {
     return { code: "XREF_REBUILD", message };
   }
@@ -100,7 +135,7 @@ export function scanFallback(
   data: Uint8Array,
 ): Result<FallbackScanResult, PdfError> {
   const report = scanObjectHeaders(data);
-  const xrefTable = rebuildXRefTable(report.hits);
-  const warning = buildRebuildWarning(report);
+  const { xrefTable, sizeOverflowCount } = rebuildXRefTable(report.hits);
+  const warning = buildRebuildWarning(report, sizeOverflowCount);
   return ok({ xrefTable, trailer: undefined, warnings: [warning] });
 }
