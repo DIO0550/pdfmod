@@ -85,6 +85,40 @@ function isInsideComment(data: Uint8Array, pos: number): boolean {
 }
 
 /**
+ * 逆方向に whitespace と PDF コメント (`% ... 行末`) をスキップする。
+ * 数字とキーワードの間にコメントが挟まるケースに対応する。
+ *
+ * @param data - PDFバイト配列
+ * @param pos - スキップ開始位置
+ * @returns スキップ後の位置（次の有効バイトのインデックス、見つからなければ -1）
+ */
+function skipWhitespaceAndCommentsBackward(
+  data: Uint8Array,
+  pos: number,
+): number {
+  let i = pos;
+  while (i >= 0) {
+    if (isPdfWhitespace(data[i])) {
+      i--;
+      continue;
+    }
+    let scan = i;
+    let commentStart = -1;
+    while (scan >= 0 && data[scan] !== LF && data[scan] !== CR) {
+      if (data[scan] === PERCENT) {
+        commentStart = scan;
+      }
+      scan--;
+    }
+    if (commentStart < 0) {
+      break;
+    }
+    i = commentStart - 1;
+  }
+  return i;
+}
+
+/**
  * 指定範囲を 10 進整数として読む。
  * 範囲外（safe integer 超過）は `Number.POSITIVE_INFINITY` を返す。
  *
@@ -121,9 +155,7 @@ function readHeaderBackward(
   if (i < 0 || !isPdfWhitespace(data[i])) {
     return undefined;
   }
-  while (i >= 0 && isPdfWhitespace(data[i])) {
-    i--;
-  }
+  i = skipWhitespaceAndCommentsBackward(data, i);
 
   const genEnd = i;
   while (i >= 0 && isDigit(data[i])) {
@@ -138,9 +170,7 @@ function readHeaderBackward(
   if (i < 0 || !isPdfWhitespace(data[i])) {
     return undefined;
   }
-  while (i >= 0 && isPdfWhitespace(data[i])) {
-    i--;
-  }
+  i = skipWhitespaceAndCommentsBackward(data, i);
 
   const objEnd = i;
   while (i >= 0 && isDigit(data[i])) {
