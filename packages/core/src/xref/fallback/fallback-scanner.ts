@@ -259,6 +259,31 @@ interface ByteRange {
 }
 
 /**
+ * `endstreamPositions`（昇順）の中で `streamOffset` より大きい最初の endstream
+ * 位置のインデックスを返す。`fromIdx` から先頭方向には戻らない（findStreamRegions
+ * が stream を昇順に処理する前提のため、ポインタ前進だけで線形時間に収まる）。
+ *
+ * @param endstreamPositions - findKeywordPositions(ENDSTREAM_BYTES) の結果（昇順）
+ * @param fromIdx - 前回の stream までで進めた index（モノトーンに増えていく）
+ * @param streamOffset - 今回の stream キーワード位置
+ * @returns `endstreamPositions[idx] > streamOffset` を満たす最小の `idx`（無ければ `endstreamPositions.length`）
+ */
+function nextEndstreamIndexAfter(
+  endstreamPositions: readonly number[],
+  fromIdx: number,
+  streamOffset: number,
+): number {
+  let idx = fromIdx;
+  while (
+    idx < endstreamPositions.length &&
+    endstreamPositions[idx] <= streamOffset
+  ) {
+    idx++;
+  }
+  return idx;
+}
+
+/**
  * `stream` キーワードと直後の `endstream` をペアリングし、stream 領域として返す。
  * 偽 endobj/trailer 抑制に使う best-effort 検出のため、入れ子は考慮しない。
  *
@@ -276,12 +301,7 @@ function findStreamRegions(data: Uint8Array): ByteRange[] {
   const regions: ByteRange[] = [];
   let endIdx = 0;
   for (const sp of streamPositions) {
-    while (
-      endIdx < endstreamPositions.length &&
-      endstreamPositions[endIdx] <= sp
-    ) {
-      endIdx++;
-    }
+    endIdx = nextEndstreamIndexAfter(endstreamPositions, endIdx, sp);
     if (endIdx >= endstreamPositions.length) {
       regions.push({ start: sp, end: data.length });
       break;
