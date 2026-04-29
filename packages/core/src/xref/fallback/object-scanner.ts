@@ -27,7 +27,7 @@ export interface ObjectHit {
  * 呼び出し側で `XREF_REBUILD` warning の `recovery` に件数・理由カテゴリを集約する。
  */
 export interface ObjectScanSkipped {
-  readonly offset: number;
+  readonly offset: ByteOffset;
   readonly reason: "object-number-invalid" | "generation-out-of-range";
 }
 
@@ -171,7 +171,7 @@ export function scanObjectHeaders(data: Uint8Array): ObjectScanReport {
     );
     if (!objectNumberResult.ok) {
       skipped.push({
-        offset: header.headerOffset,
+        offset: ByteOffsetCompanion.of(header.headerOffset),
         reason: "object-number-invalid",
       });
       continue;
@@ -182,7 +182,7 @@ export function scanObjectHeaders(data: Uint8Array): ObjectScanReport {
     );
     if (!generationResult.ok) {
       skipped.push({
-        offset: header.headerOffset,
+        offset: ByteOffsetCompanion.of(header.headerOffset),
         reason: "generation-out-of-range",
       });
       continue;
