@@ -54,7 +54,7 @@ const DECIMAL_RADIX = 10;
  */
 interface DigitRange {
   readonly start: number;
-  readonly endExclusive: number;
+  readonly end: number;
 }
 
 /**
@@ -132,7 +132,7 @@ function findDigitsEndingAt(
   while (start > 0 && isPdfDigit(data[start - 1])) {
     start--;
   }
-  return some({ start, endExclusive: lastIndex + 1 });
+  return some({ start, end: lastIndex + 1 });
 }
 
 /**
@@ -140,16 +140,16 @@ function findDigitsEndingAt(
  *
  * @param data - PDFバイト配列
  * @param start - 開始位置（含む）
- * @param endExclusive - 終了位置（含まない）
+ * @param end - 終了位置（含まない）
  * @returns 読み取った数値。safe integer を超える場合は `none`。
  */
 function readDigits(
   data: Uint8Array,
   start: number,
-  endExclusive: number,
+  end: number,
 ): Option<number> {
   let value = 0;
-  for (let i = start; i < endExclusive; i++) {
+  for (let i = start; i < end; i++) {
     value = value * DECIMAL_RADIX + (data[i] - DIGIT_0);
     if (!NumberEx.isSafeIntegerAtLeastZero(value)) {
       return none;
@@ -219,7 +219,7 @@ function readObjectNumber(
   range: DigitRange,
   offset: ByteOffset,
 ): Result<ObjectNumber, ObjectScanSkipped> {
-  const valueOpt = readDigits(data, range.start, range.endExclusive);
+  const valueOpt = readDigits(data, range.start, range.end);
   if (!valueOpt.some) {
     return err({ offset, reason: "object-number-invalid" });
   }
@@ -243,7 +243,7 @@ function readGenerationNumber(
   range: DigitRange,
   offset: ByteOffset,
 ): Result<GenerationNumber, ObjectScanSkipped> {
-  const valueOpt = readDigits(data, range.start, range.endExclusive);
+  const valueOpt = readDigits(data, range.start, range.end);
   if (!valueOpt.some) {
     return err({ offset, reason: "generation-invalid" });
   }
