@@ -1,6 +1,7 @@
 import { expect, test } from "vitest";
 import {
   isPdfDelimiter,
+  isPdfLineBreak,
   isPdfTokenBoundary,
   isPdfWhitespace,
   skipWhitespaceAndComments,
@@ -92,6 +93,20 @@ test("isPdfTokenBoundary はデリミタに true を返す", () => {
 
 test("isPdfTokenBoundary は通常文字に false を返す", () => {
   expect(isPdfTokenBoundary(0x41)).toBe(false);
+});
+
+test.each([[0x0a], [0x0d]])("isPdfLineBreak(0x%s) は true を返す", (byte) => {
+  expect(isPdfLineBreak(byte)).toBe(true);
+});
+
+test.each([
+  [0x20],
+  [0x09],
+  [0x00],
+  [0x0c],
+  [0x41],
+])("isPdfLineBreak(0x%s) は false を返す", (byte) => {
+  expect(isPdfLineBreak(byte)).toBe(false);
 });
 
 // --- skipWhitespaceAndComments edge cases ---
