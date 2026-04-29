@@ -2,8 +2,8 @@ import type { PdfError, PdfWarning } from "../../pdf/errors/index";
 import type {
   ObjectNumber,
   TrailerDict,
+  XRefEntry,
   XRefTable,
-  XRefUsedEntry,
 } from "../../pdf/types/index";
 import type { Result } from "../../utils/result/index";
 import { ok } from "../../utils/result/index";
@@ -36,7 +36,7 @@ export interface FallbackScanResult {
  * @returns 再構築した XRefTable
  */
 function rebuildXRefTable(hits: readonly ObjectHit[]): XRefTable {
-  const entries = new Map<ObjectNumber, XRefUsedEntry>();
+  const entries = new Map<ObjectNumber, XRefEntry>();
   let maxObjectNumber = -1;
   for (const hit of hits) {
     entries.set(hit.objectNumber, {
