@@ -28,7 +28,7 @@ export interface ObjectHit {
  */
 export interface ObjectScanSkipped {
   readonly offset: ByteOffset;
-  readonly reason: "object-number-invalid" | "generation-out-of-range";
+  readonly reason: "object-number-invalid" | "generation-invalid";
 }
 
 export interface ObjectScanReport {
@@ -183,7 +183,7 @@ export function scanObjectHeaders(data: Uint8Array): ObjectScanReport {
     if (!generationResult.ok) {
       skipped.push({
         offset: ByteOffsetCompanion.of(header.headerOffset),
-        reason: "generation-out-of-range",
+        reason: "generation-invalid",
       });
       continue;
     }
