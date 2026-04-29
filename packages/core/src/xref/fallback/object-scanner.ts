@@ -4,12 +4,9 @@ import {
   matchesBytesAt,
 } from "../../lexer/bytes/index";
 import {
-  type ByteOffset,
-  ByteOffset as ByteOffsetCompanion,
-  type GenerationNumber,
-  GenerationNumber as GenerationNumberCompanion,
-  type ObjectNumber,
-  ObjectNumber as ObjectNumberCompanion,
+  ByteOffset,
+  GenerationNumber,
+  ObjectNumber,
 } from "../../pdf/types/index";
 
 /**
@@ -223,23 +220,19 @@ export function scanObjectHeaders(data: Uint8Array): ObjectScanReport {
       continue;
     }
 
-    const objectNumberResult = ObjectNumberCompanion.create(
-      header.objectNumberValue,
-    );
+    const objectNumberResult = ObjectNumber.create(header.objectNumberValue);
     if (!objectNumberResult.ok) {
       skipped.push({
-        offset: ByteOffsetCompanion.of(header.headerOffset),
+        offset: ByteOffset.of(header.headerOffset),
         reason: "object-number-invalid",
       });
       continue;
     }
 
-    const generationResult = GenerationNumberCompanion.create(
-      header.generationValue,
-    );
+    const generationResult = GenerationNumber.create(header.generationValue);
     if (!generationResult.ok) {
       skipped.push({
-        offset: ByteOffsetCompanion.of(header.headerOffset),
+        offset: ByteOffset.of(header.headerOffset),
         reason: "generation-invalid",
       });
       continue;
@@ -248,7 +241,7 @@ export function scanObjectHeaders(data: Uint8Array): ObjectScanReport {
     hits.push({
       objectNumber: objectNumberResult.value,
       generation: generationResult.value,
-      offset: ByteOffsetCompanion.of(header.headerOffset),
+      offset: ByteOffset.of(header.headerOffset),
     });
   }
 
