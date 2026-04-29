@@ -17,9 +17,15 @@ const PdfLeftBracket = 0x5b;
 const PdfRightBracket = 0x5d;
 const PdfLeftBrace = 0x7b;
 const PdfRightBrace = 0x7d;
+// ASCII digits ('0'-'9')
+const PdfDigit0 = 0x30;
+const PdfDigit9 = 0x39;
 
 /** PDFホワイトスペースバイト (ISO 32000 Table 1): NUL, TAB, LF, FF, CR, SPACE */
 const WHITESPACE = new Set([PdfNul, PdfTab, PdfLf, PdfFf, PdfCr, PdfSpace]);
+
+/** PDF行末コードバイト (ISO 32000 Table 1): LF, CR */
+const LINE_BREAK = new Set([PdfLf, PdfCr]);
 
 /** PDF区切り文字バイト (ISO 32000 Table 2): ( ) < > [ ] { } / % */
 const DELIMITER = new Set([
@@ -84,6 +90,41 @@ export function isPdfDelimiter(byte: number): boolean {
  */
 export function isPdfTokenBoundary(byte: number): boolean {
   return WHITESPACE.has(byte) || DELIMITER.has(byte);
+}
+
+/**
+ * 指定バイトがPDF行末コード（LF または CR）かどうかを判定する。
+ * ISO 32000 Table 1 で定義される EOL マーカー (0x0A, 0x0D) を判定する。
+ *
+ * @param byte - 判定対象のバイト値
+ * @returns LF / CR であれば `true`
+ *
+ * @example
+ * ```ts
+ * isPdfLineBreak(0x0a); // true (LF)
+ * isPdfLineBreak(0x0d); // true (CR)
+ * isPdfLineBreak(0x20); // false (SPACE)
+ * ```
+ */
+export function isPdfLineBreak(byte: number): boolean {
+  return LINE_BREAK.has(byte);
+}
+
+/**
+ * 指定バイトがASCII数字（'0'-'9'）かどうかを判定する。
+ *
+ * @param byte - 判定対象のバイト値
+ * @returns 数字であれば `true`
+ *
+ * @example
+ * ```ts
+ * isPdfDigit(0x30); // true ('0')
+ * isPdfDigit(0x39); // true ('9')
+ * isPdfDigit(0x41); // false ('A')
+ * ```
+ */
+export function isPdfDigit(byte: number): boolean {
+  return byte >= PdfDigit0 && byte <= PdfDigit9;
 }
 
 /**
