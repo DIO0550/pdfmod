@@ -1,4 +1,5 @@
 import {
+  isPdfDigit,
   isPdfLineBreak,
   isPdfTokenBoundary,
   isPdfWhitespace,
@@ -38,7 +39,6 @@ const OBJ_BYTES = Array.from(new TextEncoder().encode("obj"));
 const OBJ_LEN = OBJ_BYTES.length;
 
 const DIGIT_0 = 0x30;
-const DIGIT_9 = 0x39;
 
 const PERCENT = 0x25;
 
@@ -48,16 +48,6 @@ interface BackwardHeader {
   readonly objectNumberValue: number;
   readonly generationValue: number;
   readonly headerOffset: number;
-}
-
-/**
- * 指定バイトが ASCII 数字（0-9）か判定する。
- *
- * @param byte - 判定対象のバイト値
- * @returns 数字であれば `true`
- */
-function isDigit(byte: number): boolean {
-  return byte >= DIGIT_0 && byte <= DIGIT_9;
 }
 
 /**
@@ -154,7 +144,7 @@ function readHeaderBackward(
   i = skipWhitespaceAndCommentsBackward(data, i);
 
   const genEnd = i;
-  while (i >= 0 && isDigit(data[i])) {
+  while (i >= 0 && isPdfDigit(data[i])) {
     i--;
   }
   const genStart = i + 1;
@@ -169,7 +159,7 @@ function readHeaderBackward(
   i = skipWhitespaceAndCommentsBackward(data, i);
 
   const objEnd = i;
-  while (i >= 0 && isDigit(data[i])) {
+  while (i >= 0 && isPdfDigit(data[i])) {
     i--;
   }
   const objStart = i + 1;
