@@ -10,6 +10,8 @@ import {
   GenerationNumber,
   ObjectNumber,
 } from "../../pdf/types/index";
+import type { Option } from "../../utils/option/index";
+import { none, some } from "../../utils/option/index";
 
 /**
  * `\d+ \d+ obj` ヘッダ検出結果。
@@ -141,16 +143,16 @@ function readDigits(data: Uint8Array, start: number, end: number): number {
  *
  * @param data - PDFバイト配列
  * @param objKeywordPos - `obj` の先頭バイト位置
- * @returns 抽出に成功した場合のヘッダ情報、構造が壊れている場合は `undefined`
+ * @returns 抽出に成功した場合は `some(BackwardHeader)`、構造が壊れている場合は `none`
  */
 function readHeaderBackward(
   data: Uint8Array,
   objKeywordPos: number,
-): BackwardHeader | undefined {
+): Option<BackwardHeader> {
   let i = objKeywordPos - 1;
 
   if (i < 0 || !isPdfWhitespace(data[i])) {
-    return undefined;
+    return none;
   }
   i = skipWhitespaceAndCommentsBackward(data, i);
 
@@ -160,12 +162,12 @@ function readHeaderBackward(
   }
   const genStart = i + 1;
   if (genStart > genEnd) {
-    return undefined;
+    return none;
   }
   const generationValue = readDigits(data, genStart, genEnd + 1);
 
   if (i < 0 || !isPdfWhitespace(data[i])) {
-    return undefined;
+    return none;
   }
   i = skipWhitespaceAndCommentsBackward(data, i);
 
@@ -175,15 +177,15 @@ function readHeaderBackward(
   }
   const objStart = i + 1;
   if (objStart > objEnd) {
-    return undefined;
+    return none;
   }
   const objectNumberValue = readDigits(data, objStart, objEnd + 1);
 
-  return {
+  return some({
     objectNumberValue,
     generationValue,
     headerOffset: objStart,
-  };
+  });
 }
 
 /**
@@ -209,10 +211,11 @@ export function scanObjectHeaders(data: Uint8Array): ObjectScanReport {
     if (isInsideComment(data, i)) {
       continue;
     }
-    const header = readHeaderBackward(data, i);
-    if (header === undefined) {
+    const headerOpt = readHeaderBackward(data, i);
+    if (!headerOpt.some) {
       continue;
     }
+    const header = headerOpt.value;
     if (
       header.headerOffset > 0 &&
       !isPdfTokenBoundary(data[header.headerOffset - 1])
