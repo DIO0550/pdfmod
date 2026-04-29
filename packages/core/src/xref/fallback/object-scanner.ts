@@ -13,6 +13,8 @@ import {
 } from "../../pdf/types/index";
 import type { Option } from "../../utils/option/index";
 import { none, some } from "../../utils/option/index";
+import type { Result } from "../../utils/result/index";
+import { err, ok } from "../../utils/result/index";
 
 /**
  * `\d+ \d+ obj` ヘッダ検出結果。
@@ -47,9 +49,20 @@ const PERCENT = 0x25;
 
 const DECIMAL_RADIX = 10;
 
-interface BackwardHeader {
-  readonly objectNumberValue: number;
-  readonly generationValue: number;
+/**
+ * 連続する数字列の範囲。
+ */
+interface DigitRange {
+  readonly start: number;
+  readonly endExclusive: number;
+}
+
+/**
+ * 数値化前のオブジェクトヘッダ構造。
+ */
+interface ObjectHeaderRanges {
+  readonly objectNumberRange: DigitRange;
+  readonly generationRange: DigitRange;
   readonly headerOffset: number;
 }
 
@@ -59,196 +72,256 @@ interface BackwardHeader {
  *
  * @param data - PDFバイト配列
  * @param pos - 走査開始位置
- * @returns コメント開始位置 (`%` のオフセット)。同じ行に `%` が無ければ -1
+ * @returns コメント開始位置 (`%` のオフセット)。同じ行に `%` が無ければ `none`
  */
-function findCommentStartOnLine(data: Uint8Array, pos: number): number {
+function findCommentStartOnLine(data: Uint8Array, pos: number): Option<number> {
   let commentStart = -1;
   for (let scan = pos; scan >= 0 && !isPdfLineBreak(data[scan]); scan--) {
     if (data[scan] === PERCENT) {
       commentStart = scan;
     }
   }
-  return commentStart;
+  if (commentStart < 0) {
+    return none;
+  }
+  return some(commentStart);
 }
 
 /**
- * 逆方向に whitespace と PDF コメント (`% ... 行末`) をスキップする。
- * 数字とキーワードの間にコメントが挟まるケースに対応する。
+ * 指定位置から行頭方向に走査し、空白とコメントを飛ばした先の非空白バイト位置を返す。
+ * ISO 32000 §7.2.4 によりコメントは単一の white-space 文字と等価に扱う。
  *
  * @param data - PDFバイト配列
- * @param pos - スキップ開始位置
- * @returns スキップ後の位置（次の有効バイトのインデックス、見つからなければ -1）
+ * @param fromIndex - 走査開始位置
+ * @returns 非空白バイトの位置。先頭まで全て空白/コメントの場合は `none`
  */
-function skipWhitespaceAndCommentsBackward(
+function findPreviousNonWhitespaceByte(
   data: Uint8Array,
-  pos: number,
-): number {
-  let i = pos;
+  fromIndex: number,
+): Option<number> {
+  let i = fromIndex;
   while (i >= 0) {
     if (isPdfWhitespace(data[i])) {
       i--;
       continue;
     }
     const commentStart = findCommentStartOnLine(data, i);
-    if (commentStart < 0) {
-      break;
+    if (!commentStart.some) {
+      return some(i);
     }
-    i = commentStart - 1;
+    i = commentStart.value - 1;
   }
-  return i;
+  return none;
+}
+
+/**
+ * `lastIndex` で終わる連続数字列の範囲を返す。
+ *
+ * @param data - PDFバイト配列
+ * @param lastIndex - 数字列の末尾位置（含む）
+ * @returns 数字列の範囲。`lastIndex` の位置が数字でなければ `none`
+ */
+function findDigitsEndingAt(
+  data: Uint8Array,
+  lastIndex: number,
+): Option<DigitRange> {
+  if (lastIndex < 0 || !isPdfDigit(data[lastIndex])) {
+    return none;
+  }
+  let start = lastIndex;
+  while (start > 0 && isPdfDigit(data[start - 1])) {
+    start--;
+  }
+  return some({ start, endExclusive: lastIndex + 1 });
 }
 
 /**
  * 指定範囲を 10 進整数として読む。
- * 範囲外（safe integer 超過）は `Number.POSITIVE_INFINITY` を返す。
  *
  * @param data - PDFバイト配列
  * @param start - 開始位置（含む）
- * @param end - 終了位置（含まない）
- * @returns 読み取った数値。safe integer を超える場合は `Number.POSITIVE_INFINITY`。
+ * @param endExclusive - 終了位置（含まない）
+ * @returns 読み取った数値。safe integer を超える場合は `none`。
  */
-function readDigits(data: Uint8Array, start: number, end: number): number {
+function readDigits(
+  data: Uint8Array,
+  start: number,
+  endExclusive: number,
+): Option<number> {
   let value = 0;
-  for (let i = start; i < end; i++) {
+  for (let i = start; i < endExclusive; i++) {
     value = value * DECIMAL_RADIX + (data[i] - DIGIT_0);
     if (!NumberEx.isSafeIntegerAtLeastZero(value)) {
-      return Number.POSITIVE_INFINITY;
+      return none;
     }
   }
-  return value;
+  return some(value);
 }
 
 /**
- * `obj` キーワード位置から逆方向に `\d+ \s+ \d+ \s+` を読み、
- * オブジェクトヘッダ先頭位置と数値を抽出する。
+ * `obj` キーワード位置から行頭方向に `\d+ \s+ \d+` を読み、
+ * オブジェクトヘッダの構造（数字列の範囲とヘッダ先頭位置）を抽出する。
  *
  * @param data - PDFバイト配列
  * @param objKeywordPos - `obj` の先頭バイト位置
- * @returns 抽出に成功した場合は `some(BackwardHeader)`、構造が壊れている場合は `none`
+ * @returns 抽出に成功した場合は `some(ObjectHeaderRanges)`、構造が壊れている場合は `none`
  */
-function readHeaderBackward(
+function readObjectHeader(
   data: Uint8Array,
   objKeywordPos: number,
-): Option<BackwardHeader> {
-  let i = objKeywordPos - 1;
-
-  if (i < 0 || !isPdfWhitespace(data[i])) {
+): Option<ObjectHeaderRanges> {
+  const beforeObj = objKeywordPos - 1;
+  if (beforeObj < 0 || !isPdfWhitespace(data[beforeObj])) {
     return none;
   }
-  i = skipWhitespaceAndCommentsBackward(data, i);
-
-  const genEnd = i;
-  while (i >= 0 && isPdfDigit(data[i])) {
-    i--;
-  }
-  const genStart = i + 1;
-  if (genStart > genEnd) {
+  const generationLast = findPreviousNonWhitespaceByte(data, beforeObj);
+  if (!generationLast.some) {
     return none;
   }
-  const generationValue = readDigits(data, genStart, genEnd + 1);
-
-  if (i < 0 || !isPdfWhitespace(data[i])) {
+  const generationRange = findDigitsEndingAt(data, generationLast.value);
+  if (!generationRange.some) {
     return none;
   }
-  i = skipWhitespaceAndCommentsBackward(data, i);
 
-  const objEnd = i;
-  while (i >= 0 && isPdfDigit(data[i])) {
-    i--;
-  }
-  const objStart = i + 1;
-  if (objStart > objEnd) {
+  const beforeGeneration = generationRange.value.start - 1;
+  if (beforeGeneration < 0 || !isPdfWhitespace(data[beforeGeneration])) {
     return none;
   }
-  const objectNumberValue = readDigits(data, objStart, objEnd + 1);
+  const objectNumberLast = findPreviousNonWhitespaceByte(
+    data,
+    beforeGeneration,
+  );
+  if (!objectNumberLast.some) {
+    return none;
+  }
+  const objectNumberRange = findDigitsEndingAt(data, objectNumberLast.value);
+  if (!objectNumberRange.some) {
+    return none;
+  }
 
   return some({
-    objectNumberValue,
-    generationValue,
-    headerOffset: objStart,
+    objectNumberRange: objectNumberRange.value,
+    generationRange: generationRange.value,
+    headerOffset: objectNumberRange.value.start,
   });
 }
 
 /**
- * data 全域を 1 パス走査して `\d+ \d+ obj` ヘッダ候補を列挙する。
- * O(N)。検出された候補は `ObjectNumber.create` / `GenerationNumber.create` で
- * 検証し、`Err` となった候補は `skipped` に記録する。
+ * 範囲を `ObjectNumber` として読み取り、検証する。
  *
- * @param data - PDF ファイル全体のバイト配列
- * @returns 検出された ObjectHit[] と skip 情報
+ * @param data - PDFバイト配列
+ * @param range - 数字列の範囲
+ * @param offset - skip 記録用のヘッダ先頭位置
+ * @returns 成功時は `ok(ObjectNumber)`、overflow/範囲外は `err(ObjectScanSkipped)`
  */
-/**
- * 候補位置 1 件の評価結果。
- * - `hit`: 有効なヘッダ
- * - `skipped`: ObjectNumber / GenerationNumber 検証で弾かれた候補
- * - `none`: マッチしない / 構造が壊れている（記録不要）
- */
-type CandidateResult =
-  | { readonly kind: "hit"; readonly hit: ObjectHit }
-  | { readonly kind: "skipped"; readonly entry: ObjectScanSkipped }
-  | { readonly kind: "none" };
+function readObjectNumber(
+  data: Uint8Array,
+  range: DigitRange,
+  offset: ByteOffset,
+): Result<ObjectNumber, ObjectScanSkipped> {
+  const valueOpt = readDigits(data, range.start, range.endExclusive);
+  if (!valueOpt.some) {
+    return err({ offset, reason: "object-number-invalid" });
+  }
+  const created = ObjectNumber.create(valueOpt.value);
+  if (!created.ok) {
+    return err({ offset, reason: "object-number-invalid" });
+  }
+  return ok(created.value);
+}
 
 /**
- * 指定位置を `\d+ \d+ obj` ヘッダ候補として評価する。
- * 副作用なし。push 振り分けは呼び出し側に委ねる。
+ * 範囲を `GenerationNumber` として読み取り、検証する。
+ *
+ * @param data - PDFバイト配列
+ * @param range - 数字列の範囲
+ * @param offset - skip 記録用のヘッダ先頭位置
+ * @returns 成功時は `ok(GenerationNumber)`、overflow/範囲外は `err(ObjectScanSkipped)`
+ */
+function readGenerationNumber(
+  data: Uint8Array,
+  range: DigitRange,
+  offset: ByteOffset,
+): Result<GenerationNumber, ObjectScanSkipped> {
+  const valueOpt = readDigits(data, range.start, range.endExclusive);
+  if (!valueOpt.some) {
+    return err({ offset, reason: "generation-invalid" });
+  }
+  const created = GenerationNumber.create(valueOpt.value);
+  if (!created.ok) {
+    return err({ offset, reason: "generation-invalid" });
+  }
+  return ok(created.value);
+}
+
+/**
+ * 指定位置から `\d+ \d+ obj` ヘッダの読み取りを試みる。
+ * 副作用なし。Option/Result の二段構造で結果を返す:
+ *
+ * - `none` … 構造として header ではない（記録不要）
+ * - `some(ok(hit))` … 有効なヘッダ
+ * - `some(err(skipped))` … 構造は valid だが ObjectNumber/GenerationNumber 検証で弾かれた
  *
  * @param data - PDFバイト配列
  * @param pos - 候補開始位置 (`obj` キーワード先頭の想定)
- * @returns CandidateResult
  */
-function evaluateCandidate(data: Uint8Array, pos: number): CandidateResult {
+function tryReadObjectHeaderAt(
+  data: Uint8Array,
+  pos: number,
+): Option<Result<ObjectHit, ObjectScanSkipped>> {
   if (pos + OBJ_LEN > data.length) {
-    return { kind: "none" };
+    return none;
   }
   if (!matchesBytesAt(data, pos, OBJ_BYTES)) {
-    return { kind: "none" };
+    return none;
   }
   const afterPos = pos + OBJ_LEN;
   if (afterPos < data.length && !isPdfTokenBoundary(data[afterPos])) {
-    return { kind: "none" };
+    return none;
   }
-  const headerOpt = readHeaderBackward(data, pos);
+  const headerOpt = readObjectHeader(data, pos);
   if (!headerOpt.some) {
-    return { kind: "none" };
+    return none;
   }
   const header = headerOpt.value;
   if (
     header.headerOffset > 0 &&
     !isPdfTokenBoundary(data[header.headerOffset - 1])
   ) {
-    return { kind: "none" };
+    return none;
   }
 
   const offset = ByteOffset.of(header.headerOffset);
-  const objectNumberResult = ObjectNumber.create(header.objectNumberValue);
+  const objectNumberResult = readObjectNumber(
+    data,
+    header.objectNumberRange,
+    offset,
+  );
   if (!objectNumberResult.ok) {
-    return {
-      kind: "skipped",
-      entry: { offset, reason: "object-number-invalid" },
-    };
+    return some(err(objectNumberResult.error));
   }
-  const generationResult = GenerationNumber.create(header.generationValue);
+  const generationResult = readGenerationNumber(
+    data,
+    header.generationRange,
+    offset,
+  );
   if (!generationResult.ok) {
-    return {
-      kind: "skipped",
-      entry: { offset, reason: "generation-invalid" },
-    };
+    return some(err(generationResult.error));
   }
 
-  return {
-    kind: "hit",
-    hit: {
+  return some(
+    ok({
       objectNumber: objectNumberResult.value,
       generation: generationResult.value,
       offset,
-    },
-  };
+    }),
+  );
 }
 
 /**
  * data 全域を 1 パス走査して `\d+ \d+ obj` ヘッダ候補を列挙する。
  * O(N)。コメント領域は走査ループ内の `inComment` フラグで除外し、
- * 各候補の評価は `evaluateCandidate` に委譲する。
+ * 各候補の評価は `tryReadObjectHeaderAt` に委譲する。
  *
  * @param data - PDF ファイル全体のバイト配列
  * @returns 検出された ObjectHit[] と skip 情報
@@ -261,18 +334,23 @@ export function scanObjectHeaders(data: Uint8Array): ObjectScanReport {
   for (let i = 0; i < data.length; i++) {
     if (isPdfLineBreak(data[i])) {
       inComment = false;
-    } else if (data[i] === PERCENT) {
+    }
+    if (data[i] === PERCENT) {
       inComment = true;
     }
     if (inComment) {
       continue;
     }
-    const result = evaluateCandidate(data, i);
-    if (result.kind === "hit") {
-      hits.push(result.hit);
-    } else if (result.kind === "skipped") {
-      skipped.push(result.entry);
+    const read = tryReadObjectHeaderAt(data, i);
+    if (!read.some) {
+      continue;
     }
+    const result = read.value;
+    if (result.ok) {
+      hits.push(result.value);
+      continue;
+    }
+    skipped.push(result.error);
   }
 
   return { hits, skipped };
