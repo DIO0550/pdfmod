@@ -121,3 +121,12 @@ test("コメント内の `1 0 obj` は検出しない", () => {
   const data = encode("% 1 0 obj inside a comment\n");
   expect(scanObjectHeaders(data)).toEqual({ hits: [], skipped: [] });
 });
+
+test("数字と obj の間にコメントが挟まる場合も検出する", () => {
+  const data = encode("1 0%comment\nobj\n");
+  const report = scanObjectHeaders(data);
+  expect(report.skipped).toEqual([]);
+  expect(report.hits).toHaveLength(1);
+  expect(report.hits[0].objectNumber).toBe(ObjectNumber.of(1));
+  expect(report.hits[0].generation).toBe(GenerationNumber.of(0));
+});
