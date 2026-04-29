@@ -42,6 +42,10 @@ const OBJ_LEN = OBJ_BYTES.length;
 const DIGIT_0 = 0x30;
 const DIGIT_9 = 0x39;
 
+const PERCENT = 0x25;
+const LF = 0x0a;
+const CR = 0x0d;
+
 const DECIMAL_RADIX = 10;
 
 interface BackwardHeader {
@@ -58,6 +62,26 @@ interface BackwardHeader {
  */
 function isDigit(byte: number): boolean {
   return byte >= DIGIT_0 && byte <= DIGIT_9;
+}
+
+/**
+ * 指定位置が PDF コメント (`% ... 行末`) の内部にあるかを判定する。
+ * 行頭方向に走査し、改行より先に `%` が見つかればコメント内と判定する。
+ *
+ * @param data - PDFバイト配列
+ * @param pos - 判定対象の位置
+ * @returns コメント内であれば `true`
+ */
+function isInsideComment(data: Uint8Array, pos: number): boolean {
+  for (let i = pos - 1; i >= 0; i--) {
+    if (data[i] === LF || data[i] === CR) {
+      return false;
+    }
+    if (data[i] === PERCENT) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /**
@@ -153,6 +177,9 @@ export function scanObjectHeaders(data: Uint8Array): ObjectScanReport {
     }
     const afterPos = i + OBJ_LEN;
     if (afterPos < data.length && !isPdfTokenBoundary(data[afterPos])) {
+      continue;
+    }
+    if (isInsideComment(data, i)) {
       continue;
     }
     const header = readHeaderBackward(data, i);

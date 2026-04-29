@@ -116,3 +116,8 @@ test.each([
   const data = encode(source);
   expect(scanObjectHeaders(data)).toEqual({ hits: [], skipped: [] });
 });
+
+test("コメント内の `1 0 obj` は検出しない", () => {
+  const data = encode("% 1 0 obj inside a comment\n");
+  expect(scanObjectHeaders(data)).toEqual({ hits: [], skipped: [] });
+});
