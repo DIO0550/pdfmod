@@ -154,11 +154,11 @@ test("`mytrailer` のような部分一致は trailer として扱わない", ()
   expect(result.value.trailer).toBeUndefined();
 });
 
-test("ストリーム内 `trailer xyz` 偶発一致は parseTrailer 失敗で次候補にフォールバックする", () => {
+test("scope 外の `trailer xyz` (parseTrailer 失敗) があっても次候補の正規 trailer にフォールバックする", () => {
   const body =
     "1 0 obj\n<<>>\nendobj\n" +
     "trailer\n<< /Root 1 0 R /Size 2 >>\n" +
-    "5 0 obj\n<<>>\nstream\ntrailer xyz\nendstream\nendobj\n";
+    "trailer xyz\n";
   const data = encode(body);
   const result = scanFallback(data);
   assert(result.ok);
