@@ -81,7 +81,7 @@ type FallbackSkipReason = ObjectScanSkipped["reason"] | "size-overflow";
  * skip 候補（object-scanner 由来 + size 超過）の件数・理由カテゴリから
  * `recovery` 用の文字列を組み立てる。skip が無ければ `undefined` を返す。
  */
-function buildSkippedRecovery(
+function formatRecoveryMessage(
   skipped: readonly ObjectScanSkipped[],
   sizeOverflowCount: number,
 ): string | undefined {
@@ -115,7 +115,7 @@ function buildRebuildWarning(
   report: ObjectScanReport,
   sizeOverflowCount: number,
 ): PdfWarning {
-  const recovery = buildSkippedRecovery(report.skipped, sizeOverflowCount);
+  const recovery = formatRecoveryMessage(report.skipped, sizeOverflowCount);
   const acceptedHits = report.hits.length - sizeOverflowCount;
   const message = `Reconstructed xref by scanning ${acceptedHits} objects`;
   if (recovery === undefined) {
