@@ -177,6 +177,82 @@ function readHeaderBackward(
  * @param data - PDF ファイル全体のバイト配列
  * @returns 検出された ObjectHit[] と skip 情報
  */
+/**
+ * 候補位置 1 件の評価結果。
+ * - `hit`: 有効なヘッダ
+ * - `skipped`: ObjectNumber / GenerationNumber 検証で弾かれた候補
+ * - `none`: マッチしない / 構造が壊れている（記録不要）
+ */
+type CandidateResult =
+  | { readonly kind: "hit"; readonly hit: ObjectHit }
+  | { readonly kind: "skipped"; readonly entry: ObjectScanSkipped }
+  | { readonly kind: "none" };
+
+/**
+ * 指定位置を `\d+ \d+ obj` ヘッダ候補として評価する。
+ * 副作用なし。push 振り分けは呼び出し側に委ねる。
+ *
+ * @param data - PDFバイト配列
+ * @param pos - 候補開始位置 (`obj` キーワード先頭の想定)
+ * @returns CandidateResult
+ */
+function evaluateCandidate(data: Uint8Array, pos: number): CandidateResult {
+  if (pos + OBJ_LEN > data.length) {
+    return { kind: "none" };
+  }
+  if (!matchesBytesAt(data, pos, OBJ_BYTES)) {
+    return { kind: "none" };
+  }
+  const afterPos = pos + OBJ_LEN;
+  if (afterPos < data.length && !isPdfTokenBoundary(data[afterPos])) {
+    return { kind: "none" };
+  }
+  const headerOpt = readHeaderBackward(data, pos);
+  if (!headerOpt.some) {
+    return { kind: "none" };
+  }
+  const header = headerOpt.value;
+  if (
+    header.headerOffset > 0 &&
+    !isPdfTokenBoundary(data[header.headerOffset - 1])
+  ) {
+    return { kind: "none" };
+  }
+
+  const offset = ByteOffset.of(header.headerOffset);
+  const objectNumberResult = ObjectNumber.create(header.objectNumberValue);
+  if (!objectNumberResult.ok) {
+    return {
+      kind: "skipped",
+      entry: { offset, reason: "object-number-invalid" },
+    };
+  }
+  const generationResult = GenerationNumber.create(header.generationValue);
+  if (!generationResult.ok) {
+    return {
+      kind: "skipped",
+      entry: { offset, reason: "generation-invalid" },
+    };
+  }
+
+  return {
+    kind: "hit",
+    hit: {
+      objectNumber: objectNumberResult.value,
+      generation: generationResult.value,
+      offset,
+    },
+  };
+}
+
+/**
+ * data 全域を 1 パス走査して `\d+ \d+ obj` ヘッダ候補を列挙する。
+ * O(N)。コメント領域は走査ループ内の `inComment` フラグで除外し、
+ * 各候補の評価は `evaluateCandidate` に委譲する。
+ *
+ * @param data - PDF ファイル全体のバイト配列
+ * @returns 検出された ObjectHit[] と skip 情報
+ */
 export function scanObjectHeaders(data: Uint8Array): ObjectScanReport {
   const hits: ObjectHit[] = [];
   const skipped: ObjectScanSkipped[] = [];
@@ -191,51 +267,12 @@ export function scanObjectHeaders(data: Uint8Array): ObjectScanReport {
     if (inComment) {
       continue;
     }
-    if (i + OBJ_LEN > data.length) {
-      continue;
+    const result = evaluateCandidate(data, i);
+    if (result.kind === "hit") {
+      hits.push(result.hit);
+    } else if (result.kind === "skipped") {
+      skipped.push(result.entry);
     }
-    if (!matchesBytesAt(data, i, OBJ_BYTES)) {
-      continue;
-    }
-    const afterPos = i + OBJ_LEN;
-    if (afterPos < data.length && !isPdfTokenBoundary(data[afterPos])) {
-      continue;
-    }
-    const headerOpt = readHeaderBackward(data, i);
-    if (!headerOpt.some) {
-      continue;
-    }
-    const header = headerOpt.value;
-    if (
-      header.headerOffset > 0 &&
-      !isPdfTokenBoundary(data[header.headerOffset - 1])
-    ) {
-      continue;
-    }
-
-    const objectNumberResult = ObjectNumber.create(header.objectNumberValue);
-    if (!objectNumberResult.ok) {
-      skipped.push({
-        offset: ByteOffset.of(header.headerOffset),
-        reason: "object-number-invalid",
-      });
-      continue;
-    }
-
-    const generationResult = GenerationNumber.create(header.generationValue);
-    if (!generationResult.ok) {
-      skipped.push({
-        offset: ByteOffset.of(header.headerOffset),
-        reason: "generation-invalid",
-      });
-      continue;
-    }
-
-    hits.push({
-      objectNumber: objectNumberResult.value,
-      generation: generationResult.value,
-      offset: ByteOffset.of(header.headerOffset),
-    });
   }
 
   return { hits, skipped };
