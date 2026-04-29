@@ -1,7 +1,7 @@
 /**
  * PDF相互参照テーブル処理モジュール。
  * startxrefオフセットの走査、xrefテーブル解析、xrefストリームデコード、
- * およびtrailer辞書解析機能を提供する。
+ * trailer辞書解析、および xref 破損時のフォールバックスキャン機能を提供する。
  */
 
 export type { FallbackScanResult } from "./fallback/index";
