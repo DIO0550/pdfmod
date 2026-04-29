@@ -1,3 +1,4 @@
+import { NumberEx } from "../../ext/number/index";
 import {
   isPdfDigit,
   isPdfLineBreak,
@@ -110,7 +111,7 @@ function readDigits(data: Uint8Array, start: number, end: number): number {
   let value = 0;
   for (let i = start; i < end; i++) {
     value = value * DECIMAL_RADIX + (data[i] - DIGIT_0);
-    if (!Number.isSafeInteger(value)) {
+    if (!NumberEx.isSafeIntegerAtLeastZero(value)) {
       return Number.POSITIVE_INFINITY;
     }
   }
