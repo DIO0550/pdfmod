@@ -346,17 +346,18 @@ function findEndobjPositions(
  *
  * @param data - PDF バイト配列
  * @param hits - object-scanner が検出した ObjectHit 列
+ * @param streamRegions - findStreamRegions の結果（stream 内 endobj 偽検出を抑制する）
  * @returns hit と同順に並ぶ ObjectScope[]
  */
 function buildObjectScopes(
   data: Uint8Array,
   hits: readonly ObjectHit[],
+  streamRegions: readonly ByteRange[],
 ): ObjectScope[] {
   if (hits.length === 0) {
     return [];
   }
   const sortedHits = [...hits].sort((a, b) => a.offset - b.offset);
-  const streamRegions = findStreamRegions(data);
   const endobjPositions = findEndobjPositions(data, streamRegions);
   const scopes: ObjectScope[] = [];
   let endobjIdx = 0;
@@ -473,17 +474,20 @@ function findCatalogPositions(data: Uint8Array, pattern: number[]): number[] {
 /**
  * trailer 不在時に `/Type /Catalog` バイトリテラルから `IndirectRef` を推定し、
  * 最小 `TrailerDict { root, size }` を合成する (FB-004)。
- * `/Type /Catalog` と `/Type/Catalog` の双方を候補に含め、obj 本体スコープに収まる
- * 候補のうち最末尾を採用する（scope 外のゴミ領域に出現したものは無視）。
+ * `/Type /Catalog` と `/Type/Catalog` の双方を候補に含め、obj 本体スコープに収まり
+ * かつ stream 領域に含まれない候補のうち最末尾を採用する（scope 外のゴミ領域や
+ * stream データ内に偶発的に現れたバイト列は無視）。
  *
  * @param data - PDF ファイル全体
  * @param scopes - obj 本体スコープ列（buildObjectScopes 由来）
+ * @param streamRegions - stream 領域列（findStreamRegions 由来）
  * @param size - `xrefTable.size`（合成 trailer の `size` フィールドに用いる）
  * @returns 合成した TrailerDict、Catalog や紐付け先 obj が無ければ `undefined`
  */
 function inferCatalogRoot(
   data: Uint8Array,
   scopes: readonly ObjectScope[],
+  streamRegions: readonly ByteRange[],
   size: number,
 ): TrailerDict | undefined {
   const positions = [
@@ -493,6 +497,9 @@ function inferCatalogRoot(
   let latestPosition = -1;
   let latestHit: ObjectHit | undefined;
   for (const p of positions) {
+    if (isInsideAnyRange(streamRegions, p)) {
+      continue;
+    }
     const hit = findScopeContaining(scopes, p);
     if (hit === undefined) {
       continue;
@@ -528,7 +535,8 @@ export function scanFallback(
   const report = scanObjectHeaders(data);
   const { xrefTable, sizeOverflowCount } = rebuildXRefTable(report.hits);
   const warning = formatRebuildWarning(report, sizeOverflowCount);
-  const scopes = buildObjectScopes(data, report.hits);
+  const streamRegions = findStreamRegions(data);
+  const scopes = buildObjectScopes(data, report.hits, streamRegions);
   const directTrailer = findValidTrailer(data, scopes);
   if (directTrailer !== undefined) {
     return ok({
@@ -537,6 +545,11 @@ export function scanFallback(
       warnings: [warning],
     });
   }
-  const synthTrailer = inferCatalogRoot(data, scopes, xrefTable.size);
+  const synthTrailer = inferCatalogRoot(
+    data,
+    scopes,
+    streamRegions,
+    xrefTable.size,
+  );
   return ok({ xrefTable, trailer: synthTrailer, warnings: [warning] });
 }
