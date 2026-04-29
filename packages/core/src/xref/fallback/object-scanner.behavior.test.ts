@@ -103,10 +103,10 @@ test("GenerationNumber が範囲外 (>65535) の候補は skip される", () =>
   expect(report.skipped).toEqual([{ offset: 0, reason: "generation-invalid" }]);
 });
 
-test("負記号を含む壊れ入力 `0 -1 obj` は hits に含めない", () => {
+test("負記号を含む壊れ入力 `0 -1 obj` は hits にも skipped にも残らない", () => {
   const data = encode("0 -1 obj\n<<>>\nendobj\n");
   const report = scanObjectHeaders(data);
-  expect(report.hits).toEqual([]);
+  expect(report).toEqual({ hits: [], skipped: [] });
 });
 
 test.each([
