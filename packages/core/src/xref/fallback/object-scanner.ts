@@ -71,6 +71,24 @@ function isInsideComment(data: Uint8Array, pos: number): boolean {
 }
 
 /**
+ * 指定位置から行頭方向に走査し、同じ行内の `%` (コメント開始) の位置を返す。
+ * 行末コード (LF/CR) を超えて遡らない。
+ *
+ * @param data - PDFバイト配列
+ * @param pos - 走査開始位置
+ * @returns コメント開始位置 (`%` のオフセット)。同じ行に `%` が無ければ -1
+ */
+function findCommentStartOnLine(data: Uint8Array, pos: number): number {
+  let commentStart = -1;
+  for (let scan = pos; scan >= 0 && !isPdfLineBreak(data[scan]); scan--) {
+    if (data[scan] === PERCENT) {
+      commentStart = scan;
+    }
+  }
+  return commentStart;
+}
+
+/**
  * 逆方向に whitespace と PDF コメント (`% ... 行末`) をスキップする。
  * 数字とキーワードの間にコメントが挟まるケースに対応する。
  *
@@ -88,14 +106,7 @@ function skipWhitespaceAndCommentsBackward(
       i--;
       continue;
     }
-    let scan = i;
-    let commentStart = -1;
-    while (scan >= 0 && !isPdfLineBreak(data[scan])) {
-      if (data[scan] === PERCENT) {
-        commentStart = scan;
-      }
-      scan--;
-    }
+    const commentStart = findCommentStartOnLine(data, i);
     if (commentStart < 0) {
       break;
     }
