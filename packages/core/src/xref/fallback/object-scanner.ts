@@ -53,26 +53,6 @@ interface BackwardHeader {
 }
 
 /**
- * 指定位置が PDF コメント (`% ... 行末`) の内部にあるかを判定する。
- * 行頭方向に走査し、改行より先に `%` が見つかればコメント内と判定する。
- *
- * @param data - PDFバイト配列
- * @param pos - 判定対象の位置
- * @returns コメント内であれば `true`
- */
-function isInsideComment(data: Uint8Array, pos: number): boolean {
-  for (let i = pos - 1; i >= 0; i--) {
-    if (isPdfLineBreak(data[i])) {
-      return false;
-    }
-    if (data[i] === PERCENT) {
-      return true;
-    }
-  }
-  return false;
-}
-
-/**
  * 指定位置から行頭方向に走査し、同じ行内の `%` (コメント開始) の位置を返す。
  * 行末コード (LF/CR) を超えて遡らない。
  *
@@ -200,15 +180,24 @@ export function scanObjectHeaders(data: Uint8Array): ObjectScanReport {
   const hits: ObjectHit[] = [];
   const skipped: ObjectScanSkipped[] = [];
 
-  for (let i = 0; i + OBJ_LEN <= data.length; i++) {
+  let inComment = false;
+  for (let i = 0; i < data.length; i++) {
+    if (isPdfLineBreak(data[i])) {
+      inComment = false;
+    } else if (data[i] === PERCENT) {
+      inComment = true;
+    }
+    if (inComment) {
+      continue;
+    }
+    if (i + OBJ_LEN > data.length) {
+      continue;
+    }
     if (!matchesBytesAt(data, i, OBJ_BYTES)) {
       continue;
     }
     const afterPos = i + OBJ_LEN;
     if (afterPos < data.length && !isPdfTokenBoundary(data[afterPos])) {
-      continue;
-    }
-    if (isInsideComment(data, i)) {
       continue;
     }
     const headerOpt = readHeaderBackward(data, i);
