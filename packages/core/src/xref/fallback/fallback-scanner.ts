@@ -273,14 +273,12 @@ function nextEndstreamIndexAfter(
   fromIdx: number,
   streamOffset: number,
 ): number {
-  let idx = fromIdx;
-  while (
-    idx < endstreamPositions.length &&
-    endstreamPositions[idx] <= streamOffset
-  ) {
-    idx++;
+  for (let idx = fromIdx; idx < endstreamPositions.length; idx++) {
+    if (endstreamPositions[idx] > streamOffset) {
+      return idx;
+    }
   }
-  return idx;
+  return endstreamPositions.length;
 }
 
 /**
@@ -372,11 +370,12 @@ function nextEndobjIndexAfter(
   fromIdx: number,
   hitOffset: number,
 ): number {
-  let idx = fromIdx;
-  while (idx < endobjPositions.length && endobjPositions[idx] <= hitOffset) {
-    idx++;
+  for (let idx = fromIdx; idx < endobjPositions.length; idx++) {
+    if (endobjPositions[idx] > hitOffset) {
+      return idx;
+    }
   }
-  return idx;
+  return endobjPositions.length;
 }
 
 /**
