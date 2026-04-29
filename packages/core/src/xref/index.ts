@@ -4,6 +4,7 @@
  * およびtrailer辞書解析機能を提供する。
  */
 
+export { type FallbackScanResult, scanFallback } from "./fallback/index";
 export { mergeXRefChain } from "./merger/index";
 export { scanStartXRef } from "./startxref/index";
 export {
