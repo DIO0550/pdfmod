@@ -252,7 +252,9 @@ packages/core/src/
 │   ├── index.ts          # 再エクスポート
 │   └── result.ts         # Result<T, E> 型 + ok/err/map/flatMap/unwrapOr
 ├── xref/
-│   └── fallback-scanner.ts   # フォールバックXRefスキャナ
+│   └── fallback/
+│       ├── fallback-scanner.ts   # フォールバックXRefスキャナ
+│       └── object-scanner.ts     # `\d+ \d+ obj` ヘッダのバイト走査ヘルパー
 ```
 
 ## 関連仕様
