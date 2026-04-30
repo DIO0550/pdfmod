@@ -38,9 +38,9 @@ interface PdfDocumentInit {
  * PDF ドキュメントを表すエンティティ。
  *
  * 本クラスは PR-1 時点では skeleton 実装であり、`load` は常に
- * `ROOT_NOT_FOUND` Err、`getPage` は `none` を返す。`INVALID_HEADER` を
- * 意図的に返さないのは、PR-2 の Red テスト (T-010) が「空入力 →
- * `INVALID_HEADER`」を期待して fail を観察できるようにするため。
+ * `NOT_IMPLEMENTED` Err、`getPage` は空配列を参照して `None` を返す。
+ * `INVALID_HEADER` を意図的に返さないのは、PR-2 の Red テスト (T-010)
+ * が「空入力 → `INVALID_HEADER`」を期待して fail を観察できるようにするため。
  */
 export class PdfDocument {
   readonly version!: PdfVersion;
@@ -65,7 +65,7 @@ export class PdfDocument {
     _options?: LoadOptions,
   ): Promise<Result<PdfDocument, PdfDocumentLoadError>> {
     return err({
-      code: "ROOT_NOT_FOUND",
+      code: "NOT_IMPLEMENTED",
       message: "PdfDocument.load is not yet implemented",
     });
   }
