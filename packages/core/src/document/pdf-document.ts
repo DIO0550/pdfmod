@@ -73,7 +73,7 @@ export class PdfDocument {
   /**
    * 指定インデックスのページを取得する。
    *
-   * @param _index - 0-origin のページインデックス
+   * @param index - 0-origin のページインデックス
    * @returns 該当ページがあれば `Some<ResolvedPage>`、なければ `None`
    */
   getPage(index: number): Option<ResolvedPage> {
