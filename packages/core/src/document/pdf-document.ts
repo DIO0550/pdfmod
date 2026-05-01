@@ -1,11 +1,19 @@
 import { isPdfWhitespace, matchesBytesAt } from "../lexer/bytes/index";
-import type { ObjectStore } from "../objects/object-store/index";
+import { ObjectStore } from "../objects/object-store/index";
 import type { PdfError, PdfParseError, PdfWarning } from "../pdf/errors/index";
+import type { TrailerDict, XRefTable } from "../pdf/types/index";
 import { ByteOffset } from "../pdf/types/index";
 import { PdfVersion } from "../pdf/version/index";
-import { fromNullable, type Option } from "../utils/option/index";
+import { none, type Option, some } from "../utils/option/index";
 import { err, ok, type Result } from "../utils/result/index";
+import { mergeXRefChain } from "../xref/merger/index";
+import { scanStartXRef } from "../xref/startxref/index";
+import { parseXRefTable } from "../xref/table/index";
+import { parseTrailer } from "../xref/trailer/index";
+import { CatalogParser, type ResolveRef } from "./catalog-parser";
+import { DocumentInfoParser } from "./document-info-parser";
 import type { DocumentMetadata } from "./document-metadata";
+import { PageTreeWalker } from "./page-tree/page-tree-walker";
 import type { ResolvedPage } from "./page-tree/resolved-page";
 
 const PDF_HEADER_SIGNATURE: number[] = Array.from(
@@ -93,6 +101,52 @@ const verifyHeader = (data: Uint8Array): Result<PdfVersion, PdfParseError> => {
 };
 
 /**
+ * 指定オフセットから xref テーブルと trailer 辞書を続けて解析する。
+ * `mergeXRefChain` の `parseCallback` 引数として使う合成。
+ *
+ * @param data - PDF のバイト列
+ * @param offset - xref キーワードのバイトオフセット
+ * @returns 成功時は `Ok<{ xref, trailer }>`、失敗時は `Err<PdfParseError>`
+ */
+const parseXRefAt = (
+  data: Uint8Array,
+  offset: ByteOffset,
+): Result<{ xref: XRefTable; trailer: TrailerDict }, PdfParseError> => {
+  const tableResult = parseXRefTable(data, offset);
+  if (!tableResult.ok) {
+    return tableResult;
+  }
+  const trailerResult = parseTrailer(data, tableResult.value.trailerOffset);
+  if (!trailerResult.ok) {
+    return trailerResult;
+  }
+  return ok({
+    xref: tableResult.value.xref,
+    trailer: trailerResult.value,
+  });
+};
+
+/**
+ * `data` から startxref 走査と /Prev チェーンマージを行い、
+ * 統合済み xref と最新 trailer 辞書を返す。
+ *
+ * @param data - PDF のバイト列
+ * @returns 成功時は `Ok<{ mergedXRef, latestTrailer }>`、失敗時は `Err<PdfParseError>`
+ */
+const loadXRefStructure = (
+  data: Uint8Array,
+): Result<
+  { mergedXRef: XRefTable; latestTrailer: TrailerDict },
+  PdfParseError
+> => {
+  const startXRefResult = scanStartXRef(data);
+  if (!startXRefResult.ok) {
+    return startXRefResult;
+  }
+  return mergeXRefChain(startXRefResult.value, (off) => parseXRefAt(data, off));
+};
+
+/**
  * `PdfDocument.load` が返しうるエラーの判別共用体。
  * - {@link PdfError}: PDF 構造に由来する致命的エラー
  * - `RangeError`: 入力サイズや索引の境界違反
@@ -111,7 +165,6 @@ export interface LoadOptions {
 
 /**
  * `PdfDocument` の private constructor が instance に assign する fields。
- * 公開 API ではないため `internal` 扱いで、PR-3 の本実装で使用する。
  */
 interface PdfDocumentFields {
   readonly version: PdfVersion;
@@ -122,43 +175,99 @@ interface PdfDocumentFields {
 
 /**
  * PDF ドキュメントを表すエンティティ。
+ * `load` は ヘッダ検証 → startxref 走査 → xref/trailer 解析 → ObjectStore 生成
+ * → カタログ解析 → ページツリー走査 → /Info メタデータ抽出 を直列に実行する。
  *
- * 本クラスは PR-2 時点でも本体未実装で、`load` は `verifyHeader` が
- * Ok を返した場合でも下流が未実装のため `NOT_IMPLEMENTED` Err を返す。
- * Cycle 1 (PR-2) では `verifyHeader` 部分のみ実装し、L-001 系
- * (`INVALID_HEADER`) を担保する。
+ * fallback 経路と onWarning 通知は本 PR では未実装で、後続 PR で追加する。
  */
 export class PdfDocument {
-  readonly version!: PdfVersion;
-  readonly pageCount: number = 0;
-  readonly metadata!: DocumentMetadata;
-  readonly resolver!: ObjectStore;
-  readonly #pages: readonly ResolvedPage[] = [];
+  readonly version: PdfVersion;
+  readonly pageCount: number;
+  readonly metadata: DocumentMetadata;
+  readonly resolver: ObjectStore;
+  readonly #pages: readonly ResolvedPage[];
 
-  private constructor(_fields: PdfDocumentFields) {
-    // PR-3 で fields を assign する。skeleton では直接呼び出されない。
+  private constructor(fields: PdfDocumentFields) {
+    this.version = fields.version;
+    this.metadata = fields.metadata;
+    this.resolver = fields.resolver;
+    this.#pages = fields.pages;
+    this.pageCount = fields.pages.length;
   }
 
   /**
    * PDF バイト列を読み込み、`PdfDocument` を構築する。
    *
    * @param data - PDF のバイト列
-   * @param _options - 読み込みオプション
+   * @param options - 読み込みオプション
    * @returns 成功時は `Ok<PdfDocument>`、失敗時は `Err<PdfDocumentLoadError>`
    */
   static async load(
     data: Uint8Array,
-    _options?: LoadOptions,
+    options?: LoadOptions,
   ): Promise<Result<PdfDocument, PdfDocumentLoadError>> {
     const headerResult = verifyHeader(data);
     if (!headerResult.ok) {
       return headerResult;
     }
+    const headerVersion = headerResult.value;
 
-    return err({
-      code: "NOT_IMPLEMENTED",
-      message: "PdfDocument.load is not yet implemented",
-    });
+    const xrefResult = loadXRefStructure(data);
+    if (!xrefResult.ok) {
+      return xrefResult;
+    }
+    const { mergedXRef, latestTrailer } = xrefResult.value;
+
+    const storeResult = ObjectStore.create(
+      { xref: mergedXRef, data },
+      { cacheCapacity: options?.cacheCapacity },
+    );
+    if (!storeResult.ok) {
+      return storeResult;
+    }
+    const store = storeResult.value;
+
+    const resolveRef: ResolveRef = (ref) => store.get(ref);
+
+    const catalogResult = await CatalogParser.parse(
+      latestTrailer,
+      headerVersion,
+      resolveRef,
+    );
+    if (!catalogResult.ok) {
+      return catalogResult;
+    }
+
+    const walkResult = await PageTreeWalker.walk(
+      catalogResult.value.pagesRef,
+      resolveRef,
+    );
+    if (!walkResult.ok) {
+      return walkResult;
+    }
+    for (const w of walkResult.value.warnings) {
+      options?.onWarning?.(w);
+    }
+
+    const infoResult = await DocumentInfoParser.parse(
+      latestTrailer,
+      resolveRef,
+    );
+    if (!infoResult.ok) {
+      return infoResult;
+    }
+    for (const w of infoResult.value.warnings) {
+      options?.onWarning?.(w);
+    }
+
+    return ok(
+      new PdfDocument({
+        version: catalogResult.value.version,
+        pages: walkResult.value.pages,
+        metadata: infoResult.value.metadata,
+        resolver: store,
+      }),
+    );
   }
 
   /**
@@ -168,6 +277,15 @@ export class PdfDocument {
    * @returns 該当ページがあれば `Some<ResolvedPage>`、なければ `None`
    */
   getPage(index: number): Option<ResolvedPage> {
-    return fromNullable(this.#pages[index]);
+    if (!Number.isInteger(index)) {
+      return none;
+    }
+    if (index < 0) {
+      return none;
+    }
+    if (index >= this.#pages.length) {
+      return none;
+    }
+    return some(this.#pages[index]);
   }
 }
