@@ -24,10 +24,10 @@ export interface LoadOptions {
 }
 
 /**
- * `PdfDocument` の private constructor に渡す初期化情報。
+ * `PdfDocument` の private constructor が instance に assign する fields。
  * 公開 API ではないため `internal` 扱いで、PR-3 の本実装で使用する。
  */
-interface PdfDocumentInit {
+interface PdfDocumentFields {
   readonly version: PdfVersion;
   readonly pages: readonly ResolvedPage[];
   readonly metadata: DocumentMetadata;
@@ -49,7 +49,7 @@ export class PdfDocument {
   readonly resolver!: ObjectStore;
   readonly #pages: readonly ResolvedPage[] = [];
 
-  private constructor(_init: PdfDocumentInit) {
+  private constructor(_fields: PdfDocumentFields) {
     // PR-3 で fields を assign する。skeleton では直接呼び出されない。
   }
 
