@@ -1,6 +1,7 @@
 import { isPdfWhitespace, matchesBytesAt } from "../lexer/bytes/index";
 import { ObjectStore } from "../objects/object-store/index";
 import type { PdfError, PdfParseError, PdfWarning } from "../pdf/errors/index";
+import type { TrailerDict, XRefTable } from "../pdf/types/index";
 import { ByteOffset } from "../pdf/types/index";
 import { PdfVersion } from "../pdf/version/index";
 import { none, type Option, some } from "../utils/option/index";
@@ -100,6 +101,52 @@ const verifyHeader = (data: Uint8Array): Result<PdfVersion, PdfParseError> => {
 };
 
 /**
+ * 指定オフセットから xref テーブルと trailer 辞書を続けて解析する。
+ * `mergeXRefChain` の `parseCallback` 引数として使う合成。
+ *
+ * @param data - PDF のバイト列
+ * @param offset - xref キーワードのバイトオフセット
+ * @returns 成功時は `Ok<{ xref, trailer }>`、失敗時は `Err<PdfParseError>`
+ */
+const parseXRefAt = (
+  data: Uint8Array,
+  offset: ByteOffset,
+): Result<{ xref: XRefTable; trailer: TrailerDict }, PdfParseError> => {
+  const tableResult = parseXRefTable(data, offset);
+  if (!tableResult.ok) {
+    return tableResult;
+  }
+  const trailerResult = parseTrailer(data, tableResult.value.trailerOffset);
+  if (!trailerResult.ok) {
+    return trailerResult;
+  }
+  return ok({
+    xref: tableResult.value.xref,
+    trailer: trailerResult.value,
+  });
+};
+
+/**
+ * `data` から startxref 走査と /Prev チェーンマージを行い、
+ * 統合済み xref と最新 trailer 辞書を返す。
+ *
+ * @param data - PDF のバイト列
+ * @returns 成功時は `Ok<{ mergedXRef, latestTrailer }>`、失敗時は `Err<PdfParseError>`
+ */
+const loadXRefStructure = (
+  data: Uint8Array,
+): Result<
+  { mergedXRef: XRefTable; latestTrailer: TrailerDict },
+  PdfParseError
+> => {
+  const startXRefResult = scanStartXRef(data);
+  if (!startXRefResult.ok) {
+    return startXRefResult;
+  }
+  return mergeXRefChain(startXRefResult.value, (off) => parseXRefAt(data, off));
+};
+
+/**
  * `PdfDocument.load` が返しうるエラーの判別共用体。
  * - {@link PdfError}: PDF 構造に由来する致命的エラー
  * - `RangeError`: 入力サイズや索引の境界違反
@@ -165,29 +212,11 @@ export class PdfDocument {
     }
     const headerVersion = headerResult.value;
 
-    const startXRefResult = scanStartXRef(data);
-    if (!startXRefResult.ok) {
-      return startXRefResult;
+    const xrefResult = loadXRefStructure(data);
+    if (!xrefResult.ok) {
+      return xrefResult;
     }
-
-    const mergedResult = mergeXRefChain(startXRefResult.value, (off) => {
-      const tableResult = parseXRefTable(data, off);
-      if (!tableResult.ok) {
-        return tableResult;
-      }
-      const trailerResult = parseTrailer(data, tableResult.value.trailerOffset);
-      if (!trailerResult.ok) {
-        return trailerResult;
-      }
-      return ok({
-        xref: tableResult.value.xref,
-        trailer: trailerResult.value,
-      });
-    });
-    if (!mergedResult.ok) {
-      return mergedResult;
-    }
-    const { mergedXRef, latestTrailer } = mergedResult.value;
+    const { mergedXRef, latestTrailer } = xrefResult.value;
 
     const storeResult = ObjectStore.create(
       { xref: mergedXRef, data },
