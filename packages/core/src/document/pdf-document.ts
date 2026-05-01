@@ -49,7 +49,7 @@ const verifyHeader = (data: Uint8Array): Result<PdfVersion, PdfParseError> => {
   if (headerOffset < 0) {
     return err({
       code: "INVALID_HEADER",
-      message: "%PDF- signature not found in first 1024 bytes",
+      message: `%PDF- signature not found in first ${HEADER_SCAN_LIMIT} bytes`,
       offset: ByteOffset.of(0),
     });
   }
