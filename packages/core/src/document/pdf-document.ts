@@ -216,6 +216,9 @@ export class PdfDocument {
     if (!walkResult.ok) {
       return walkResult;
     }
+    for (const w of walkResult.value.warnings) {
+      options?.onWarning?.(w);
+    }
 
     const infoResult = await DocumentInfoParser.parse(
       latestTrailer,
@@ -223,6 +226,9 @@ export class PdfDocument {
     );
     if (!infoResult.ok) {
       return infoResult;
+    }
+    for (const w of infoResult.value.warnings) {
+      options?.onWarning?.(w);
     }
 
     return ok(
