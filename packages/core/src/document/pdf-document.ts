@@ -31,6 +31,25 @@ const findHeaderOffset = (data: Uint8Array): number => {
 };
 
 /**
+ * version 文字列の終端位置を返す。
+ * `versionStart` から最大 `VERSION_MAX_LEN` バイト以内で、
+ * 最初に現れる PDF whitespace の位置 (見つからなければ走査上限) を返す。
+ *
+ * @param data - PDF のバイト列
+ * @param versionStart - signature 直後の version 文字列開始位置
+ * @returns version 文字列の終端 (whitespace の位置、または走査上限)
+ */
+const findVersionEnd = (data: Uint8Array, versionStart: number): number => {
+  const scanLimit = Math.min(data.length, versionStart + VERSION_MAX_LEN);
+  for (let i = versionStart; i < scanLimit; i++) {
+    if (isPdfWhitespace(data[i])) {
+      return i;
+    }
+  }
+  return scanLimit;
+};
+
+/**
  * PDF ヘッダ (`%PDF-x.y`) を検証して `PdfVersion` を返す。
  *
  * @param data - PDF のバイト列
@@ -57,14 +76,7 @@ const verifyHeader = (data: Uint8Array): Result<PdfVersion, PdfParseError> => {
   // signature 直後から PDF whitespace (NUL/TAB/LF/FF/CR/SPACE) までを
   // version 文字列として読み取る。
   const versionStart = headerOffset + PDF_HEADER_SIGNATURE.length;
-  let versionEnd = versionStart;
-  while (
-    versionEnd < data.length &&
-    versionEnd - versionStart < VERSION_MAX_LEN &&
-    !isPdfWhitespace(data[versionEnd])
-  ) {
-    versionEnd++;
-  }
+  const versionEnd = findVersionEnd(data, versionStart);
   const versionStr = new TextDecoder("ascii").decode(
     data.subarray(versionStart, versionEnd),
   );
