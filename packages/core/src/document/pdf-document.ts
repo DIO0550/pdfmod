@@ -73,8 +73,8 @@ const verifyHeader = (data: Uint8Array): Result<PdfVersion, PdfParseError> => {
   if (!created.ok) {
     return err({
       code: "INVALID_HEADER",
-      message: `Unknown PDF version: "${versionStr}"`,
-      offset: ByteOffset.of(headerOffset),
+      message: `Invalid PDF version "${versionStr}": ${created.error}`,
+      offset: ByteOffset.of(versionStart),
     });
   }
   return ok(created.value);
