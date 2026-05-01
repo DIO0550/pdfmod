@@ -20,9 +20,7 @@ test("`%PDF-` シグネチャ不在の入力は INVALID_HEADER を返す", async
 });
 
 test("不明な PDF バージョン (`%PDF-9.9`) は INVALID_HEADER を返す", async () => {
-  const result = await PdfDocument.load(
-    new TextEncoder().encode("%PDF-9.9\n%\xe2\xe3\xcf\xd3\n"),
-  );
+  const result = await PdfDocument.load(new TextEncoder().encode("%PDF-9.9\n"));
 
   expect(result.ok).toBe(false);
   assert(!result.ok);
