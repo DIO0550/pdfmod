@@ -36,14 +36,63 @@ const PAGE_BODY = "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>";
 const padOffset10 = (n: number): string =>
   n.toString(DECIMAL_RADIX).padStart(XREF_OFFSET_DIGITS, "0");
 
+const ASCII_MAX = 0x7f;
+const HEX_BYTE_DIGITS = 2;
+const HEX_RADIX = 16;
+const UTF16_HIGH_BYTE_SHIFT = 8;
+const BYTE_MASK = 0xff;
+const UTF16_BE_BOM_HEX = "feff";
+
 /**
- * ASCII 文字列を PDF の literal string `(...)` 形式へエンコードする。
- * `\\` `(` `)` のみエスケープする最小実装。非 ASCII 文字は本 helper の対象外。
+ * 入力文字列が ASCII (U+0000〜U+007F) のみで構成されているかを判定する。
  *
- * @param s - エンコード対象の ASCII 文字列
- * @returns PDF literal string 表記
+ * @param s - 判定対象の文字列
+ * @returns すべて ASCII なら true
  */
-const toLiteralString = (s: string): string => {
+const isAscii = (s: string): boolean => {
+  for (let i = 0; i < s.length; i++) {
+    if (s.charCodeAt(i) > ASCII_MAX) {
+      return false;
+    }
+  }
+  return true;
+};
+
+/**
+ * 文字列を UTF-16BE BOM 付き hex string `<feff...>` 形式へエンコードする。
+ * PDF の string object として非 ASCII 文字を扱う標準的な表現。
+ *
+ * @param s - エンコード対象の文字列
+ * @returns hex string 表記
+ */
+const toUtf16BeHexString = (s: string): string => {
+  const hexParts: string[] = [UTF16_BE_BOM_HEX];
+  for (let i = 0; i < s.length; i++) {
+    const cu = s.charCodeAt(i);
+    const high = (cu >> UTF16_HIGH_BYTE_SHIFT) & BYTE_MASK;
+    const low = cu & BYTE_MASK;
+    hexParts.push(
+      high.toString(HEX_RADIX).padStart(HEX_BYTE_DIGITS, "0"),
+      low.toString(HEX_RADIX).padStart(HEX_BYTE_DIGITS, "0"),
+    );
+  }
+  return `<${hexParts.join("")}>`;
+};
+
+/**
+ * 任意の文字列を PDF の string object 表記へエンコードする。
+ * - 入力が ASCII のみ: literal string `(...)`（`\\` `(` `)` のみエスケープ）
+ * - 非 ASCII を含む: UTF-16BE BOM 付き hex string `<feff...>`
+ *
+ * いずれの形式も `decodePdfString` 側で復号可能。
+ *
+ * @param s - エンコード対象の文字列
+ * @returns PDF string object 表記
+ */
+const toPdfString = (s: string): string => {
+  if (!isAscii(s)) {
+    return toUtf16BeHexString(s);
+  }
   const escaped = s.replace(/[\\()]/g, (c) => `\\${c}`);
   return `(${escaped})`;
 };
@@ -105,10 +154,10 @@ export const buildMinimalSinglePagePdf = (): Uint8Array =>
 export const buildSinglePagePdfWithInfo = (info: InfoFields): Uint8Array => {
   const fields: string[] = [];
   if (info.title !== undefined) {
-    fields.push(`/Title ${toLiteralString(info.title)}`);
+    fields.push(`/Title ${toPdfString(info.title)}`);
   }
   if (info.author !== undefined) {
-    fields.push(`/Author ${toLiteralString(info.author)}`);
+    fields.push(`/Author ${toPdfString(info.author)}`);
   }
   const infoBody = `<< ${fields.join(" ")} >>`;
   return assembleTextPdf(
