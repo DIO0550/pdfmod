@@ -1,7 +1,7 @@
 # PdfDocument.load の fallback recovery 経路
 
-> **機能**: [PDF解析パイプライン](./index.md)
-> **関連 spec**: ISO 32000-1:2008 §7.5 (File Structure)
+> **カテゴリ**: 実装ドキュメント
+> **関連 spec**: ISO 32000-1:2008 §7.5 (File Structure) / [pdf-parsing-pipeline](../pdf-parsing-pipeline/index.md)
 > **実装**: `packages/core/src/document/pdf-document.ts`
 > **ステータス**: 下書き (spec-013 PR-12 で実装)
 
@@ -114,7 +114,7 @@ merge-failure 経路で trailer 復元できなかった時に合成 `ROOT_NOT_F
 ## 関連ドキュメント
 
 - [xref-fallback-scanner.md](../xref-fallback-scanner.md) — `scanFallback` 実装の詳細
-- [xref-merger-spec.md](./xref-merger-spec.md) — `mergeXRefChain` (`/Prev` 連鎖マージ) の仕様
-- [startxref-scanner.md](./startxref-scanner.md) — `scanStartXRef` の仕様
-- [xref-parser-spec.md](./xref-parser-spec.md) — xref テーブル解析
-- [error-handling-spec.md](./error-handling-spec.md) — `PdfError` / `PdfWarning` 階層
+- [xref-merger-spec.md](../pdf-parsing-pipeline/xref-merger-spec.md) — `mergeXRefChain` (`/Prev` 連鎖マージ) の仕様
+- [startxref-scanner.md](../pdf-parsing-pipeline/startxref-scanner.md) — `scanStartXRef` の仕様
+- [xref-parser-spec.md](../pdf-parsing-pipeline/xref-parser-spec.md) — xref テーブル解析
+- [error-handling-spec.md](../pdf-parsing-pipeline/error-handling-spec.md) — `PdfError` / `PdfWarning` 階層

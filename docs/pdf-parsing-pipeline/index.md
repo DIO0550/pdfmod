@@ -99,9 +99,14 @@ PdfDocument (ページ一覧 + メタデータ)
 | [object-resolver-spec.md](./object-resolver-spec.md) | インダイレクト参照のオブジェクト解決、LRUキャッシュ、ObjectParser |
 | [page-tree-spec.md](./page-tree-spec.md) | ページツリー走査、属性継承解決、ドキュメント構造構築 |
 | [document-api-spec.md](./document-api-spec.md) | PdfDocument / PdfPage パブリックAPI |
-| [document-load-fallback.md](./document-load-fallback.md) | PdfDocument.load の fallback recovery 経路 (`XREF_REBUILD` warning 契約 / `resolveXRefStructure` / `emitWarnings`) |
 | [object-stream-spec.md](./object-stream-spec.md) | オブジェクトストリーム（ObjStm）のPDF仕様、内部構造、制約事項 |
 | [error-handling-spec.md](./error-handling-spec.md) | エラー体系、寛容処理、フォールバックメカニズム |
+
+## 実装ドキュメント
+
+実装側の動作・契約を記すドキュメントは [docs/implementation/](../implementation/) を参照:
+
+- [pdf-document-load-fallback.md](../implementation/pdf-document-load-fallback.md) — `PdfDocument.load` の fallback recovery 経路 (`XREF_REBUILD` warning 契約 / `resolveXRefStructure` / `emitWarnings`)
 
 ## 非機能要件
 
