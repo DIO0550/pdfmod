@@ -257,6 +257,60 @@ export const buildPdfWithInvalidInfoRef = (): Uint8Array => new Uint8Array();
 /**
  * インクリメンタルアップデートを含む PDF を生成する。
  *
+ * 旧 xref (旧 trailer の `/Root 1 0 R`) と、`/Prev` で旧 xref を指す新 xref +
+ * 新 trailer (新 `/Root 4 0 R`) を持つ incremental update PDF を組み立てる。
+ *
+ * - 旧セクション: Catalog (1 0 R) / Pages (2 0 R) / Page (3 0 R) と
+ *   `xref 0 4` 形式の単一サブセクション、`/Size 4 /Root 1 0 R` の旧 trailer。
+ * - 新セクション: 新 Catalog (4 0 R, `/Pages 2 0 R` を再利用) と
+ *   `0 1` + `4 1` の 2 サブセクション形式の新 xref、
+ *   `/Size 5 /Root 4 0 R /Prev <oldXrefOffset>` の新 trailer。
+ *
+ * `mergeXRefChain` は startxref から新 xref を読み、`/Prev` を辿って旧 xref
+ * を merge し、最新 trailer の `/Root` (= 新 Catalog 4 0 R) を採用する。
+ *
  * @returns インクリメンタルアップデート付き PDF を表すバイト列
  */
-export const buildPdfWithIncrementalUpdate = (): Uint8Array => new Uint8Array();
+export const buildPdfWithIncrementalUpdate = (): Uint8Array => {
+  const encoder = new TextEncoder();
+
+  const oldObjBodies = [CATALOG_BODY, PAGES_BODY_SINGLE, PAGE_BODY];
+  const oldObjs = oldObjBodies.map(
+    (body, i) => `${i + 1} 0 obj\n${body}\nendobj\n`,
+  );
+
+  const oldOffsets: number[] = [];
+  let cursor = encoder.encode(PDF_HEADER).length;
+  for (const obj of oldObjs) {
+    oldOffsets.push(cursor);
+    cursor += encoder.encode(obj).length;
+  }
+  const oldXrefOffset = cursor;
+
+  const oldSize = oldObjBodies.length + 1;
+  const oldXrefRows = [
+    "0000000000 65535 f \n",
+    ...oldOffsets.map((o) => `${padOffset10(o)} 00000 n \n`),
+  ];
+  const oldXref = `xref\n0 ${oldSize}\n${oldXrefRows.join("")}`;
+  const oldTrailer = `trailer\n<< /Size ${oldSize} /Root 1 0 R >>\nstartxref\n${oldXrefOffset}\n%%EOF\n`;
+  const oldTail = oldXref + oldTrailer;
+  cursor += encoder.encode(oldTail).length;
+
+  const newCatalogBody = "<< /Type /Catalog /Pages 2 0 R >>";
+  const newObj = `4 0 obj\n${newCatalogBody}\nendobj\n`;
+  const newObjOffset = cursor;
+  cursor += encoder.encode(newObj).length;
+  const newXrefOffset = cursor;
+
+  const newSize = oldSize + 1;
+  const newXref =
+    `xref\n` +
+    `0 1\n0000000000 65535 f \n` +
+    `4 1\n${padOffset10(newObjOffset)} 00000 n \n`;
+  const newTrailer = `trailer\n<< /Size ${newSize} /Root 4 0 R /Prev ${oldXrefOffset} >>\nstartxref\n${newXrefOffset}\n%%EOF\n`;
+
+  return encoder.encode(
+    PDF_HEADER + oldObjs.join("") + oldTail + newObj + newXref + newTrailer,
+  );
+};
