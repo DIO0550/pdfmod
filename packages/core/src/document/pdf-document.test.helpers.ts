@@ -205,7 +205,8 @@ export const buildTwoPagePdf = (): Uint8Array =>
  * trailer 辞書から `/Root` を省略し、かつ本体にも `/Type /Catalog` を含めない
  * ことで、scanFallback でも `/Root` を再構築できない状態を作る。ヘッダ /
  * startxref / xref テーブルまでは妥当だが、`mergeXRefChain` 失敗 →
- * `scanFallback` 失敗 (`trailer = None`) を経て `ROOT_NOT_FOUND` が返る。
+ * `scanFallback` は `Ok({trailer: None, ...})` を返し、`PdfDocument.load`
+ * 側の trailer 不在分岐で `ROOT_NOT_FOUND` が返る。
  * `PdfDocument.load` のエラー伝搬テスト (L-003) で使用する。
  *
  * @returns `/Root` を欠き、本体に `/Type /Catalog` も持たない PDF バイト列

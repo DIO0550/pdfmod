@@ -140,7 +140,7 @@ type EmitWarnings = (warnings: readonly PdfWarning[]) => void;
  *
  * @param data - PDF のバイト列
  * @param emitWarnings - fallback 復元時の警告通知コールバック
- * @returns 成功時は `Ok<{ xref, trailer }>`、失敗時は `Err<PdfParseError>`
+ * @returns 成功時は `Ok<{ xref, trailer }>`、失敗時は `Err<PdfError>`
  */
 const resolveXRefAndTrailer = (
   data: Uint8Array,
@@ -152,7 +152,6 @@ const resolveXRefAndTrailer = (
     if (!fb.ok) {
       return fb;
     }
-    emitWarnings(fb.value.warnings);
     if (!fb.value.trailer.some) {
       return err({
         code: "ROOT_NOT_FOUND",
@@ -160,6 +159,7 @@ const resolveXRefAndTrailer = (
         offset: ByteOffset.of(0),
       });
     }
+    emitWarnings(fb.value.warnings);
     return ok({ xref: fb.value.xrefTable, trailer: fb.value.trailer.value });
   }
 
@@ -177,7 +177,6 @@ const resolveXRefAndTrailer = (
   if (!fb.ok) {
     return fb;
   }
-  emitWarnings(fb.value.warnings);
   if (!fb.value.trailer.some) {
     return err({
       code: "ROOT_NOT_FOUND",
@@ -186,6 +185,7 @@ const resolveXRefAndTrailer = (
       offset: ByteOffset.of(0),
     });
   }
+  emitWarnings(fb.value.warnings);
   return ok({ xref: fb.value.xrefTable, trailer: fb.value.trailer.value });
 };
 
