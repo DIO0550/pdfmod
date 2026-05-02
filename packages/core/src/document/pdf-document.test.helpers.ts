@@ -98,16 +98,19 @@ const toPdfString = (s: string): string => {
 };
 
 /**
- * 1 0 obj 〜 N 0 obj の本体配列と trailer 補助エントリを与え、
+ * 1 0 obj 〜 N 0 obj の本体配列と trailer 追加エントリを与え、
  * テキスト xref 形式の PDF バイト列を組み立てる。
  *
+ * `trailerEntries` は `/Root 1 0 R` の **後ろに追記される** 追加エントリ（例: `/Info 4 0 R`）の配列。
+ * 区切りスペースは本関数が付与するため、呼び出し側は先頭スペースを含めない。
+ *
  * @param objectBodies - 各オブジェクトの本体（`<< ... >>` 等）
- * @param trailerExtras - trailer 辞書に追記するエントリ（先頭スペース込み）。例: `" /Info 4 0 R"`
+ * @param trailerEntries - trailer 辞書に追記するエントリ。例: `["/Info 4 0 R"]`
  * @returns 組み立てた PDF バイト列
  */
 const assembleTextPdf = (
   objectBodies: readonly string[],
-  trailerExtras = "",
+  trailerEntries: readonly string[] = [],
 ): Uint8Array => {
   const encoder = new TextEncoder();
   const objs = objectBodies.map(
@@ -128,6 +131,8 @@ const assembleTextPdf = (
     ...offsets.map((o) => `${padOffset10(o)} 00000 n \n`),
   ];
   const xref = `xref\n0 ${size}\n${xrefRows.join("")}`;
+  const trailerExtras =
+    trailerEntries.length === 0 ? "" : ` ${trailerEntries.join(" ")}`;
   const trailer = `trailer\n<< /Size ${size} /Root 1 0 R${trailerExtras} >>\nstartxref\n${xrefOffset}\n%%EOF\n`;
 
   return encoder.encode(PDF_HEADER + objs.join("") + xref + trailer);
@@ -162,7 +167,7 @@ export const buildSinglePagePdfWithInfo = (info: InfoFields): Uint8Array => {
   const infoBody = `<< ${fields.join(" ")} >>`;
   return assembleTextPdf(
     [CATALOG_BODY, PAGES_BODY_SINGLE, PAGE_BODY, infoBody],
-    " /Info 4 0 R",
+    ["/Info 4 0 R"],
   );
 };
 
