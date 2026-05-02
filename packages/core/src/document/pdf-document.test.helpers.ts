@@ -21,14 +21,68 @@ export interface InfoFields {
 const XREF_OFFSET_DIGITS = 10;
 const DECIMAL_RADIX = 10;
 
+const PDF_HEADER = "%PDF-1.7\n";
+const CATALOG_BODY = "<< /Type /Catalog /Pages 2 0 R >>";
+const PAGES_BODY_SINGLE = "<< /Type /Pages /Kids [3 0 R] /Count 1 >>";
+const PAGES_BODY_TWO = "<< /Type /Pages /Kids [3 0 R 4 0 R] /Count 2 >>";
+const PAGE_BODY = "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>";
+
 /**
- * 10 桁ゼロ埋めでオフセットを表現する。xref テーブルの 18 バイト本体規約に従う。
+ * 10 桁ゼロ埋めでオフセットを表現する。xref テーブルの 20 バイト本体規約に従う。
  *
  * @param n - 0 以上の整数オフセット値
  * @returns 10 桁ゼロ埋め文字列
  */
 const padOffset10 = (n: number): string =>
   n.toString(DECIMAL_RADIX).padStart(XREF_OFFSET_DIGITS, "0");
+
+/**
+ * ASCII 文字列を PDF の literal string `(...)` 形式へエンコードする。
+ * `\\` `(` `)` のみエスケープする最小実装。非 ASCII 文字は本 helper の対象外。
+ *
+ * @param s - エンコード対象の ASCII 文字列
+ * @returns PDF literal string 表記
+ */
+const toLiteralString = (s: string): string => {
+  const escaped = s.replace(/[\\()]/g, (c) => `\\${c}`);
+  return `(${escaped})`;
+};
+
+/**
+ * 1 0 obj 〜 N 0 obj の本体配列と trailer 補助エントリを与え、
+ * テキスト xref 形式の PDF バイト列を組み立てる。
+ *
+ * @param objectBodies - 各オブジェクトの本体（`<< ... >>` 等）
+ * @param trailerExtras - trailer 辞書に追記するエントリ（先頭スペース込み）。例: `" /Info 4 0 R"`
+ * @returns 組み立てた PDF バイト列
+ */
+const assembleTextPdf = (
+  objectBodies: readonly string[],
+  trailerExtras = "",
+): Uint8Array => {
+  const encoder = new TextEncoder();
+  const objs = objectBodies.map(
+    (body, i) => `${i + 1} 0 obj\n${body}\nendobj\n`,
+  );
+
+  const offsets: number[] = [];
+  let cursor = encoder.encode(PDF_HEADER).length;
+  for (const obj of objs) {
+    offsets.push(cursor);
+    cursor += encoder.encode(obj).length;
+  }
+  const xrefOffset = cursor;
+
+  const size = objectBodies.length + 1;
+  const xrefRows = [
+    "0000000000 65535 f \n",
+    ...offsets.map((o) => `${padOffset10(o)} 00000 n \n`),
+  ];
+  const xref = `xref\n0 ${size}\n${xrefRows.join("")}`;
+  const trailer = `trailer\n<< /Size ${size} /Root 1 0 R${trailerExtras} >>\nstartxref\n${xrefOffset}\n%%EOF\n`;
+
+  return encoder.encode(PDF_HEADER + objs.join("") + xref + trailer);
+};
 
 /**
  * 1 ページのみを持つ最小構成の PDF を生成する。
@@ -38,49 +92,41 @@ const padOffset10 = (n: number): string =>
  *
  * @returns 1 ページの最小 PDF を表すバイト列
  */
-export const buildMinimalSinglePagePdf = (): Uint8Array => {
-  const encoder = new TextEncoder();
-
-  const header = "%PDF-1.7\n";
-  const obj1 = "1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n";
-  const obj2 = "2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n";
-  const obj3 =
-    "3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>\nendobj\n";
-
-  const offset1 = encoder.encode(header).length;
-  const offset2 = offset1 + encoder.encode(obj1).length;
-  const offset3 = offset2 + encoder.encode(obj2).length;
-  const xrefOffset = offset3 + encoder.encode(obj3).length;
-
-  const xref =
-    "xref\n" +
-    "0 4\n" +
-    "0000000000 65535 f \n" +
-    `${padOffset10(offset1)} 00000 n \n` +
-    `${padOffset10(offset2)} 00000 n \n` +
-    `${padOffset10(offset3)} 00000 n \n`;
-  const trailer =
-    "trailer\n<< /Size 4 /Root 1 0 R >>\n" +
-    `startxref\n${xrefOffset}\n%%EOF\n`;
-
-  return encoder.encode(header + obj1 + obj2 + obj3 + xref + trailer);
-};
+export const buildMinimalSinglePagePdf = (): Uint8Array =>
+  assembleTextPdf([CATALOG_BODY, PAGES_BODY_SINGLE, PAGE_BODY]);
 
 /**
  * 1 ページ + `/Info` 辞書を持つ PDF を生成する。
+ * `/Info` には `info` で指定された Title / Author のみ収録する。
  *
- * @param _info - `/Info` に格納するフィールド
+ * @param info - `/Info` に格納するフィールド
  * @returns `/Info` 付き PDF を表すバイト列
  */
-export const buildSinglePagePdfWithInfo = (_info: InfoFields): Uint8Array =>
-  new Uint8Array();
+export const buildSinglePagePdfWithInfo = (info: InfoFields): Uint8Array => {
+  const fields: string[] = [];
+  if (info.title !== undefined) {
+    fields.push(`/Title ${toLiteralString(info.title)}`);
+  }
+  if (info.author !== undefined) {
+    fields.push(`/Author ${toLiteralString(info.author)}`);
+  }
+  const infoBody = `<< ${fields.join(" ")} >>`;
+  return assembleTextPdf(
+    [CATALOG_BODY, PAGES_BODY_SINGLE, PAGE_BODY, infoBody],
+    " /Info 4 0 R",
+  );
+};
 
 /**
  * 2 ページの PDF を生成する。
  *
+ * Catalog (1 0 obj) / Pages (2 0 obj, /Count 2) / Page1 (3 0 obj) / Page2 (4 0 obj)
+ * の 4 オブジェクト構成。
+ *
  * @returns 2 ページ PDF を表すバイト列
  */
-export const buildTwoPagePdf = (): Uint8Array => new Uint8Array();
+export const buildTwoPagePdf = (): Uint8Array =>
+  assembleTextPdf([CATALOG_BODY, PAGES_BODY_TWO, PAGE_BODY, PAGE_BODY]);
 
 /**
  * `/Catalog` を欠く不正な PDF を生成する。
