@@ -227,29 +227,33 @@ export const buildPdfWithoutMediaBox = (): Uint8Array =>
 
 const CORRUPT_STARTXREF_OFFSET_VALUE = 9;
 
+const STARTXREF_LINE_PATTERN = /startxref\n\d+\n%%EOF\n$/;
+const PAGES_BODY_EMPTY = "<< /Type /Pages /Kids [] /Count 0 >>";
+
 /**
- * `startxref` の値が壊れた PDF を生成する。
+ * `startxref` の値だけが壊れた PDF を生成する。
  *
- * Catalog (1 0 obj) / Pages (2 0 obj) と直接書きの `trailer << /Root 1 0 R /Size 3 >>`
- * を持つ完全な末尾構造を組み立てつつ、`startxref` の値を意図的にヘッダ内
- * (offset {@link CORRUPT_STARTXREF_OFFSET_VALUE}) にずらす。
+ * `assembleTextPdf` で組み立てた正常な末尾構造 (Catalog / Pages / xref / trailer / startxref / %%EOF)
+ * の `startxref <正しい xref オフセット>` 部分だけを `startxref {@link CORRUPT_STARTXREF_OFFSET_VALUE}`
+ * に置換することで、「xref / trailer は正常だが startxref ポインタだけ壊れている」状態を再現する。
  *
  * - `scanStartXRef` は `Ok({@link CORRUPT_STARTXREF_OFFSET_VALUE})` を返すが、
  *   その位置に `xref` キーワードが無いため `parseXRefTable` (= `mergeXRefChain`) が失敗する
- * - `scanFallback` は obj ヘッダから XRefTable を再構築し、直接書きの `trailer`
- *   から `Ok({trailer: Some, warnings: [XREF_REBUILD]})` を返す
+ * - `scanFallback` は obj ヘッダから XRefTable を再構築し、末尾の `trailer` ブロックから
+ *   `Ok({trailer: Some, warnings: [XREF_REBUILD]})` を返す
  *
  * fallback 経由の load 成功テスト (L-006 / L-007) で使用する。
  *
- * @returns `startxref` 値破損 + 直接書き trailer を持つ PDF バイト列
+ * @returns `startxref` 値破損 + 正常 xref/trailer 末尾を持つ PDF バイト列
  */
 export const buildPdfWithCorruptStartXRef = (): Uint8Array => {
-  const body =
-    "1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n" +
-    "2 0 obj\n<< /Type /Pages /Kids [] /Count 0 >>\nendobj\n" +
-    "trailer\n<< /Root 1 0 R /Size 3 >>\n" +
-    `startxref\n${CORRUPT_STARTXREF_OFFSET_VALUE}\n%%EOF\n`;
-  return new TextEncoder().encode(PDF_HEADER + body);
+  const valid = assembleTextPdf([CATALOG_BODY, PAGES_BODY_EMPTY]);
+  const text = new TextDecoder("latin1").decode(valid);
+  const corrupted = text.replace(
+    STARTXREF_LINE_PATTERN,
+    `startxref\n${CORRUPT_STARTXREF_OFFSET_VALUE}\n%%EOF\n`,
+  );
+  return new TextEncoder().encode(corrupted);
 };
 
 /**
