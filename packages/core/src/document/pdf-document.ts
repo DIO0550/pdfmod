@@ -178,12 +178,7 @@ const resolveXRefAndTrailer = (
     return fb;
   }
   if (!fb.value.trailer.some) {
-    return err({
-      code: "ROOT_NOT_FOUND",
-      message:
-        "fallback xref scan could not reconstruct trailer after merge failure",
-      offset: ByteOffset.of(0),
-    });
+    return mergeResult;
   }
   emitWarnings(fb.value.warnings);
   return ok({ xref: fb.value.xrefTable, trailer: fb.value.trailer.value });
