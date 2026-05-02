@@ -26,6 +26,7 @@ const CATALOG_BODY = "<< /Type /Catalog /Pages 2 0 R >>";
 const PAGES_BODY_SINGLE = "<< /Type /Pages /Kids [3 0 R] /Count 1 >>";
 const PAGES_BODY_TWO = "<< /Type /Pages /Kids [3 0 R 4 0 R] /Count 2 >>";
 const PAGE_BODY = "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>";
+const PAGE_BODY_NO_MEDIABOX = "<< /Type /Page /Parent 2 0 R >>";
 
 /**
  * 10 桁ゼロ埋めでオフセットを表現する。xref テーブルの 20 バイト本体規約に従う。
@@ -98,6 +99,17 @@ const toPdfString = (s: string): string => {
 };
 
 /**
+ * `assembleTextPdf` のオプション。
+ */
+interface AssembleTextPdfOptions {
+  /**
+   * `true` のとき trailer 辞書から `/Root` を省略する。
+   * Catalog 不在を再現する error fixture 用途のフラグで、通常の正常系 fixture では省略する。
+   */
+  readonly omitRoot?: boolean;
+}
+
+/**
  * 1 0 obj 〜 N 0 obj の本体配列と trailer 追加エントリを与え、
  * テキスト xref 形式の PDF バイト列を組み立てる。
  *
@@ -106,11 +118,13 @@ const toPdfString = (s: string): string => {
  *
  * @param objectBodies - 各オブジェクトの本体（`<< ... >>` 等）
  * @param trailerEntries - trailer 辞書に追記するエントリ。例: `["/Info 4 0 R"]`
+ * @param options - 組み立てオプション（`omitRoot` で `/Root` の省略可）
  * @returns 組み立てた PDF バイト列
  */
 const assembleTextPdf = (
   objectBodies: readonly string[],
   trailerEntries: readonly string[] = [],
+  options: AssembleTextPdfOptions = {},
 ): Uint8Array => {
   const encoder = new TextEncoder();
   const objs = objectBodies.map(
@@ -131,9 +145,10 @@ const assembleTextPdf = (
     ...offsets.map((o) => `${padOffset10(o)} 00000 n \n`),
   ];
   const xref = `xref\n0 ${size}\n${xrefRows.join("")}`;
+  const rootEntry = options.omitRoot === true ? "" : " /Root 1 0 R";
   const trailerExtras =
     trailerEntries.length === 0 ? "" : ` ${trailerEntries.join(" ")}`;
-  const trailer = `trailer\n<< /Size ${size} /Root 1 0 R${trailerExtras} >>\nstartxref\n${xrefOffset}\n%%EOF\n`;
+  const trailer = `trailer\n<< /Size ${size}${rootEntry}${trailerExtras} >>\nstartxref\n${xrefOffset}\n%%EOF\n`;
 
   return encoder.encode(PDF_HEADER + objs.join("") + xref + trailer);
 };
@@ -185,16 +200,28 @@ export const buildTwoPagePdf = (): Uint8Array =>
 /**
  * `/Catalog` を欠く不正な PDF を生成する。
  *
- * @returns `/Catalog` 不在の PDF を表すバイト列
+ * trailer 辞書から `/Root` を省略することで、ヘッダ / startxref / xref テーブル
+ * までは妥当なまま、trailer 解析段階で `ROOT_NOT_FOUND` 系のエラーになる入力を作る。
+ * `PdfDocument.load` のエラー伝搬テスト (L-003) で使用する。
+ *
+ * @returns `/Root` を欠く trailer を持つ PDF バイト列
  */
-export const buildPdfWithoutCatalog = (): Uint8Array => new Uint8Array();
+export const buildPdfWithoutCatalog = (): Uint8Array =>
+  assembleTextPdf([CATALOG_BODY, PAGES_BODY_SINGLE, PAGE_BODY], [], {
+    omitRoot: true,
+  });
 
 /**
  * `/MediaBox` を欠く不正な PDF を生成する。
  *
- * @returns `/MediaBox` 不在の PDF を表すバイト列
+ * Page leaf にも親 Pages ノードにも `/MediaBox` が無い構成にすることで、
+ * `PageTreeWalker.walk` (継承解決) が `MEDIABOX_NOT_FOUND` を返す入力になる。
+ * `PdfDocument.load` のエラー伝搬テスト (L-004) で使用する。
+ *
+ * @returns ページ・親いずれも `/MediaBox` を持たない PDF バイト列
  */
-export const buildPdfWithoutMediaBox = (): Uint8Array => new Uint8Array();
+export const buildPdfWithoutMediaBox = (): Uint8Array =>
+  assembleTextPdf([CATALOG_BODY, PAGES_BODY_SINGLE, PAGE_BODY_NO_MEDIABOX]);
 
 /**
  * `startxref` の値が壊れた PDF を生成する。
