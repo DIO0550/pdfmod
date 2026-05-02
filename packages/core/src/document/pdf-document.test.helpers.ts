@@ -261,13 +261,17 @@ export const buildPdfWithCorruptStartXRef = (): Uint8Array => {
   return new TextEncoder().encode(corrupted);
 };
 
+/** {@link buildPdfWithCorruptXRefAndNoTrailer} の startxref 値 (ファイル長を超え scanStartXRef を失敗させる)。 */
+const CORRUPT_XREF_NO_TRAILER_STARTXREF_VALUE = 9999;
+
 /**
  * xref が破損し、かつ scanFallback でも trailer が組み立てられない PDF を生成する。
  *
- * `/Type /Catalog` を含まない obj (`/Type /Pages` のみ) を 1 つ持ち、`trailer` キーワード
- * を一切含まない構成。
+ * `/Type /Catalog` を含まない obj (`/Type /Pages` のみ) を 1 つ持ち、`xref` / `startxref`
+ * キーワードは存在するが xref エントリは不正、`trailer` キーワードは一切含まない構成。
  *
  * - 通常の xref 解析経路 (`scanStartXRef` 〜 `mergeXRefChain`) は失敗する
+ *   (`startxref` 値 {@link CORRUPT_XREF_NO_TRAILER_STARTXREF_VALUE} はファイル長超過)
  * - `scanFallback` は obj ヘッダから XRefTable を再構築するが、
  *   - `findValidTrailer` は `trailer` キーワードを見つけられない (FB-002 不発)
  *   - `inferCatalogRoot` は `/Type /Catalog` を見つけられない (FB-004 不発)
@@ -279,7 +283,9 @@ export const buildPdfWithCorruptStartXRef = (): Uint8Array => {
  */
 export const buildPdfWithCorruptXRefAndNoTrailer = (): Uint8Array => {
   const body =
-    "1 0 obj\n<< /Type /Pages /Kids [] /Count 0 >>\nendobj\n" + "%%EOF\n";
+    "1 0 obj\n<< /Type /Pages /Kids [] /Count 0 >>\nendobj\n" +
+    "xref\nbroken\n" +
+    `startxref\n${CORRUPT_XREF_NO_TRAILER_STARTXREF_VALUE}\n%%EOF\n`;
   return new TextEncoder().encode(PDF_HEADER + body);
 };
 
