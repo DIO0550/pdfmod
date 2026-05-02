@@ -6,6 +6,7 @@ import { ByteOffset } from "../pdf/types/index";
 import { PdfVersion } from "../pdf/version/index";
 import { none, type Option, some } from "../utils/option/index";
 import { err, ok, type Result } from "../utils/result/index";
+import { scanFallback } from "../xref/fallback/index";
 import { mergeXRefChain } from "../xref/merger/index";
 import { scanStartXRef } from "../xref/startxref/index";
 import { parseXRefTable } from "../xref/table/index";
@@ -126,24 +127,66 @@ const parseXRefAt = (
   });
 };
 
+/** PdfWarning 配列を消費するローカルコールバック型。 */
+type EmitWarnings = (warnings: readonly PdfWarning[]) => void;
+
 /**
- * `data` から startxref 走査と /Prev チェーンマージを行い、
- * 統合済み xref と最新 trailer 辞書を返す。
+ * startxref → /Prev チェーンマージ → 失敗時は scanFallback の順で
+ * xref テーブルと trailer 辞書を解決する。
+ *
+ * - `scanStartXRef` Err / `mergeXRefChain` Err のいずれか発生時のみ
+ *   `scanFallback` を呼び、成功した警告は `emitWarnings` で通知する。
+ * - fallback でも trailer を再構築できなければ `ROOT_NOT_FOUND` を返す。
  *
  * @param data - PDF のバイト列
- * @returns 成功時は `Ok<{ mergedXRef, latestTrailer }>`、失敗時は `Err<PdfParseError>`
+ * @param emitWarnings - fallback 復元時の警告通知コールバック
+ * @returns 成功時は `Ok<{ xref, trailer }>`、失敗時は `Err<PdfParseError>`
  */
-const loadXRefStructure = (
+const resolveXRefAndTrailer = (
   data: Uint8Array,
-): Result<
-  { mergedXRef: XRefTable; latestTrailer: TrailerDict },
-  PdfParseError
-> => {
+  emitWarnings: EmitWarnings,
+): Result<{ xref: XRefTable; trailer: TrailerDict }, PdfError> => {
   const startXRefResult = scanStartXRef(data);
   if (!startXRefResult.ok) {
-    return startXRefResult;
+    const fb = scanFallback(data);
+    if (!fb.ok) {
+      return fb;
+    }
+    emitWarnings(fb.value.warnings);
+    if (!fb.value.trailer.some) {
+      return err({
+        code: "ROOT_NOT_FOUND",
+        message: "fallback xref scan could not reconstruct trailer",
+        offset: ByteOffset.of(0),
+      });
+    }
+    return ok({ xref: fb.value.xrefTable, trailer: fb.value.trailer.value });
   }
-  return mergeXRefChain(startXRefResult.value, (off) => parseXRefAt(data, off));
+
+  const mergeResult = mergeXRefChain(startXRefResult.value, (off) =>
+    parseXRefAt(data, off),
+  );
+  if (mergeResult.ok) {
+    return ok({
+      xref: mergeResult.value.mergedXRef,
+      trailer: mergeResult.value.latestTrailer,
+    });
+  }
+
+  const fb = scanFallback(data);
+  if (!fb.ok) {
+    return fb;
+  }
+  emitWarnings(fb.value.warnings);
+  if (!fb.value.trailer.some) {
+    return err({
+      code: "ROOT_NOT_FOUND",
+      message:
+        "fallback xref scan could not reconstruct trailer after merge failure",
+      offset: ByteOffset.of(0),
+    });
+  }
+  return ok({ xref: fb.value.xrefTable, trailer: fb.value.trailer.value });
 };
 
 /**
@@ -178,7 +221,9 @@ interface PdfDocumentFields {
  * `load` は ヘッダ検証 → startxref 走査 → xref/trailer 解析 → ObjectStore 生成
  * → カタログ解析 → ページツリー走査 → /Info メタデータ抽出 を直列に実行する。
  *
- * fallback 経路と onWarning 通知は本 PR では未実装で、後続 PR で追加する。
+ * `scanStartXRef` / `mergeXRefChain` の失敗時は `scanFallback` で
+ * xref/trailer の再構築を試み、復元できた場合は `XREF_REBUILD`
+ * 警告を `onWarning` に通知してから処理を続行する。
  */
 export class PdfDocument {
   readonly version: PdfVersion;
@@ -212,14 +257,29 @@ export class PdfDocument {
     }
     const headerVersion = headerResult.value;
 
-    const xrefResult = loadXRefStructure(data);
-    if (!xrefResult.ok) {
-      return xrefResult;
+    /**
+     * `options.onWarning` が登録されていれば各警告を順に通知する。
+     * 未登録なら早期 return で配列イテレーションを省く。
+     *
+     * @param warnings - 通知対象の警告配列
+     */
+    const emitWarnings: EmitWarnings = (warnings) => {
+      if (!options?.onWarning) {
+        return;
+      }
+      for (const w of warnings) {
+        options.onWarning(w);
+      }
+    };
+
+    const xrefResolution = resolveXRefAndTrailer(data, emitWarnings);
+    if (!xrefResolution.ok) {
+      return xrefResolution;
     }
-    const { mergedXRef, latestTrailer } = xrefResult.value;
+    const { xref, trailer: latestTrailer } = xrefResolution.value;
 
     const storeResult = ObjectStore.create(
-      { xref: mergedXRef, data },
+      { xref, data },
       { cacheCapacity: options?.cacheCapacity },
     );
     if (!storeResult.ok) {
@@ -245,9 +305,7 @@ export class PdfDocument {
     if (!walkResult.ok) {
       return walkResult;
     }
-    for (const w of walkResult.value.warnings) {
-      options?.onWarning?.(w);
-    }
+    emitWarnings(walkResult.value.warnings);
 
     const infoResult = await DocumentInfoParser.parse(
       latestTrailer,
@@ -256,9 +314,7 @@ export class PdfDocument {
     if (!infoResult.ok) {
       return infoResult;
     }
-    for (const w of infoResult.value.warnings) {
-      options?.onWarning?.(w);
-    }
+    emitWarnings(infoResult.value.warnings);
 
     return ok(
       new PdfDocument({
