@@ -319,10 +319,13 @@ export const buildPdfWithIncrementalUpdate = (): Uint8Array => {
   cursor += encoder.encode(oldTail).length;
 
   const [mbX, mbY, mbW, mbH] = INCREMENTAL_UPDATE_NEW_PAGE_MEDIA_BOX;
+  const newCatalogObjNum = INCREMENTAL_UPDATE_NEW_SECTION_FIRST_OBJ_NUM;
+  const newPagesObjNum = newCatalogObjNum + 1;
+  const newPageObjNum = newCatalogObjNum + 2;
   const newObjBodies = [
-    "<< /Type /Catalog /Pages 5 0 R >>",
-    "<< /Type /Pages /Kids [6 0 R] /Count 1 >>",
-    `<< /Type /Page /Parent 5 0 R /MediaBox [${mbX} ${mbY} ${mbW} ${mbH}] >>`,
+    `<< /Type /Catalog /Pages ${newPagesObjNum} 0 R >>`,
+    `<< /Type /Pages /Kids [${newPageObjNum} 0 R] /Count 1 >>`,
+    `<< /Type /Page /Parent ${newPagesObjNum} 0 R /MediaBox [${mbX} ${mbY} ${mbW} ${mbH}] >>`,
   ];
   const newObjs = newObjBodies.map(
     (body, i) =>
