@@ -102,6 +102,12 @@ PdfDocument (ページ一覧 + メタデータ)
 | [object-stream-spec.md](./object-stream-spec.md) | オブジェクトストリーム（ObjStm）のPDF仕様、内部構造、制約事項 |
 | [error-handling-spec.md](./error-handling-spec.md) | エラー体系、寛容処理、フォールバックメカニズム |
 
+## 実装ドキュメント
+
+実装側の動作・契約を記すドキュメントは [docs/implementation/](../implementation/) を参照:
+
+- [pdf-document-load-fallback.md](../implementation/pdf-document-load-fallback.md) — `PdfDocument.load` の fallback recovery 経路 (`XREF_REBUILD` warning 契約 / `resolveXRefStructure` / `emitWarnings`)
+
 ## 非機能要件
 
 | カテゴリ | 要件 | 目標値 |

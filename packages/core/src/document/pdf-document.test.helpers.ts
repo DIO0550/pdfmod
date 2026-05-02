@@ -25,6 +25,7 @@ const PDF_HEADER = "%PDF-1.7\n";
 const CATALOG_BODY = "<< /Type /Catalog /Pages 2 0 R >>";
 const PAGES_BODY_SINGLE = "<< /Type /Pages /Kids [3 0 R] /Count 1 >>";
 const PAGES_BODY_TWO = "<< /Type /Pages /Kids [3 0 R 4 0 R] /Count 2 >>";
+const PAGES_BODY_EMPTY = "<< /Type /Pages /Kids [] /Count 0 >>";
 const PAGE_BODY = "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>";
 const PAGE_BODY_NO_MEDIABOX = "<< /Type /Page /Parent 2 0 R >>";
 
@@ -202,16 +203,17 @@ export const buildTwoPagePdf = (): Uint8Array =>
 /**
  * `/Catalog` を欠く不正な PDF を生成する。
  *
- * trailer 辞書から `/Root` を省略することで、ヘッダ / startxref / xref テーブル
- * までは妥当なまま、trailer 解析段階で `ROOT_NOT_FOUND` 系のエラーになる入力を作る。
+ * trailer 辞書から `/Root` を省略し、かつ本体にも `/Type /Catalog` を含めない
+ * ことで、scanFallback でも `/Root` を再構築できない状態を作る。ヘッダ /
+ * startxref / xref テーブルまでは妥当だが、`mergeXRefChain` 失敗 →
+ * `scanFallback` は `Ok({trailer: None, ...})` を返し、`PdfDocument.load`
+ * 側の trailer 不在分岐で `ROOT_NOT_FOUND` が返る。
  * `PdfDocument.load` のエラー伝搬テスト (L-003) で使用する。
  *
- * @returns `/Root` を欠く trailer を持つ PDF バイト列
+ * @returns `/Root` を欠き、本体に `/Type /Catalog` も持たない PDF バイト列
  */
 export const buildPdfWithoutCatalog = (): Uint8Array =>
-  assembleTextPdf([CATALOG_BODY, PAGES_BODY_SINGLE, PAGE_BODY], [], {
-    omitRoot: true,
-  });
+  assembleTextPdf([PAGES_BODY_EMPTY], [], { omitRoot: true });
 
 /**
  * `/MediaBox` を欠く不正な PDF を生成する。
@@ -232,7 +234,6 @@ export const buildPdfWithoutMediaBox = (): Uint8Array =>
 const CORRUPT_STARTXREF_OFFSET_VALUE = 5;
 
 const STARTXREF_LINE_PATTERN = /startxref\n\d+\n%%EOF\n$/;
-const PAGES_BODY_EMPTY = "<< /Type /Pages /Kids [] /Count 0 >>";
 
 /**
  * `startxref` の値だけが壊れた PDF を生成する。
