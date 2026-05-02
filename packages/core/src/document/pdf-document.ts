@@ -142,7 +142,7 @@ type EmitWarnings = (warnings: readonly PdfWarning[]) => void;
  * @param emitWarnings - fallback 復元時の警告通知コールバック
  * @returns 成功時は `Ok<{ xref, trailer }>`、失敗時は `Err<PdfError>`
  */
-const resolveXRefAndTrailer = (
+const resolveXRefStructure = (
   data: Uint8Array,
   emitWarnings: EmitWarnings,
 ): Result<{ xref: XRefTable; trailer: TrailerDict }, PdfError> => {
@@ -267,7 +267,7 @@ export class PdfDocument {
       }
     };
 
-    const xrefResolution = resolveXRefAndTrailer(data, emitWarnings);
+    const xrefResolution = resolveXRefStructure(data, emitWarnings);
     if (!xrefResolution.ok) {
       return xrefResolution;
     }
