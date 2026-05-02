@@ -43,7 +43,7 @@ test("TAB 終端の `%PDF-1.7` は INVALID_HEADER を返さない", async () => 
   expect(result.error.code).not.toBe("INVALID_HEADER");
 });
 
-test("Catalog (`/Root`) を欠く trailer は ROOT_NOT_FOUND を返す", async () => {
+test("trailer 辞書が `/Root` を欠く PDF は ROOT_NOT_FOUND を返す", async () => {
   const result = await PdfDocument.load(buildPdfWithoutCatalog());
 
   expect(result.ok).toBe(false);
