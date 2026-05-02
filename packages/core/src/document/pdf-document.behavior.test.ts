@@ -1,9 +1,13 @@
 import { assert, expect, test } from "vitest";
+import { GenerationNumber } from "../pdf/types/generation-number/index";
+import { ObjectNumber } from "../pdf/types/object-number/index";
 import { PdfDocument } from "./pdf-document";
 import {
   buildMinimalSinglePagePdf,
+  buildPdfWithIncrementalUpdate,
   buildSinglePagePdfWithInfo,
   buildTwoPagePdf,
+  INCREMENTAL_UPDATE_NEW_PAGE_MEDIA_BOX,
 } from "./pdf-document.test.helpers";
 
 test("最小 1-page PDF を load すると pageCount=1 を返す", async () => {
@@ -51,4 +55,34 @@ test.each([
   assert(result.ok);
   expect(result.value.metadata.title).toBe(info.title);
   expect(result.value.metadata.author).toBe(info.author);
+});
+
+test("incremental update PDF を load すると Ok を返す", async () => {
+  const result = await PdfDocument.load(buildPdfWithIncrementalUpdate());
+
+  assert(result.ok);
+});
+
+test("incremental update PDF の load 結果は最新 trailer の /Root 経由で page 構造を観測できる", async () => {
+  const result = await PdfDocument.load(buildPdfWithIncrementalUpdate());
+
+  assert(result.ok);
+  expect(result.value.pageCount).toBe(1);
+  const page = result.value.getPage(0);
+  assert(page.some);
+  expect(page.value.mediaBox).toEqual([
+    ...INCREMENTAL_UPDATE_NEW_PAGE_MEDIA_BOX,
+  ]);
+});
+
+test("incremental update PDF の resolver は旧 xref のみに残る object も解決できる", async () => {
+  const result = await PdfDocument.load(buildPdfWithIncrementalUpdate());
+
+  assert(result.ok);
+  const oldCatalog = await result.value.resolver.get({
+    objectNumber: ObjectNumber.of(1),
+    generationNumber: GenerationNumber.of(0),
+  });
+  assert(oldCatalog.ok);
+  expect(oldCatalog.value.type).toBe("dictionary");
 });
