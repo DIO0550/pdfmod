@@ -226,26 +226,80 @@ export const buildPdfWithoutMediaBox = (): Uint8Array =>
   assembleTextPdf([CATALOG_BODY, PAGES_BODY_SINGLE, PAGE_BODY_NO_MEDIABOX]);
 
 /**
- * `startxref` の値が壊れた PDF を生成する。
- *
- * @returns `startxref` 破損 PDF を表すバイト列
+ * 破損した `startxref` の値。`%PDF-1.7\n` (9 バイト) 内部のオフセット (バージョン文字列の `1`)
+ * を指すため、正常な xref 位置とも先頭の有効構造とも一致しない。
  */
-export const buildPdfWithCorruptStartXRef = (): Uint8Array => new Uint8Array();
+const CORRUPT_STARTXREF_OFFSET_VALUE = 5;
+
+const STARTXREF_LINE_PATTERN = /startxref\n\d+\n%%EOF\n$/;
+const PAGES_BODY_EMPTY = "<< /Type /Pages /Kids [] /Count 0 >>";
 
 /**
- * xref が破損し、かつ trailer も復元できない PDF を生成する。
+ * `startxref` の値だけが壊れた PDF を生成する。
  *
- * @returns xref/trailer ともに破損した PDF を表すバイト列
+ * `assembleTextPdf` で組み立てた正常な末尾構造 (Catalog / Pages / xref / trailer / startxref / %%EOF)
+ * の `startxref <正しい xref オフセット>` 部分だけを `startxref {@link CORRUPT_STARTXREF_OFFSET_VALUE}`
+ * に置換することで、「xref / trailer は正常だが startxref ポインタだけ壊れている」状態を再現する。
+ *
+ * - `scanStartXRef` は `Ok({@link CORRUPT_STARTXREF_OFFSET_VALUE})` を返すが、
+ *   その位置 (PDF ヘッダのバージョン文字列内) に `xref` キーワードが無いため
+ *   `parseXRefTable` (= `mergeXRefChain`) が失敗する
+ * - `scanFallback` は obj ヘッダから XRefTable を再構築し、末尾の `trailer` ブロックから
+ *   `Ok({trailer: Some, warnings: [XREF_REBUILD]})` を返す
+ *
+ * fallback 経由の load 成功テスト (L-006 / L-007) で使用する。
+ *
+ * @returns `startxref` 値破損 + 正常 xref/trailer 末尾を持つ PDF バイト列
  */
-export const buildPdfWithCorruptXRefAndNoTrailer = (): Uint8Array =>
-  new Uint8Array();
+export const buildPdfWithCorruptStartXRef = (): Uint8Array => {
+  const valid = assembleTextPdf([CATALOG_BODY, PAGES_BODY_EMPTY]);
+  const text = new TextDecoder("latin1").decode(valid);
+  const corrupted = text.replace(
+    STARTXREF_LINE_PATTERN,
+    `startxref\n${CORRUPT_STARTXREF_OFFSET_VALUE}\n%%EOF\n`,
+  );
+  return new TextEncoder().encode(corrupted);
+};
+
+/** {@link buildPdfWithCorruptXRefAndNoTrailer} の startxref 値 (ファイル長を超え scanStartXRef を失敗させる)。 */
+const CORRUPT_XREF_NO_TRAILER_STARTXREF_VALUE = 9999;
+
+/**
+ * xref が破損し、かつ scanFallback でも trailer が組み立てられない PDF を生成する。
+ *
+ * `/Type /Catalog` を含まない obj (`/Type /Pages` のみ) を 1 つ持ち、`xref` / `startxref`
+ * キーワードは存在するが xref エントリは不正、`trailer` キーワードは一切含まない構成。
+ *
+ * - 通常の xref 解析経路 (`scanStartXRef` 〜 `mergeXRefChain`) は失敗する
+ *   (`startxref` 値 {@link CORRUPT_XREF_NO_TRAILER_STARTXREF_VALUE} はファイル長超過)
+ * - `scanFallback` は obj ヘッダから XRefTable を再構築するが、
+ *   - `findValidTrailer` は `trailer` キーワードを見つけられない (FB-002 不発)
+ *   - `inferCatalogRoot` は `/Type /Catalog` を見つけられない (FB-004 不発)
+ *   ため `Ok({trailer: None, warnings: [XREF_REBUILD]})` を返す
+ *
+ * fallback で trailer が確定できない場合のテスト (PR-13 fallback-trailer-none) で使用する。
+ *
+ * @returns trailer 復元不能な PDF バイト列
+ */
+export const buildPdfWithCorruptXRefAndNoTrailer = (): Uint8Array => {
+  const body =
+    "1 0 obj\n<< /Type /Pages /Kids [] /Count 0 >>\nendobj\n" +
+    "xref\nbroken\n" +
+    `startxref\n${CORRUPT_XREF_NO_TRAILER_STARTXREF_VALUE}\n%%EOF\n`;
+  return new TextEncoder().encode(PDF_HEADER + body);
+};
 
 /**
  * ヘッダのみで本体を持たない PDF を生成する。
  *
+ * `%PDF-1.7\n%%EOF\n` のみを返す。`startxref` キーワードが存在しないため、
+ * `scanStartXRef` は `STARTXREF_NOT_FOUND` を返す。
+ * `PdfDocument.load` の L-002 (header-only → ROOT_NOT_FOUND) テストで使用する。
+ *
  * @returns ヘッダのみの PDF を表すバイト列
  */
-export const buildPdfHeaderOnly = (): Uint8Array => new Uint8Array();
+export const buildPdfHeaderOnly = (): Uint8Array =>
+  new TextEncoder().encode(`${PDF_HEADER}%%EOF\n`);
 
 /**
  * `/Info` の参照が壊れた PDF を生成する。
