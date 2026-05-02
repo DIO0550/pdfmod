@@ -7,7 +7,6 @@ import {
   buildPdfWithIncrementalUpdate,
   buildSinglePagePdfWithInfo,
   buildTwoPagePdf,
-  INCREMENTAL_UPDATE_NEW_PAGE_MEDIA_BOX,
 } from "./pdf-document.test.helpers";
 
 test("最小 1-page PDF を load すると pageCount=1 を返す", async () => {
@@ -70,9 +69,7 @@ test("incremental update PDF の load 結果は最新 trailer の /Root 経由�
   expect(result.value.pageCount).toBe(1);
   const page = result.value.getPage(0);
   assert(page.some);
-  expect(page.value.mediaBox).toEqual([
-    ...INCREMENTAL_UPDATE_NEW_PAGE_MEDIA_BOX,
-  ]);
+  expect(page.value.mediaBox).toEqual([0, 0, 200, 300]);
 });
 
 test("incremental update PDF の resolver は旧 xref のみに残る object も解決できる", async () => {

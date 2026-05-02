@@ -259,7 +259,7 @@ const INCREMENTAL_UPDATE_NEW_PAGE_HEIGHT = 300;
 const INCREMENTAL_UPDATE_NEW_SECTION_FIRST_OBJ_NUM = 4;
 
 /** incremental update fixture で新 Page が持つ MediaBox。旧 Page の `[0 0 612 792]` と区別するため意図的に異なる値にする。 */
-export const INCREMENTAL_UPDATE_NEW_PAGE_MEDIA_BOX: readonly [
+const INCREMENTAL_UPDATE_NEW_PAGE_MEDIA_BOX: readonly [
   number,
   number,
   number,
