@@ -113,7 +113,9 @@ interface AssembleTextPdfOptions {
  * 1 0 obj 〜 N 0 obj の本体配列と trailer 追加エントリを与え、
  * テキスト xref 形式の PDF バイト列を組み立てる。
  *
- * `trailerEntries` は `/Root 1 0 R` の **後ろに追記される** 追加エントリ（例: `/Info 4 0 R`）の配列。
+ * `trailerEntries` は trailer 辞書の必須エントリ（`/Size`、および `omitRoot` が
+ * false の場合は `/Root 1 0 R`）の **後ろに追記される** 追加エントリ
+ * （例: `/Info 4 0 R`）の配列。`omitRoot: true` のときは `/Size` の直後に追記される。
  * 区切りスペースは本関数が付与するため、呼び出し側は先頭スペースを含めない。
  *
  * @param objectBodies - 各オブジェクトの本体（`<< ... >>` 等）
