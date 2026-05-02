@@ -25,6 +25,7 @@ const PDF_HEADER = "%PDF-1.7\n";
 const CATALOG_BODY = "<< /Type /Catalog /Pages 2 0 R >>";
 const PAGES_BODY_SINGLE = "<< /Type /Pages /Kids [3 0 R] /Count 1 >>";
 const PAGES_BODY_TWO = "<< /Type /Pages /Kids [3 0 R 4 0 R] /Count 2 >>";
+const PAGES_BODY_EMPTY = "<< /Type /Pages /Kids [] /Count 0 >>";
 const PAGE_BODY = "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>";
 const PAGE_BODY_NO_MEDIABOX = "<< /Type /Page /Parent 2 0 R >>";
 
@@ -212,9 +213,7 @@ export const buildTwoPagePdf = (): Uint8Array =>
  * @returns `/Root` を欠き、本体に `/Type /Catalog` も持たない PDF バイト列
  */
 export const buildPdfWithoutCatalog = (): Uint8Array =>
-  assembleTextPdf(["<< /Type /Pages /Kids [] /Count 0 >>"], [], {
-    omitRoot: true,
-  });
+  assembleTextPdf([PAGES_BODY_EMPTY], [], { omitRoot: true });
 
 /**
  * `/MediaBox` を欠く不正な PDF を生成する。
@@ -235,7 +234,6 @@ export const buildPdfWithoutMediaBox = (): Uint8Array =>
 const CORRUPT_STARTXREF_OFFSET_VALUE = 5;
 
 const STARTXREF_LINE_PATTERN = /startxref\n\d+\n%%EOF\n$/;
-const PAGES_BODY_EMPTY = "<< /Type /Pages /Kids [] /Count 0 >>";
 
 /**
  * `startxref` の値だけが壊れた PDF を生成する。
