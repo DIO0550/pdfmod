@@ -254,20 +254,41 @@ export const buildPdfHeaderOnly = (): Uint8Array => new Uint8Array();
  */
 export const buildPdfWithInvalidInfoRef = (): Uint8Array => new Uint8Array();
 
+const INCREMENTAL_UPDATE_NEW_PAGE_WIDTH = 200;
+const INCREMENTAL_UPDATE_NEW_PAGE_HEIGHT = 300;
+const INCREMENTAL_UPDATE_NEW_SECTION_FIRST_OBJ_NUM = 4;
+
+/** incremental update fixture で新 Page が持つ MediaBox。旧 Page の `[0 0 612 792]` と区別するため意図的に異なる値にする。 */
+const INCREMENTAL_UPDATE_NEW_PAGE_MEDIA_BOX: readonly [
+  number,
+  number,
+  number,
+  number,
+] = [
+  0,
+  0,
+  INCREMENTAL_UPDATE_NEW_PAGE_WIDTH,
+  INCREMENTAL_UPDATE_NEW_PAGE_HEIGHT,
+];
+
 /**
  * インクリメンタルアップデートを含む PDF を生成する。
  *
  * 旧 xref (旧 trailer の `/Root 1 0 R`) と、`/Prev` で旧 xref を指す新 xref +
  * 新 trailer (新 `/Root 4 0 R`) を持つ incremental update PDF を組み立てる。
  *
- * - 旧セクション: Catalog (1 0 R) / Pages (2 0 R) / Page (3 0 R) と
- *   `xref 0 4` 形式の単一サブセクション、`/Size 4 /Root 1 0 R` の旧 trailer。
- * - 新セクション: 新 Catalog (4 0 R, `/Pages 2 0 R` を再利用) と
- *   `0 1` + `4 1` の 2 サブセクション形式の新 xref、
- *   `/Size 5 /Root 4 0 R /Prev <oldXrefOffset>` の新 trailer。
+ * - 旧セクション: Catalog (1 0 R) / Pages (2 0 R, `/Kids [3 0 R]`) /
+ *   Page (3 0 R, `MediaBox [0 0 612 792]`) と `xref 0 4` 形式の単一サブセクション、
+ *   `/Size 4 /Root 1 0 R` の旧 trailer。
+ * - 新セクション: 新 Catalog (4 0 R, `/Pages 5 0 R`) と新 Pages (5 0 R, `/Kids [6 0 R]`) /
+ *   新 Page (6 0 R, MediaBox は {@link INCREMENTAL_UPDATE_NEW_PAGE_MEDIA_BOX})、
+ *   `0 1` + `4 3` の 2 サブセクション形式の新 xref、
+ *   `/Size 7 /Root 4 0 R /Prev <oldXrefOffset>` の新 trailer。
  *
  * `mergeXRefChain` は startxref から新 xref を読み、`/Prev` を辿って旧 xref
  * を merge し、最新 trailer の `/Root` (= 新 Catalog 4 0 R) を採用する。
+ * 新 Catalog 配下の Page は旧 Page と異なる MediaBox を持つため、
+ * 「最新 trailer の `/Root` 経由で page 構造が観測される」ことをテストで検証できる。
  *
  * @returns インクリメンタルアップデート付き PDF を表すバイト列
  */
@@ -297,20 +318,43 @@ export const buildPdfWithIncrementalUpdate = (): Uint8Array => {
   const oldTail = oldXref + oldTrailer;
   cursor += encoder.encode(oldTail).length;
 
-  const newCatalogBody = "<< /Type /Catalog /Pages 2 0 R >>";
-  const newObj = `4 0 obj\n${newCatalogBody}\nendobj\n`;
-  const newObjOffset = cursor;
-  cursor += encoder.encode(newObj).length;
+  const [mbX, mbY, mbW, mbH] = INCREMENTAL_UPDATE_NEW_PAGE_MEDIA_BOX;
+  const newCatalogObjNum = INCREMENTAL_UPDATE_NEW_SECTION_FIRST_OBJ_NUM;
+  const newPagesObjNum = newCatalogObjNum + 1;
+  const newPageObjNum = newCatalogObjNum + 2;
+  const newObjBodies = [
+    `<< /Type /Catalog /Pages ${newPagesObjNum} 0 R >>`,
+    `<< /Type /Pages /Kids [${newPageObjNum} 0 R] /Count 1 >>`,
+    `<< /Type /Page /Parent ${newPagesObjNum} 0 R /MediaBox [${mbX} ${mbY} ${mbW} ${mbH}] >>`,
+  ];
+  const newObjs = newObjBodies.map(
+    (body, i) =>
+      `${i + INCREMENTAL_UPDATE_NEW_SECTION_FIRST_OBJ_NUM} 0 obj\n${body}\nendobj\n`,
+  );
+
+  const newOffsets: number[] = [];
+  for (const obj of newObjs) {
+    newOffsets.push(cursor);
+    cursor += encoder.encode(obj).length;
+  }
   const newXrefOffset = cursor;
 
-  const newSize = oldSize + 1;
+  const newSize = oldSize + newObjBodies.length;
+  const newSubsection2Rows = newOffsets
+    .map((o) => `${padOffset10(o)} 00000 n \n`)
+    .join("");
   const newXref =
     `xref\n` +
     `0 1\n0000000000 65535 f \n` +
-    `4 1\n${padOffset10(newObjOffset)} 00000 n \n`;
-  const newTrailer = `trailer\n<< /Size ${newSize} /Root 4 0 R /Prev ${oldXrefOffset} >>\nstartxref\n${newXrefOffset}\n%%EOF\n`;
+    `${INCREMENTAL_UPDATE_NEW_SECTION_FIRST_OBJ_NUM} ${newObjBodies.length}\n${newSubsection2Rows}`;
+  const newTrailer = `trailer\n<< /Size ${newSize} /Root ${INCREMENTAL_UPDATE_NEW_SECTION_FIRST_OBJ_NUM} 0 R /Prev ${oldXrefOffset} >>\nstartxref\n${newXrefOffset}\n%%EOF\n`;
 
   return encoder.encode(
-    PDF_HEADER + oldObjs.join("") + oldTail + newObj + newXref + newTrailer,
+    PDF_HEADER +
+      oldObjs.join("") +
+      oldTail +
+      newObjs.join("") +
+      newXref +
+      newTrailer,
   );
 };
