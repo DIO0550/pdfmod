@@ -225,7 +225,11 @@ export const buildPdfWithoutCatalog = (): Uint8Array =>
 export const buildPdfWithoutMediaBox = (): Uint8Array =>
   assembleTextPdf([CATALOG_BODY, PAGES_BODY_SINGLE, PAGE_BODY_NO_MEDIABOX]);
 
-const CORRUPT_STARTXREF_OFFSET_VALUE = 9;
+/**
+ * 破損した `startxref` の値。`%PDF-1.7\n` (9 バイト) 内部のオフセット (バージョン文字列の `1`)
+ * を指すため、正常な xref 位置とも先頭の有効構造とも一致しない。
+ */
+const CORRUPT_STARTXREF_OFFSET_VALUE = 5;
 
 const STARTXREF_LINE_PATTERN = /startxref\n\d+\n%%EOF\n$/;
 const PAGES_BODY_EMPTY = "<< /Type /Pages /Kids [] /Count 0 >>";
@@ -238,7 +242,8 @@ const PAGES_BODY_EMPTY = "<< /Type /Pages /Kids [] /Count 0 >>";
  * に置換することで、「xref / trailer は正常だが startxref ポインタだけ壊れている」状態を再現する。
  *
  * - `scanStartXRef` は `Ok({@link CORRUPT_STARTXREF_OFFSET_VALUE})` を返すが、
- *   その位置に `xref` キーワードが無いため `parseXRefTable` (= `mergeXRefChain`) が失敗する
+ *   その位置 (PDF ヘッダのバージョン文字列内) に `xref` キーワードが無いため
+ *   `parseXRefTable` (= `mergeXRefChain`) が失敗する
  * - `scanFallback` は obj ヘッダから XRefTable を再構築し、末尾の `trailer` ブロックから
  *   `Ok({trailer: Some, warnings: [XREF_REBUILD]})` を返す
  *
