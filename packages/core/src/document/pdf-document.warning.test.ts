@@ -9,8 +9,10 @@ test("/Info を持たない PDF を load すると metadata はキー数 0 の�
   expect(Object.keys(result.value.metadata)).toHaveLength(0);
 });
 
-test("/Info を持たない PDF を onWarning 未指定で load すると Ok を返す (L-005)", async () => {
-  const result = await PdfDocument.load(buildMinimalSinglePagePdf());
+test("/Info を持たない PDF を options 指定 + onWarning 未指定で load すると Ok を返す (L-005)", async () => {
+  const result = await PdfDocument.load(buildMinimalSinglePagePdf(), {
+    cacheCapacity: 1,
+  });
 
   assert(result.ok);
 });
