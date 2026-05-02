@@ -225,27 +225,66 @@ export const buildPdfWithoutCatalog = (): Uint8Array =>
 export const buildPdfWithoutMediaBox = (): Uint8Array =>
   assembleTextPdf([CATALOG_BODY, PAGES_BODY_SINGLE, PAGE_BODY_NO_MEDIABOX]);
 
+const CORRUPT_STARTXREF_OFFSET_VALUE = 9;
+
 /**
  * `startxref` の値が壊れた PDF を生成する。
  *
- * @returns `startxref` 破損 PDF を表すバイト列
+ * Catalog (1 0 obj) / Pages (2 0 obj) と直接書きの `trailer << /Root 1 0 R /Size 3 >>`
+ * を持つ完全な末尾構造を組み立てつつ、`startxref` の値を意図的にヘッダ内
+ * (offset {@link CORRUPT_STARTXREF_OFFSET_VALUE}) にずらす。
+ *
+ * - `scanStartXRef` は `Ok({@link CORRUPT_STARTXREF_OFFSET_VALUE})` を返すが、
+ *   その位置に `xref` キーワードが無いため `parseXRefTable` (= `mergeXRefChain`) が失敗する
+ * - `scanFallback` は obj ヘッダから XRefTable を再構築し、直接書きの `trailer`
+ *   から `Ok({trailer: Some, warnings: [XREF_REBUILD]})` を返す
+ *
+ * fallback 経由の load 成功テスト (L-006 / L-007) で使用する。
+ *
+ * @returns `startxref` 値破損 + 直接書き trailer を持つ PDF バイト列
  */
-export const buildPdfWithCorruptStartXRef = (): Uint8Array => new Uint8Array();
+export const buildPdfWithCorruptStartXRef = (): Uint8Array => {
+  const body =
+    "1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n" +
+    "2 0 obj\n<< /Type /Pages /Kids [] /Count 0 >>\nendobj\n" +
+    "trailer\n<< /Root 1 0 R /Size 3 >>\n" +
+    `startxref\n${CORRUPT_STARTXREF_OFFSET_VALUE}\n%%EOF\n`;
+  return new TextEncoder().encode(PDF_HEADER + body);
+};
 
 /**
- * xref が破損し、かつ trailer も復元できない PDF を生成する。
+ * xref が破損し、かつ scanFallback でも trailer が組み立てられない PDF を生成する。
  *
- * @returns xref/trailer ともに破損した PDF を表すバイト列
+ * `/Type /Catalog` を含まない obj (`/Type /Pages` のみ) を 1 つ持ち、`trailer` キーワード
+ * を一切含まない構成。
+ *
+ * - 通常の xref 解析経路 (`scanStartXRef` 〜 `mergeXRefChain`) は失敗する
+ * - `scanFallback` は obj ヘッダから XRefTable を再構築するが、
+ *   - `findValidTrailer` は `trailer` キーワードを見つけられない (FB-002 不発)
+ *   - `inferCatalogRoot` は `/Type /Catalog` を見つけられない (FB-004 不発)
+ *   ため `Ok({trailer: None, warnings: [XREF_REBUILD]})` を返す
+ *
+ * fallback で trailer が確定できない場合のテスト (PR-13 fallback-trailer-none) で使用する。
+ *
+ * @returns trailer 復元不能な PDF バイト列
  */
-export const buildPdfWithCorruptXRefAndNoTrailer = (): Uint8Array =>
-  new Uint8Array();
+export const buildPdfWithCorruptXRefAndNoTrailer = (): Uint8Array => {
+  const body =
+    "1 0 obj\n<< /Type /Pages /Kids [] /Count 0 >>\nendobj\n" + "%%EOF\n";
+  return new TextEncoder().encode(PDF_HEADER + body);
+};
 
 /**
  * ヘッダのみで本体を持たない PDF を生成する。
  *
+ * `%PDF-1.7\n%%EOF\n` のみを返す。`startxref` キーワードが存在しないため、
+ * `scanStartXRef` は `STARTXREF_NOT_FOUND` を返す。
+ * `PdfDocument.load` の L-002 (header-only → ROOT_NOT_FOUND) テストで使用する。
+ *
  * @returns ヘッダのみの PDF を表すバイト列
  */
-export const buildPdfHeaderOnly = (): Uint8Array => new Uint8Array();
+export const buildPdfHeaderOnly = (): Uint8Array =>
+  new TextEncoder().encode(`${PDF_HEADER}%%EOF\n`);
 
 /**
  * `/Info` の参照が壊れた PDF を生成する。
