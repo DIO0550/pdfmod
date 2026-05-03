@@ -11,6 +11,7 @@ export type {
   PageRotate,
   ParsedCatalog,
   ParsedDocumentInfo,
+  PdfPageRectangle,
   PdfRectangle,
   ResolvedPage,
   ResolveInheritedOutcome,
@@ -22,6 +23,7 @@ export {
   DocumentInfoParser,
   InheritanceResolver,
   PageTreeWalker,
+  PdfPage,
   PdfTrapped,
 } from "./document/index";
 export { NumberEx } from "./ext/number/index";
