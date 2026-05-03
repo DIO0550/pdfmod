@@ -1,6 +1,8 @@
 import { assert, expect, test } from "vitest";
 import { PdfDocument } from "./pdf-document";
 import {
+  buildPdfHeaderOnly,
+  buildPdfWithCorruptXRefAndNoTrailer,
   buildPdfWithoutCatalog,
   buildPdfWithoutMediaBox,
 } from "./pdf-document.test.helpers";
@@ -59,4 +61,22 @@ test("Page にも親 Pages にも MediaBox が無い PDF は MEDIABOX_NOT_FOUND 
   assert(!result.ok);
   assert(!(result.error instanceof RangeError));
   expect(result.error.code).toBe("MEDIABOX_NOT_FOUND");
+});
+
+test("ヘッダのみで本体を持たない PDF は ROOT_NOT_FOUND を返す (L-002)", async () => {
+  const result = await PdfDocument.load(buildPdfHeaderOnly());
+
+  expect(result.ok).toBe(false);
+  assert(!result.ok);
+  assert(!(result.error instanceof RangeError));
+  expect(result.error.code).toBe("ROOT_NOT_FOUND");
+});
+
+test("xref 破損かつ fallback で trailer を確定できない PDF は ROOT_NOT_FOUND を返す", async () => {
+  const result = await PdfDocument.load(buildPdfWithCorruptXRefAndNoTrailer());
+
+  expect(result.ok).toBe(false);
+  assert(!result.ok);
+  assert(!(result.error instanceof RangeError));
+  expect(result.error.code).toBe("ROOT_NOT_FOUND");
 });
