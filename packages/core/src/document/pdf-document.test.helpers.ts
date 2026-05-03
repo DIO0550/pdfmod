@@ -1,12 +1,5 @@
 /**
  * `PdfDocument.load` の振る舞いテストで使う最小限の PDF バイト列ビルダー群。
- *
- * 本ファイルは PR-1 (skeleton) 時点では関数本体は空 (`new Uint8Array()`) であり、
- * PR-2 以降の Red/Green サイクルで段階的に本実装に差し替えていく。
- *
- * 方針 A (overview.md §5.1.1): error / boundary テストで `result.error.code`
- * を読む際は `assert(!(result.error instanceof RangeError));` で narrowing する。
- * 本ファイルには narrowing 用 helper (`expectPdfError` 等) は置かない。
  */
 
 /**
@@ -100,6 +93,19 @@ const toPdfString = (s: string): string => {
 };
 
 /**
+ * オブジェクト本体を `${objNum} 0 obj\n...\nendobj\n` 形式の indirect object 文字列に変換する。
+ *
+ * @param bodies - オブジェクト本体の配列（`<< ... >>` 等）
+ * @param startObjNum - 先頭オブジェクト番号（既定値 1）
+ * @returns indirect object 形式の文字列配列
+ */
+const formatIndirectObjects = (
+  bodies: readonly string[],
+  startObjNum = 1,
+): string[] =>
+  bodies.map((body, i) => `${i + startObjNum} 0 obj\n${body}\nendobj\n`);
+
+/**
  * `assembleTextPdf` のオプション。
  */
 interface AssembleTextPdfOptions {
@@ -130,9 +136,7 @@ const assembleTextPdf = (
   options: AssembleTextPdfOptions = {},
 ): Uint8Array => {
   const encoder = new TextEncoder();
-  const objs = objectBodies.map(
-    (body, i) => `${i + 1} 0 obj\n${body}\nendobj\n`,
-  );
+  const objs = formatIndirectObjects(objectBodies);
 
   const offsets: number[] = [];
   let cursor = encoder.encode(PDF_HEADER).length;
@@ -322,9 +326,7 @@ const INVALID_INFO_REF_OBJECT_NUMBER = 4;
 export const buildPdfWithInvalidInfoRef = (): Uint8Array => {
   const encoder = new TextEncoder();
   const objectBodies = [CATALOG_BODY, PAGES_BODY_SINGLE, PAGE_BODY];
-  const objs = objectBodies.map(
-    (body, i) => `${i + 1} 0 obj\n${body}\nendobj\n`,
-  );
+  const objs = formatIndirectObjects(objectBodies);
 
   const offsets: number[] = [];
   let cursor = encoder.encode(PDF_HEADER).length;
@@ -389,9 +391,7 @@ export const buildPdfWithIncrementalUpdate = (): Uint8Array => {
   const encoder = new TextEncoder();
 
   const oldObjBodies = [CATALOG_BODY, PAGES_BODY_SINGLE, PAGE_BODY];
-  const oldObjs = oldObjBodies.map(
-    (body, i) => `${i + 1} 0 obj\n${body}\nendobj\n`,
-  );
+  const oldObjs = formatIndirectObjects(oldObjBodies);
 
   const oldOffsets: number[] = [];
   let cursor = encoder.encode(PDF_HEADER).length;
@@ -420,9 +420,9 @@ export const buildPdfWithIncrementalUpdate = (): Uint8Array => {
     `<< /Type /Pages /Kids [${newPageObjNum} 0 R] /Count 1 >>`,
     `<< /Type /Page /Parent ${newPagesObjNum} 0 R /MediaBox [${mbX} ${mbY} ${mbW} ${mbH}] >>`,
   ];
-  const newObjs = newObjBodies.map(
-    (body, i) =>
-      `${i + INCREMENTAL_UPDATE_NEW_SECTION_FIRST_OBJ_NUM} 0 obj\n${body}\nendobj\n`,
+  const newObjs = formatIndirectObjects(
+    newObjBodies,
+    INCREMENTAL_UPDATE_NEW_SECTION_FIRST_OBJ_NUM,
   );
 
   const newOffsets: number[] = [];

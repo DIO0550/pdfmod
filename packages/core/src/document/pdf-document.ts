@@ -1,8 +1,11 @@
 import { isPdfWhitespace, matchesBytesAt } from "../lexer/bytes/index";
 import { ObjectStore } from "../objects/object-store/index";
 import type { PdfError, PdfParseError, PdfWarning } from "../pdf/errors/index";
-import type { TrailerDict, XRefTable } from "../pdf/types/index";
-import { ByteOffset } from "../pdf/types/index";
+import {
+  ByteOffset,
+  type TrailerDict,
+  type XRefTable,
+} from "../pdf/types/index";
 import { PdfVersion } from "../pdf/version/index";
 import { none, type Option, some } from "../utils/option/index";
 import { err, ok, type Result } from "../utils/result/index";
@@ -82,8 +85,6 @@ const verifyHeader = (data: Uint8Array): Result<PdfVersion, PdfParseError> => {
     });
   }
 
-  // signature 直後から PDF whitespace (NUL/TAB/LF/FF/CR/SPACE) までを
-  // version 文字列として読み取る。
   const versionStart = headerOffset + PDF_HEADER_SIGNATURE.length;
   const versionEnd = findVersionEnd(data, versionStart);
   const versionStr = new TextDecoder("ascii").decode(
