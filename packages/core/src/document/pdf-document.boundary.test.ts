@@ -28,7 +28,7 @@ test("getPage(0) は Some を返す (DA-002)", async () => {
 test("load は cacheCapacity 未指定で既定値により Ok を返す (L-008)", async () => {
   const result = await PdfDocument.load(buildMinimalSinglePagePdf());
 
-  expect(result.ok).toBe(true);
+  assert(result.ok);
 });
 
 test.each([
