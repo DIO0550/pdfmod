@@ -34,5 +34,5 @@ test("xref 破損 PDF を onWarning 指定で load すると XREF_REBUILD warnin
   });
 
   assert(result.ok);
-  expect(seen.some((w) => w.code === "XREF_REBUILD")).toBe(true);
+  expect(seen.map((w) => w.code)).toEqual(["XREF_REBUILD"]);
 });
