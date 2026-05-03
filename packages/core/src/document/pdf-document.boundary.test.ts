@@ -29,6 +29,8 @@ test("load は cacheCapacity 未指定で既定値により Ok を返す (L-008)
   const result = await PdfDocument.load(buildMinimalSinglePagePdf());
 
   assert(result.ok);
+  expect(result.value.pageCount).toBe(1);
+  expect(result.value.getPage(0).some).toBe(true);
 });
 
 test.each([
