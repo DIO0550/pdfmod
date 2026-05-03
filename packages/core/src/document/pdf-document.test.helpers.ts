@@ -302,12 +302,50 @@ export const buildPdfWithCorruptXRefAndNoTrailer = (): Uint8Array => {
 export const buildPdfHeaderOnly = (): Uint8Array =>
   new TextEncoder().encode(`${PDF_HEADER}%%EOF\n`);
 
+/** {@link buildPdfWithInvalidInfoRef} で trailer `/Info` が指す壊れたオブジェクト番号。Catalog/Pages/Page の次に予約する。 */
+const INVALID_INFO_REF_OBJECT_NUMBER = 4;
+
 /**
- * `/Info` の参照が壊れた PDF を生成する。
+ * `/Info` の参照は xref に存在するが、解決すると obj ヘッダ不一致でエラーになる PDF を生成する。
  *
- * @returns `/Info` 参照不正の PDF を表すバイト列
+ * trailer に `/Info {@link INVALID_INFO_REF_OBJECT_NUMBER} 0 R` を持たせ、xref には当該
+ * オブジェクト番号のエントリを含めるが、その offset は別オブジェクト (Catalog 1 0 R) の
+ * 開始位置を指すように細工する。`object-store` の inline reader は要求された
+ * `4 0 obj` を期待しつつ実際には `1 0 obj` ヘッダを読むため、`OBJECT_PARSE_UNEXPECTED_TOKEN`
+ * のエラーを返す。`DocumentInfoParser.parse` はこれを `INFO_RESOLVE_FAILED` warning に
+ * 変換し、`EMPTY_METADATA` を返す。
+ *
+ * `PdfDocument.load` の L-009 (`/Info` 不正参照 → warning + 空 metadata) テストで使用する。
+ *
+ * @returns `/Info` 参照不正 + 正常な Catalog/Pages/Page を持つ PDF バイト列
  */
-export const buildPdfWithInvalidInfoRef = (): Uint8Array => new Uint8Array();
+export const buildPdfWithInvalidInfoRef = (): Uint8Array => {
+  const encoder = new TextEncoder();
+  const objectBodies = [CATALOG_BODY, PAGES_BODY_SINGLE, PAGE_BODY];
+  const objs = objectBodies.map(
+    (body, i) => `${i + 1} 0 obj\n${body}\nendobj\n`,
+  );
+
+  const offsets: number[] = [];
+  let cursor = encoder.encode(PDF_HEADER).length;
+  for (const obj of objs) {
+    offsets.push(cursor);
+    cursor += encoder.encode(obj).length;
+  }
+  const xrefOffset = cursor;
+
+  const size = INVALID_INFO_REF_OBJECT_NUMBER + 1;
+  const catalogOffset = offsets[0];
+  const xrefRows = [
+    "0000000000 65535 f \n",
+    ...offsets.map((o) => `${padOffset10(o)} 00000 n \n`),
+    `${padOffset10(catalogOffset)} 00000 n \n`,
+  ];
+  const xref = `xref\n0 ${size}\n${xrefRows.join("")}`;
+  const trailer = `trailer\n<< /Size ${size} /Root 1 0 R /Info ${INVALID_INFO_REF_OBJECT_NUMBER} 0 R >>\nstartxref\n${xrefOffset}\n%%EOF\n`;
+
+  return encoder.encode(PDF_HEADER + objs.join("") + xref + trailer);
+};
 
 const INCREMENTAL_UPDATE_NEW_PAGE_WIDTH = 200;
 const INCREMENTAL_UPDATE_NEW_PAGE_HEIGHT = 300;
