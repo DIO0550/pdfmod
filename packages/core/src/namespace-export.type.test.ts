@@ -2,6 +2,7 @@ import { expect, test } from "vitest";
 import type {
   InheritedAttrs,
   ParsedCatalog,
+  PdfPageRectangle,
   ResolvedPage,
   ResolveRef,
   WalkPageTreeResult,
@@ -72,6 +73,12 @@ test("ParsedCatalog型とResolveRef型が参照できる", () => {
   const resolver: ResolveRef = async () => Result.ok({ type: "null" as const });
   expect(parsed.version).toBe(version);
   expect(typeof resolver).toBe("function");
+});
+
+test("PdfPageRectangle 型がルートから参照できる", () => {
+  const rect: PdfPageRectangle = [0, 0, 612, 792];
+  expect(rect[2]).toBe(612);
+  expect(rect[3]).toBe(792);
 });
 
 test("ResolvedPage / InheritedAttrs / WalkPageTreeResult 型が参照できる", () => {
