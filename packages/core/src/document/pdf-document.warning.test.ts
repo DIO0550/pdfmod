@@ -46,5 +46,5 @@ test("/Info の参照が不正な PDF を load すると INFO_RESOLVE_FAILED war
 
   assert(result.ok);
   expect(Object.keys(result.value.metadata)).toHaveLength(0);
-  expect(seen.filter((w) => w.code === "INFO_RESOLVE_FAILED")).toHaveLength(1);
+  expect(seen.map((w) => w.code)).toEqual(["INFO_RESOLVE_FAILED"]);
 });
