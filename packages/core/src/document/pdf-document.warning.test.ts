@@ -4,6 +4,7 @@ import { PdfDocument } from "./pdf-document";
 import {
   buildMinimalSinglePagePdf,
   buildPdfWithCorruptStartXRef,
+  buildPdfWithInvalidInfoRef,
 } from "./pdf-document.test.helpers";
 
 test("/Info を持たない PDF を load すると metadata はキー数 0 の空オブジェクト (L-005)", async () => {
@@ -35,4 +36,15 @@ test("xref 破損 PDF を onWarning 指定で load すると XREF_REBUILD warnin
 
   assert(result.ok);
   expect(seen.map((w) => w.code)).toEqual(["XREF_REBUILD"]);
+});
+
+test("/Info の参照が不正な PDF を load すると INFO_RESOLVE_FAILED warning + 空 metadata になる (L-009)", async () => {
+  const seen: PdfWarning[] = [];
+  const result = await PdfDocument.load(buildPdfWithInvalidInfoRef(), {
+    onWarning: (w) => seen.push(w),
+  });
+
+  assert(result.ok);
+  expect(Object.keys(result.value.metadata)).toHaveLength(0);
+  expect(seen.map((w) => w.code)).toEqual(["INFO_RESOLVE_FAILED"]);
 });
