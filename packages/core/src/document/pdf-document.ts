@@ -85,8 +85,6 @@ const verifyHeader = (data: Uint8Array): Result<PdfVersion, PdfParseError> => {
     });
   }
 
-  // signature 直後から PDF whitespace (NUL/TAB/LF/FF/CR/SPACE) までを
-  // version 文字列として読み取る。
   const versionStart = headerOffset + PDF_HEADER_SIGNATURE.length;
   const versionEnd = findVersionEnd(data, versionStart);
   const versionStr = new TextDecoder("ascii").decode(

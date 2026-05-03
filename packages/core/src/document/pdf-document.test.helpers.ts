@@ -1,12 +1,5 @@
 /**
  * `PdfDocument.load` の振る舞いテストで使う最小限の PDF バイト列ビルダー群。
- *
- * 本ファイルは PR-1 (skeleton) 時点では関数本体は空 (`new Uint8Array()`) であり、
- * PR-2 以降の Red/Green サイクルで段階的に本実装に差し替えていく。
- *
- * 方針 A (overview.md §5.1.1): error / boundary テストで `result.error.code`
- * を読む際は `assert(!(result.error instanceof RangeError));` で narrowing する。
- * 本ファイルには narrowing 用 helper (`expectPdfError` 等) は置かない。
  */
 
 /**
