@@ -12,6 +12,7 @@ import {
   ObjectStreamBody,
   ObjectStreamHeader,
   PageTreeWalker,
+  PdfPage,
   PdfTrapped,
   PdfVersion,
   parseTrailer,
@@ -40,6 +41,7 @@ test.each([
   { name: "InheritanceResolver.resolve", value: InheritanceResolver.resolve },
   { name: "DocumentInfoParser.parse", value: DocumentInfoParser.parse },
   { name: "PdfTrapped.create", value: PdfTrapped.create },
+  { name: "PdfPage.from", value: PdfPage.from },
 ])("$nameがルートからexportされている", ({ value }) => {
   expect(typeof value).toBe("function");
 });
