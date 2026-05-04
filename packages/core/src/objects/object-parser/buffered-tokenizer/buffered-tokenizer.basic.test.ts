@@ -10,10 +10,9 @@ test("next() が Tokenizer のトークンを順次返す", () => {
   const first = bt.next();
   const second = bt.next();
   const third = bt.next();
-  expect(first.type).toBe(TokenType.Integer);
-  expect(first.value).toBe(1);
-  expect(second.value).toBe(2);
-  expect(third.value).toBe(3);
+  expect(first).toMatchObject({ type: TokenType.Integer, value: 1 });
+  expect(second).toMatchObject({ type: TokenType.Integer, value: 2 });
+  expect(third).toMatchObject({ type: TokenType.Integer, value: 3 });
 });
 
 test("pushBack() したトークンが次の next() で返される", () => {
@@ -23,7 +22,7 @@ test("pushBack() したトークンが次の next() で返される", () => {
   const again = bt.next();
   expect(again).toBe(first);
   const next = bt.next();
-  expect(next.value).toBe(99);
+  expect(next).toMatchObject({ type: TokenType.Integer, value: 99 });
 });
 
 test("複数 pushBack() 後の next() 順序は LIFO である", () => {

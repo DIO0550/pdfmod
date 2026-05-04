@@ -2,7 +2,7 @@ import { Tokenizer } from "../../../lexer/tokenizer/index";
 import type { PdfParseError } from "../../../pdf/errors/index";
 import { ByteOffset } from "../../../pdf/types/byte-offset/index";
 import { GenerationNumber } from "../../../pdf/types/generation-number/index";
-import { TokenType } from "../../../pdf/types/index";
+import { TokenType, tokenDisplayString } from "../../../pdf/types/index";
 import { ObjectNumber } from "../../../pdf/types/object-number/index";
 import type { Option } from "../../../utils/option/index";
 import { none, some } from "../../../utils/option/index";
@@ -31,11 +31,11 @@ export const IndirectObject = {
     const objNumToken = bt.next();
     if (
       objNumToken.type !== TokenType.Integer ||
-      Number.isNaN(objNumToken.value as number)
+      Number.isNaN(objNumToken.value)
     ) {
       return err({
         code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
-        message: `Expected object number (integer), got ${objNumToken.type}: ${String(objNumToken.value)}`,
+        message: `Expected object number (integer), got ${objNumToken.type}: ${tokenDisplayString(objNumToken)}`,
         offset: ByteOffset.add(baseOffset, objNumToken.offset),
       });
     }
@@ -43,11 +43,11 @@ export const IndirectObject = {
     const genNumToken = bt.next();
     if (
       genNumToken.type !== TokenType.Integer ||
-      Number.isNaN(genNumToken.value as number)
+      Number.isNaN(genNumToken.value)
     ) {
       return err({
         code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
-        message: `Expected generation number (integer), got ${genNumToken.type}: ${String(genNumToken.value)}`,
+        message: `Expected generation number (integer), got ${genNumToken.type}: ${tokenDisplayString(genNumToken)}`,
         offset: ByteOffset.add(baseOffset, genNumToken.offset),
       });
     }
@@ -56,12 +56,12 @@ export const IndirectObject = {
     if (objKeyword.type !== TokenType.Keyword || objKeyword.value !== "obj") {
       return err({
         code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
-        message: `Expected "obj" keyword, got ${objKeyword.type}: ${String(objKeyword.value)}`,
+        message: `Expected "obj" keyword, got ${objKeyword.type}: ${tokenDisplayString(objKeyword)}`,
         offset: ByteOffset.add(baseOffset, objKeyword.offset),
       });
     }
 
-    const objectNumberResult = ObjectNumber.create(objNumToken.value as number);
+    const objectNumberResult = ObjectNumber.create(objNumToken.value);
     if (!objectNumberResult.ok) {
       return err({
         code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
@@ -70,9 +70,7 @@ export const IndirectObject = {
       });
     }
 
-    const generationNumberResult = GenerationNumber.create(
-      genNumToken.value as number,
-    );
+    const generationNumberResult = GenerationNumber.create(genNumToken.value);
     if (!generationNumberResult.ok) {
       return err({
         code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
@@ -114,7 +112,7 @@ export const IndirectObject = {
     }
     return some({
       code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
-      message: `Expected "endobj", got ${String(endobjToken.value)}`,
+      message: `Expected "endobj", got ${tokenDisplayString(endobjToken)}`,
       offset: ByteOffset.add(baseOffset, endobjToken.offset),
     });
   },
@@ -150,7 +148,7 @@ export const IndirectObject = {
     }
     return some({
       code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
-      message: `Expected "endobj" after endstream, got ${String(endobjToken.value)}`,
+      message: `Expected "endobj" after endstream, got ${tokenDisplayString(endobjToken)}`,
       offset: ByteOffset.add(afterEndstreamAbsPos, endobjToken.offset),
     });
   },

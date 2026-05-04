@@ -2,8 +2,8 @@ import { NumberEx } from "../../../ext/number/index";
 import { Tokenizer } from "../../../lexer/index";
 import type { PdfParseError } from "../../../pdf/errors/index";
 import { ByteOffset } from "../../../pdf/types/byte-offset/index";
+import { TokenType } from "../../../pdf/types/index";
 import { ObjectNumber } from "../../../pdf/types/object-number/index";
-import { TokenType } from "../../../pdf/types/pdf-types/index";
 import type { Result } from "../../../utils/result/index";
 import { err, ok } from "../../../utils/result/index";
 
@@ -62,7 +62,7 @@ export const ObjectStreamHeader = {
           message: `Expected integer objNum at pair ${i}, got ${objNumToken.type}`,
         });
       }
-      const objNumValue = objNumToken.value as number;
+      const objNumValue = objNumToken.value;
       if (!NumberEx.isSafeIntegerAtLeastZero(objNumValue)) {
         return err({
           code: "OBJECT_STREAM_HEADER_INVALID",
@@ -77,7 +77,7 @@ export const ObjectStreamHeader = {
           message: `Expected integer offset at pair ${i}, got ${offsetToken.type}`,
         });
       }
-      const offsetValue = offsetToken.value as number;
+      const offsetValue = offsetToken.value;
       if (!NumberEx.isSafeIntegerAtLeastZero(offsetValue)) {
         return err({
           code: "OBJECT_STREAM_HEADER_INVALID",
