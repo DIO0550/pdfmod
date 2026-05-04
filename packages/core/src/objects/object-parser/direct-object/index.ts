@@ -2,7 +2,7 @@ import type { PdfParseError } from "../../../pdf/errors/index";
 import { ByteOffset } from "../../../pdf/types/byte-offset/index";
 import { GenerationNumber } from "../../../pdf/types/generation-number/index";
 import type { Token } from "../../../pdf/types/index";
-import { TokenType } from "../../../pdf/types/index";
+import { TokenType, tokenDisplayString } from "../../../pdf/types/index";
 import { ObjectNumber } from "../../../pdf/types/object-number/index";
 import type {
   PdfDictionary,
@@ -60,10 +60,10 @@ function readValue(
       return ok({ type: "null" });
 
     case TokenType.Boolean:
-      return ok({ type: "boolean", value: token.value as boolean });
+      return ok({ type: "boolean", value: token.value });
 
     case TokenType.Integer: {
-      const intVal = token.value as number;
+      const intVal = token.value;
       if (Number.isNaN(intVal)) {
         return err({
           code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
@@ -79,7 +79,7 @@ function readValue(
     }
 
     case TokenType.Real: {
-      const realVal = token.value as number;
+      const realVal = token.value;
       if (Number.isNaN(realVal)) {
         return err({
           code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
@@ -91,10 +91,10 @@ function readValue(
     }
 
     case TokenType.Name:
-      return ok({ type: "name", value: token.value as string });
+      return ok({ type: "name", value: token.value });
 
     case TokenType.LiteralString: {
-      const literalResult = decodeLiteralString(token.value as string);
+      const literalResult = decodeLiteralString(token.value);
       if (!literalResult.ok) {
         return err({
           code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
@@ -110,7 +110,7 @@ function readValue(
     }
 
     case TokenType.HexString: {
-      const hexResult = decodeHexString(token.value as string);
+      const hexResult = decodeHexString(token.value);
       if (!hexResult.ok) {
         return err({
           code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
@@ -141,7 +141,7 @@ function readValue(
     default:
       return err({
         code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
-        message: `Unexpected token type ${token.type}: ${String(token.value)}`,
+        message: `Unexpected token type ${token.type}: ${tokenDisplayString(token)}`,
         offset: ByteOffset.add(baseOffset, token.offset),
       });
   }
@@ -167,7 +167,7 @@ function tryReadIndirectRef(
     return none;
   }
 
-  const secondVal = second.value as number;
+  const secondVal = second.value;
   if (Number.isNaN(secondVal)) {
     bt.pushBack(second);
     return none;
@@ -304,6 +304,6 @@ function readDictEntries(
     if (!valResult.ok) {
       return valResult;
     }
-    entries.set(keyToken.value as string, valResult.value);
+    entries.set(keyToken.value, valResult.value);
   }
 }

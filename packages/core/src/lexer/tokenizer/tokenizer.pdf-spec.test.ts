@@ -86,8 +86,10 @@ test("高位バイト(0xFF, 0x00)を含むバイト列をトークナイズす�
   ]);
   const tokenizer = new Tokenizer(bytes);
   const token = tokenizer.nextToken();
-  expect(token.type).toBe(TokenType.LiteralString);
-  expect(token.value).toBe("\xff\x00A");
+  expect(token).toMatchObject({
+    type: TokenType.LiteralString,
+    value: "\xff\x00A",
+  });
 });
 
 test("デリミタ直後の数値 [42] をトークナイズする", () => {

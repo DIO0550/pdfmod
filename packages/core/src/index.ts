@@ -81,6 +81,7 @@ export {
   GenerationNumber,
   IndirectRef,
   ObjectNumber,
+  Operator,
   PdfVersion,
   TokenType,
 } from "./pdf/index";

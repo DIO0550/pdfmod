@@ -307,8 +307,8 @@ function readValue(
           return ok({
             value: {
               type: "indirect-ref",
-              objectNumber: firstToken.value as number,
-              generationNumber: second.value as number,
+              objectNumber: firstToken.value,
+              generationNumber: second.value,
             },
             offset,
           });
@@ -317,22 +317,22 @@ function readValue(
       }
       tokens.pushBack(second);
       return ok({
-        value: { type: "integer", value: firstToken.value as number },
+        value: { type: "integer", value: firstToken.value },
         offset,
       });
     }
     case TokenType.Real:
       return ok({
-        value: { type: "real", value: firstToken.value as number },
+        value: { type: "real", value: firstToken.value },
         offset,
       });
     case TokenType.Name:
       return ok({
-        value: { type: "name", value: firstToken.value as string },
+        value: { type: "name", value: firstToken.value },
         offset,
       });
     case TokenType.HexString: {
-      const hexBytes = hexStringToBytes(firstToken.value as string);
+      const hexBytes = hexStringToBytes(firstToken.value);
       if (!hexBytes) {
         return err({
           code: "XREF_TABLE_INVALID",
@@ -350,7 +350,7 @@ function readValue(
       });
     }
     case TokenType.LiteralString: {
-      const litBytes = literalStringToBytes(firstToken.value as string);
+      const litBytes = literalStringToBytes(firstToken.value);
       if (!litBytes) {
         return err({
           code: "XREF_TABLE_INVALID",
@@ -370,7 +370,7 @@ function readValue(
     }
     case TokenType.Boolean:
       return ok({
-        value: { type: "boolean", value: firstToken.value as boolean },
+        value: { type: "boolean", value: firstToken.value },
         offset,
       });
     case TokenType.Null:
@@ -584,7 +584,7 @@ function parseDictTokens(
       });
     }
 
-    const key = token.value as string;
+    const key = token.value;
     const valueToken = tokens.next();
 
     if (valueToken.type === TokenType.EOF) {
