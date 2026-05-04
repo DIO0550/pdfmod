@@ -1,55 +1,9 @@
-/**
- * PDFトークンの種別を表す列挙型。
- * PDF字句解析器が生成するトークンの分類に使用する。
- *
- * @example
- * ```ts
- * const token: Token = { type: TokenType.Integer, value: 42, offset: ByteOffset.of(0) };
- * if (token.type === TokenType.Name) {
- *   console.log(token.value); // "Type" など
- * }
- * ```
- */
-export enum TokenType {
-  Boolean = "Boolean",
-  Integer = "Integer",
-  Real = "Real",
-  LiteralString = "LiteralString",
-  HexString = "HexString",
-  Name = "Name",
-  ArrayBegin = "ArrayBegin",
-  ArrayEnd = "ArrayEnd",
-  DictBegin = "DictBegin",
-  DictEnd = "DictEnd",
-  Null = "Null",
-  Keyword = "Keyword",
-  EOF = "EOF",
-}
-
 import type { ByteOffset } from "../byte-offset/index";
 import type { GenerationNumber } from "../generation-number/index";
 import type { IndirectRef } from "../indirect-ref/index";
 import type { ObjectNumber } from "../object-number/index";
 
 export type { IndirectRef } from "../indirect-ref/index";
-
-/**
- * 字句解析器が生成する単一のトークン。
- * トークン種別、値、およびバイトストリーム内の出現位置を保持する。
- *
- * @example
- * ```ts
- * const token: Token = { type: TokenType.Name, value: "Type", offset: ByteOffset.of(15) };
- * ```
- */
-export interface Token {
-  /** トークン種別 */
-  type: TokenType;
-  /** トークンの値（型はトークン種別に依存する） */
-  value: string | number | boolean | null;
-  /** バイトストリーム内のオフセット位置 */
-  offset: ByteOffset;
-}
 
 /**
  * フリーオブジェクトの相互参照エントリ (type 0)。

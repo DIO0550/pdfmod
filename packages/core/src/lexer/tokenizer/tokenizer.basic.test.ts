@@ -122,20 +122,17 @@ test("不正数値 1.2.3 はキーワードにフォールバックする", () =
 
 test("ドット単独 . は Real (NaN) になる", () => {
   const tokens = tokenize(".");
-  expect(tokens[0].type).toBe(TokenType.Real);
-  expect(tokens[0].value).toBeNaN();
+  expect(tokens[0]).toMatchObject({ type: TokenType.Real, value: NaN });
 });
 
 test("符号単独 + は Integer (NaN) になる", () => {
   const tokens = tokenize("+");
-  expect(tokens[0].type).toBe(TokenType.Integer);
-  expect(tokens[0].value).toBeNaN();
+  expect(tokens[0]).toMatchObject({ type: TokenType.Integer, value: NaN });
 });
 
 test("符号単独 - は Integer (NaN) になる", () => {
   const tokens = tokenize("-");
-  expect(tokens[0].type).toBe(TokenType.Integer);
-  expect(tokens[0].value).toBeNaN();
+  expect(tokens[0]).toMatchObject({ type: TokenType.Integer, value: NaN });
 });
 
 test("空リテラル文字列 () をトークナイズする", () => {
@@ -219,10 +216,11 @@ test.each([
 
 test("Name の不正hexエスケープ /A#GG は #GG を16進デコードする", () => {
   const tokens = tokenize("/A#GG");
-  const name = tokens[0];
-  expect(name.type).toBe(TokenType.Name);
   // parseInt("GG", 16) = NaN → String.fromCharCode(NaN) = "\u0000"
-  expect(name.value).toBe("A\u0000");
+  expect(tokens[0]).toMatchObject({
+    type: TokenType.Name,
+    value: "A\u0000",
+  });
 });
 
 test.each([
