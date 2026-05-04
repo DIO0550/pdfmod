@@ -11,6 +11,7 @@ import {
   ObjectStore,
   ObjectStreamBody,
   ObjectStreamHeader,
+  Operator,
   PageTreeWalker,
   PdfDocument,
   PdfPage,
@@ -72,4 +73,12 @@ test("ByteOffsetコンパニオンがルートからexportされている", () =
 test("TokenType enumがルートからexportされている", () => {
   expect(TokenType.Integer).toBeDefined();
   expect(TokenType.EOF).toBeDefined();
+  expect(TokenType.Operator).toBeDefined();
+});
+
+test("Operatorコンパニオンがルートからexportされている", () => {
+  const op = Operator.of("m", ByteOffset.of(42));
+  expect(op.type).toBe(TokenType.Operator);
+  expect(op.name).toBe("m");
+  expect(op.offset).toBe(42);
 });
