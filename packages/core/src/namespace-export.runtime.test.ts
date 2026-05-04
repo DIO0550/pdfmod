@@ -12,6 +12,7 @@ import {
   ObjectStreamBody,
   ObjectStreamHeader,
   PageTreeWalker,
+  PdfDocument,
   PdfPage,
   PdfTrapped,
   PdfVersion,
@@ -42,6 +43,7 @@ test.each([
   { name: "DocumentInfoParser.parse", value: DocumentInfoParser.parse },
   { name: "PdfTrapped.create", value: PdfTrapped.create },
   { name: "PdfPage.from", value: PdfPage.from },
+  { name: "PdfDocument.load", value: PdfDocument.load },
 ])("$nameがルートからexportされている", ({ value }) => {
   expect(typeof value).toBe("function");
 });
