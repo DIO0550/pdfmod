@@ -1,7 +1,9 @@
 import { expect, test } from "vitest";
 import type {
   InheritedAttrs,
+  LoadOptions,
   ParsedCatalog,
+  PdfDocumentLoadError,
   PdfPageRectangle,
   ResolvedPage,
   ResolveRef,
@@ -99,4 +101,18 @@ test("ResolvedPage / InheritedAttrs / WalkPageTreeResult 型が参照できる",
   const res: WalkPageTreeResult = { pages: [page], warnings: [] };
   expect(res.pages.length).toBe(1);
   expect(inh.mediaBox?.[2]).toBe(612);
+});
+
+test("LoadOptions 型がルートから参照できる", () => {
+  const options: LoadOptions = {
+    cacheCapacity: 16,
+    onWarning: () => {},
+  };
+  expect(options.cacheCapacity).toBe(16);
+  expect(typeof options.onWarning).toBe("function");
+});
+
+test("PdfDocumentLoadError 型がルートから参照できる", () => {
+  const error: PdfDocumentLoadError = new RangeError("cacheCapacity");
+  expect(error.message).toBe("cacheCapacity");
 });

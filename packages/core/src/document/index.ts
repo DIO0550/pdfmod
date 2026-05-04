@@ -13,5 +13,7 @@ export type {
   WalkPageTreeResult,
 } from "./page-tree/index";
 export { InheritanceResolver, PageTreeWalker } from "./page-tree/index";
+export type { LoadOptions, PdfDocumentLoadError } from "./pdf-document";
+export { PdfDocument } from "./pdf-document";
 export type { PdfPageRectangle } from "./pdf-page";
 export { PdfPage } from "./pdf-page";
