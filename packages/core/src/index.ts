@@ -8,9 +8,11 @@
 export type {
   DocumentMetadata,
   InheritedAttrs,
+  LoadOptions,
   PageRotate,
   ParsedCatalog,
   ParsedDocumentInfo,
+  PdfDocumentLoadError,
   PdfPageRectangle,
   PdfRectangle,
   ResolvedPage,
@@ -23,6 +25,7 @@ export {
   DocumentInfoParser,
   InheritanceResolver,
   PageTreeWalker,
+  PdfDocument,
   PdfPage,
   PdfTrapped,
 } from "./document/index";
