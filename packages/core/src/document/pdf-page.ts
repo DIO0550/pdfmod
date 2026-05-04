@@ -81,8 +81,8 @@ export class PdfPage {
     const height = baseHeight * resolved.userUnit;
 
     return new PdfPage({
-      mediaBox: resolved.mediaBox as PdfPageRectangle,
-      cropBox: resolved.cropBox as PdfPageRectangle,
+      mediaBox: resolved.mediaBox,
+      cropBox: resolved.cropBox,
       rotate: resolved.rotate,
       userUnit: resolved.userUnit,
       ref: resolved.objectRef,
