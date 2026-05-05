@@ -2,6 +2,7 @@ import { expect, test } from "vitest";
 import {
   ByteOffset,
   CatalogParser,
+  ContentStreamTokenizer,
   DocumentInfoParser,
   GenerationNumber,
   InheritanceResolver,
@@ -25,6 +26,7 @@ import {
 } from "./index";
 
 test.each([
+  { name: "ContentStreamTokenizer", value: ContentStreamTokenizer },
   { name: "Tokenizer", value: Tokenizer },
   { name: "LRUCache.create", value: LRUCache.create },
   { name: "scanStartXRef", value: scanStartXRef },

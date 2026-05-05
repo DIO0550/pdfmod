@@ -5,6 +5,7 @@
  * @packageDocumentation
  */
 
+export { ContentStreamTokenizer } from "./content-stream/tokenizer/index";
 export type {
   DocumentMetadata,
   InheritedAttrs,
