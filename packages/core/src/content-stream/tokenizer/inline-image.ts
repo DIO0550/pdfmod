@@ -199,7 +199,7 @@ function consumeDataPrefix(data: Uint8Array, offset: number): number {
  * @returns inline image 終端であれば true
  */
 function isInlineImageEndAt(data: Uint8Array, offset: number): boolean {
-  if (!matchesBytesAt(data, offset, [...InlineImageEnd])) {
+  if (!matchesBytesAt(data, offset, InlineImageEnd)) {
     return false;
   }
   if (offset === 0 || !isPdfWhitespace(data[offset - 1])) {
