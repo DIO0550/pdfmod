@@ -156,7 +156,7 @@ export interface Operator {
  */
 export interface TokenInlineImageDictEntry {
   readonly key: TokenName;
-  readonly value: Token;
+  readonly value: ReadonlyArray<Token>;
 }
 
 /**

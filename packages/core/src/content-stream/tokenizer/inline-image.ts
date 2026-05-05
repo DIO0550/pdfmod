@@ -136,7 +136,7 @@ function readInlineImageDictionary(params: {
       );
     }
 
-    entries.push({ key, value });
+    entries.push({ key, value: [value] });
   }
 }
 
