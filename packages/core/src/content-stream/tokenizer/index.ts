@@ -2,11 +2,17 @@ import { Tokenizer } from "../../lexer/tokenizer/index";
 import type { PdfError, Token } from "../../pdf/index";
 import { Operator, TokenType } from "../../pdf/index";
 import type { Result } from "../../utils/result/index";
-import { ok } from "../../utils/result/index";
+import { err, ok } from "../../utils/result/index";
+
+const InlineImageBeginOperator = "BI";
 
 /**
  * PDF content stream 用のトークナイザ。
  * 既存の PDF 字句トークンを読み取り、content stream 文脈の operator を再分類する。
+ *
+ * @remarks
+ * Inline image（BI ... ID ... EI）は未サポート。ID 以降の画像データはPDF字句トークンではないため、
+ * BI を検出した時点で `NOT_IMPLEMENTED` を返す。
  */
 export class ContentStreamTokenizer {
   private readonly tokenizer: Tokenizer;
@@ -39,6 +45,14 @@ export class ContentStreamTokenizer {
 
     if (token.type !== TokenType.Keyword) {
       return ok(token);
+    }
+
+    if (token.value === InlineImageBeginOperator) {
+      return err({
+        code: "NOT_IMPLEMENTED",
+        message: "Inline image content streams are not supported",
+        offset: token.offset,
+      });
     }
 
     return ok(Operator.of(token.value, token.offset));
