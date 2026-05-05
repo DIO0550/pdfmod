@@ -18,6 +18,17 @@ const unwrapOk = <T>(result: Result<T, unknown>): T => {
 };
 
 /**
+ * Result.err の値を取り出す。
+ *
+ * @param result - 検証対象の Result
+ * @returns Result.err の値
+ */
+const unwrapErr = <E>(result: Result<unknown, E>): E => {
+  expect(result.ok).toBe(false);
+  return (result as { ok: false; error: E }).error;
+};
+
+/**
  * Token 配列から EOF を除いた type を返す。
  *
  * @param tokens - 検証対象の Token 配列
@@ -119,19 +130,14 @@ test("辞書delimiterを維持しBDCだけをOperatorに変換する", () => {
   expect(tokens[4]).toEqual(Operator.of("BDC", ByteOffset.of(22)));
 });
 
-test("inline image識別子自体は通常Operatorとして返す", () => {
-  const tokenizer = new ContentStreamTokenizer(encode("BI ID EI"));
+test("inline imageは未サポートとしてエラーを返す", () => {
+  const tokenizer = new ContentStreamTokenizer(encode("BI /W 1 ID abc EI"));
 
-  const tokens = unwrapOk(tokenizer.tokenize());
+  const error = unwrapErr(tokenizer.tokenize());
 
-  expect(tokenTypesWithoutEof(tokens)).toEqual([
-    TokenType.Operator,
-    TokenType.Operator,
-    TokenType.Operator,
-  ]);
-  expect(tokens.slice(0, 3)).toEqual([
-    Operator.of("BI", ByteOffset.of(0)),
-    Operator.of("ID", ByteOffset.of(3)),
-    Operator.of("EI", ByteOffset.of(6)),
-  ]);
+  expect(error).toEqual({
+    code: "NOT_IMPLEMENTED",
+    message: "Inline image content streams are not supported",
+    offset: ByteOffset.of(0),
+  });
 });
