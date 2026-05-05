@@ -1,32 +1,9 @@
-import { expect, test } from "vitest";
+import { assert, expect, test } from "vitest";
 import type { Token } from "../../pdf/index";
 import { ByteOffset, Operator, TokenType } from "../../pdf/index";
-import type { Result } from "../../utils/result/index";
 import { ContentStreamTokenizer } from "./index";
 
 const encode = (input: string): Uint8Array => new TextEncoder().encode(input);
-
-/**
- * Result.ok の値を取り出す。
- *
- * @param result - 検証対象の Result
- * @returns Result.ok の値
- */
-const unwrapOk = <T>(result: Result<T, unknown>): T => {
-  expect(result.ok).toBe(true);
-  return (result as { ok: true; value: T }).value;
-};
-
-/**
- * Result.err の値を取り出す。
- *
- * @param result - 検証対象の Result
- * @returns Result.err の値
- */
-const unwrapErr = <E>(result: Result<unknown, E>): E => {
-  expect(result.ok).toBe(false);
-  return (result as { ok: false; error: E }).error;
-};
 
 /**
  * Token 配列から EOF を除いた type を返す。
@@ -44,7 +21,9 @@ test("数値・文字列・名前リテラルとオペレータが混在する�
     encode("10 20 m (Hi) Tj /F1 Tf"),
   );
 
-  const tokens = unwrapOk(tokenizer.tokenize());
+  const result = tokenizer.tokenize();
+  assert(result.ok);
+  const tokens = result.value;
 
   expect(tokens.map((token) => token.type)).toEqual([
     TokenType.Integer,
@@ -64,23 +43,28 @@ test("数値・文字列・名前リテラルとオペレータが混在する�
 test("nextTokenが1 tokenずつResult.okで返す", () => {
   const tokenizer = new ContentStreamTokenizer(encode("1 2 l"));
 
-  const first = unwrapOk(tokenizer.nextToken());
-  const second = unwrapOk(tokenizer.nextToken());
-  const third = unwrapOk(tokenizer.nextToken());
-  const fourth = unwrapOk(tokenizer.nextToken());
+  const first = tokenizer.nextToken();
+  const second = tokenizer.nextToken();
+  const third = tokenizer.nextToken();
+  const fourth = tokenizer.nextToken();
 
-  expect(first.type).toBe(TokenType.Integer);
-  expect(second.type).toBe(TokenType.Integer);
-  expect(third).toEqual(Operator.of("l", ByteOffset.of(4)));
-  expect(fourth.type).toBe(TokenType.EOF);
+  assert(first.ok);
+  assert(second.ok);
+  assert(third.ok);
+  assert(fourth.ok);
+  expect(first.value.type).toBe(TokenType.Integer);
+  expect(second.value.type).toBe(TokenType.Integer);
+  expect(third.value).toEqual(Operator.of("l", ByteOffset.of(4)));
+  expect(fourth.value.type).toBe(TokenType.EOF);
 });
 
 test("空入力はEOF tokenだけを返す", () => {
   const tokenizer = new ContentStreamTokenizer(encode(""));
 
-  const tokens = unwrapOk(tokenizer.tokenize());
+  const result = tokenizer.tokenize();
+  assert(result.ok);
 
-  expect(tokens).toEqual([
+  expect(result.value).toEqual([
     { type: TokenType.EOF, value: null, offset: ByteOffset.of(0) },
   ]);
 });
@@ -88,9 +72,10 @@ test("空入力はEOF tokenだけを返す", () => {
 test("true false nullはBooleanとNullのまま維持する", () => {
   const tokenizer = new ContentStreamTokenizer(encode("true false null"));
 
-  const tokens = unwrapOk(tokenizer.tokenize());
+  const result = tokenizer.tokenize();
+  assert(result.ok);
 
-  expect(tokenTypesWithoutEof(tokens)).toEqual([
+  expect(tokenTypesWithoutEof(result.value)).toEqual([
     TokenType.Boolean,
     TokenType.Boolean,
     TokenType.Null,
@@ -100,7 +85,9 @@ test("true false nullはBooleanとNullのまま維持する", () => {
 test("配列delimiterを維持しTJだけをOperatorに変換する", () => {
   const tokenizer = new ContentStreamTokenizer(encode("[ (A) 120 (B) ] TJ"));
 
-  const tokens = unwrapOk(tokenizer.tokenize());
+  const result = tokenizer.tokenize();
+  assert(result.ok);
+  const tokens = result.value;
 
   expect(tokenTypesWithoutEof(tokens)).toEqual([
     TokenType.ArrayBegin,
@@ -118,7 +105,9 @@ test("辞書delimiterを維持しBDCだけをOperatorに変換する", () => {
     encode("<< /ActualText (x) >> BDC"),
   );
 
-  const tokens = unwrapOk(tokenizer.tokenize());
+  const result = tokenizer.tokenize();
+  assert(result.ok);
+  const tokens = result.value;
 
   expect(tokenTypesWithoutEof(tokens)).toEqual([
     TokenType.DictBegin,
@@ -133,9 +122,10 @@ test("辞書delimiterを維持しBDCだけをOperatorに変換する", () => {
 test("inline imageは未サポートとしてエラーを返す", () => {
   const tokenizer = new ContentStreamTokenizer(encode("BI /W 1 ID abc EI"));
 
-  const error = unwrapErr(tokenizer.tokenize());
+  const result = tokenizer.tokenize();
+  assert(!result.ok);
 
-  expect(error).toEqual({
+  expect(result.error).toEqual({
     code: "NOT_IMPLEMENTED",
     message: "Inline image content streams are not supported",
     offset: ByteOffset.of(0),
