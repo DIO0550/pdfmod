@@ -26,7 +26,7 @@ test("inline image辞書のkey/value pairを順序保持する", () => {
   assert(result.ok);
   assert(result.value.type === TokenType.InlineImage);
   expect(
-    result.value.dict.map((entry) => [entry.key.value, entry.value.type]),
+    result.value.dict.map((entry) => [entry.key.value, entry.value[0]?.type]),
   ).toEqual([
     ["W", TokenType.Integer],
     ["H", TokenType.Integer],

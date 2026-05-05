@@ -27,7 +27,7 @@ EI
 ```ts
 export interface TokenInlineImageDictEntry {
   readonly key: TokenName;
-  readonly value: Token;
+  readonly value: ReadonlyArray<Token>;
 }
 
 export interface TokenInlineImage {
@@ -40,6 +40,7 @@ export interface TokenInlineImage {
 
 辞書は `Map` ではなく key/value pair の配列で保持する。
 inline image dictionary は重複 key や省略名を含み得るため、tokenizer 層では順序と元 token を失わずに保持し、意味解釈は後続の interpreter 層へ委ねる。
+value は配列や辞書のような composite object を表せるよう、1 個以上の token sequence として保持する。
 
 ## 処理フロー
 
