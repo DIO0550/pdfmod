@@ -181,6 +181,7 @@ function consumeDataPrefix(data: Uint8Array, offset: number): number {
 
   if (
     data[offset] === AsciiCarriageReturn &&
+    offset + 1 < data.length &&
     data[offset + 1] === AsciiLineFeed
   ) {
     return offset + 2;
