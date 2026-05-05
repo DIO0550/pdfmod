@@ -36,6 +36,8 @@ interface InlineImageEndReadResult {
   readonly nextOffset: number;
 }
 
+type CompositeCloseTokenType = TokenType.ArrayEnd | TokenType.DictEnd;
+
 /**
  * BI token の直後から inline image 全体を読み取る。
  *
@@ -122,22 +124,118 @@ function readInlineImageDictionary(params: {
       );
     }
 
-    const value = tokenizer.nextToken();
-    if (value.type === TokenType.EOF || isKeyword(value, "ID")) {
+    const value = readInlineImageDictionaryValue(tokenizer);
+    if (!value.ok) {
+      return value;
+    }
+
+    entries.push({ key, value: value.value });
+  }
+}
+
+/**
+ * inline image dictionary value の direct object token sequence を読み取る。
+ *
+ * @param tokenizer - inline image dictionary 位置に同期済みの tokenizer
+ * @returns value を構成する token sequence
+ */
+function readInlineImageDictionaryValue(
+  tokenizer: Tokenizer,
+): Result<ReadonlyArray<Token>, PdfError> {
+  const first = tokenizer.nextToken();
+  if (first.type === TokenType.EOF || isKeyword(first, "ID")) {
+    return invalidInlineImage(
+      "Inline image dictionary value is missing",
+      first.offset,
+    );
+  }
+  if (isKeyword(first, "BI")) {
+    return invalidInlineImage(
+      "Nested inline image dictionary is invalid",
+      first.offset,
+    );
+  }
+  if (first.type === TokenType.ArrayEnd || first.type === TokenType.DictEnd) {
+    return invalidInlineImage(
+      "Inline image dictionary value is invalid",
+      first.offset,
+    );
+  }
+
+  const tokens: Token[] = [first];
+  const expectedClosers = expectedCompositeClosers(first);
+  if (expectedClosers.length === 0) {
+    return ok(tokens);
+  }
+
+  while (expectedClosers.length > 0) {
+    const token = tokenizer.nextToken();
+    tokens.push(token);
+
+    if (token.type === TokenType.EOF) {
       return invalidInlineImage(
-        "Inline image dictionary value is missing",
-        value.offset,
+        "Inline image dictionary value is unterminated",
+        token.offset,
       );
     }
-    if (isKeyword(value, "BI")) {
+    if (isKeyword(token, "BI")) {
       return invalidInlineImage(
         "Nested inline image dictionary is invalid",
-        value.offset,
+        token.offset,
       );
     }
 
-    entries.push({ key, value: [value] });
+    const expectedCloser = expectedCompositeCloser(token);
+    if (expectedCloser.some) {
+      expectedClosers.push(expectedCloser.value);
+      continue;
+    }
+
+    if (token.type !== TokenType.ArrayEnd && token.type !== TokenType.DictEnd) {
+      continue;
+    }
+
+    const closer = expectedClosers.pop();
+    if (closer !== token.type) {
+      return invalidInlineImage(
+        "Inline image dictionary value is invalid",
+        token.offset,
+      );
+    }
   }
+
+  return ok(tokens);
+}
+
+/**
+ * composite object の開始 token から期待する終了 token stack を作る。
+ *
+ * @param token - 判定対象 token
+ * @returns 期待する終了 token stack
+ */
+function expectedCompositeClosers(token: Token): CompositeCloseTokenType[] {
+  const closer = expectedCompositeCloser(token);
+  return closer.some ? [closer.value] : [];
+}
+
+/**
+ * composite object の開始 token に対応する終了 token を返す。
+ *
+ * @param token - 判定対象 token
+ * @returns 対応する終了 token
+ */
+function expectedCompositeCloser(
+  token: Token,
+):
+  | { readonly some: true; readonly value: CompositeCloseTokenType }
+  | { readonly some: false } {
+  if (token.type === TokenType.ArrayBegin) {
+    return { some: true, value: TokenType.ArrayEnd };
+  }
+  if (token.type === TokenType.DictBegin) {
+    return { some: true, value: TokenType.DictEnd };
+  }
+  return { some: false };
 }
 
 /**

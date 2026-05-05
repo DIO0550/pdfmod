@@ -69,6 +69,7 @@ flowchart TD
 1. `readInlineImageDictionary`
    - `BI` 直後から `ID` までを通常 token として読む。
    - key は `TokenType.Name` のみ許可する。
+   - value が配列 (`[...]`) や辞書 (`<<...>>`) の場合は、対応する閉じ token までを 1 個の value token sequence として読む。
    - value 欠損、`ID` 欠損、dict 内 `BI` は `CONTENT_STREAM_INLINE_IMAGE_INVALID` を返す。
 2. `consumeDataPrefix`
    - `ID` 直後の LF / CR / CRLF / space など、1 個の whitespace/EOL marker を data から除外する。
