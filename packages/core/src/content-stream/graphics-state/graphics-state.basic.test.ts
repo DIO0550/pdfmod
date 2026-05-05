@@ -21,7 +21,7 @@ test("updateは指定したフィールドだけを書き換える", () => {
 test("updateは未指定フィールドを保持する", () => {
   const state = GraphicsState.create();
   const updated = GraphicsState.update(state, { lineWidth: 2.0 });
-  expect(updated.ctm).toEqual(state.ctm);
+  expect(updated.ctm).toBe(state.ctm);
   expect(updated.lineCap).toBe(state.lineCap);
   expect(updated.lineJoin).toBe(state.lineJoin);
   expect(updated.miterLimit).toBe(state.miterLimit);
