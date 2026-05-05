@@ -19,7 +19,7 @@ const AsciiUpperI = 0x49;
 const AsciiLineFeed = 0x0a;
 const AsciiCarriageReturn = 0x0d;
 const InlineImageEnd = [AsciiUpperE, AsciiUpperI] as const;
-const InlineImageBeginMarkerLength = 2;
+const IdMarkerLength = 2;
 
 export interface InlineImageReadResult {
   readonly token: TokenInlineImage;
@@ -106,7 +106,7 @@ function readInlineImageDictionary(params: {
     if (isInlineImageDataBegin(key)) {
       return ok({
         entries,
-        afterIdOffset: Number(key.offset) + InlineImageBeginMarkerLength,
+        afterIdOffset: Number(key.offset) + IdMarkerLength,
       });
     }
     if (key.type === TokenType.EOF) {
