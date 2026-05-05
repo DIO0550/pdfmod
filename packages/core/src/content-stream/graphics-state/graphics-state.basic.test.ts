@@ -50,3 +50,16 @@ test.each([
   const updated = GraphicsState.update(state, partial);
   expect(updated).toEqual({ ...state, ...partial });
 });
+
+test("updateはundefinedの明示指定で既存フィールドを壊さない", () => {
+  const state = GraphicsState.update(GraphicsState.create(), {
+    lineWidth: 2.0,
+    miterLimit: 5.0,
+  });
+  const updated = GraphicsState.update(state, {
+    lineWidth: undefined,
+    miterLimit: undefined,
+  });
+  expect(updated.lineWidth).toBe(2.0);
+  expect(updated.miterLimit).toBe(5.0);
+});
