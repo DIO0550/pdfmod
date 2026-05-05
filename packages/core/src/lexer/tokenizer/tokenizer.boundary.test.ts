@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import type { Token } from "../../pdf/types/index";
-import { TokenType } from "../../pdf/types/index";
+import { ByteOffset, TokenType } from "../../pdf/types/index";
 import { Tokenizer } from "./index";
 
 function tokenize(input: string): Token[] {
@@ -68,5 +68,55 @@ test.each([
   const tokens = tokenize(input);
   expected.forEach((exp, i) => {
     expect(tokens[i]).toMatchObject(exp);
+  });
+});
+
+test("seek後のnextTokenは移動先から読み取る", () => {
+  const encoder = new TextEncoder();
+  const tokenizer = new Tokenizer(encoder.encode("1 2 3"));
+
+  const seekError = tokenizer.seek(4);
+  const token = tokenizer.nextToken();
+
+  expect(seekError.some).toBe(false);
+  expect(token).toMatchObject({
+    type: TokenType.Integer,
+    value: 3,
+    offset: ByteOffset.of(4),
+  });
+});
+
+test("seekは末尾positionを許可しEOFを返す", () => {
+  const encoder = new TextEncoder();
+  const data = encoder.encode("1 2");
+  const tokenizer = new Tokenizer(data);
+
+  const seekError = tokenizer.seek(data.length);
+  const token = tokenizer.nextToken();
+
+  expect(seekError.some).toBe(false);
+  expect(token).toEqual({
+    type: TokenType.EOF,
+    value: null,
+    offset: ByteOffset.of(data.length),
+  });
+});
+
+test.each([
+  ["負数", -1],
+  ["末尾を1超える", 4],
+])("seekは%spositionを範囲外エラーとして返す", (_label, position) => {
+  const encoder = new TextEncoder();
+  const tokenizer = new Tokenizer(encoder.encode("1 2"));
+
+  const seekError = tokenizer.seek(position);
+
+  expect(seekError).toEqual({
+    some: true,
+    value: {
+      code: "TOKENIZER_POSITION_OUT_OF_RANGE",
+      message: `Tokenizer position is out of range: ${position}`,
+      offset: ByteOffset.of(0),
+    },
   });
 });
