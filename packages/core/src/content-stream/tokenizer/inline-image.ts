@@ -156,7 +156,7 @@ function findInlineImageEnd(params: {
     }
 
     return ok({
-      dataEndExclusive: offset - 1,
+      dataEndExclusive: findInlineImageDataEndExclusive(params.data, offset),
       nextOffset: offset + InlineImageEnd.length,
     });
   }
@@ -165,6 +165,28 @@ function findInlineImageEnd(params: {
     "Inline image EI marker is missing",
     ByteOffset.of(params.data.length),
   );
+}
+
+/**
+ * EI 直前の boundary whitespace を除いた data 終了位置を返す。
+ *
+ * @param data - content stream data
+ * @param endMarkerOffset - EI marker の開始 offset
+ * @returns inline image data 終了位置の排他的 offset
+ */
+function findInlineImageDataEndExclusive(
+  data: Uint8Array,
+  endMarkerOffset: number,
+): number {
+  if (
+    endMarkerOffset >= 2 &&
+    data[endMarkerOffset - 2] === AsciiCarriageReturn &&
+    data[endMarkerOffset - 1] === AsciiLineFeed
+  ) {
+    return endMarkerOffset - 2;
+  }
+
+  return endMarkerOffset - 1;
 }
 
 /**

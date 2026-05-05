@@ -80,6 +80,16 @@ test.each([
   expect(decode(result.value.data)).toContain(_label);
 });
 
+test("EI直前のCRLFをdataから除外する", () => {
+  const tokenizer = new ContentStreamTokenizer(encode("BI /W 1 ID abc\r\nEI"));
+
+  const result = tokenizer.nextToken();
+
+  assert(result.ok);
+  assert(result.value.type === TokenType.InlineImage);
+  expect(decode(result.value.data)).toBe("abc");
+});
+
 test("EI後の次tokenを正しいoffsetで読み取る", () => {
   const tokenizer = new ContentStreamTokenizer(encode("q BI /W 1 ID abc EI Q"));
 
