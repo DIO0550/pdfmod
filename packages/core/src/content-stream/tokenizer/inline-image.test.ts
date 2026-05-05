@@ -97,6 +97,7 @@ test("EI後の次tokenを正しいoffsetで読み取る", () => {
 test.each([
   ["ID欠損", "BI /W 1 EI", ByteOffset.of(8)],
   ["EI欠損", "BI /W 1 ID abc", ByteOffset.of(14)],
+  ["ID直後CRのみでEI欠損", "BI /W 1 ID\r", ByteOffset.of(11)],
   ["dict key不正", "BI W 1 ID abc EI", ByteOffset.of(3)],
   ["dict value欠損", "BI /W ID abc EI", ByteOffset.of(6)],
   ["dict内nested inline image", "BI /W BI ID abc EI", ByteOffset.of(6)],
