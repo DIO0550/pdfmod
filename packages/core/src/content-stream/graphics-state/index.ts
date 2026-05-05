@@ -57,6 +57,17 @@ export const GraphicsState = {
    * @returns 浅いマージで生成された新しい GraphicsState
    */
   update(state: GraphicsState, partial: GraphicsStatePartial): GraphicsState {
-    return { ...state, ...partial } as unknown as GraphicsState;
+    return {
+      ctm: partial.ctm !== undefined ? partial.ctm : state.ctm,
+      lineWidth:
+        partial.lineWidth !== undefined ? partial.lineWidth : state.lineWidth,
+      lineCap: partial.lineCap !== undefined ? partial.lineCap : state.lineCap,
+      lineJoin:
+        partial.lineJoin !== undefined ? partial.lineJoin : state.lineJoin,
+      miterLimit:
+        partial.miterLimit !== undefined
+          ? partial.miterLimit
+          : state.miterLimit,
+    } as unknown as GraphicsState;
   },
 } as const;
