@@ -9,28 +9,24 @@ export { Matrix } from "./matrix";
 
 declare const GraphicsStateBrand: unique symbol;
 
+type GraphicsStateFields = {
+  readonly ctm: Matrix;
+  readonly lineWidth: number;
+  readonly lineCap: LineCap;
+  readonly lineJoin: LineJoin;
+  readonly miterLimit: number;
+};
+
 /**
  * PDF コンテンツストリーム実行時の現在のグラフィックスステート (最小サブセット)。
  * 全フィールドは readonly。更新は GraphicsState.update で新インスタンスを生成する。
  */
 export type GraphicsState = Brand<
-  {
-    readonly ctm: Matrix;
-    readonly lineWidth: number;
-    readonly lineCap: LineCap;
-    readonly lineJoin: LineJoin;
-    readonly miterLimit: number;
-  },
+  GraphicsStateFields,
   typeof GraphicsStateBrand
 >;
 
-type GraphicsStatePartial = Partial<{
-  ctm: Matrix;
-  lineWidth: number;
-  lineCap: LineCap;
-  lineJoin: LineJoin;
-  miterLimit: number;
-}>;
+type GraphicsStatePartial = Partial<GraphicsStateFields>;
 
 export const GraphicsState = {
   /**
