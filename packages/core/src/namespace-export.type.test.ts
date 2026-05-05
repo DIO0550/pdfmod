@@ -9,7 +9,7 @@ import type {
   ResolveRef,
   WalkPageTreeResult,
 } from "./index";
-import { Option, PdfVersion, Result } from "./index";
+import { ContentStreamTokenizer, Option, PdfVersion, Result } from "./index";
 
 test("Result.okがランタイムで動作する", () => {
   const result = Result.ok(42);
@@ -48,6 +48,11 @@ test("Result.Result型が参照できる", () => {
 test("Option.Option型が参照できる", () => {
   const o: Option.Option<number> = Option.some(42);
   expect(o.some).toBe(true);
+});
+
+test("ContentStreamTokenizerがルートから参照できる", () => {
+  const tokenizer = new ContentStreamTokenizer(new Uint8Array());
+  expect(tokenizer.position).toBe(0);
 });
 
 test("ParsedCatalog型とResolveRef型が参照できる", () => {
