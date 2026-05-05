@@ -1,5 +1,9 @@
+import { NumberEx } from "../../ext/number/index";
+import type { PdfError } from "../../pdf/errors/index";
 import { ByteOffset } from "../../pdf/types/byte-offset/index";
 import { type Token, TokenType } from "../../pdf/types/index";
+import type { Option } from "../../utils/option/index";
+import { none, some } from "../../utils/option/index";
 import {
   isPdfDelimiter,
   isPdfWhitespace,
@@ -100,6 +104,28 @@ export class Tokenizer {
    */
   get position(): number {
     return this.pos;
+  }
+
+  /**
+   * 次に読み取る byte offset を設定する。
+   *
+   * @param position - 移動先 byte offset
+   * @returns 移動できない場合は PdfError
+   */
+  seek(position: number): Option<PdfError> {
+    if (
+      !NumberEx.isSafeIntegerAtLeastZero(position) ||
+      position > this.data.length
+    ) {
+      return some({
+        code: "TOKENIZER_POSITION_OUT_OF_RANGE",
+        message: `Tokenizer position is out of range: ${position}`,
+        offset: ByteOffset.of(this.pos),
+      });
+    }
+
+    this.pos = position;
+    return none;
   }
 
   /**

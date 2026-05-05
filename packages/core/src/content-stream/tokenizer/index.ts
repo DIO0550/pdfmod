@@ -3,6 +3,7 @@ import type { PdfError, Token } from "../../pdf/index";
 import { Operator, TokenType } from "../../pdf/index";
 import type { Result } from "../../utils/result/index";
 import { err, ok } from "../../utils/result/index";
+import { readInlineImage } from "./inline-image";
 
 const InlineImageBeginOperator = "BI";
 
@@ -11,10 +12,11 @@ const InlineImageBeginOperator = "BI";
  * 既存の PDF 字句トークンを読み取り、content stream 文脈の operator を再分類する。
  *
  * @remarks
- * Inline image（BI ... ID ... EI）は未サポート。ID 以降の画像データはPDF字句トークンではないため、
- * BI を検出した時点で `NOT_IMPLEMENTED` を返す。
+ * Inline image（BI ... ID ... EI）は、ID 以降の画像データを通常 token として読まず、
+ * 1 個の InlineImage token として返す。
  */
 export class ContentStreamTokenizer {
+  private readonly data: Uint8Array;
   private readonly tokenizer: Tokenizer;
 
   /**
@@ -23,6 +25,7 @@ export class ContentStreamTokenizer {
    * @param data - トークン化対象の content stream バイト列
    */
   constructor(data: Uint8Array) {
+    this.data = data;
     this.tokenizer = new Tokenizer(data);
   }
 
@@ -48,11 +51,22 @@ export class ContentStreamTokenizer {
     }
 
     if (token.value === InlineImageBeginOperator) {
-      return err({
-        code: "NOT_IMPLEMENTED",
-        message: "Inline image content streams are not supported",
-        offset: token.offset,
+      const inlineImage = readInlineImage({
+        data: this.data,
+        beginOffset: token.offset,
+        afterBeginOffset: this.tokenizer.position,
       });
+
+      if (!inlineImage.ok) {
+        return inlineImage;
+      }
+
+      const seekError = this.tokenizer.seek(inlineImage.value.nextOffset);
+      if (seekError.some) {
+        return err(seekError.value);
+      }
+
+      return ok(inlineImage.value.token);
     }
 
     return ok(Operator.of(token.value, token.offset));

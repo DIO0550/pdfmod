@@ -119,15 +119,19 @@ test("辞書delimiterを維持しBDCだけをOperatorに変換する", () => {
   expect(tokens[4]).toEqual(Operator.of("BDC", ByteOffset.of(22)));
 });
 
-test("inline imageは未サポートとしてエラーを返す", () => {
+test("inline imageを1つのtokenとして返す", () => {
   const tokenizer = new ContentStreamTokenizer(encode("BI /W 1 ID abc EI"));
 
   const result = tokenizer.tokenize();
-  assert(!result.ok);
+  assert(result.ok);
 
-  expect(result.error).toEqual({
-    code: "NOT_IMPLEMENTED",
-    message: "Inline image content streams are not supported",
+  expect(result.value[0]).toMatchObject({
+    type: TokenType.InlineImage,
     offset: ByteOffset.of(0),
+  });
+  expect(result.value[1]).toEqual({
+    type: TokenType.EOF,
+    value: null,
+    offset: ByteOffset.of(17),
   });
 });
