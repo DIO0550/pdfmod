@@ -35,6 +35,62 @@ test("inline image辞書のkey/value pairを順序保持する", () => {
   ]);
 });
 
+test("inline image辞書の配列valueを1つのvalue token sequenceとして保持する", () => {
+  const tokenizer = new ContentStreamTokenizer(
+    encode("BI /Decode [0 1] /W 1 ID abc EI"),
+  );
+
+  const result = tokenizer.nextToken();
+
+  assert(result.ok);
+  assert(result.value.type === TokenType.InlineImage);
+  expect(
+    result.value.dict.map((entry) => [
+      entry.key.value,
+      entry.value.map((token) => token.type),
+    ]),
+  ).toEqual([
+    [
+      "Decode",
+      [
+        TokenType.ArrayBegin,
+        TokenType.Integer,
+        TokenType.Integer,
+        TokenType.ArrayEnd,
+      ],
+    ],
+    ["W", [TokenType.Integer]],
+  ]);
+});
+
+test("inline image辞書の辞書valueを1つのvalue token sequenceとして保持する", () => {
+  const tokenizer = new ContentStreamTokenizer(
+    encode("BI /DP << /Predictor 12 >> /W 1 ID abc EI"),
+  );
+
+  const result = tokenizer.nextToken();
+
+  assert(result.ok);
+  assert(result.value.type === TokenType.InlineImage);
+  expect(
+    result.value.dict.map((entry) => [
+      entry.key.value,
+      entry.value.map((token) => token.type),
+    ]),
+  ).toEqual([
+    [
+      "DP",
+      [
+        TokenType.DictBegin,
+        TokenType.Name,
+        TokenType.Integer,
+        TokenType.DictEnd,
+      ],
+    ],
+    ["W", [TokenType.Integer]],
+  ]);
+});
+
 test("inline imageはdata bytesとBI offsetを保持する", () => {
   const tokenizer = new ContentStreamTokenizer(encode("q BI /W 1 ID abc EI"));
 
