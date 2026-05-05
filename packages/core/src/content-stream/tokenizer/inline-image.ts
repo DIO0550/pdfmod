@@ -32,7 +32,7 @@ interface InlineImageDictionaryReadResult {
 }
 
 interface InlineImageEndReadResult {
-  readonly dataEndOffset: number;
+  readonly dataEndExclusive: number;
   readonly nextOffset: number;
 }
 
@@ -69,7 +69,7 @@ export function readInlineImage(params: {
       dict: dictionary.value.entries,
       data: params.data.subarray(
         dictionary.value.afterIdOffset,
-        end.value.dataEndOffset,
+        end.value.dataEndExclusive,
       ),
       offset: params.beginOffset,
     },
@@ -144,7 +144,7 @@ function readInlineImageDictionary(params: {
  * inline image data の終端 EI を byte scan で探す。
  *
  * @param params - content stream data と data 開始 offset
- * @returns data 終了 offset と EI 直後 offset
+ * @returns data 終了位置の排他的 offset と EI 直後 offset
  */
 function findInlineImageEnd(params: {
   readonly data: Uint8Array;
@@ -156,7 +156,7 @@ function findInlineImageEnd(params: {
     }
 
     return ok({
-      dataEndOffset: offset - 1,
+      dataEndExclusive: offset - 1,
       nextOffset: offset + InlineImageEnd.length,
     });
   }
