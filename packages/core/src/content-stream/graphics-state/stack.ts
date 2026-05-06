@@ -15,6 +15,12 @@ type GraphicsStateStackFields = {
 /**
  * PDF content stream の `q` / `Q` operator で使うグラフィックスステートスタック。
  * `current` は現在状態、`saved` は保存済み状態を LIFO 順で保持する。
+ * 内部表現 `{ current: GraphicsState; saved: GraphicsState[] }` を Brand 型で包むことで
+ * 素のオブジェクトリテラルが代入されることを防ぐ。
+ *
+ * 注: `current` / `saved` フィールドは型システム上はモジュール外からも参照可能だが、
+ * 規約上 private 扱いとし、外部から直接アクセス・変更してはならない。
+ * 公開 API は companion object（`create` / `current` / `replaceCurrent` / `save` / `restore`）のみ。
  */
 export type GraphicsStateStack = Brand<
   GraphicsStateStackFields,
