@@ -6,6 +6,7 @@ import { Matrix } from "./matrix";
 export { LineCap } from "./line-cap";
 export { LineJoin } from "./line-join";
 export { Matrix } from "./matrix";
+export { GraphicsStateStack } from "./stack";
 
 declare const GraphicsStateBrand: unique symbol;
 
