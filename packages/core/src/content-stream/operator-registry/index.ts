@@ -17,6 +17,12 @@ export type OperatorHandler = (
 
 /**
  * operator 名から実行ハンドラを引く registry。
+ * 内部表現 `{ handlers: Map<string, OperatorHandler> }` を Brand 型で包むことで
+ * 素のオブジェクトリテラルが代入されることを防ぐ。
+ *
+ * 注: `handlers` フィールドは型システム上はモジュール外からも参照可能だが、
+ * 規約上 private 扱いとし、外部から `registry.handlers` に直接アクセス・変更してはならない。
+ * 公開 API は companion object（`create` / `register` / `lookup` / `has`）のみ。
  */
 export type OperatorRegistry = Brand<
   {
