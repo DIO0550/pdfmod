@@ -2,8 +2,8 @@ import type { PdfError } from "../../pdf/errors/index";
 import type { Brand } from "../../utils/brand/index";
 import type { Option } from "../../utils/option/index";
 import { none } from "../../utils/option/index";
-import type { GraphicsState } from "./index";
-import { GraphicsState as GraphicsStateFactory } from "./index";
+import type { GraphicsState } from "./graphics-state";
+import { GraphicsState as GraphicsStateFactory } from "./graphics-state";
 
 declare const GraphicsStateStackBrand: unique symbol;
 
