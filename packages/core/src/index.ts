@@ -5,6 +5,18 @@
  * @packageDocumentation
  */
 
+export { GraphicsStateStack } from "./content-stream/graphics-state/index";
+export type {
+  ContentStreamInterpreterExecuteOptions,
+  ContentStreamInterpreterResult,
+} from "./content-stream/interpreter/index";
+export { ContentStreamInterpreter } from "./content-stream/interpreter/index";
+export { OperandStack } from "./content-stream/operand-stack/index";
+export type {
+  OperatorHandler,
+  OperatorHandlerContext,
+} from "./content-stream/operator-registry/index";
+export { OperatorRegistry } from "./content-stream/operator-registry/index";
 export { ContentStreamTokenizer } from "./content-stream/tokenizer/index";
 export type {
   DocumentMetadata,
