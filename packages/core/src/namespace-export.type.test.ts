@@ -1,7 +1,10 @@
 import { expect, test } from "vitest";
 import type {
+  ContentStreamInterpreterExecuteOptions,
+  ContentStreamInterpreterResult,
   InheritedAttrs,
   LoadOptions,
+  OperatorHandlerContext,
   ParsedCatalog,
   PdfDocumentLoadError,
   PdfPageRectangle,
@@ -9,7 +12,14 @@ import type {
   ResolveRef,
   WalkPageTreeResult,
 } from "./index";
-import { ContentStreamTokenizer, Option, PdfVersion, Result } from "./index";
+import {
+  ContentStreamInterpreter,
+  ContentStreamTokenizer,
+  OperatorRegistry,
+  Option,
+  PdfVersion,
+  Result,
+} from "./index";
 
 test("Result.okがランタイムで動作する", () => {
   const result = Result.ok(42);
@@ -53,6 +63,20 @@ test("Option.Option型が参照できる", () => {
 test("ContentStreamTokenizerがルートから参照できる", () => {
   const tokenizer = new ContentStreamTokenizer(new Uint8Array());
   expect(tokenizer.position).toBe(0);
+});
+
+test("ContentStreamInterpreter型とコンパニオンがルートから参照できる", () => {
+  const options: ContentStreamInterpreterExecuteOptions = {
+    data: new Uint8Array(),
+    registry: OperatorRegistry.create(),
+  };
+  const result = ContentStreamInterpreter.execute(options);
+  const value = {} as ContentStreamInterpreterResult;
+  const context = {} as OperatorHandlerContext;
+
+  expect(result.ok).toBe(true);
+  expect(value).toBeDefined();
+  expect(context).toBeDefined();
 });
 
 test("ParsedCatalog型とResolveRef型が参照できる", () => {
