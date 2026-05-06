@@ -16,6 +16,127 @@ PDFページの視覚的な構成は、すべてコンテンツストリーム�
 
 **重要**: ループ構文（for/while）、条件分岐（if）、変数宣言は一切存在しない。絶対的なグラフィック描画命令の羅列である。
 
+### 実装対応範囲: ContentStreamInterpreter core loop
+
+今回追加した `ContentStreamInterpreter` は、PDF の仕様上は「コンテンツストリームの構文を逐次解釈し、オペランドを蓄積してオペレータを実行する」部分に対応する。
+
+| 実装要素 | PDF仕様上の位置づけ | 対応内容 |
+|:---------|:--------------------|:---------|
+| `ContentStreamTokenizer` からの逐次 token 読み取り | ISO 32000-1:2008 7.8.2 Content streams、7.2 Lexical conventions | content stream bytes を PDF token 列として読み、keyword を content stream operator として扱う |
+| `OperandStack.push()` | ISO 32000-1:2008 7.8.2 Content streams | operator の直前に現れる direct object を operand として一時的に保持する |
+| primitive token から `PdfObject` への変換 | ISO 32000-1:2008 7.3 Objects | boolean / integer / real / string / name / null を content stream operand として扱う |
+| NaN 数値 token の拒否 | ISO 32000-1:2008 7.3.3 Numeric objects | `.` / `+` / `-` のような妥当な数値でない token は `OBJECT_PARSE_UNEXPECTED_TOKEN` として扱い、operator handler へ渡さない |
+| `OperatorRegistry.lookup()` による dispatch | ISO 32000-1:2008 7.8.2 Content streams、8 Graphics、9 Text | operator 名に対応する handler を呼び出す。標準 operator の意味解釈は registry 側の責務とする |
+| 未登録 operator で operand stack を clear | content stream interpreter の実装方針 | 未知 operator の operand が後続 operator handler に混入することを防ぐ |
+| `GraphicsStateStack` を context として渡す | ISO 32000-1:2008 8.4 Graphics state | `q` / `Q` などの graphics state operator を handler 経由で実装できるようにする |
+| array / dictionary / inline image を `Err` で中断 | ISO 32000-1:2008 7.3.6 Arrays、7.3.7 Dictionaries、8.9 Images | 複合 operand の構築と inline image 解釈は後続フェーズの範囲とし、primitive として flatten しない |
+
+この段階の `ContentStreamInterpreter` は、標準描画オペレータそのものを実装する層ではない。仕様上の `m` / `l` / `cm` / `BT` / `Tj` / `q` / `Q` などの意味解釈は、後続で `OperatorRegistry` に登録する handler 群が担う。
+
+### PDFファイル内での実際の位置
+
+`ContentStreamInterpreter` が扱うのは、PDFファイル全体のうち Page object の `/Contents` から参照される stream body である。
+
+```text
+PDF file
+  ├─ Header
+  ├─ Body objects
+  │   ├─ Catalog
+  │   ├─ Pages
+  │   ├─ Page
+  │   │   └─ /Contents -> Content stream  [今回の対象]
+  │   └─ Font / Image / Resource objects
+  ├─ XRef
+  └─ Trailer
+```
+
+実際のPDFオブジェクトでは、Page object が `/Contents` で stream object を参照する。
+
+```pdf
+3 0 obj
+<< /Type /Page
+   /Parent 2 0 R
+   /MediaBox [0 0 612 792]
+   /Resources << /Font << /F1 5 0 R >> >>
+   /Contents 4 0 R
+>>
+endobj
+
+4 0 obj
+<< /Length 45 >>
+stream
+q
+1 0 0 1 100 200 cm
+10 20 m
+200 20 l
+S
+Q
+endstream
+endobj
+```
+
+今回の interpreter が読むのは、上記のうち `stream` と `endstream` に挟まれた命令列である。
+
+```pdf
+q
+1 0 0 1 100 200 cm
+10 20 m
+200 20 l
+S
+Q
+```
+
+この命令列は、PDF の lexical token として次のように解釈される。
+
+```text
+q              operator
+1              operand
+0              operand
+0              operand
+1              operand
+100            operand
+200            operand
+cm             operator
+10             operand
+20             operand
+m              operator
+200            operand
+20             operand
+l              operator
+S              operator
+Q              operator
+EOF
+```
+
+`ContentStreamInterpreter` は operand token を `OperandStack` に積み、operator token が現れた時点で `OperatorRegistry` から handler を検索して実行する。
+
+```text
+content stream bytes
+  ↓
+ContentStreamTokenizer
+  ↓
+Token stream
+  ↓
+ContentStreamInterpreter
+  ├─ primitive token -> PdfObject -> OperandStack.push()
+  ├─ operator token  -> OperatorRegistry.lookup()
+  └─ EOF             -> final OperatorHandlerContext
+```
+
+例えば `1 0 0 1 100 200 cm` は、6つの numeric operand を stack に積んだ後、`cm` operator handler に dispatch される。
+
+```text
+1      -> push integer 1
+0      -> push integer 0
+0      -> push integer 0
+1      -> push integer 1
+100    -> push integer 100
+200    -> push integer 200
+cm     -> lookup("cm") -> handler(context)
+```
+
+この時点では `cm` の行列連結そのものは実装しない。`ContentStreamInterpreter` は「命令列を読む」「operand を積む」「operator handler に渡す」までを担当し、`cm` / `m` / `l` / `S` / `q` / `Q` などの意味処理は registry に登録される個別 handler の責務とする。
+
 ## 2. グラフィックスステートオペレータ
 
 ### 2.1 ステート管理
