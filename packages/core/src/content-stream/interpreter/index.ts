@@ -173,9 +173,9 @@ function tokenToPrimitivePdfObject(
     case TokenType.Boolean:
       return ok(some({ type: "boolean", value: token.value }));
     case TokenType.Integer:
-      return ok(some({ type: "integer", value: token.value }));
+      return integerToPdfObject(token);
     case TokenType.Real:
-      return ok(some({ type: "real", value: token.value }));
+      return realToPdfObject(token);
     case TokenType.LiteralString:
       return literalStringToPdfObject(token);
     case TokenType.HexString:
@@ -202,6 +202,46 @@ function tokenToPrimitivePdfObject(
     default:
       return ok(none);
   }
+}
+
+/**
+ * integer token をPdfIntegerへ変換する。
+ *
+ * @param token - integer token
+ * @returns 変換したPdfInteger、またはNaN tokenエラー
+ */
+function integerToPdfObject(
+  token: Extract<Token, { readonly type: TokenType.Integer }>,
+): Result<Option<PdfObject>, PdfError> {
+  if (Number.isNaN(token.value)) {
+    return err({
+      code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
+      message: `NaN integer token at offset ${token.offset}`,
+      offset: token.offset,
+    });
+  }
+
+  return ok(some({ type: "integer", value: token.value }));
+}
+
+/**
+ * real token をPdfRealへ変換する。
+ *
+ * @param token - real token
+ * @returns 変換したPdfReal、またはNaN tokenエラー
+ */
+function realToPdfObject(
+  token: Extract<Token, { readonly type: TokenType.Real }>,
+): Result<Option<PdfObject>, PdfError> {
+  if (Number.isNaN(token.value)) {
+    return err({
+      code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
+      message: `NaN real token at offset ${token.offset}`,
+      offset: token.offset,
+    });
+  }
+
+  return ok(some({ type: "real", value: token.value }));
 }
 
 /**
