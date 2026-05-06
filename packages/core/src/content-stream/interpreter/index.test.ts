@@ -130,6 +130,21 @@ test.each([
 });
 
 test.each([
+  { input: ". capture", message: "NaN real token" },
+  { input: "+ capture", message: "NaN integer token" },
+  { input: "- capture", message: "NaN integer token" },
+])("NaN数値tokenはPdfErrorを返す: $input", ({ input, message }) => {
+  const result = ContentStreamInterpreter.execute({
+    data: encode(input),
+    registry: OperatorRegistry.create(),
+  });
+
+  assert(!result.ok);
+  expect(result.error.code).toBe("OBJECT_PARSE_UNEXPECTED_TOKEN");
+  expect(result.error.message).toContain(message);
+});
+
+test.each([
   { input: "[ (A) 120 ] TJ", code: "NOT_IMPLEMENTED" },
   { input: "<< /K /V >> op", code: "NOT_IMPLEMENTED" },
   { input: "BI /W 1 /H 1 ID abc EI op", code: "NOT_IMPLEMENTED" },
