@@ -3,6 +3,7 @@ import type {
   ObjectId,
   PdfCircularReferenceError,
   PdfErrorCode,
+  PdfOperatorRegistryError,
   PdfParseError,
   PdfParseErrorCode,
   PdfTypeMismatchError,
@@ -79,6 +80,12 @@ test("型エクスポートが利用可能", () => {
     expected: "A",
     actual: "B",
   };
+  const operatorRegistryError: PdfOperatorRegistryError = {
+    code: "OPERATOR_ALREADY_REGISTERED",
+    message: "test",
+    operatorName: "rg",
+  };
+  const operatorRegistryErrorCode: PdfErrorCode = "OPERATOR_ALREADY_REGISTERED";
 
   expect(errorCode).toBe("INVALID_HEADER");
   expect(parseErrorCode).toBe("STARTXREF_NOT_FOUND");
@@ -88,4 +95,6 @@ test("型エクスポートが利用可能", () => {
   expect(parseError.code).toBe("INVALID_HEADER");
   expect(circularError.code).toBe("CIRCULAR_REFERENCE");
   expect(typeError.code).toBe("TYPE_MISMATCH");
+  expect(operatorRegistryError.operatorName).toBe("rg");
+  expect(operatorRegistryErrorCode).toBe("OPERATOR_ALREADY_REGISTERED");
 });
