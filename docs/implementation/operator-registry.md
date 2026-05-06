@@ -31,6 +31,7 @@
 
 `OperatorRegistry` は `Map<string, OperatorHandler>` を内部に持つ branded type です。
 グローバル singleton ではなく `create()` で registry instance を生成するため、テスト間や interpreter instance 間で登録状態が共有されません。
+`handlers` フィールドは規約上 private 扱いで、外部コードは直接参照・変更せず companion object API を使います。
 
 ```ts
 export type OperatorHandler = (
