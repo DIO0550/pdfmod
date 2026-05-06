@@ -1,33 +1,82 @@
-# OperatorRegistry 実装メモ
+# Content stream operator と graphics state stack 実装メモ
 
-`OperatorRegistry` は PDF content stream の operator 名 (`m`, `BT`, `rg` など) から実行 handler を引くための小さな registry です。
-後続の `ContentStreamInterpreter` が operator dispatch を集約するための拡張点として追加しています。
+このドキュメントは、今回の実装が PDF 仕様のどの部分を受け持つかを説明します。
+コード上の主役は `OperatorRegistry` と `GraphicsStateStack` ですが、仕様上は **content stream の operator dispatch** と **graphics state の保存・復元** に対応します。
 
-## 実装範囲
+## PDF仕様上の位置づけ
 
-今回追加した主な実装は次の通りです。
+PDF ページの見た目は、ページ辞書の `/Contents` に入っている content stream で表現されます。
+content stream は命令列で、数値・名前・文字列などの operand が先に並び、最後に operator が来る後置記法です。
 
-- `packages/core/src/content-stream/operator-registry/index.ts`
-  - `OperatorRegistry.create`
-  - `OperatorRegistry.register`
-  - `OperatorRegistry.lookup`
-  - `OperatorRegistry.has`
-  - `OperatorHandler`
-- `packages/core/src/content-stream/graphics-state/stack.ts`
-  - `GraphicsStateStack.create`
-  - `GraphicsStateStack.current`
-  - `GraphicsStateStack.replaceCurrent`
-  - `GraphicsStateStack.save`
-  - `GraphicsStateStack.restore`
-- `packages/core/src/pdf/errors/error/index.ts`
-  - `PdfOperatorRegistryError`
-  - `PdfErrorCode` への `"OPERATOR_ALREADY_REGISTERED"` 追加
-  - `PdfError` union への `PdfOperatorRegistryError` 追加
+```pdf
+100 200 m
+150 250 l
+S
+```
+
+この例では `100 200` が `m` operator の operand、`150 250` が `l` operator の operand、`S` は構築済み path を stroke する operator です。
+PDF には一般的なプログラミング言語のようなループ、条件分岐、変数宣言はなく、interpreter は token を順に読みながら operand stack と graphics state を更新します。
+
+今回の `OperatorRegistry` は、この処理モデルのうち「operator 名を見つけたとき、どの handler を実行するか」を解決する部品です。
+まだ operator の実処理や `ContentStreamInterpreter` 全体は実装していません。
+
+関連する既存仕様:
+
+- [05. コンテンツストリームと描画オペレータ](../specs/05_content_streams.md)
+- [04. リソース辞書とグラフィックスステート](../specs/04_resources_graphics_state.md)
+
+## 今回扱うPDF概念
+
+### Content stream operator
+
+PDF operator は短い名前で描画処理を表します。
+例として、path construction の `m` / `l`、text object の `BT` / `ET`、色指定の `rg`、graphics state の `q` / `Q` などがあります。
+
+今回の実装では、これらの operator を直接描画処理として実装したわけではありません。
+代わりに、operator 名と handler の対応を登録・検索する registry を追加しました。
+これは後続の interpreter が、tokenizer から operator token を受け取ったときに dispatch するための下地です。
+
+```mermaid
+flowchart LR
+  Contents[/Page Contents stream/] --> Tokenizer[ContentStreamTokenizer]
+  Tokenizer --> OperatorToken[Operator token: m / BT / rg / q / Q]
+  OperatorToken --> Registry[OperatorRegistry]
+  Registry --> Handler[OperatorHandler]
+  Handler --> State[OperandStack / GraphicsStateStack]
+```
+
+### Operand stack
+
+PDF content stream は後置記法なので、operator が現れるまで operand を stack に積みます。
+`OperatorHandler` が `OperandStack` を受け取るのは、operator が自分に必要な operand を stack から取り出して処理するためです。
+
+今回の PR では `OperandStack` 自体は新規実装対象ではありません。
+`OperatorRegistry` の handler signature に組み込むことで、後続 operator 実装が PDF の後置記法モデルに沿って書けるようにしています。
+
+### Graphics state stack
+
+PDF graphics state は、線幅、線端、線接合、変換行列、色、クリッピングパス、テキスト状態など、描画に影響する状態の集合です。
+content stream では `q` operator が現在の graphics state を保存し、`Q` operator が直近の保存状態を復元します。
+
+```pdf
+q
+  1 0 0 1 100 200 cm
+  /Im0 Do
+Q
+```
+
+この例では、`q` で現在の状態を保存し、`cm` で座標変換を加え、`Do` で XObject を描画し、`Q` で変換前の状態に戻します。
+今回の `GraphicsStateStack` は、この `q` / `Q` の保存・復元モデルに対応する最小実装です。
+
+現時点の `GraphicsStateStack` は graphics state 全体の完全実装ではなく、既存の `GraphicsState` を LIFO で保存・復元するための器です。
+`cm`、`w`、`J`、`j`、`rg` など個別 operator による state 更新は後続フェーズの対象です。
+
+## 実装した境界
 
 `OperatorRegistry` 本体は `@pdfmod/core` の root export には出していません。
 現時点では content stream 内部の拡張点として扱い、root export は既存 error type と同様に `PdfOperatorRegistryError` のみ追加しています。
 
-## OperatorRegistry の契約
+### OperatorRegistry の契約
 
 `OperatorRegistry` は `Map<string, OperatorHandler>` を内部に持つ branded type です。
 グローバル singleton ではなく `create()` で registry instance を生成するため、テスト間や interpreter instance 間で登録状態が共有されません。
@@ -43,7 +92,7 @@ export type OperatorHandler = (
 handler の戻り値は `Option<PdfError>` です。
 成功時に値を返す必要がないため、`Result<void, PdfError>` ではなく「エラーがあれば `Some(error)`、なければ `None`」で表現します。
 
-### register
+#### register
 
 `register(registry, name, handler)` は registry を mutate します。
 
@@ -62,12 +111,12 @@ handler の戻り値は `Option<PdfError>` です。
 }
 ```
 
-### lookup / has
+#### lookup / has
 
 `lookup(registry, name)` は登録済みなら `Some(OperatorHandler)`、未登録なら `None` を返します。
 `has(registry, name)` は登録済み判定だけを `boolean` で返します。
 
-## GraphicsStateStack の最小復旧
+### GraphicsStateStack の契約
 
 `OperatorHandler` は operand stack と graphics state stack を受け取る設計です。
 local `main` に `GraphicsStateStack` の実装シンボルがなかったため、#133 相当の最小 API も同時に復旧しています。
@@ -83,18 +132,13 @@ local `main` に `GraphicsStateStack` の実装シンボルがなかったため
 
 `GraphicsState` 型は `graphics-state.ts` に分離し、`graphics-state/index.ts` と `stack.ts` の循環依存を避けています。
 
-## データフロー
+### 重複登録エラー
 
-```mermaid
-flowchart LR
-  Tokenizer[ContentStreamTokenizer] --> Interpreter[Future ContentStreamInterpreter]
-  Interpreter --> OperandStack[OperandStack]
-  Interpreter --> GraphicsStateStack[GraphicsStateStack]
-  Interpreter --> Registry[OperatorRegistry]
-  Registry --> Handler[OperatorHandler]
-  Handler --> Outcome[Option<PdfError>]
-  Registry -. duplicate .-> RegistryError[PdfOperatorRegistryError]
-```
+PDF 仕様そのものに「operator registry」は登場しません。
+これはライブラリ内部で標準 operator や将来の拡張 operator を登録するための実装上の表現です。
+
+同じ operator 名へ複数 handler を登録すると dispatch 結果が曖昧になるため、重複登録は `PdfOperatorRegistryError` として扱います。
+このエラーは PDF ファイルの構文エラーではなく、ライブラリの operator 登録設定エラーです。
 
 ## テストで保証している挙動
 
@@ -114,9 +158,11 @@ error type 側では `PdfOperatorRegistryError` が `PdfError` union と root ty
 
 ## 現時点の制約
 
+- PDF 標準 operator の意味論はまだ実装していない
+- `ContentStreamInterpreter` 本体はまだ存在しない
 - `OperatorRegistry` は handler の実行順や operand 数の検証を行わない
 - operator 名の構文検証は行わない
-- 未登録 operator を実行時エラーに変換する処理は未実装
-- `ContentStreamInterpreter` 本体はまだ存在しないため、registry は dispatch 基盤のみを提供する
+- 未登録 operator を PDF 処理エラーに変換する処理は未実装
+- `GraphicsStateStack` は `q` / `Q` の保存・復元モデルのみを扱い、CTM、色、線幅などの具体的な state 変更 operator はまだ扱わない
 
 これらは後続フェーズで interpreter と個別 operator handler を追加するときに扱います。
