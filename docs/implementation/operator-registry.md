@@ -73,6 +73,7 @@ handler の戻り値は `Option<PdfError>` です。
 local `main` に `GraphicsStateStack` の実装シンボルがなかったため、#133 相当の最小 API も同時に復旧しています。
 
 `GraphicsStateStack` は現在状態 `current` と保存済み状態 `saved` を持ちます。
+`current` / `saved` フィールドは規約上 private 扱いで、外部コードは直接参照・変更せず companion object API を使います。
 
 - `create()` はデフォルト `GraphicsState` を current に持つ stack を作る
 - `save()` は current を LIFO stack に保存し、常に `None` を返す
