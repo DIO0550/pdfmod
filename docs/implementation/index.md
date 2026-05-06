@@ -9,7 +9,7 @@
 |:---|:---|
 | [pdf-document-load-fallback.md](./pdf-document-load-fallback.md) | `PdfDocument.load` の fallback recovery 経路。`scanStartXRef` / `mergeXRefChain` 失敗時の `scanFallback` 呼び出し、`XREF_REBUILD` warning 契約、`resolveXRefStructure` / `emitWarnings` ローカル関数の役割、ISO 32000-1 §7.5 との対応 |
 | [inline-image-tokenizer.md](./inline-image-tokenizer.md) | ContentStream の inline image (`BI ... ID <bytes> EI`) を 1 個の `TokenType.InlineImage` として扱う実装。dict key/value 保持、raw byte scan、`Tokenizer.seek`、EI boundary 判定、既知制約 |
-| [operator-registry.md](./operator-registry.md) | ContentStream operator 名から handler を引く `OperatorRegistry`、`Option<PdfError>` ベースの handler 契約、重複登録エラー、最小 `GraphicsStateStack` 復旧、現時点の制約 |
+| [operator-registry.md](./operator-registry.md) | PDF content stream の後置記法 operator dispatch、`q` / `Q` に対応する graphics state stack、今回実装した範囲と未実装の PDF operator 意味論 |
 
 ## 配置ルール
 
