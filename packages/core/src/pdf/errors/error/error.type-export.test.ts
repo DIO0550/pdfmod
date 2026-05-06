@@ -35,6 +35,8 @@ const allPdfParseErrorCodes = [
   "OBJECT_PARSE_UNEXPECTED_TOKEN",
   "OBJECT_PARSE_UNTERMINATED",
   "OBJECT_PARSE_STREAM_LENGTH",
+  "CONTENT_STREAM_INLINE_IMAGE_INVALID",
+  "TOKENIZER_POSITION_OUT_OF_RANGE",
   "CATALOG_TYPE_INVALID",
   "PAGES_NOT_FOUND",
   "CATALOG_ROOT_NOT_DICTIONARY",
@@ -50,7 +52,7 @@ const _exhaustive: Exact<
 
 test("PdfParseErrorCodeは網羅的に列挙されている", () => {
   expect(_exhaustive).toBe(true);
-  expect(allPdfParseErrorCodes).toHaveLength(24);
+  expect(allPdfParseErrorCodes).toHaveLength(26);
 });
 
 test("型エクスポートが利用可能", () => {

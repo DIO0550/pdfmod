@@ -18,6 +18,7 @@ export enum TokenType {
   Null = "Null",
   Keyword = "Keyword",
   Operator = "Operator",
+  InlineImage = "InlineImage",
   EOF = "EOF",
 }
 
@@ -150,6 +151,25 @@ export interface Operator {
 }
 
 /**
+ * Inline image 辞書内の key/value pair。
+ * 同一 key の重複や順序を失わないように配列要素として保持する。
+ */
+export interface TokenInlineImageDictEntry {
+  readonly key: TokenName;
+  readonly value: ReadonlyArray<Token>;
+}
+
+/**
+ * ContentStream 内の inline image (`BI ... ID ... EI`) を表すトークン。
+ */
+export interface TokenInlineImage {
+  type: TokenType.InlineImage;
+  readonly dict: ReadonlyArray<TokenInlineImageDictEntry>;
+  readonly data: Uint8Array;
+  offset: ByteOffset;
+}
+
+/**
  * PDF字句解析器および ContentStream 解釈器が扱う全トークンの discriminated union。
  * `type` フィールドで variant を識別する。
  */
@@ -167,6 +187,7 @@ export type Token =
   | TokenNull
   | TokenKeyword
   | Operator
+  | TokenInlineImage
   | TokenEOF;
 
 const OperatorCompanion = {
@@ -198,6 +219,9 @@ export const Operator = OperatorCompanion;
 export function tokenDisplayString(token: Token): string {
   if (token.type === TokenType.Operator) {
     return token.name;
+  }
+  if (token.type === TokenType.InlineImage) {
+    return "BI ... ID ... EI";
   }
   if (token.value === null) {
     return "null";
