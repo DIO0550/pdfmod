@@ -16,6 +16,23 @@ PDFページの視覚的な構成は、すべてコンテンツストリーム�
 
 **重要**: ループ構文（for/while）、条件分岐（if）、変数宣言は一切存在しない。絶対的なグラフィック描画命令の羅列である。
 
+### 実装対応範囲: ContentStreamInterpreter core loop
+
+今回追加した `ContentStreamInterpreter` は、PDF の仕様上は「コンテンツストリームの構文を逐次解釈し、オペランドを蓄積してオペレータを実行する」部分に対応する。
+
+| 実装要素 | PDF仕様上の位置づけ | 対応内容 |
+|:---------|:--------------------|:---------|
+| `ContentStreamTokenizer` からの逐次 token 読み取り | ISO 32000-1:2008 7.8.2 Content streams、7.2 Lexical conventions | content stream bytes を PDF token 列として読み、keyword を content stream operator として扱う |
+| `OperandStack.push()` | ISO 32000-1:2008 7.8.2 Content streams | operator の直前に現れる direct object を operand として一時的に保持する |
+| primitive token から `PdfObject` への変換 | ISO 32000-1:2008 7.3 Objects | boolean / integer / real / string / name / null を content stream operand として扱う |
+| NaN 数値 token の拒否 | ISO 32000-1:2008 7.3.3 Numeric objects | `.` / `+` / `-` のような妥当な数値でない token は `OBJECT_PARSE_UNEXPECTED_TOKEN` として扱い、operator handler へ渡さない |
+| `OperatorRegistry.lookup()` による dispatch | ISO 32000-1:2008 7.8.2 Content streams、8 Graphics、9 Text | operator 名に対応する handler を呼び出す。標準 operator の意味解釈は registry 側の責務とする |
+| 未登録 operator で operand stack を clear | content stream interpreter の実装方針 | 未知 operator の operand が後続 operator handler に混入することを防ぐ |
+| `GraphicsStateStack` を context として渡す | ISO 32000-1:2008 8.4 Graphics state | `q` / `Q` などの graphics state operator を handler 経由で実装できるようにする |
+| array / dictionary / inline image を `Err` で中断 | ISO 32000-1:2008 7.3.6 Arrays、7.3.7 Dictionaries、8.9 Images | 複合 operand の構築と inline image 解釈は後続フェーズの範囲とし、primitive として flatten しない |
+
+この段階の `ContentStreamInterpreter` は、標準描画オペレータそのものを実装する層ではない。仕様上の `m` / `l` / `cm` / `BT` / `Tj` / `q` / `Q` などの意味解釈は、後続で `OperatorRegistry` に登録する handler 群が担う。
+
 ## 2. グラフィックスステートオペレータ
 
 ### 2.1 ステート管理
