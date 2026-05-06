@@ -50,6 +50,20 @@ test("PdfTypeMismatchErrorはexpectedとactualを持つ", () => {
   );
 });
 
+test("PdfOperatorRegistryErrorはoperatorNameを持つ", () => {
+  const error: PdfError = {
+    code: "OPERATOR_ALREADY_REGISTERED",
+    message: "duplicate operator",
+    operatorName: "rg",
+  };
+
+  expect(error.code).toBe("OPERATOR_ALREADY_REGISTERED");
+  expect(
+    (error as Extract<PdfError, { code: "OPERATOR_ALREADY_REGISTERED" }>)
+      .operatorName,
+  ).toBe("rg");
+});
+
 test("PdfParseErrorのoffsetは省略可能", () => {
   const withOffset: PdfParseError = {
     code: "INVALID_HEADER",
