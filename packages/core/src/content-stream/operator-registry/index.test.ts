@@ -1,10 +1,10 @@
 import { expect, test } from "vitest";
 import type { PdfError } from "../../pdf/errors/index";
-import { ok } from "../../utils/result/index";
+import { none } from "../../utils/option/index";
 import { type OperatorHandler, OperatorRegistry } from "./index";
 
-const firstHandler: OperatorHandler = () => ok(undefined);
-const secondHandler: OperatorHandler = () => ok(undefined);
+const firstHandler: OperatorHandler = () => none;
+const secondHandler: OperatorHandler = () => none;
 
 test("createしたregistryは未登録operatorを持たない", () => {
   const registry = OperatorRegistry.create();

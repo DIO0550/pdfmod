@@ -2,7 +2,6 @@ import type { PdfError } from "../../pdf/errors/index";
 import type { Brand } from "../../utils/brand/index";
 import type { Option } from "../../utils/option/index";
 import { none, some } from "../../utils/option/index";
-import type { Result } from "../../utils/result/index";
 import type { GraphicsStateStack } from "../graphics-state/stack";
 import type { OperandStack } from "../operand-stack/index";
 
@@ -14,7 +13,7 @@ declare const OperatorRegistryBrand: unique symbol;
 export type OperatorHandler = (
   stack: OperandStack,
   state: GraphicsStateStack,
-) => Result<void, PdfError>;
+) => Option<PdfError>;
 
 /**
  * operator 名から実行ハンドラを引く registry。
