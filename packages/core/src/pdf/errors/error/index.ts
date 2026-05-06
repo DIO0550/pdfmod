@@ -50,7 +50,8 @@ export type PdfParseErrorCode =
 export type PdfErrorCode =
   | PdfParseErrorCode
   | "CIRCULAR_REFERENCE"
-  | "TYPE_MISMATCH";
+  | "TYPE_MISMATCH"
+  | "OPERATOR_ALREADY_REGISTERED";
 
 /**
  * PDFパースエラーを表すインターフェース。
@@ -122,6 +123,19 @@ export interface PdfTypeMismatchError {
 }
 
 /**
+ * Content stream operator registry の登録エラー。
+ * 同じ operator 名に複数 handler を登録しようとした場合に発生する。
+ */
+export interface PdfOperatorRegistryError {
+  /** エラーコード（常に "OPERATOR_ALREADY_REGISTERED"） */
+  readonly code: "OPERATOR_ALREADY_REGISTERED";
+  /** 人間可読なエラーメッセージ */
+  readonly message: string;
+  /** 重複登録された operator 名 */
+  readonly operatorName: string;
+}
+
+/**
  * 全致命的PDFエラーの判別共用体型。
  * パースエラー、循環参照エラー、型不一致エラーを包含する。
  *
@@ -140,4 +154,5 @@ export interface PdfTypeMismatchError {
 export type PdfError =
   | PdfParseError
   | PdfCircularReferenceError
-  | PdfTypeMismatchError;
+  | PdfTypeMismatchError
+  | PdfOperatorRegistryError;

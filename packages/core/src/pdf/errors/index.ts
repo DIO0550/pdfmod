@@ -6,6 +6,7 @@ export type {
   PdfCircularReferenceError,
   PdfError,
   PdfErrorCode,
+  PdfOperatorRegistryError,
   PdfParseError,
   PdfParseErrorCode,
   PdfTypeMismatchError,

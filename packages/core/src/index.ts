@@ -60,6 +60,7 @@ export type {
   PdfName,
   PdfNull,
   PdfObject,
+  PdfOperatorRegistryError,
   PdfParseError,
   PdfParseErrorCode,
   PdfReal,
