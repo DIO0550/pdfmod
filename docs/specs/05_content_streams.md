@@ -33,6 +33,110 @@ PDFページの視覚的な構成は、すべてコンテンツストリーム�
 
 この段階の `ContentStreamInterpreter` は、標準描画オペレータそのものを実装する層ではない。仕様上の `m` / `l` / `cm` / `BT` / `Tj` / `q` / `Q` などの意味解釈は、後続で `OperatorRegistry` に登録する handler 群が担う。
 
+### PDFファイル内での実際の位置
+
+`ContentStreamInterpreter` が扱うのは、PDFファイル全体のうち Page object の `/Contents` から参照される stream body である。
+
+```text
+PDF file
+  ├─ Header
+  ├─ Body objects
+  │   ├─ Catalog
+  │   ├─ Pages
+  │   ├─ Page
+  │   │   └─ /Contents -> Content stream  [今回の対象]
+  │   └─ Font / Image / Resource objects
+  ├─ XRef
+  └─ Trailer
+```
+
+実際のPDFオブジェクトでは、Page object が `/Contents` で stream object を参照する。
+
+```pdf
+3 0 obj
+<< /Type /Page
+   /Parent 2 0 R
+   /MediaBox [0 0 612 792]
+   /Resources << /Font << /F1 5 0 R >> >>
+   /Contents 4 0 R
+>>
+endobj
+
+4 0 obj
+<< /Length 45 >>
+stream
+q
+1 0 0 1 100 200 cm
+10 20 m
+200 20 l
+S
+Q
+endstream
+endobj
+```
+
+今回の interpreter が読むのは、上記のうち `stream` と `endstream` に挟まれた命令列である。
+
+```pdf
+q
+1 0 0 1 100 200 cm
+10 20 m
+200 20 l
+S
+Q
+```
+
+この命令列は、PDF の lexical token として次のように解釈される。
+
+```text
+q              operator
+1              operand
+0              operand
+0              operand
+1              operand
+100            operand
+200            operand
+cm             operator
+10             operand
+20             operand
+m              operator
+200            operand
+20             operand
+l              operator
+S              operator
+Q              operator
+EOF
+```
+
+`ContentStreamInterpreter` は operand token を `OperandStack` に積み、operator token が現れた時点で `OperatorRegistry` から handler を検索して実行する。
+
+```text
+content stream bytes
+  ↓
+ContentStreamTokenizer
+  ↓
+Token stream
+  ↓
+ContentStreamInterpreter
+  ├─ primitive token -> PdfObject -> OperandStack.push()
+  ├─ operator token  -> OperatorRegistry.lookup()
+  └─ EOF             -> final OperatorHandlerContext
+```
+
+例えば `1 0 0 1 100 200 cm` は、6つの numeric operand を stack に積んだ後、`cm` operator handler に dispatch される。
+
+```text
+1      -> push integer 1
+0      -> push integer 0
+0      -> push integer 0
+1      -> push integer 1
+100    -> push integer 100
+200    -> push integer 200
+cm     -> lookup("cm") -> handler(context)
+```
+
+この時点では `cm` の行列連結そのものは実装しない。`ContentStreamInterpreter` は「命令列を読む」「operand を積む」「operator handler に渡す」までを担当し、`cm` / `m` / `l` / `S` / `q` / `Q` などの意味処理は registry に登録される個別 handler の責務とする。
+
 ## 2. グラフィックスステートオペレータ
 
 ### 2.1 ステート管理
