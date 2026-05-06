@@ -193,7 +193,7 @@ export function skipWhitespaceAndComments(
 export function matchesBytesAt(
   data: Uint8Array,
   offset: number,
-  pattern: number[],
+  pattern: readonly number[],
 ): boolean {
   if (offset + pattern.length > data.length) {
     return false;

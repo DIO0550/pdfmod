@@ -23,9 +23,24 @@ test("TokenType.Operator メンバが定義されている", () => {
   expect(TokenType.Operator).toBe("Operator");
 });
 
+test("TokenType.InlineImage メンバが定義されている", () => {
+  expect(TokenType.InlineImage).toBe("InlineImage");
+});
+
 test("tokenDisplayString は Operator に対して name を返す", () => {
   const op = Operator.of("BT", ByteOffset.of(0));
   expect(tokenDisplayString(op)).toBe("BT");
+});
+
+test("tokenDisplayString は InlineImage に対して省略表現を返す", () => {
+  expect(
+    tokenDisplayString({
+      type: TokenType.InlineImage,
+      dict: [],
+      data: new Uint8Array(),
+      offset: ByteOffset.of(0),
+    }),
+  ).toBe("BI ... ID ... EI");
 });
 
 test("tokenDisplayString は Integer に対して数値の文字列化を返す", () => {
