@@ -2,18 +2,29 @@ import type { PdfError } from "../../pdf/errors/index";
 import type { Brand } from "../../utils/brand/index";
 import type { Option } from "../../utils/option/index";
 import { none, some } from "../../utils/option/index";
+import type { Result } from "../../utils/result/index";
+import { err, ok } from "../../utils/result/index";
 import type { GraphicsStateStack } from "../graphics-state/stack";
 import type { OperandStack } from "../operand-stack/index";
 
 declare const OperatorRegistryBrand: unique symbol;
 
 /**
+ * Content stream operator handler が受け取り、更新後に返す実行コンテキスト。
+ */
+export type OperatorHandlerContext = {
+  /** PDF content stream の operand stack */
+  readonly operandStack: OperandStack;
+  /** 現在の graphics state stack */
+  readonly graphicsStateStack: GraphicsStateStack;
+};
+
+/**
  * Content stream operator を実行するハンドラ。
  */
 export type OperatorHandler = (
-  stack: OperandStack,
-  state: GraphicsStateStack,
-) => Option<PdfError>;
+  context: OperatorHandlerContext,
+) => Result<OperatorHandlerContext, PdfError>;
 
 /**
  * operator 名から実行ハンドラを引く registry。
@@ -22,6 +33,7 @@ export type OperatorHandler = (
  *
  * 注: `handlers` フィールドは型システム上はモジュール外からも参照可能だが、
  * 規約上 private 扱いとし、外部から `registry.handlers` に直接アクセス・変更してはならない。
+ * 状態変更が必要な操作は元 registry を mutate せず、新しい registry を返す。
  * 公開 API は companion object（`create` / `register` / `lookup` / `has`）のみ。
  */
 export type OperatorRegistry = Brand<
@@ -46,26 +58,27 @@ export const OperatorRegistry = {
   /**
    * operator 名に handler を登録する。
    *
-   * @param registry - 登録先 registry（mutate される）
+   * @param registry - 登録元 registry
    * @param name - operator 名
    * @param handler - 実行 handler
-   * @returns 重複登録なら `Some(PdfError)`、成功なら `None`
+   * @returns 成功なら handler 追加済みの新しい `OperatorRegistry`、重複登録なら `PdfError`
    */
   register(
     registry: OperatorRegistry,
     name: string,
     handler: OperatorHandler,
-  ): Option<PdfError> {
+  ): Result<OperatorRegistry, PdfError> {
     if (registry.handlers.has(name)) {
-      return some({
+      return err({
         code: "OPERATOR_ALREADY_REGISTERED",
         message: `Operator is already registered: ${name}`,
         operatorName: name,
       });
     }
 
-    registry.handlers.set(name, handler);
-    return none;
+    return ok({
+      handlers: new Map(registry.handlers).set(name, handler),
+    } as unknown as OperatorRegistry);
   },
 
   /**

@@ -81,23 +81,30 @@ Q
 `OperatorRegistry` は `Map<string, OperatorHandler>` を内部に持つ branded type です。
 グローバル singleton ではなく `create()` で registry instance を生成するため、テスト間や interpreter instance 間で登録状態が共有されません。
 `handlers` フィールドは規約上 private 扱いで、外部コードは直接参照・変更せず companion object API を使います。
+companion object の操作は immutable を前提とし、受け取った registry は変更せず新しい registry を返します。
 
 ```ts
+export type OperatorHandlerContext = {
+  readonly operandStack: OperandStack;
+  readonly graphicsStateStack: GraphicsStateStack;
+};
+
 export type OperatorHandler = (
-  stack: OperandStack,
-  state: GraphicsStateStack,
-) => Option<PdfError>;
+  context: OperatorHandlerContext,
+) => Result<OperatorHandlerContext, PdfError>;
 ```
 
-handler の戻り値は `Option<PdfError>` です。
-成功時に値を返す必要がないため、`Result<void, PdfError>` ではなく「エラーがあれば `Some(error)`、なければ `None`」で表現します。
+handler は operand stack と graphics state stack をまとめた context を受け取り、成功時は更新後 context を返します。
+これにより、operator 実装も受け取った stack を直接変更せず、新しい実行状態を返す設計にできます。
 
 #### register
 
-`register(registry, name, handler)` は registry を mutate します。
+`register(registry, name, handler)` は registry を変更せず、成功時に handler 追加済みの新しい registry を返します。
+成功時に新しい値を生成する操作なので、戻り値は `Result<OperatorRegistry, PdfError>` です。
 
-- 未登録の operator 名なら handler を保存し、`None` を返す
-- 同名 operator が登録済みなら `Some(PdfOperatorRegistryError)` を返す
+- 未登録の operator 名なら handler 追加済みの新しい registry を `Ok` で返す
+- 同名 operator が登録済みなら `Err(PdfOperatorRegistryError)` を返す
+- 元 registry は成功時も失敗時も変更しない
 - 重複登録時は既存 handler を上書きしない
 - operator 名の妥当性検証は行わず、空文字も通常の `Map` key として扱う
 
@@ -123,12 +130,13 @@ local `main` に `GraphicsStateStack` の実装シンボルがなかったため
 
 `GraphicsStateStack` は現在状態 `current` と保存済み状態 `saved` を持ちます。
 `current` / `saved` フィールドは規約上 private 扱いで、外部コードは直接参照・変更せず companion object API を使います。
+companion object の操作は immutable を前提とし、受け取った stack は変更せず新しい stack を返します。
 
 - `create()` はデフォルト `GraphicsState` を current に持つ stack を作る
-- `save()` は current を LIFO stack に保存し、常に `None` を返す
-- `restore()` は直近の saved state を current に戻し、常に `None` を返す
-- saved state がない `restore()` は no-op として `None` を返す
-- `replaceCurrent()` は current を明示的に差し替える
+- `save()` は current を LIFO stack に保存した新しい stack を返す
+- `restore()` は直近の saved state を current に戻した新しい stack を返す
+- saved state がない `restore()` は current を維持した新しい stack を返す
+- `replaceCurrent()` は current を差し替えた新しい stack を返す
 
 `GraphicsState` 型は `graphics-state.ts` に分離し、`graphics-state/index.ts` と `stack.ts` の循環依存を避けています。
 
@@ -145,14 +153,15 @@ PDF 仕様そのものに「operator registry」は登場しません。
 `packages/core/src/content-stream/operator-registry/index.test.ts` では次を検証しています。
 
 - 作成直後の registry は未登録 operator を持たない
-- `register` 後に `lookup` が同じ handler を `Some` で返す
-- `register` 後に `has` が `true` を返す
+- `register` 後の新しい registry で `lookup` が同じ handler を `Some` で返す
+- `register` は元 registry を変更しない
+- `register` 後の新しい registry で `has` が `true` を返す
 - 異なる operator 名は独立して登録できる
 - 同名 operator の重複登録は `OPERATOR_ALREADY_REGISTERED` を返す
 - 重複登録後も既存 handler を保持する
 - 空文字 operator 名は妥当性検証せず通常 key として登録する
 
-`packages/core/src/content-stream/graphics-state/stack.basic.test.ts` では `save` / `restore` の LIFO 挙動、空 stack restore の no-op、`replaceCurrent` を検証しています。
+`packages/core/src/content-stream/graphics-state/stack.basic.test.ts` では `save` / `restore` の LIFO 挙動、空 stack restore の no-op、`replaceCurrent`、および元 stack を変更しないことを検証しています。
 
 error type 側では `PdfOperatorRegistryError` が `PdfError` union と root type export から扱えることを検証しています。
 
@@ -163,6 +172,7 @@ error type 側では `PdfOperatorRegistryError` が `PdfError` union と root ty
 - `OperatorRegistry` は handler の実行順や operand 数の検証を行わない
 - operator 名の構文検証は行わない
 - 未登録 operator を PDF 処理エラーに変換する処理は未実装
+- 既存 `OperandStack` は mutable API のままで、後続 interpreter 実装時に immutable context 方針へ合わせる必要がある
 - `GraphicsStateStack` は `q` / `Q` の保存・復元モデルのみを扱い、CTM、色、線幅などの具体的な state 変更 operator はまだ扱わない
 
 これらは後続フェーズで interpreter と個別 operator handler を追加するときに扱います。
