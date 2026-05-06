@@ -2,9 +2,11 @@ import { expect, test } from "vitest";
 import {
   ByteOffset,
   CatalogParser,
+  ContentStreamInterpreter,
   ContentStreamTokenizer,
   DocumentInfoParser,
   GenerationNumber,
+  GraphicsStateStack,
   InheritanceResolver,
   LRUCache,
   ObjectNumber,
@@ -12,7 +14,9 @@ import {
   ObjectStore,
   ObjectStreamBody,
   ObjectStreamHeader,
+  OperandStack,
   Operator,
+  OperatorRegistry,
   PageTreeWalker,
   PdfDocument,
   PdfPage,
@@ -26,7 +30,14 @@ import {
 } from "./index";
 
 test.each([
+  {
+    name: "ContentStreamInterpreter.execute",
+    value: ContentStreamInterpreter.execute,
+  },
   { name: "ContentStreamTokenizer", value: ContentStreamTokenizer },
+  { name: "GraphicsStateStack.create", value: GraphicsStateStack.create },
+  { name: "OperandStack.create", value: OperandStack.create },
+  { name: "OperatorRegistry.create", value: OperatorRegistry.create },
   { name: "Tokenizer", value: Tokenizer },
   { name: "LRUCache.create", value: LRUCache.create },
   { name: "scanStartXRef", value: scanStartXRef },
