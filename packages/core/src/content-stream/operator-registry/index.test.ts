@@ -1,10 +1,10 @@
 import { expect, test } from "vitest";
 import type { PdfError } from "../../pdf/errors/index";
-import { none } from "../../utils/option/index";
+import { ok, unwrapOr } from "../../utils/result/index";
 import { type OperatorHandler, OperatorRegistry } from "./index";
 
-const firstHandler: OperatorHandler = () => none;
-const secondHandler: OperatorHandler = () => none;
+const firstHandler: OperatorHandler = (context) => ok(context);
+const secondHandler: OperatorHandler = (context) => ok(context);
 
 test("createしたregistryは未登録operatorを持たない", () => {
   const registry = OperatorRegistry.create();
@@ -16,38 +16,53 @@ test("createしたregistryは未登録operatorを持たない", () => {
 test("register後lookupはhandlerをsomeで返す", () => {
   const registry = OperatorRegistry.create();
 
-  const error = OperatorRegistry.register(registry, "m", firstHandler);
+  const result = OperatorRegistry.register(registry, "m", firstHandler);
+  const updated = unwrapOr(result, registry);
 
-  expect(error).toEqual({ some: false });
-  expect(OperatorRegistry.lookup(registry, "m")).toEqual({
+  expect(result.ok).toBe(true);
+  expect(updated).not.toBe(registry);
+  expect(OperatorRegistry.lookup(updated, "m")).toEqual({
     some: true,
     value: firstHandler,
   });
+});
+
+test("registerは元registryを変更しない", () => {
+  const registry = OperatorRegistry.create();
+
+  OperatorRegistry.register(registry, "m", firstHandler);
+
+  expect(OperatorRegistry.lookup(registry, "m")).toEqual({ some: false });
 });
 
 test("register後hasはtrueを返す", () => {
   const registry = OperatorRegistry.create();
 
-  OperatorRegistry.register(registry, "BT", firstHandler);
+  const result = OperatorRegistry.register(registry, "BT", firstHandler);
+  const updated = unwrapOr(result, registry);
 
-  expect(OperatorRegistry.has(registry, "BT")).toBe(true);
+  expect(OperatorRegistry.has(updated, "BT")).toBe(true);
 });
 
 test("異なるoperator名は独立して登録できる", () => {
   const registry = OperatorRegistry.create();
 
-  expect(OperatorRegistry.register(registry, "m", firstHandler)).toEqual({
-    some: false,
-  });
-  expect(OperatorRegistry.register(registry, "l", secondHandler)).toEqual({
-    some: false,
-  });
+  const firstResult = OperatorRegistry.register(registry, "m", firstHandler);
+  const firstRegistry = unwrapOr(firstResult, registry);
+  const secondResult = OperatorRegistry.register(
+    firstRegistry,
+    "l",
+    secondHandler,
+  );
+  const secondRegistry = unwrapOr(secondResult, firstRegistry);
 
-  expect(OperatorRegistry.lookup(registry, "m")).toEqual({
+  expect(firstResult.ok).toBe(true);
+  expect(secondResult.ok).toBe(true);
+  expect(OperatorRegistry.lookup(secondRegistry, "m")).toEqual({
     some: true,
     value: firstHandler,
   });
-  expect(OperatorRegistry.lookup(registry, "l")).toEqual({
+  expect(OperatorRegistry.lookup(secondRegistry, "l")).toEqual({
     some: true,
     value: secondHandler,
   });
@@ -56,12 +71,13 @@ test("異なるoperator名は独立して登録できる", () => {
 test("同名operatorの重複登録はエラーを返す", () => {
   const registry = OperatorRegistry.create();
 
-  OperatorRegistry.register(registry, "rg", firstHandler);
-  const error = OperatorRegistry.register(registry, "rg", secondHandler);
+  const firstResult = OperatorRegistry.register(registry, "rg", firstHandler);
+  const firstRegistry = unwrapOr(firstResult, registry);
+  const error = OperatorRegistry.register(firstRegistry, "rg", secondHandler);
 
   expect(error).toEqual({
-    some: true,
-    value: {
+    ok: false,
+    error: {
       code: "OPERATOR_ALREADY_REGISTERED",
       message: "Operator is already registered: rg",
       operatorName: "rg",
@@ -72,10 +88,17 @@ test("同名operatorの重複登録はエラーを返す", () => {
 test("重複登録後も既存handlerを保持する", () => {
   const registry = OperatorRegistry.create();
 
-  OperatorRegistry.register(registry, "rg", firstHandler);
-  OperatorRegistry.register(registry, "rg", secondHandler);
+  const firstResult = OperatorRegistry.register(registry, "rg", firstHandler);
+  const firstRegistry = unwrapOr(firstResult, registry);
+  const secondResult = OperatorRegistry.register(
+    firstRegistry,
+    "rg",
+    secondHandler,
+  );
+  const secondRegistry = unwrapOr(secondResult, firstRegistry);
 
-  expect(OperatorRegistry.lookup(registry, "rg")).toEqual({
+  expect(secondResult.ok).toBe(false);
+  expect(OperatorRegistry.lookup(secondRegistry, "rg")).toEqual({
     some: true,
     value: firstHandler,
   });
@@ -84,8 +107,9 @@ test("重複登録後も既存handlerを保持する", () => {
 test("空文字operator名は妥当性検証せず通常keyとして登録する", () => {
   const registry = OperatorRegistry.create();
 
-  const error = OperatorRegistry.register(registry, "", firstHandler);
+  const result = OperatorRegistry.register(registry, "", firstHandler);
+  const updated = unwrapOr(result, registry);
 
-  expect(error).toEqual({ some: false });
-  expect(OperatorRegistry.has(registry, "")).toBe(true);
+  expect(result.ok).toBe(true);
+  expect(OperatorRegistry.has(updated, "")).toBe(true);
 });
