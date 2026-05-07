@@ -2,6 +2,7 @@ import {
   decodeHexString,
   decodeLiteralString,
 } from "../../objects/object-parser/string-decoder/index";
+import type { PdfWarning } from "../../pdf/errors/warning/index";
 import type { PdfError, PdfObject, Token } from "../../pdf/index";
 import { TokenType } from "../../pdf/index";
 import type { Option } from "../../utils/option/index";
@@ -24,11 +25,16 @@ export type ContentStreamInterpreterExecuteOptions = {
 
 export type ContentStreamInterpreterResult = {
   readonly context: OperatorHandlerContext;
+  readonly warnings: readonly PdfWarning[];
+};
+
+type InterpreterDoneResult = {
+  readonly context: OperatorHandlerContext;
 };
 
 type InterpreterStep =
   | { readonly type: "continue"; readonly context: OperatorHandlerContext }
-  | { readonly type: "done"; readonly result: ContentStreamInterpreterResult };
+  | { readonly type: "done"; readonly result: InterpreterDoneResult };
 
 export const ContentStreamInterpreter = {
   /**
@@ -42,6 +48,7 @@ export const ContentStreamInterpreter = {
   ): Result<ContentStreamInterpreterResult, PdfError> {
     const tokenizer = new ContentStreamTokenizer(options.data);
     let context = createInitialContext(options.initialContext);
+    const warnings: PdfWarning[] = [];
 
     while (true) {
       const tokenResult = tokenizer.nextToken();
@@ -53,13 +60,17 @@ export const ContentStreamInterpreter = {
         token: tokenResult.value,
         registry: options.registry,
         context,
+        warnings,
       });
       if (!step.ok) {
         return err(step.error);
       }
 
       if (step.value.type === "done") {
-        return ok(step.value.result);
+        return ok({
+          context: step.value.result.context,
+          warnings,
+        });
       }
 
       context = step.value.context;
@@ -70,13 +81,14 @@ export const ContentStreamInterpreter = {
 /**
  * 1 token を分類し、EOF / operator dispatch / operand push のいずれかを実行する。
  *
- * @param options - 実行対象tokenと現在context
+ * @param options - 実行対象token、現在context、warnings バッファ
  * @returns 次step、または処理エラー
  */
 function executeToken(options: {
   readonly token: Token;
   readonly registry: OperatorRegistry;
   readonly context: OperatorHandlerContext;
+  readonly warnings: PdfWarning[];
 }): Result<InterpreterStep, PdfError> {
   if (options.token.type === TokenType.EOF) {
     return ok({ type: "done", result: { context: options.context } });
@@ -87,6 +99,7 @@ function executeToken(options: {
       token: options.token,
       registry: options.registry,
       context: options.context,
+      warnings: options.warnings,
     });
   }
 
@@ -94,18 +107,24 @@ function executeToken(options: {
 }
 
 /**
- * 登録済みoperator handlerを呼び出す。未登録operatorはoperand stackをclearして継続する。
+ * 登録済みoperator handlerを呼び出す。未登録operatorはUNKNOWN_OPERATOR warningを
+ * emitし、operand stackをclearして継続する。
  *
- * @param options - operator token、registry、現在context
+ * @param options - operator token、registry、現在context、warnings バッファ
  * @returns 次step、またはhandlerエラー
  */
 function dispatchOperator(options: {
   readonly token: Extract<Token, { readonly type: TokenType.Operator }>;
   readonly registry: OperatorRegistry;
   readonly context: OperatorHandlerContext;
+  readonly warnings: PdfWarning[];
 }): Result<InterpreterStep, PdfError> {
   const handler = OperatorRegistry.lookup(options.registry, options.token.name);
   if (!handler.some) {
+    options.warnings.push({
+      code: "UNKNOWN_OPERATOR",
+      message: `Unknown operator: ${options.token.name}`,
+    });
     OperandStack.clear(options.context.operandStack);
     return ok({ type: "continue", context: options.context });
   }
