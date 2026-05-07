@@ -236,7 +236,11 @@ test("未登録operatorに遭遇するとUNKNOWN_OPERATOR warningが1件emitさ�
 
   assert(result.ok);
   expect(result.value.warnings).toEqual([
-    { code: "UNKNOWN_OPERATOR", message: "Unknown operator: unknown" },
+    {
+      code: "UNKNOWN_OPERATOR",
+      message: "Unknown operator: unknown",
+      offset: 4,
+    },
   ]);
 });
 
@@ -269,8 +273,16 @@ test("同じ未登録operatorが2回現れるとwarningが2件emitされる", ()
 
   assert(result.ok);
   expect(result.value.warnings).toEqual([
-    { code: "UNKNOWN_OPERATOR", message: "Unknown operator: unknown" },
-    { code: "UNKNOWN_OPERATOR", message: "Unknown operator: unknown" },
+    {
+      code: "UNKNOWN_OPERATOR",
+      message: "Unknown operator: unknown",
+      offset: 0,
+    },
+    {
+      code: "UNKNOWN_OPERATOR",
+      message: "Unknown operator: unknown",
+      offset: 8,
+    },
   ]);
 });
 
@@ -282,7 +294,11 @@ test("空のoperand stackで未登録operatorに遭遇してもwarningが1件emi
 
   assert(result.ok);
   expect(result.value.warnings).toEqual([
-    { code: "UNKNOWN_OPERATOR", message: "Unknown operator: unknown" },
+    {
+      code: "UNKNOWN_OPERATOR",
+      message: "Unknown operator: unknown",
+      offset: 0,
+    },
   ]);
 });
 
@@ -294,9 +310,9 @@ test("未登録operatorが連続するとwarningが連続emitされる", () => {
 
   assert(result.ok);
   expect(result.value.warnings).toEqual([
-    { code: "UNKNOWN_OPERATOR", message: "Unknown operator: foo" },
-    { code: "UNKNOWN_OPERATOR", message: "Unknown operator: bar" },
-    { code: "UNKNOWN_OPERATOR", message: "Unknown operator: baz" },
+    { code: "UNKNOWN_OPERATOR", message: "Unknown operator: foo", offset: 0 },
+    { code: "UNKNOWN_OPERATOR", message: "Unknown operator: bar", offset: 4 },
+    { code: "UNKNOWN_OPERATOR", message: "Unknown operator: baz", offset: 8 },
   ]);
 });
 

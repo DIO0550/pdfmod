@@ -124,6 +124,7 @@ function dispatchOperator(options: {
     options.warnings.push({
       code: "UNKNOWN_OPERATOR",
       message: `Unknown operator: ${options.token.name}`,
+      offset: options.token.offset as number,
     });
     OperandStack.clear(options.context.operandStack);
     return ok({ type: "continue", context: options.context });
