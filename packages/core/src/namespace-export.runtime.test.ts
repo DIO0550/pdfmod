@@ -6,6 +6,7 @@ import {
   ContentStreamTokenizer,
   DocumentInfoParser,
   GenerationNumber,
+  GraphicsState,
   GraphicsStateStack,
   InheritanceResolver,
   LRUCache,
@@ -16,6 +17,7 @@ import {
   ObjectStreamHeader,
   OperandStack,
   Operator,
+  type OperatorHandler,
   OperatorRegistry,
   PageTreeWalker,
   PdfDocument,
@@ -24,6 +26,7 @@ import {
   PdfVersion,
   parseTrailer,
   parseXRefTable,
+  Result,
   scanStartXRef,
   Tokenizer,
   TokenType,
@@ -35,6 +38,8 @@ test.each([
     value: ContentStreamInterpreter.execute,
   },
   { name: "ContentStreamTokenizer", value: ContentStreamTokenizer },
+  { name: "GraphicsState.create", value: GraphicsState.create },
+  { name: "GraphicsState.update", value: GraphicsState.update },
   { name: "GraphicsStateStack.create", value: GraphicsStateStack.create },
   { name: "OperandStack.create", value: OperandStack.create },
   { name: "OperatorRegistry.create", value: OperatorRegistry.create },
@@ -94,4 +99,18 @@ test("Operatorコンパニオンがルートからexportされている", () => 
   expect(op.type).toBe(TokenType.Operator);
   expect(op.name).toBe("m");
   expect(op.offset).toBe(42);
+});
+
+test("OperatorRegistry.registerでルート公開済みのAPIだけからoperatorを拡張できる", () => {
+  const handler: OperatorHandler = (context) => Result.ok(context);
+  const registry = OperatorRegistry.create();
+  const result = OperatorRegistry.register(registry, "m", handler);
+  const updated = Result.unwrapOr(result, registry);
+
+  expect(result.ok).toBe(true);
+  expect(updated).not.toBe(registry);
+  expect(OperatorRegistry.lookup(updated, "m")).toEqual({
+    some: true,
+    value: handler,
+  });
 });
