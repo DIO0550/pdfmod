@@ -204,9 +204,10 @@ test("登録済みhandlerの更新contextは次operatorと最終resultへ引き�
     some: true,
     value: { type: "integer", value: 99 },
   });
+  expect(result.value.warnings).toEqual([]);
 });
 
-test("未登録operatorは直前operandsをclearして後続処理を継続する", () => {
+test("未登録operatorに遭遇するとoperand stackがclearされ後続処理が継続する", () => {
   const observed: PdfObject[][] = [];
   const registry = registerOperator(
     OperatorRegistry.create(),
@@ -224,6 +225,95 @@ test("未登録operatorは直前operandsをclearして後続処理を継続す�
 
   assert(result.ok);
   expect(observed).toEqual([[{ type: "integer", value: 3 }]]);
+  expect(result.value.warnings).toHaveLength(1);
+});
+
+test("未登録operatorに遭遇するとUNKNOWN_OPERATOR warningが1件emitされる", () => {
+  const result = ContentStreamInterpreter.execute({
+    data: encode("1 2 unknown"),
+    registry: OperatorRegistry.create(),
+  });
+
+  assert(result.ok);
+  expect(result.value.warnings).toEqual([
+    {
+      code: "UNKNOWN_OPERATOR",
+      message: "Unknown operator: unknown",
+      offset: 4,
+    },
+  ]);
+});
+
+test("未登録operatorのwarning emit後、後続の登録済みoperatorが正常dispatchされる", () => {
+  const observed: PdfObject[][] = [];
+  const registry = registerOperator(
+    OperatorRegistry.create(),
+    "capture",
+    (context) => {
+      observed.push(popAll(context.operandStack));
+      return ok(context);
+    },
+  );
+
+  const result = ContentStreamInterpreter.execute({
+    data: encode("unknown 42 capture"),
+    registry,
+  });
+
+  assert(result.ok);
+  expect(observed).toEqual([[{ type: "integer", value: 42 }]]);
+  expect(result.value.warnings).toHaveLength(1);
+});
+
+test("同じ未登録operatorが2回現れるとwarningが2件emitされる", () => {
+  const result = ContentStreamInterpreter.execute({
+    data: encode("unknown unknown"),
+    registry: OperatorRegistry.create(),
+  });
+
+  assert(result.ok);
+  expect(result.value.warnings).toEqual([
+    {
+      code: "UNKNOWN_OPERATOR",
+      message: "Unknown operator: unknown",
+      offset: 0,
+    },
+    {
+      code: "UNKNOWN_OPERATOR",
+      message: "Unknown operator: unknown",
+      offset: 8,
+    },
+  ]);
+});
+
+test("空のoperand stackで未登録operatorに遭遇してもwarningが1件emitされエラーにならない", () => {
+  const result = ContentStreamInterpreter.execute({
+    data: encode("unknown"),
+    registry: OperatorRegistry.create(),
+  });
+
+  assert(result.ok);
+  expect(result.value.warnings).toEqual([
+    {
+      code: "UNKNOWN_OPERATOR",
+      message: "Unknown operator: unknown",
+      offset: 0,
+    },
+  ]);
+});
+
+test("未登録operatorが連続するとwarningが連続emitされる", () => {
+  const result = ContentStreamInterpreter.execute({
+    data: encode("foo bar baz"),
+    registry: OperatorRegistry.create(),
+  });
+
+  assert(result.ok);
+  expect(result.value.warnings).toEqual([
+    { code: "UNKNOWN_OPERATOR", message: "Unknown operator: foo", offset: 0 },
+    { code: "UNKNOWN_OPERATOR", message: "Unknown operator: bar", offset: 4 },
+    { code: "UNKNOWN_OPERATOR", message: "Unknown operator: baz", offset: 8 },
+  ]);
 });
 
 test("handlerのErrは同じerrorを返して後続operatorを実行しない", () => {
