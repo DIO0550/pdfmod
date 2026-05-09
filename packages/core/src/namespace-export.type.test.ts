@@ -15,6 +15,7 @@ import type {
 import {
   ContentStreamInterpreter,
   ContentStreamTokenizer,
+  GraphicsState,
   OperatorRegistry,
   Option,
   PdfVersion,
@@ -58,6 +59,11 @@ test("Result.Result型が参照できる", () => {
 test("Option.Option型が参照できる", () => {
   const o: Option.Option<number> = Option.some(42);
   expect(o.some).toBe(true);
+});
+
+test("GraphicsState型とコンパニオンがルートから参照できる", () => {
+  const state: GraphicsState = GraphicsState.create();
+  expect(typeof state.lineWidth).toBe("number");
 });
 
 test("ContentStreamTokenizerがルートから参照できる", () => {
