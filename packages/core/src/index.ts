@@ -75,6 +75,8 @@ export type {
   PdfName,
   PdfNull,
   PdfObject,
+  PdfOperatorOperandMissingError,
+  PdfOperatorOperandTypeMismatchError,
   PdfOperatorRegistryError,
   PdfParseError,
   PdfParseErrorCode,

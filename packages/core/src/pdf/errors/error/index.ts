@@ -51,7 +51,9 @@ export type PdfErrorCode =
   | PdfParseErrorCode
   | "CIRCULAR_REFERENCE"
   | "TYPE_MISMATCH"
-  | "OPERATOR_ALREADY_REGISTERED";
+  | "OPERATOR_ALREADY_REGISTERED"
+  | "OPERATOR_OPERAND_MISSING"
+  | "OPERATOR_OPERAND_TYPE_MISMATCH";
 
 /**
  * PDFパースエラーを表すインターフェース。
@@ -136,6 +138,62 @@ export interface PdfOperatorRegistryError {
 }
 
 /**
+ * Content stream operator のオペランド不足エラー。
+ * handler が必要とする数のオペランドが operand stack に積まれていない場合に発生する。
+ *
+ * @example
+ * ```ts
+ * const error: PdfOperatorOperandMissingError = {
+ *   code: "OPERATOR_OPERAND_MISSING",
+ *   message: "Operator 'w' requires 1 operand(s), got 0",
+ *   operatorName: "w",
+ *   required: 1,
+ *   actual: 0,
+ * };
+ * ```
+ */
+export interface PdfOperatorOperandMissingError {
+  /** エラーコード（常に "OPERATOR_OPERAND_MISSING"） */
+  readonly code: "OPERATOR_OPERAND_MISSING";
+  /** 人間可読なエラーメッセージ */
+  readonly message: string;
+  /** 不足を検出した operator 名 */
+  readonly operatorName: string;
+  /** handler が必要とするオペランド数 */
+  readonly required: number;
+  /** 実際に存在したオペランド数 */
+  readonly actual: number;
+}
+
+/**
+ * Content stream operator のオペランド型不一致エラー。
+ * pop した PdfObject の `type` が handler の期待する型と一致しない場合に発生する。
+ *
+ * @example
+ * ```ts
+ * const error: PdfOperatorOperandTypeMismatchError = {
+ *   code: "OPERATOR_OPERAND_TYPE_MISMATCH",
+ *   message: "Operator 'w' expected number operand, got name",
+ *   operatorName: "w",
+ *   expected: "number",
+ *   actual: "name",
+ * };
+ * ```
+ */
+export interface PdfOperatorOperandTypeMismatchError {
+  /** エラーコード（常に "OPERATOR_OPERAND_TYPE_MISMATCH"） */
+  readonly code: "OPERATOR_OPERAND_TYPE_MISMATCH";
+  /** 人間可読なエラーメッセージ */
+  readonly message: string;
+  /** 不一致を検出した operator 名 */
+  readonly operatorName: string;
+  /** 期待されるオペランド型（例: "number"） */
+  readonly expected: string;
+  /** 実際の `PdfObject['type']` 値（例: "name" / "boolean"） */
+  readonly actual: string;
+}
+
+/**
  * 全致命的PDFエラーの判別共用体型。
  * パースエラー、循環参照エラー、型不一致エラー、operator registry エラーを包含する。
  *
@@ -155,4 +213,6 @@ export type PdfError =
   | PdfParseError
   | PdfCircularReferenceError
   | PdfTypeMismatchError
-  | PdfOperatorRegistryError;
+  | PdfOperatorRegistryError
+  | PdfOperatorOperandMissingError
+  | PdfOperatorOperandTypeMismatchError;
