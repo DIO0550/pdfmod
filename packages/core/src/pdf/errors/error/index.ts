@@ -187,9 +187,12 @@ export interface PdfOperatorOperandTypeMismatchError {
   readonly message: string;
   /** 不一致を検出した operator 名 */
   readonly operatorName: string;
-  /** 期待されるオペランド型（例: "number"） */
+  /** 期待されるオペランド型を表す文字列（例: "number"） */
   readonly expected: string;
-  /** 実際の `PdfObject['type']` 値（例: "name" / "boolean"） */
+  /**
+   * 実際に pop された PdfObject の `type` を表す文字列（例: "name" / "boolean"）。
+   * 型レベルでは `PdfObject['type']` 制約は持たず、後続 operator が独自型名を渡せる汎用 string とする。
+   */
   readonly actual: string;
 }
 
