@@ -198,7 +198,8 @@ export interface PdfOperatorOperandTypeMismatchError {
 
 /**
  * 全致命的PDFエラーの判別共用体型。
- * パースエラー、循環参照エラー、型不一致エラー、operator registry エラーを包含する。
+ * パースエラー、循環参照エラー、型不一致エラー、operator registry エラー、
+ * operator オペランド不足／型不一致エラーを包含する。
  *
  * @example
  * ```ts
