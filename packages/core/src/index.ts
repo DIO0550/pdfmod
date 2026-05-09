@@ -5,7 +5,10 @@
  * @packageDocumentation
  */
 
-export { GraphicsStateStack } from "./content-stream/graphics-state/index";
+export {
+  GraphicsState,
+  GraphicsStateStack,
+} from "./content-stream/graphics-state/index";
 export type {
   ContentStreamInterpreterExecuteOptions,
   ContentStreamInterpreterResult,
