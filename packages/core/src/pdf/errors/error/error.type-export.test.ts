@@ -2,7 +2,10 @@ import { expect, test } from "vitest";
 import type {
   ObjectId,
   PdfCircularReferenceError,
+  PdfError,
   PdfErrorCode,
+  PdfOperatorOperandMissingError,
+  PdfOperatorOperandTypeMismatchError,
   PdfOperatorRegistryError,
   PdfParseError,
   PdfParseErrorCode,
@@ -97,4 +100,46 @@ test("型エクスポートが利用可能", () => {
   expect(typeError.code).toBe("TYPE_MISMATCH");
   expect(operatorRegistryError.operatorName).toBe("rg");
   expect(operatorRegistryErrorCode).toBe("OPERATOR_ALREADY_REGISTERED");
+});
+
+test("PdfOperatorOperandMissingError は PdfError union から narrow できる", () => {
+  const operandMissingError: PdfOperatorOperandMissingError = {
+    code: "OPERATOR_OPERAND_MISSING",
+    message: "Operator 'w' requires 1 operand(s), got 0",
+    operatorName: "w",
+    required: 1,
+    actual: 0,
+  };
+  const error: PdfError = operandMissingError;
+
+  const narrowed: Exact<
+    Extract<PdfError, { code: "OPERATOR_OPERAND_MISSING" }>,
+    PdfOperatorOperandMissingError
+  > = true;
+
+  expect(narrowed).toBe(true);
+  expect(error.code).toBe("OPERATOR_OPERAND_MISSING");
+  expect(operandMissingError.required).toBe(1);
+  expect(operandMissingError.actual).toBe(0);
+});
+
+test("PdfOperatorOperandTypeMismatchError は PdfError union から narrow できる", () => {
+  const typeMismatchError: PdfOperatorOperandTypeMismatchError = {
+    code: "OPERATOR_OPERAND_TYPE_MISMATCH",
+    message: "Operator 'w' expected number operand, got name",
+    operatorName: "w",
+    expected: "number",
+    actual: "name",
+  };
+  const error: PdfError = typeMismatchError;
+
+  const narrowed: Exact<
+    Extract<PdfError, { code: "OPERATOR_OPERAND_TYPE_MISMATCH" }>,
+    PdfOperatorOperandTypeMismatchError
+  > = true;
+
+  expect(narrowed).toBe(true);
+  expect(error.code).toBe("OPERATOR_OPERAND_TYPE_MISMATCH");
+  expect(typeMismatchError.expected).toBe("number");
+  expect(typeMismatchError.actual).toBe("name");
 });

@@ -64,6 +64,36 @@ test("PdfOperatorRegistryErrorはoperatorNameを持つ", () => {
   ).toBe("rg");
 });
 
+test("PdfOperatorOperandMissingError は code/operatorName/required/actual を保持する", () => {
+  const error: Extract<PdfError, { code: "OPERATOR_OPERAND_MISSING" }> = {
+    code: "OPERATOR_OPERAND_MISSING",
+    message: "Operator 'w' requires 1 operand(s), got 0",
+    operatorName: "w",
+    required: 1,
+    actual: 0,
+  };
+
+  expect(error.code).toBe("OPERATOR_OPERAND_MISSING");
+  expect(error.operatorName).toBe("w");
+  expect(error.required).toBe(1);
+  expect(error.actual).toBe(0);
+});
+
+test("PdfOperatorOperandTypeMismatchError は expected/actual を保持する", () => {
+  const error: Extract<PdfError, { code: "OPERATOR_OPERAND_TYPE_MISMATCH" }> = {
+    code: "OPERATOR_OPERAND_TYPE_MISMATCH",
+    message: "Operator 'w' expected number operand, got name",
+    operatorName: "w",
+    expected: "number",
+    actual: "name",
+  };
+
+  expect(error.code).toBe("OPERATOR_OPERAND_TYPE_MISMATCH");
+  expect(error.operatorName).toBe("w");
+  expect(error.expected).toBe("number");
+  expect(error.actual).toBe("name");
+});
+
 test("PdfParseErrorのoffsetは省略可能", () => {
   const withOffset: PdfParseError = {
     code: "INVALID_HEADER",
