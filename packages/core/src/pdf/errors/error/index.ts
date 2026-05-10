@@ -53,7 +53,8 @@ export type PdfErrorCode =
   | "TYPE_MISMATCH"
   | "OPERATOR_ALREADY_REGISTERED"
   | "OPERATOR_OPERAND_MISSING"
-  | "OPERATOR_OPERAND_TYPE_MISMATCH";
+  | "OPERATOR_OPERAND_TYPE_MISMATCH"
+  | "OPERATOR_OPERAND_VALUE_OUT_OF_RANGE";
 
 /**
  * PDFパースエラーを表すインターフェース。
@@ -197,6 +198,38 @@ export interface PdfOperatorOperandTypeMismatchError {
 }
 
 /**
+ * Content stream operator のオペランド値域外エラー。
+ * categorical operand (line cap 0|1|2 / line join 0|1|2 / text rendering mode 0..7 等) の
+ * 値が許容集合に含まれない場合に発生する。
+ *
+ * - `allowed` は汎用 number 配列 (operator 側で `[0, 1, 2]` 等を渡す)。
+ * - `actual` は pop された生の数値 (例: 3, -1, MAX_SAFE_INTEGER)。
+ *
+ * @example
+ * ```ts
+ * const error: PdfOperatorOperandValueOutOfRangeError = {
+ *   code: "OPERATOR_OPERAND_VALUE_OUT_OF_RANGE",
+ *   message: "Operator 'J' operand value 3 is out of range, expected one of [0, 1, 2]",
+ *   operatorName: "J",
+ *   allowed: [0, 1, 2],
+ *   actual: 3,
+ * };
+ * ```
+ */
+export interface PdfOperatorOperandValueOutOfRangeError {
+  /** エラーコード（常に "OPERATOR_OPERAND_VALUE_OUT_OF_RANGE"） */
+  readonly code: "OPERATOR_OPERAND_VALUE_OUT_OF_RANGE";
+  /** 人間可読なエラーメッセージ */
+  readonly message: string;
+  /** 値域外を検出した operator 名 */
+  readonly operatorName: string;
+  /** operator が許容する categorical 値の集合 */
+  readonly allowed: readonly number[];
+  /** 実際に pop された数値 */
+  readonly actual: number;
+}
+
+/**
  * 全致命的PDFエラーの判別共用体型。
  * パースエラー、循環参照エラー、型不一致エラー、operator registry エラー、
  * operator オペランド不足／型不一致エラーを包含する。
@@ -219,4 +252,5 @@ export type PdfError =
   | PdfTypeMismatchError
   | PdfOperatorRegistryError
   | PdfOperatorOperandMissingError
-  | PdfOperatorOperandTypeMismatchError;
+  | PdfOperatorOperandTypeMismatchError
+  | PdfOperatorOperandValueOutOfRangeError;

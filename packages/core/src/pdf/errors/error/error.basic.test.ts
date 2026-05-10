@@ -94,6 +94,25 @@ test("PdfOperatorOperandTypeMismatchError は expected/actual を保持する", 
   expect(error.actual).toBe("name");
 });
 
+test("PdfOperatorOperandValueOutOfRangeError は operatorName/allowed/actual を保持する", () => {
+  const error: Extract<
+    PdfError,
+    { code: "OPERATOR_OPERAND_VALUE_OUT_OF_RANGE" }
+  > = {
+    code: "OPERATOR_OPERAND_VALUE_OUT_OF_RANGE",
+    message:
+      "Operator 'J' operand value 3 is out of range, expected one of [0, 1, 2]",
+    operatorName: "J",
+    allowed: [0, 1, 2],
+    actual: 3,
+  };
+
+  expect(error.code).toBe("OPERATOR_OPERAND_VALUE_OUT_OF_RANGE");
+  expect(error.operatorName).toBe("J");
+  expect(error.allowed).toEqual([0, 1, 2]);
+  expect(error.actual).toBe(3);
+});
+
 test("PdfParseErrorのoffsetは省略可能", () => {
   const withOffset: PdfParseError = {
     code: "INVALID_HEADER",
