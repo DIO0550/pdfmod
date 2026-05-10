@@ -20,7 +20,7 @@ const qHandler: OperatorHandler = (context) =>
     graphicsStateStack: GraphicsStateStack.save(context.graphicsStateStack),
   });
 
-const QHandler: OperatorHandler = (context) =>
+const qRestoreHandler: OperatorHandler = (context) =>
   ok({
     ...context,
     graphicsStateStack: GraphicsStateStack.restore(context.graphicsStateStack),
@@ -50,7 +50,7 @@ test("`q 1 0 0 1 100 200 cm 2 w Q` を実行すると save/restore で初期 Gra
   assert(baseRegistered.ok);
   const withQ = OperatorRegistry.register(baseRegistered.value, "q", qHandler);
   assert(withQ.ok);
-  const withQQ = OperatorRegistry.register(withQ.value, "Q", QHandler);
+  const withQQ = OperatorRegistry.register(withQ.value, "Q", qRestoreHandler);
   assert(withQQ.ok);
 
   const result = ContentStreamInterpreter.execute({
