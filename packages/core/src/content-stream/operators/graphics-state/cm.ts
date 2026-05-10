@@ -10,7 +10,7 @@ import type {
   OperatorHandler,
   OperatorHandlerContext,
 } from "../../operator-registry/index";
-import { isNumericPdfObject, type NumericPdfObject } from "./numeric-operand";
+import { NumericPdfObject } from "./numeric-operand";
 
 const OPERATOR_NAME = "cm";
 const OPERAND_COUNT = 6;
@@ -46,7 +46,7 @@ export const cmHandler: OperatorHandler = (context: OperatorHandlerContext) => {
       return err(error);
     }
     const operand = result.value;
-    if (!isNumericPdfObject(operand)) {
+    if (!NumericPdfObject.is(operand)) {
       const error: PdfError = {
         code: "OPERATOR_OPERAND_TYPE_MISMATCH",
         message: `Operator '${OPERATOR_NAME}' expected number operand, got ${operand.type}`,
