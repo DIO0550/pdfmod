@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import type { PdfObject } from "../../../pdf/types/pdf-types/index";
-import { NumericPdfObject } from "./numeric-operand";
+import { NumericPdfObject } from "./numeric-pdf-object";
 
 test.each<[string, PdfObject]>([
   ["integer 0", { type: "integer", value: 0 }],
