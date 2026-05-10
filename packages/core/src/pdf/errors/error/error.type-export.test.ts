@@ -6,6 +6,7 @@ import type {
   PdfErrorCode,
   PdfOperatorOperandMissingError,
   PdfOperatorOperandTypeMismatchError,
+  PdfOperatorOperandValueOutOfRangeError,
   PdfOperatorRegistryError,
   PdfParseError,
   PdfParseErrorCode,
@@ -142,4 +143,26 @@ test("PdfOperatorOperandTypeMismatchError は PdfError union から narrow で�
   expect(error.code).toBe("OPERATOR_OPERAND_TYPE_MISMATCH");
   expect(typeMismatchError.expected).toBe("number");
   expect(typeMismatchError.actual).toBe("name");
+});
+
+test("PdfOperatorOperandValueOutOfRangeError は PdfError union から narrow できる", () => {
+  const valueOutOfRangeError: PdfOperatorOperandValueOutOfRangeError = {
+    code: "OPERATOR_OPERAND_VALUE_OUT_OF_RANGE",
+    message:
+      "Operator 'J' operand value 3 is out of range, expected one of [0, 1, 2]",
+    operatorName: "J",
+    allowed: [0, 1, 2],
+    actual: 3,
+  };
+  const error: PdfError = valueOutOfRangeError;
+
+  const narrowed: Exact<
+    Extract<PdfError, { code: "OPERATOR_OPERAND_VALUE_OUT_OF_RANGE" }>,
+    PdfOperatorOperandValueOutOfRangeError
+  > = true;
+
+  expect(narrowed).toBe(true);
+  expect(error.code).toBe("OPERATOR_OPERAND_VALUE_OUT_OF_RANGE");
+  expect(valueOutOfRangeError.allowed).toEqual([0, 1, 2]);
+  expect(valueOutOfRangeError.actual).toBe(3);
 });
