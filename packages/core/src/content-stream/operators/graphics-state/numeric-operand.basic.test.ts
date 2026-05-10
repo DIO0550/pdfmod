@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import type { PdfObject } from "../../../pdf/types/pdf-types/index";
-import { isNumericPdfObject } from "./numeric-operand";
+import { NumericPdfObject } from "./numeric-operand";
 
 test.each<[string, PdfObject]>([
   ["integer 0", { type: "integer", value: 0 }],
@@ -9,8 +9,8 @@ test.each<[string, PdfObject]>([
   ["real 0", { type: "real", value: 0 }],
   ["real 小数", { type: "real", value: 1.5 }],
   ["real NaN (型のみ判定)", { type: "real", value: Number.NaN }],
-])("isNumericPdfObject は %s に対して true を返す", (_label, operand) => {
-  expect(isNumericPdfObject(operand)).toBe(true);
+])("NumericPdfObject.is は %s に対して true を返す", (_label, operand) => {
+  expect(NumericPdfObject.is(operand)).toBe(true);
 });
 
 test.each<[string, PdfObject]>([
@@ -35,6 +35,6 @@ test.each<[string, PdfObject]>([
       generationNumber: 0,
     },
   ],
-])("isNumericPdfObject は %s に対して false を返す", (_label, operand) => {
-  expect(isNumericPdfObject(operand)).toBe(false);
+])("NumericPdfObject.is は %s に対して false を返す", (_label, operand) => {
+  expect(NumericPdfObject.is(operand)).toBe(false);
 });
