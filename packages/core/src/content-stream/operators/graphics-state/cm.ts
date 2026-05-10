@@ -10,7 +10,7 @@ import type {
   OperatorHandler,
   OperatorHandlerContext,
 } from "../../operator-registry/index";
-import { NumericPdfObject } from "./numeric-operand";
+import { NumericPdfObject } from "./numeric-pdf-object";
 
 const OPERATOR_NAME = "cm";
 const OPERAND_COUNT = 6;
