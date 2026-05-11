@@ -1,7 +1,7 @@
 import { NumberEx } from "../../../ext/number/index";
 import type { PdfParseError } from "../../../pdf/errors/index";
 import { PdfFilter } from "../../../pdf/filter/index";
-import { PdfType } from "../../../pdf/type/index";
+import { PdfType } from "../../../pdf/types/pdf-type/index";
 import type { PdfValue } from "../../../pdf/types/pdf-types/index";
 import type { Result } from "../../../utils/result/index";
 import { err, ok } from "../../../utils/result/index";
