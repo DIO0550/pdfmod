@@ -1,8 +1,8 @@
 import { NumberEx } from "../ext/number/index";
 import type { PdfError, PdfParseError } from "../pdf/errors/error/index";
-import { PdfType } from "../pdf/type/index";
 import { GenerationNumber } from "../pdf/types/generation-number/index";
 import { ObjectNumber } from "../pdf/types/object-number/index";
+import { PdfType } from "../pdf/types/pdf-type/index";
 import type {
   IndirectRef,
   PdfDictionary,
