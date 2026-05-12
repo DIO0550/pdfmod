@@ -1,5 +1,5 @@
 import { assert, expect, test } from "vitest";
-import type { PdfValue } from "../types/pdf-types/index";
+import type { PdfValue } from "../pdf-types/index";
 import { PdfType } from "./index";
 
 test("期待する名前の /Type がある場合 none を返す", () => {
