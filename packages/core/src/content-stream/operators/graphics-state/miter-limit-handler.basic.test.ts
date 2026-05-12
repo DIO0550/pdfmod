@@ -3,7 +3,7 @@ import type { PdfObject } from "../../../pdf/types/pdf-types/index";
 import { GraphicsStateStack } from "../../graphics-state/index";
 import { OperandStack } from "../../operand-stack/index";
 import type { OperatorHandlerContext } from "../../operator-registry/index";
-import { lineWidthHandler } from "./line-width";
+import { miterLimitHandler } from "./miter-limit-handler";
 
 const buildContext = (operands: PdfObject[]): OperatorHandlerContext => {
   const operandStack = OperandStack.create();
@@ -14,24 +14,34 @@ const buildContext = (operands: PdfObject[]): OperatorHandlerContext => {
   return { operandStack, graphicsStateStack };
 };
 
-test("integer operand 5 で current lineWidth が 5 に更新される", () => {
+test("integer operand 5 で current miterLimit が 5 に更新される", () => {
   const ctx = buildContext([{ type: "integer", value: 5 }]);
 
-  const result = lineWidthHandler(ctx);
+  const result = miterLimitHandler(ctx);
 
   assert(result.ok);
   const current = GraphicsStateStack.current(result.value.graphicsStateStack);
-  expect(current.lineWidth).toBe(5);
+  expect(current.miterLimit).toBe(5);
 });
 
-test("real operand 2.5 で current lineWidth が 2.5 に更新される", () => {
+test("real operand 2.5 で current miterLimit が 2.5 に更新される", () => {
   const ctx = buildContext([{ type: "real", value: 2.5 }]);
 
-  const result = lineWidthHandler(ctx);
+  const result = miterLimitHandler(ctx);
 
   assert(result.ok);
   const current = GraphicsStateStack.current(result.value.graphicsStateStack);
-  expect(current.lineWidth).toBe(2.5);
+  expect(current.miterLimit).toBe(2.5);
+});
+
+test("real operand 10.0 (PDF default) で current miterLimit が 10.0 に更新される", () => {
+  const ctx = buildContext([{ type: "real", value: 10.0 }]);
+
+  const result = miterLimitHandler(ctx);
+
+  assert(result.ok);
+  const current = GraphicsStateStack.current(result.value.graphicsStateStack);
+  expect(current.miterLimit).toBe(10.0);
 });
 
 test.each([
@@ -61,25 +71,25 @@ test.each([
 }) => {
   const ctx = buildContext([operand]);
 
-  const result = lineWidthHandler(ctx);
+  const result = miterLimitHandler(ctx);
 
   assert(result.ok);
   const current = GraphicsStateStack.current(result.value.graphicsStateStack);
-  expect(current.lineWidth).toBe(expected);
+  expect(current.miterLimit).toBe(expected);
 });
 
 test("空 operand stack では OPERATOR_OPERAND_MISSING を返す", () => {
   const ctx = buildContext([]);
 
-  const result = lineWidthHandler(ctx);
+  const result = miterLimitHandler(ctx);
 
   assert(!result.ok);
   assert(result.error.code === "OPERATOR_OPERAND_MISSING");
-  expect(result.error.operatorName).toBe("w");
+  expect(result.error.operatorName).toBe("M");
   expect(result.error.required).toBe(1);
   expect(result.error.actual).toBe(0);
   expect(result.error.message).toBe(
-    "Operator 'w' requires 1 operand(s), got 0",
+    "Operator 'M' requires 1 operand(s), got 0",
   );
 });
 
@@ -98,24 +108,24 @@ test.each([
 }) => {
   const ctx = buildContext([operand]);
 
-  const result = lineWidthHandler(ctx);
+  const result = miterLimitHandler(ctx);
 
   assert(!result.ok);
   assert(result.error.code === "OPERATOR_OPERAND_TYPE_MISMATCH");
-  expect(result.error.operatorName).toBe("w");
+  expect(result.error.operatorName).toBe("M");
   expect(result.error.expected).toBe("number");
   expect(result.error.actual).toBe(type);
   expect(result.error.message).toBe(
-    `Operator 'w' expected number operand, got ${type}`,
+    `Operator 'M' expected number operand, got ${type}`,
   );
 });
 
-test("operand stack に複数要素がある場合、末尾 1 つだけ pop し残りはそのまま", () => {
+test("operand stack に複数要素がある場合、成功時は末尾 1 つだけ pop し残りはそのまま", () => {
   const head: PdfObject = { type: "integer", value: 99 };
   const tail: PdfObject = { type: "integer", value: 7 };
   const ctx = buildContext([head, tail]);
 
-  const result = lineWidthHandler(ctx);
+  const result = miterLimitHandler(ctx);
 
   assert(result.ok);
   expect(OperandStack.depth(result.value.operandStack)).toBe(1);
@@ -124,16 +134,30 @@ test("operand stack に複数要素がある場合、末尾 1 つだけ pop し�
   expect(top.value).toEqual(head);
 });
 
-test("lineWidth 更新後も lineCap/lineJoin/ctm/miterLimit は不変", () => {
+test("末尾が name のとき (TYPE_MISMATCH)、末尾 1 つだけ pop し残り operand は保持される", () => {
+  const head: PdfObject = { type: "integer", value: 99 };
+  const tail: PdfObject = { type: "name", value: "Foo" };
+  const ctx = buildContext([head, tail]);
+
+  const result = miterLimitHandler(ctx);
+
+  assert(!result.ok);
+  expect(OperandStack.depth(ctx.operandStack)).toBe(1);
+  const top = OperandStack.peek(ctx.operandStack);
+  assert(top.some);
+  expect(top.value).toEqual(head);
+});
+
+test("miterLimit 更新後も lineWidth/lineCap/lineJoin/ctm は不変", () => {
   const ctx = buildContext([{ type: "integer", value: 3 }]);
   const before = GraphicsStateStack.current(ctx.graphicsStateStack);
 
-  const result = lineWidthHandler(ctx);
+  const result = miterLimitHandler(ctx);
 
   assert(result.ok);
   const after = GraphicsStateStack.current(result.value.graphicsStateStack);
+  expect(after.lineWidth).toBe(before.lineWidth);
   expect(after.lineCap).toBe(before.lineCap);
   expect(after.lineJoin).toBe(before.lineJoin);
-  expect(after.miterLimit).toBe(before.miterLimit);
   expect(after.ctm).toEqual(before.ctm);
 });

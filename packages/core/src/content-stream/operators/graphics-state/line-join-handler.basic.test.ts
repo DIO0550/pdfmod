@@ -1,9 +1,9 @@
 import { assert, expect, test } from "vitest";
 import type { PdfObject } from "../../../pdf/types/pdf-types/index";
-import { GraphicsStateStack, LineCap } from "../../graphics-state/index";
+import { GraphicsStateStack, LineJoin } from "../../graphics-state/index";
 import { OperandStack } from "../../operand-stack/index";
 import type { OperatorHandlerContext } from "../../operator-registry/index";
-import { lineCapHandler } from "./line-cap";
+import { lineJoinHandler } from "./line-join-handler";
 
 const buildContext = (operands: PdfObject[]): OperatorHandlerContext => {
   const operandStack = OperandStack.create();
@@ -18,16 +18,16 @@ test.each([
   { value: 0 },
   { value: 1 },
   { value: 2 },
-] as const)("integer operand $value で current lineCap が LineCap.create($value) に更新される", ({
+] as const)("integer operand $value で current lineJoin が LineJoin.create($value) に更新される", ({
   value,
 }) => {
   const ctx = buildContext([{ type: "integer", value }]);
 
-  const result = lineCapHandler(ctx);
+  const result = lineJoinHandler(ctx);
 
   assert(result.ok);
   const current = GraphicsStateStack.current(result.value.graphicsStateStack);
-  expect(current.lineCap).toBe(LineCap.create(value));
+  expect(current.lineJoin).toBe(LineJoin.create(value));
 });
 
 test.each([
@@ -39,16 +39,16 @@ test.each([
 }) => {
   const ctx = buildContext([{ type: "integer", value }]);
 
-  const result = lineCapHandler(ctx);
+  const result = lineJoinHandler(ctx);
 
   assert(!result.ok);
   assert(result.error.code === "OPERATOR_OPERAND_VALUE_OUT_OF_RANGE");
-  expect(result.error.operatorName).toBe("J");
-  expect(result.error.allowed).toBe(LineCap.allowed);
+  expect(result.error.operatorName).toBe("j");
+  expect(result.error.allowed).toBe(LineJoin.allowed);
   expect(result.error.allowed).toEqual([0, 1, 2]);
   expect(result.error.actual).toBe(value);
   expect(result.error.message).toBe(
-    `Operator 'J' operand value ${value} is out of range, expected one of [0, 1, 2]`,
+    `Operator 'j' operand value ${value} is out of range, expected one of [0, 1, 2]`,
   );
 });
 
@@ -79,30 +79,30 @@ test.each([
 }) => {
   const ctx = buildContext([operand]);
 
-  const result = lineCapHandler(ctx);
+  const result = lineJoinHandler(ctx);
 
   assert(!result.ok);
   assert(result.error.code === "OPERATOR_OPERAND_TYPE_MISMATCH");
-  expect(result.error.operatorName).toBe("J");
+  expect(result.error.operatorName).toBe("j");
   expect(result.error.expected).toBe("integer");
   expect(result.error.actual).toBe(type);
   expect(result.error.message).toBe(
-    `Operator 'J' expected integer operand, got ${type}`,
+    `Operator 'j' expected integer operand, got ${type}`,
   );
 });
 
 test("空 operand stack で OPERATOR_OPERAND_MISSING を返す", () => {
   const ctx = buildContext([]);
 
-  const result = lineCapHandler(ctx);
+  const result = lineJoinHandler(ctx);
 
   assert(!result.ok);
   assert(result.error.code === "OPERATOR_OPERAND_MISSING");
-  expect(result.error.operatorName).toBe("J");
+  expect(result.error.operatorName).toBe("j");
   expect(result.error.required).toBe(1);
   expect(result.error.actual).toBe(0);
   expect(result.error.message).toBe(
-    "Operator 'J' requires 1 operand(s), got 0",
+    "Operator 'j' requires 1 operand(s), got 0",
   );
 });
 
@@ -111,7 +111,7 @@ test("operand stack に複数要素がある場合、末尾 1 つだけ pop し�
   const tail: PdfObject = { type: "integer", value: 1 };
   const ctx = buildContext([head, tail]);
 
-  const result = lineCapHandler(ctx);
+  const result = lineJoinHandler(ctx);
 
   assert(result.ok);
   expect(OperandStack.depth(result.value.operandStack)).toBe(1);
@@ -125,7 +125,7 @@ test("値域外 integer 3 のとき末尾 1 つだけ pop し、残り operand �
   const tail: PdfObject = { type: "integer", value: 3 };
   const ctx = buildContext([head, tail]);
 
-  const result = lineCapHandler(ctx);
+  const result = lineJoinHandler(ctx);
 
   assert(!result.ok);
   expect(OperandStack.depth(ctx.operandStack)).toBe(1);
@@ -139,7 +139,7 @@ test("末尾が name のとき (TYPE_MISMATCH)、末尾 1 つだけ pop し残�
   const tail: PdfObject = { type: "name", value: "Foo" };
   const ctx = buildContext([head, tail]);
 
-  const result = lineCapHandler(ctx);
+  const result = lineJoinHandler(ctx);
 
   assert(!result.ok);
   expect(OperandStack.depth(ctx.operandStack)).toBe(1);
@@ -148,16 +148,16 @@ test("末尾が name のとき (TYPE_MISMATCH)、末尾 1 つだけ pop し残�
   expect(top.value).toEqual(head);
 });
 
-test("lineCap 更新後も lineWidth/lineJoin/miterLimit/ctm は不変", () => {
+test("lineJoin 更新後も lineWidth/lineCap/miterLimit/ctm は不変", () => {
   const ctx = buildContext([{ type: "integer", value: 1 }]);
   const before = GraphicsStateStack.current(ctx.graphicsStateStack);
 
-  const result = lineCapHandler(ctx);
+  const result = lineJoinHandler(ctx);
 
   assert(result.ok);
   const after = GraphicsStateStack.current(result.value.graphicsStateStack);
   expect(after.lineWidth).toBe(before.lineWidth);
-  expect(after.lineJoin).toBe(before.lineJoin);
+  expect(after.lineCap).toBe(before.lineCap);
   expect(after.miterLimit).toBe(before.miterLimit);
   expect(after.ctm).toEqual(before.ctm);
 });
