@@ -4,7 +4,7 @@ import {
   cmHandler,
   lineWidthHandler,
   registerGraphicsStateOperators,
-} from "./index";
+} from "./graphics-state-operators";
 
 test("cm が登録済みなら OPERATOR_ALREADY_REGISTERED の Err を返し operatorName が cm", () => {
   const seed = OperatorRegistry.register(
