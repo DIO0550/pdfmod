@@ -3,7 +3,7 @@ import type { PdfObject } from "../../../pdf/types/pdf-types/index";
 import { GraphicsStateStack, LineCap } from "../../graphics-state/index";
 import { OperandStack } from "../../operand-stack/index";
 import type { OperatorHandlerContext } from "../../operator-registry/index";
-import { lineCapHandler } from "./line-cap";
+import { lineCapHandler } from "./line-cap-handler";
 
 const buildContext = (operands: PdfObject[]): OperatorHandlerContext => {
   const operandStack = OperandStack.create();
