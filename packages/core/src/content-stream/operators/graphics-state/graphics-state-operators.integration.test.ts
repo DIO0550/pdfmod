@@ -10,7 +10,7 @@ import {
   type OperatorHandler,
   OperatorRegistry,
 } from "../../operator-registry/index";
-import { registerGraphicsStateOperators } from "./index";
+import { registerGraphicsStateOperators } from "./graphics-state-operators";
 
 const encode = (s: string): Uint8Array => new TextEncoder().encode(s);
 

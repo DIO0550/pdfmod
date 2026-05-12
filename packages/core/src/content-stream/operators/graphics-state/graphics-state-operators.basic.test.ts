@@ -1,6 +1,6 @@
 import { assert, expect, test } from "vitest";
 import { OperatorRegistry } from "../../operator-registry/index";
-import { registerGraphicsStateOperators } from "./index";
+import { registerGraphicsStateOperators } from "./graphics-state-operators";
 
 test.each([
   ["cm"],
