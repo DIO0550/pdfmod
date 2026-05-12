@@ -4,16 +4,16 @@ import { flatMap, ok } from "../../../utils/result/index";
 import type { OperatorHandler } from "../../operator-registry/index";
 import { OperatorRegistry } from "../../operator-registry/index";
 import { cmHandler } from "./cm";
-import { lineCapHandler } from "./line-cap";
-import { lineJoinHandler } from "./line-join";
-import { lineWidthHandler } from "./line-width";
-import { miterLimitHandler } from "./miter-limit";
+import { lineCapHandler } from "./line-cap-handler";
+import { lineJoinHandler } from "./line-join-handler";
+import { lineWidthHandler } from "./line-width-handler";
+import { miterLimitHandler } from "./miter-limit-handler";
 
 export { cmHandler } from "./cm";
-export { lineCapHandler } from "./line-cap";
-export { lineJoinHandler } from "./line-join";
-export { lineWidthHandler } from "./line-width";
-export { miterLimitHandler } from "./miter-limit";
+export { lineCapHandler } from "./line-cap-handler";
+export { lineJoinHandler } from "./line-join-handler";
+export { lineWidthHandler } from "./line-width-handler";
+export { miterLimitHandler } from "./miter-limit-handler";
 
 const GRAPHICS_STATE_OPERATORS: ReadonlyArray<
   readonly [string, OperatorHandler]
