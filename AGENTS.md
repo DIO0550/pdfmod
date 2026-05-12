@@ -10,7 +10,7 @@ pnpmモノレポ構成で `@pdfmod/core`（PDF処理エンジン）と `@pdfmod/
 
 実装時は `docs/specs/` 配下の仕様書（`00_overview.md` 〜 `09_implementation_guide.md`）を参照すること。
 
-`docs/PDFフォーマット仕様調査とライブラリ開発.md` は包括的な調査ドキュメント（日本語）。
+`docs/research/PDFフォーマット仕様調査とライブラリ開発.md` は包括的な調査ドキュメント（日本語）。
 
 ## PDF重要概念
 

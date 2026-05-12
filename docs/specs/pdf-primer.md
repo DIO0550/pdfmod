@@ -464,5 +464,5 @@ pdfmodのモジュールとの対応:
 
 - `docs/specs/` — ISO 32000仕様に基づくpdfmod内部仕様書（10章構成）
 - `docs/pdf-parsing-pipeline/` — 解析パイプラインの機能仕様書
-- `docs/PDFフォーマット仕様調査とライブラリ開発.md` — 包括的な調査ドキュメント
+- `docs/research/PDFフォーマット仕様調査とライブラリ開発.md` — 包括的な調査ドキュメント
 - [PDF Reference 1.7 (Adobe)](https://opensource.adobe.com/dc-acrobat-sdk-docs/pdfstandards/PDF32000_2008.pdf) — ISO 32000-1 の無償公開版
