@@ -1,7 +1,7 @@
-import type { Option } from "../../utils/option/index";
-import { none, some } from "../../utils/option/index";
-import type { PdfParseError } from "../errors/index";
-import type { PdfValue } from "../types/pdf-types/index";
+import type { Option } from "../../../utils/option/index";
+import { none, some } from "../../../utils/option/index";
+import type { PdfParseError } from "../../errors/index";
+import type { PdfValue } from "../pdf-types/index";
 
 /** PDF 辞書の /Type エントリを検証するユーティリティ。 */
 export const PdfType = {
