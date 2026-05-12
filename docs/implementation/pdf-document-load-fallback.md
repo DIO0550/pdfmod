@@ -39,7 +39,7 @@ ISO 32000-1 §7.5.5 に基づく正規パスの破綻 2 種類でのみ発火す
 
 ### scanFallback の詳細
 
-`packages/core/src/xref/fallback/` 配下。詳細は [xref-fallback-scanner.md](../xref-fallback-scanner.md) 参照。本ドキュメントでは `PdfDocument.load` から見た契約のみ記す。
+`packages/core/src/xref/fallback/` 配下。詳細は [xref-fallback-scanner.md](./xref-fallback-scanner.md) 参照。本ドキュメントでは `PdfDocument.load` から見た契約のみ記す。
 
 - 戻り値型: `Result<FallbackScanResult, PdfError>`。現状実装は常に `Ok` を返すが、将来拡張に備えて `if (!fb.ok) return fb;` で Err 伝搬経路を温存している。
 - `FallbackScanResult.xrefTable`: 線形走査で集めた `N G obj` ヘッダから合成した xref (`type=n` のみ)
@@ -113,7 +113,7 @@ merge-failure 経路で trailer 復元できなかった時に合成 `ROOT_NOT_F
 
 ## 関連ドキュメント
 
-- [xref-fallback-scanner.md](../xref-fallback-scanner.md) — `scanFallback` 実装の詳細
+- [xref-fallback-scanner.md](./xref-fallback-scanner.md) — `scanFallback` 実装の詳細
 - [xref-merger-spec.md](../pdf-parsing-pipeline/xref-merger-spec.md) — `mergeXRefChain` (`/Prev` 連鎖マージ) の仕様
 - [startxref-scanner.md](../pdf-parsing-pipeline/startxref-scanner.md) — `scanStartXRef` の仕様
 - [xref-parser-spec.md](../pdf-parsing-pipeline/xref-parser-spec.md) — xref テーブル解析

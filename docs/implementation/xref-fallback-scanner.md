@@ -177,5 +177,5 @@ interface ObjectScanReport {
 ## 関連ドキュメント
 
 - [`lexer.md`](./lexer.md) — 字句解析全体の設計
-- [`specs/02_file_structure.md`](./specs/02_file_structure.md) — PDF ファイル構造（xref 含む）
-- [`specs/02a_object_resolution.md`](./specs/02a_object_resolution.md) — オブジェクト解決
+- [`specs/02_file_structure.md`](../specs/02_file_structure.md) — PDF ファイル構造（xref 含む）
+- [`specs/02a_object_resolution.md`](../specs/02a_object_resolution.md) — オブジェクト解決
