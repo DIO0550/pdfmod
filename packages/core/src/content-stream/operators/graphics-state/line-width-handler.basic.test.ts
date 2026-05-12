@@ -3,7 +3,7 @@ import type { PdfObject } from "../../../pdf/types/pdf-types/index";
 import { GraphicsStateStack } from "../../graphics-state/index";
 import { OperandStack } from "../../operand-stack/index";
 import type { OperatorHandlerContext } from "../../operator-registry/index";
-import { lineWidthHandler } from "./line-width";
+import { lineWidthHandler } from "./line-width-handler";
 
 const buildContext = (operands: PdfObject[]): OperatorHandlerContext => {
   const operandStack = OperandStack.create();
