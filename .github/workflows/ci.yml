@@ -107,8 +107,8 @@ jobs:
               })
             ].join('\n');
 
-            // File details from coverage-summary.json (exclude config files, test files, barrel index files)
-            const excludePatterns = [/\.config\./, /\.test\./, /\/index\.ts$/];
+            // File details from coverage-summary.json (exclude config files, test files)
+            const excludePatterns = [/\.config\./, /\.test\./];
             const fmt = (pct) => `${pct.toFixed(1)}% ${coverageEmoji(pct)}`;
             const fileRows = Object.entries(summary)
               .filter(([filePath]) => filePath !== 'total' && !excludePatterns.some(p => p.test(filePath)))
