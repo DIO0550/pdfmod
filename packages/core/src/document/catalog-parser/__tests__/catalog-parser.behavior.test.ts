@@ -1,8 +1,8 @@
 import { expect, test } from "vitest";
-import type { PdfError } from "../pdf/errors/error/index";
-import type { PdfObject, PdfValue } from "../pdf/types/pdf-types/index";
-import { err, ok } from "../utils/result/index";
-import { CatalogParser } from "./catalog-parser";
+import type { PdfError } from "../../../pdf/errors/error/index";
+import type { PdfObject, PdfValue } from "../../../pdf/types/pdf-types/index";
+import { err, ok } from "../../../utils/result/index";
+import { CatalogParser } from "../../catalog-parser";
 import {
   makeCatalogEntries,
   makeRef,

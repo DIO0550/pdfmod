@@ -1,7 +1,7 @@
 import { expect } from "vitest";
-import type { PdfError } from "../pdf/errors/error/index";
-import { GenerationNumber } from "../pdf/types/generation-number/index";
-import { ObjectNumber } from "../pdf/types/object-number/index";
+import type { PdfError } from "../../../pdf/errors/error/index";
+import { GenerationNumber } from "../../../pdf/types/generation-number/index";
+import { ObjectNumber } from "../../../pdf/types/object-number/index";
 import type {
   IndirectRef,
   PdfDictionary,
@@ -9,8 +9,8 @@ import type {
   PdfString,
   PdfValue,
   TrailerDict,
-} from "../pdf/types/pdf-types/index";
-import type { Result } from "../utils/result/index";
+} from "../../../pdf/types/pdf-types/index";
+import type { Result } from "../../../utils/result/index";
 
 const BOM_BYTE_0 = 0xfe;
 const BOM_BYTE_1 = 0xff;

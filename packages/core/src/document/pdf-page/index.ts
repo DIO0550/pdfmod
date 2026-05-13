@@ -1,10 +1,10 @@
-import type { IndirectRef } from "../pdf/types/indirect-ref/index";
+import type { IndirectRef } from "../../pdf/types/indirect-ref/index";
 import {
   PAGE_ROTATE_90,
   PAGE_ROTATE_270,
   type PageRotate,
   type ResolvedPage,
-} from "./page-tree/resolved-page";
+} from "../page-tree/resolved-page";
 
 /**
  * `PdfPage` の `mediaBox` / `cropBox` で公開する readonly タプル型。

@@ -1,18 +1,18 @@
-import type { PdfError } from "../pdf/errors/error/index";
-import type { PdfWarning } from "../pdf/errors/warning/index";
+import type { PdfError } from "../../pdf/errors/error/index";
+import type { PdfWarning } from "../../pdf/errors/warning/index";
 import type {
   PdfDictionary,
   PdfValue,
   TrailerDict,
-} from "../pdf/types/pdf-types/index";
-import { stripUndefined } from "../utils/object";
-import type { Result } from "../utils/result/index";
-import { ok } from "../utils/result/index";
-import type { ResolveRef } from "./catalog-parser";
-import { decodePdfString } from "./decode-pdf-string";
-import type { DocumentMetadata } from "./document-metadata";
-import { parseTrappedName } from "./document-metadata";
-import { parsePdfDate } from "./pdf-date";
+} from "../../pdf/types/pdf-types/index";
+import { stripUndefined } from "../../utils/object";
+import type { Result } from "../../utils/result/index";
+import { ok } from "../../utils/result/index";
+import type { ResolveRef } from "../catalog-parser";
+import { decodePdfString } from "../decode-pdf-string";
+import type { DocumentMetadata } from "../document-metadata";
+import { parseTrappedName } from "../document-metadata";
+import { parsePdfDate } from "../pdf-date";
 
 /**
  * `DocumentInfoParser.parse` の戻り値。

@@ -1,6 +1,6 @@
 import { assert, expect, test } from "vitest";
-import type { PdfWarning } from "../pdf/errors/warning/index";
-import { PdfDocument } from "./pdf-document";
+import type { PdfWarning } from "../../../pdf/errors/warning/index";
+import { PdfDocument } from "../../pdf-document";
 import {
   buildMinimalSinglePagePdf,
   buildPdfWithCorruptStartXRef,

@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { PdfTrapped } from "./document-metadata";
+import { PdfTrapped } from "../../document-metadata";
 
 test.each([
   ["True"],

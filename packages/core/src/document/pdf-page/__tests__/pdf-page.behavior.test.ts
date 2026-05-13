@@ -1,14 +1,14 @@
 import { expect, test } from "vitest";
-import { GenerationNumber } from "../pdf/types/generation-number/index";
-import type { IndirectRef } from "../pdf/types/indirect-ref/index";
-import { ObjectNumber } from "../pdf/types/object-number/index";
-import type { PdfDictionary } from "../pdf/types/pdf-types/index";
+import { GenerationNumber } from "../../../pdf/types/generation-number/index";
+import type { IndirectRef } from "../../../pdf/types/indirect-ref/index";
+import { ObjectNumber } from "../../../pdf/types/object-number/index";
+import type { PdfDictionary } from "../../../pdf/types/pdf-types/index";
 import type {
   PageRotate,
   PdfRectangle,
   ResolvedPage,
-} from "./page-tree/resolved-page";
-import { PdfPage } from "./pdf-page";
+} from "../../page-tree/resolved-page";
+import { PdfPage } from "../../pdf-page";
 
 const emptyDict: PdfDictionary = {
   type: "dictionary",

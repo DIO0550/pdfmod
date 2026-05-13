@@ -1,8 +1,8 @@
 import { expect, test } from "vitest";
-import type { PdfWarning } from "../pdf/errors/warning/index";
-import type { PdfString } from "../pdf/types/pdf-types/index";
-import { decodePdfString } from "./decode-pdf-string";
-import { REPLACEMENT_CHAR } from "./pdf-doc-encoding";
+import type { PdfWarning } from "../../../pdf/errors/warning/index";
+import type { PdfString } from "../../../pdf/types/pdf-types/index";
+import { decodePdfString } from "../../decode-pdf-string";
+import { REPLACEMENT_CHAR } from "../../pdf-doc-encoding";
 
 const pdfString = (bytes: Uint8Array): PdfString => ({
   type: "string",

@@ -1,18 +1,18 @@
-import { NumberEx } from "../ext/number/index";
-import type { PdfError, PdfParseError } from "../pdf/errors/error/index";
-import { GenerationNumber } from "../pdf/types/generation-number/index";
-import { ObjectNumber } from "../pdf/types/object-number/index";
-import { PdfType } from "../pdf/types/pdf-type/index";
+import { NumberEx } from "../../ext/number/index";
+import type { PdfError, PdfParseError } from "../../pdf/errors/error/index";
+import { GenerationNumber } from "../../pdf/types/generation-number/index";
+import { ObjectNumber } from "../../pdf/types/object-number/index";
+import { PdfType } from "../../pdf/types/pdf-type/index";
 import type {
   IndirectRef,
   PdfDictionary,
   PdfObject,
   PdfValue,
   TrailerDict,
-} from "../pdf/types/pdf-types/index";
-import { PdfVersion } from "../pdf/version/index";
-import type { Result } from "../utils/result/index";
-import { err, ok } from "../utils/result/index";
+} from "../../pdf/types/pdf-types/index";
+import { PdfVersion } from "../../pdf/version/index";
+import type { Result } from "../../utils/result/index";
+import { err, ok } from "../../utils/result/index";
 
 /**
  * 間接参照を解決する関数型。
