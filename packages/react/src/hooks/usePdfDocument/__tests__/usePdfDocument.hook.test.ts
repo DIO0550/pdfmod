@@ -1,6 +1,6 @@
 import { cleanup, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, expect, test, vi } from "vitest";
-import { usePdfDocument } from "./index";
+import { usePdfDocument } from "../index";
 
 afterEach(() => {
   cleanup();
