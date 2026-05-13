@@ -11,7 +11,7 @@ import type {
   ResolvedPage,
   ResolveRef,
   WalkPageTreeResult,
-} from "./index";
+} from "../index";
 import {
   ContentStreamInterpreter,
   ContentStreamTokenizer,
@@ -20,7 +20,7 @@ import {
   Option,
   PdfVersion,
   Result,
-} from "./index";
+} from "../index";
 
 test("Result.okがランタイムで動作する", () => {
   const result = Result.ok(42);

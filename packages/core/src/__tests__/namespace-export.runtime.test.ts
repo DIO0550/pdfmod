@@ -30,7 +30,7 @@ import {
   scanStartXRef,
   Tokenizer,
   TokenType,
-} from "./index";
+} from "../index";
 
 test.each([
   {
