@@ -1,13 +1,13 @@
-import type { PdfParseError } from "../../pdf/errors/error/index";
-import type { PdfWarning } from "../../pdf/errors/warning/index";
+import type { PdfParseError } from "../../../pdf/errors/error/index";
+import type { PdfWarning } from "../../../pdf/errors/warning/index";
 import type {
   IndirectRef,
   PdfDictionary,
   PdfValue,
-} from "../../pdf/types/pdf-types/index";
-import { none, type Option, some } from "../../utils/option/index";
-import { err, ok, type Result } from "../../utils/result/index";
-import type { InheritedAttrs } from "./inheritance-resolver";
+} from "../../../pdf/types/pdf-types/index";
+import { none, type Option, some } from "../../../utils/option/index";
+import { err, ok, type Result } from "../../../utils/result/index";
+import type { InheritedAttrs } from "../inheritance-resolver";
 import {
   PAGE_ROTATE_0,
   PAGE_ROTATE_90,
@@ -15,7 +15,7 @@ import {
   PAGE_ROTATE_270,
   type PageRotate,
   type PdfRectangle,
-} from "./resolved-page";
+} from "../resolved-page";
 
 const ROTATE_DIVISOR = 90;
 const ROTATE_FULL = 360;

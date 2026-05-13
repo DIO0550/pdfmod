@@ -1,9 +1,9 @@
 import { expect, test } from "vitest";
-import type { PdfDictionary, PdfValue } from "../../pdf/types/pdf-types/index";
+import type { PdfDictionary, PdfValue } from "../../../../pdf/types/pdf-types/index";
 import {
   InheritanceResolver,
   type InheritedAttrs,
-} from "./inheritance-resolver";
+} from "../../inheritance-resolver";
 import {
   indirectRefValue,
   makePageDict,
@@ -11,7 +11,7 @@ import {
   okDict,
   unwrapErr,
   unwrapOk,
-} from "./page-tree-walker.test.helpers";
+} from "../../page-tree-walker/__tests__/page-tree-walker.test.helpers";
 
 const PAGE_REF = makeRef(2, 0);
 

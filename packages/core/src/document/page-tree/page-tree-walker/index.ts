@@ -1,21 +1,21 @@
-import { NumberEx } from "../../ext/number/index";
-import type { PdfError } from "../../pdf/errors/error/index";
-import type { PdfWarning } from "../../pdf/errors/warning/index";
-import { IndirectRef } from "../../pdf/types/indirect-ref/index";
+import { NumberEx } from "../../../ext/number/index";
+import type { PdfError } from "../../../pdf/errors/error/index";
+import type { PdfWarning } from "../../../pdf/errors/warning/index";
+import { IndirectRef } from "../../../pdf/types/indirect-ref/index";
 import type {
   PdfDictionary,
   PdfIndirectRef,
   PdfValue,
-} from "../../pdf/types/pdf-types/index";
-import { none, type Option, some } from "../../utils/option/index";
-import { err, ok, type Result } from "../../utils/result/index";
-import type { ResolveRef } from "../catalog-parser";
-import { DictReader } from "./dict-reader";
+} from "../../../pdf/types/pdf-types/index";
+import { none, type Option, some } from "../../../utils/option/index";
+import { err, ok, type Result } from "../../../utils/result/index";
+import type { ResolveRef } from "../../catalog-parser";
+import { DictReader } from "../dict-reader";
 import {
   InheritanceResolver,
   type InheritedAttrs,
-} from "./inheritance-resolver";
-import type { ResolvedPage } from "./resolved-page";
+} from "../inheritance-resolver";
+import type { ResolvedPage } from "../resolved-page";
 
 /** `PageTreeWalker.walk` の出力。 */
 export interface WalkPageTreeResult {

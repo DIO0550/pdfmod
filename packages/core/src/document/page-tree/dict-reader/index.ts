@@ -1,8 +1,8 @@
-import { NumberEx } from "../../ext/number/index";
-import { IndirectRef } from "../../pdf/types/indirect-ref/index";
-import type { PdfObject, PdfValue } from "../../pdf/types/pdf-types/index";
-import { none, type Option, some } from "../../utils/option/index";
-import type { PdfRectangle } from "./resolved-page";
+import { NumberEx } from "../../../ext/number/index";
+import { IndirectRef } from "../../../pdf/types/indirect-ref/index";
+import type { PdfObject, PdfValue } from "../../../pdf/types/pdf-types/index";
+import { none, type Option, some } from "../../../utils/option/index";
+import type { PdfRectangle } from "../resolved-page";
 
 const BOX_ELEMENT_COUNT = 4;
 const DEFAULT_USER_UNIT = 1.0;

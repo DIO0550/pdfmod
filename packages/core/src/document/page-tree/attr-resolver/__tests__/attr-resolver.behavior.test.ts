@@ -1,15 +1,15 @@
 import { expect, test } from "vitest";
-import type { PdfDictionary, PdfValue } from "../../pdf/types/pdf-types/index";
-import { AttrResolver } from "./attr-resolver";
-import type { InheritedAttrs } from "./inheritance-resolver";
+import type { PdfDictionary, PdfValue } from "../../../../pdf/types/pdf-types/index";
+import { AttrResolver } from "../../attr-resolver";
+import type { InheritedAttrs } from "../../inheritance-resolver";
 import {
   makePageDict,
   makeRef,
   okDict,
   unwrapErr,
   unwrapOk,
-} from "./page-tree-walker.test.helpers";
-import type { PdfRectangle } from "./resolved-page";
+} from "../../page-tree-walker/__tests__/page-tree-walker.test.helpers";
+import type { PdfRectangle } from "../../resolved-page";
 
 const NO_INHERIT: InheritedAttrs = {};
 const ref = makeRef(10, 0);
