@@ -1,13 +1,13 @@
-import type { PdfParseError } from "../../pdf/errors/error/index";
-import type { PdfWarning } from "../../pdf/errors/warning/index";
+import type { PdfParseError } from "../../../pdf/errors/error/index";
+import type { PdfWarning } from "../../../pdf/errors/warning/index";
 import type {
   IndirectRef,
   PdfDictionary,
-} from "../../pdf/types/pdf-types/index";
-import { err, ok, type Result } from "../../utils/result/index";
-import { AttrResolver } from "./attr-resolver";
-import { DictReader } from "./dict-reader";
-import type { PdfRectangle, ResolvedPage } from "./resolved-page";
+} from "../../../pdf/types/pdf-types/index";
+import { err, ok, type Result } from "../../../utils/result/index";
+import { AttrResolver } from "../attr-resolver";
+import { DictReader } from "../dict-reader";
+import type { PdfRectangle, ResolvedPage } from "../resolved-page";
 
 /** Walker が祖先チェーンから積み上げた継承可能属性（未設定は undefined）。 */
 export interface InheritedAttrs {

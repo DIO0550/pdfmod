@@ -1,9 +1,9 @@
 import { expect, test } from "vitest";
-import { GenerationNumber } from "../../pdf/types/generation-number/index";
-import { ObjectNumber } from "../../pdf/types/object-number/index";
-import type { PdfValue } from "../../pdf/types/pdf-types/index";
-import { DictReader } from "./dict-reader";
-import { indirectRefValue } from "./page-tree-walker.test.helpers";
+import { GenerationNumber } from "../../../../pdf/types/generation-number/index";
+import { ObjectNumber } from "../../../../pdf/types/object-number/index";
+import type { PdfValue } from "../../../../pdf/types/pdf-types/index";
+import { DictReader } from "../../dict-reader";
+import { indirectRefValue } from "../../page-tree-walker/__tests__/page-tree-walker.test.helpers";
 
 const integerArray = (values: number[]): PdfValue => ({
   type: "array",

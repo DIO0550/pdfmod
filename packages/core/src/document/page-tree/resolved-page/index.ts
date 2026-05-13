@@ -2,7 +2,7 @@ import type {
   IndirectRef,
   PdfDictionary,
   PdfObject,
-} from "../../pdf/types/pdf-types/index";
+} from "../../../pdf/types/pdf-types/index";
 
 /**
  * PDF の rectangle 型。

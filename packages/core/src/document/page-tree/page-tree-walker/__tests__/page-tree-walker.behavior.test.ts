@@ -4,9 +4,9 @@ import type {
   PdfDictionary,
   PdfObject,
   PdfValue,
-} from "../../pdf/types/pdf-types/index";
-import type { ResolveRef } from "../catalog-parser";
-import { PageTreeWalker } from "./page-tree-walker";
+} from "../../../../pdf/types/pdf-types/index";
+import type { ResolveRef } from "../../../catalog-parser";
+import { PageTreeWalker } from "../../page-tree-walker";
 import {
   indirectRefValue,
   makeFailingResolver,
