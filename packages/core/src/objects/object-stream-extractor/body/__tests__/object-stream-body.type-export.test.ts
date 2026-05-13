@@ -1,5 +1,8 @@
 import { expect, test } from "vitest";
-import type { ObjectStreamHeaderEntry, StreamResolver } from "../../../../index";
+import type {
+  ObjectStreamHeaderEntry,
+  StreamResolver,
+} from "../../../../index";
 import {
   ByteOffset,
   ObjectNumber,

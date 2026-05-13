@@ -1,5 +1,8 @@
 import { expect, test } from "vitest";
-import type { PdfDictionary, PdfValue } from "../../../../pdf/types/pdf-types/index";
+import type {
+  PdfDictionary,
+  PdfValue,
+} from "../../../../pdf/types/pdf-types/index";
 import { AttrResolver } from "../../attr-resolver";
 import type { InheritedAttrs } from "../../inheritance-resolver";
 import {

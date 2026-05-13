@@ -1,6 +1,10 @@
 import { isPdfWhitespace, matchesBytesAt } from "../../lexer/bytes/index";
 import { ObjectStore } from "../../objects/object-store/index";
-import type { PdfError, PdfParseError, PdfWarning } from "../../pdf/errors/index";
+import type {
+  PdfError,
+  PdfParseError,
+  PdfWarning,
+} from "../../pdf/errors/index";
 import {
   ByteOffset,
   type TrailerDict,
