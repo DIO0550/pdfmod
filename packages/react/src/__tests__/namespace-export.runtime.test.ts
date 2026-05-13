@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { PdfPage, PdfViewer, usePdfDocument } from "./index";
+import { PdfPage, PdfViewer, usePdfDocument } from "../index";
 
 test.each([
   { name: "PdfViewer", value: PdfViewer },
