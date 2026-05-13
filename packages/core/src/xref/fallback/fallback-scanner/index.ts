@@ -1,23 +1,23 @@
-import { isPdfTokenBoundary, matchesBytesAt } from "../../lexer/bytes/index";
-import type { PdfError, PdfWarning } from "../../pdf/errors/index";
-import { ByteOffset } from "../../pdf/types/byte-offset/index";
+import { isPdfTokenBoundary, matchesBytesAt } from "../../../lexer/bytes/index";
+import type { PdfError, PdfWarning } from "../../../pdf/errors/index";
+import { ByteOffset } from "../../../pdf/types/byte-offset/index";
 import type {
   ObjectNumber,
   TrailerDict,
   XRefEntry,
   XRefTable,
-} from "../../pdf/types/index";
-import type { Option } from "../../utils/option/index";
-import { none, some } from "../../utils/option/index";
-import type { Result } from "../../utils/result/index";
-import { ok } from "../../utils/result/index";
-import { parseTrailer } from "../trailer/index";
+} from "../../../pdf/types/index";
+import type { Option } from "../../../utils/option/index";
+import { none, some } from "../../../utils/option/index";
+import type { Result } from "../../../utils/result/index";
+import { ok } from "../../../utils/result/index";
+import { parseTrailer } from "../../trailer/index";
 import {
   type ObjectHit,
   type ObjectScanReport,
   type ObjectScanSkipped,
   scanObjectHeaders,
-} from "./object-scanner";
+} from "../object-scanner";
 
 /**
  * フォールバック XRef スキャン結果。
