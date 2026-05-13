@@ -1,13 +1,13 @@
 import { expect, test } from "vitest";
-import type { PdfError } from "../../pdf/errors/index";
-import { ByteOffset } from "../../pdf/types/byte-offset/index";
+import type { PdfError } from "../../../pdf/errors/index";
+import { ByteOffset } from "../../../pdf/types/byte-offset/index";
 import type {
   PdfDictionary,
   PdfObject,
   PdfValue,
-} from "../../pdf/types/pdf-types/index";
-import type { Result } from "../../utils/result/index";
-import { ObjectParser } from "./index";
+} from "../../../pdf/types/pdf-types/index";
+import type { Result } from "../../../utils/result/index";
+import { ObjectParser } from "../index";
 
 const enc = (s: string): Uint8Array => new TextEncoder().encode(s);
 const parse = (s: string): Result<PdfObject, PdfError> =>

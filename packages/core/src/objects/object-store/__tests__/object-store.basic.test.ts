@@ -1,15 +1,15 @@
 import { expect, test, vi } from "vitest";
-import type { PdfTypeMismatchError } from "../../pdf/errors/index";
-import { ByteOffset } from "../../pdf/types/byte-offset/index";
-import { GenerationNumber } from "../../pdf/types/generation-number/index";
-import { ObjectNumber } from "../../pdf/types/object-number/index";
+import type { PdfTypeMismatchError } from "../../../pdf/errors/index";
+import { ByteOffset } from "../../../pdf/types/byte-offset/index";
+import { GenerationNumber } from "../../../pdf/types/generation-number/index";
+import { ObjectNumber } from "../../../pdf/types/object-number/index";
 import type {
   XRefCompressedEntry,
   XRefFreeEntry,
   XRefUsedEntry,
-} from "../../pdf/types/pdf-types/index";
-import { ObjectStreamBody } from "../object-stream-extractor/index";
-import { ObjectStore } from "./index";
+} from "../../../pdf/types/pdf-types/index";
+import { ObjectStreamBody } from "../../object-stream-extractor/index";
+import { ObjectStore } from "../index";
 import {
   makeRef,
   makeStoreSource,

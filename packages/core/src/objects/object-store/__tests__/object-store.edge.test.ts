@@ -1,9 +1,9 @@
 import { expect, test, vi } from "vitest";
-import type { PdfCircularReferenceError } from "../../pdf/errors/index";
-import { ObjectNumber } from "../../pdf/types/object-number/index";
-import type { XRefCompressedEntry } from "../../pdf/types/pdf-types/index";
-import { ObjectStreamBody } from "../object-stream-extractor/index";
-import { ObjectStore } from "./index";
+import type { PdfCircularReferenceError } from "../../../pdf/errors/index";
+import { ObjectNumber } from "../../../pdf/types/object-number/index";
+import type { XRefCompressedEntry } from "../../../pdf/types/pdf-types/index";
+import { ObjectStreamBody } from "../../object-stream-extractor/index";
+import { ObjectStore } from "../index";
 import {
   makeRef,
   makeStoreSource,

@@ -1,12 +1,12 @@
 import { assert, expect, test, vi } from "vitest";
-import { ByteOffset } from "../../../pdf/types/byte-offset/index";
-import { GenerationNumber } from "../../../pdf/types/generation-number/index";
-import { ObjectNumber } from "../../../pdf/types/object-number/index";
-import { err, ok } from "../../../utils/result/index";
-import { LRUCache } from "../../lru-cache/index";
-import { ObjectParser } from "../../object-parser/index";
-import * as flateDecompressorModule from "../flate-decompressor/index";
-import { ObjectStreamBody } from "./index";
+import { ByteOffset } from "../../../../pdf/types/byte-offset/index";
+import { GenerationNumber } from "../../../../pdf/types/generation-number/index";
+import { ObjectNumber } from "../../../../pdf/types/object-number/index";
+import { err, ok } from "../../../../utils/result/index";
+import { LRUCache } from "../../../lru-cache/index";
+import { ObjectParser } from "../../../object-parser/index";
+import * as flateDecompressorModule from "../../flate-decompressor/index";
+import { ObjectStreamBody } from "../index";
 import {
   enc,
   makeObjStmDict,

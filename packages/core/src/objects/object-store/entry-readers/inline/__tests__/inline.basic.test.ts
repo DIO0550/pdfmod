@@ -1,12 +1,12 @@
 import { assert, expect, test, vi } from "vitest";
-import { ByteOffset } from "../../../pdf/types/byte-offset/index";
-import { GenerationNumber } from "../../../pdf/types/generation-number/index";
-import type { XRefUsedEntry } from "../../../pdf/types/pdf-types/index";
-import { err, ok } from "../../../utils/result/index";
-import type { ObjectResolver } from "../../object-parser/index";
-import { ObjectParser } from "../../object-parser/index";
-import { makeRef } from "../object-store.test.helpers";
-import { readInlineEntry } from "./inline";
+import { ByteOffset } from "../../../../../pdf/types/byte-offset/index";
+import { GenerationNumber } from "../../../../../pdf/types/generation-number/index";
+import type { XRefUsedEntry } from "../../../../../pdf/types/pdf-types/index";
+import { err, ok } from "../../../../../utils/result/index";
+import type { ObjectResolver } from "../../../../object-parser/index";
+import { ObjectParser } from "../../../../object-parser/index";
+import { makeRef } from "../../../__tests__/object-store.test.helpers";
+import { readInlineEntry } from "../../inline";
 
 const dummyResolver: ObjectResolver = () =>
   Promise.resolve(ok({ type: "integer", value: 0 }));

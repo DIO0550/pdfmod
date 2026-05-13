@@ -1,13 +1,13 @@
 import { expect } from "vitest";
-import { GenerationNumber } from "../../pdf/types/generation-number/index";
-import { ObjectNumber } from "../../pdf/types/object-number/index";
+import { GenerationNumber } from "../../../pdf/types/generation-number/index";
+import { ObjectNumber } from "../../../pdf/types/object-number/index";
 import type {
   IndirectRef,
   XRefEntry,
   XRefTable,
-} from "../../pdf/types/pdf-types/index";
-import type { Result } from "../../utils/result/index";
-import type { ObjectStoreSource } from "./types";
+} from "../../../pdf/types/pdf-types/index";
+import type { Result } from "../../../utils/result/index";
+import type { ObjectStoreSource } from "../types";
 
 /**
  * Result が ok であることをアサートし value を返す。

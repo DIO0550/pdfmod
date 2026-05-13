@@ -1,11 +1,11 @@
 import { expect, test } from "vitest";
-import type { ObjectStreamHeaderEntry, StreamResolver } from "../../../index";
+import type { ObjectStreamHeaderEntry, StreamResolver } from "../../../../index";
 import {
   ByteOffset,
   ObjectNumber,
   ObjectStreamBody,
   ObjectStreamHeader,
-} from "../../../index";
+} from "../../../../index";
 
 test("公開型がルートからインポート可能である", () => {
   const resolver: StreamResolver = {
