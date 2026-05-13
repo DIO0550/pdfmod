@@ -1,13 +1,13 @@
-import type { PdfError } from "../../../pdf/errors/index";
+import type { PdfError } from "../../../../pdf/errors/index";
 import type {
   IndirectRef,
   PdfObject,
   XRefUsedEntry,
-} from "../../../pdf/types/pdf-types/index";
-import type { Result } from "../../../utils/result/index";
-import { err } from "../../../utils/result/index";
-import type { ObjectResolver } from "../../object-parser/index";
-import { ObjectParser } from "../../object-parser/index";
+} from "../../../../pdf/types/pdf-types/index";
+import type { Result } from "../../../../utils/result/index";
+import { err } from "../../../../utils/result/index";
+import type { ObjectResolver } from "../../../object-parser/index";
+import { ObjectParser } from "../../../object-parser/index";
 
 /**
  * type=1 の XRefUsedEntry を読み取り、inline indirect object をパースする。

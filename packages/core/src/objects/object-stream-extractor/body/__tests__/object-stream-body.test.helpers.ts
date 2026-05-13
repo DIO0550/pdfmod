@@ -1,11 +1,11 @@
-import type { PdfError } from "../../../pdf/errors/index";
+import type { PdfError } from "../../../../pdf/errors/index";
 import type {
   PdfDictionary,
   PdfObject,
   PdfValue,
-} from "../../../pdf/types/pdf-types/index";
-import type { Result } from "../../../utils/result/index";
-import type { StreamResolver } from "../types";
+} from "../../../../pdf/types/pdf-types/index";
+import type { Result } from "../../../../utils/result/index";
+import type { StreamResolver } from "../../types";
 
 /**
  * 文字列を UTF-8 バイト列にエンコードする。

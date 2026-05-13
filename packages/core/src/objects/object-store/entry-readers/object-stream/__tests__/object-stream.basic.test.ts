@@ -1,10 +1,10 @@
 import { assert, expect, test, vi } from "vitest";
-import { ObjectNumber } from "../../../pdf/types/object-number/index";
-import type { XRefCompressedEntry } from "../../../pdf/types/pdf-types/index";
-import { err, ok } from "../../../utils/result/index";
-import { ObjectStreamBody } from "../../object-stream-extractor/index";
-import { makeRef } from "../object-store.test.helpers";
-import { readObjectStreamEntry } from "./object-stream";
+import { ObjectNumber } from "../../../../../pdf/types/object-number/index";
+import type { XRefCompressedEntry } from "../../../../../pdf/types/pdf-types/index";
+import { err, ok } from "../../../../../utils/result/index";
+import { ObjectStreamBody } from "../../../../object-stream-extractor/index";
+import { makeRef } from "../../../__tests__/object-store.test.helpers";
+import { readObjectStreamEntry } from "../../object-stream";
 
 test("readObjectStreamEntry は ObjectStreamBody.extract を呼び result を返す", async () => {
   const spy = vi

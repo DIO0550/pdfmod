@@ -1,11 +1,11 @@
 import { expect, test } from "vitest";
-import type { PdfError } from "../../pdf/errors/index";
-import { ByteOffset } from "../../pdf/types/byte-offset/index";
-import type { PdfDictionary, PdfObject } from "../../pdf/types/pdf-types/index";
-import type { Result } from "../../utils/result/index";
-import { ok } from "../../utils/result/index";
-import type { ObjectResolver } from "./index";
-import { ObjectParser } from "./index";
+import type { PdfError } from "../../../pdf/errors/index";
+import { ByteOffset } from "../../../pdf/types/byte-offset/index";
+import type { PdfDictionary, PdfObject } from "../../../pdf/types/pdf-types/index";
+import type { Result } from "../../../utils/result/index";
+import { ok } from "../../../utils/result/index";
+import type { ObjectResolver } from "../index";
+import { ObjectParser } from "../index";
 
 const enc = (s: string): Uint8Array => new TextEncoder().encode(s);
 

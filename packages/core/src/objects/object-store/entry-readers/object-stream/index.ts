@@ -1,14 +1,14 @@
-import type { PdfError } from "../../../pdf/errors/index";
-import type { ObjectNumber } from "../../../pdf/types/object-number/index";
+import type { PdfError } from "../../../../pdf/errors/index";
+import type { ObjectNumber } from "../../../../pdf/types/object-number/index";
 import type {
   IndirectRef,
   PdfValue,
   XRefCompressedEntry,
-} from "../../../pdf/types/pdf-types/index";
-import type { Result } from "../../../utils/result/index";
-import type { LRUCache } from "../../lru-cache/index";
-import type { StreamResolver } from "../../object-stream-extractor/index";
-import { ObjectStreamBody } from "../../object-stream-extractor/index";
+} from "../../../../pdf/types/pdf-types/index";
+import type { Result } from "../../../../utils/result/index";
+import type { LRUCache } from "../../../lru-cache/index";
+import type { StreamResolver } from "../../../object-stream-extractor/index";
+import { ObjectStreamBody } from "../../../object-stream-extractor/index";
 
 /**
  * type=2 の XRefCompressedEntry を読み取り、ObjStm からオブジェクトを抽出する。

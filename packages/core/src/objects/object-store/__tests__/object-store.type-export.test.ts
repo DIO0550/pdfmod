@@ -3,8 +3,8 @@ import type {
   ObjectStoreOptions,
   ObjectStoreSource,
   StreamResolver,
-} from "../../index";
-import { ObjectStore } from "../../index";
+} from "../../../index";
+import { ObjectStore } from "../../../index";
 
 test("ObjectStore と公開型がルートからインポート可能である", () => {
   expect(typeof ObjectStore.create).toBe("function");
@@ -26,19 +26,19 @@ test("ObjectStore と公開型がルートからインポート可能である",
 
 test("削除された型はルートからインポートできない", () => {
   // @ts-expect-error ObjectResolverConfig は削除済み
-  const _a: import("../../index").ObjectResolverConfig = {};
+  const _a: import("../../../index").ObjectResolverConfig = {};
   // @ts-expect-error ObjectResolverDeps は削除済み
-  const _b: import("../../index").ObjectResolverDeps = {};
+  const _b: import("../../../index").ObjectResolverDeps = {};
   // @ts-expect-error ObjectStreamExtractDeps は削除済み
-  const _c: import("../../index").ObjectStreamExtractDeps = {};
+  const _c: import("../../../index").ObjectStreamExtractDeps = {};
   // @ts-expect-error ObjectStreamBodyDeps は削除済み
-  const _d: import("../../index").ObjectStreamBodyDeps = {};
+  const _d: import("../../../index").ObjectStreamBodyDeps = {};
   // @ts-expect-error StreamObjectParser は削除済み
-  const _e: import("../../index").StreamObjectParser = {};
+  const _e: import("../../../index").StreamObjectParser = {};
   // @ts-expect-error StreamDecompressor は削除済み
-  const _f: import("../../index").StreamDecompressor = {};
+  const _f: import("../../../index").StreamDecompressor = {};
   // @ts-expect-error CreateFlateDecompressorOptions は削除済み
-  const _g: import("../../index").CreateFlateDecompressorOptions = {};
+  const _g: import("../../../index").CreateFlateDecompressorOptions = {};
 
   expect(true).toBe(true);
 });
