@@ -1,6 +1,9 @@
 import type { PdfError } from "../../../../pdf/errors/index";
 import { err, ok } from "../../../../utils/result/index";
-import { GraphicsState, GraphicsStateStack } from "../../../graphics-state/index";
+import {
+  GraphicsState,
+  GraphicsStateStack,
+} from "../../../graphics-state/index";
 import { OperandStack } from "../../../operand-stack/index";
 import type {
   OperatorHandler,

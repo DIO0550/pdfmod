@@ -80,7 +80,8 @@ test("エントリポイントから全Brand型がインポートできる", asy
   const mod = await import("../../../index");
   expect(mod).toBeDefined();
 
-  const _obj: import("../../../index").ObjectNumber = ObjectNumberCompanion.of(1);
+  const _obj: import("../../../index").ObjectNumber =
+    ObjectNumberCompanion.of(1);
   const _gen: import("../../../index").GenerationNumber =
     GenerationNumberCompanion.of(0);
   const _off: import("../../../index").ByteOffset = ByteOffsetCompanion.of(512);
