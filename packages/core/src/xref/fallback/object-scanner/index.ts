@@ -1,20 +1,20 @@
-import { NumberEx } from "../../ext/number/index";
+import { NumberEx } from "../../../ext/number/index";
 import {
   isPdfDigit,
   isPdfLineBreak,
   isPdfTokenBoundary,
   isPdfWhitespace,
   matchesBytesAt,
-} from "../../lexer/bytes/index";
+} from "../../../lexer/bytes/index";
 import {
   ByteOffset,
   GenerationNumber,
   ObjectNumber,
-} from "../../pdf/types/index";
-import type { Option } from "../../utils/option/index";
-import { none, some } from "../../utils/option/index";
-import type { Result } from "../../utils/result/index";
-import { err, ok } from "../../utils/result/index";
+} from "../../../pdf/types/index";
+import type { Option } from "../../../utils/option/index";
+import { none, some } from "../../../utils/option/index";
+import type { Result } from "../../../utils/result/index";
+import { err, ok } from "../../../utils/result/index";
 
 /**
  * `\d+ \d+ obj` ヘッダ検出結果。

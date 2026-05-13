@@ -3,8 +3,8 @@ import {
   ByteOffset,
   GenerationNumber,
   ObjectNumber,
-} from "../../pdf/types/index";
-import { scanFallback } from "./fallback-scanner";
+} from "../../../../pdf/types/index";
+import { scanFallback } from "../../fallback-scanner";
 
 function encode(s: string): Uint8Array {
   return new TextEncoder().encode(s);

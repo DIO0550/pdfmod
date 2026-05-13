@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
-import { GenerationNumber, ObjectNumber } from "../../pdf/types/index";
-import { scanObjectHeaders } from "./object-scanner";
+import { GenerationNumber, ObjectNumber } from "../../../../pdf/types/index";
+import { scanObjectHeaders } from "../../object-scanner";
 
 function encode(s: string): Uint8Array {
   return new TextEncoder().encode(s);

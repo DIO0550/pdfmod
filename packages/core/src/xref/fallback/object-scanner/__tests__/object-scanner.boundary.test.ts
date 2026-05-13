@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { scanObjectHeaders } from "./object-scanner";
+import { scanObjectHeaders } from "../../object-scanner";
 
 function encode(s: string): Uint8Array {
   return new TextEncoder().encode(s);
