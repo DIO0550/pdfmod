@@ -1,4 +1,4 @@
-import type { PdfWarning } from "../pdf/errors/warning/index";
+import type { PdfWarning } from "../../pdf/errors/warning/index";
 
 /**
  * 未割当バイト検出時に出力する Unicode 置換文字 (U+FFFD)。

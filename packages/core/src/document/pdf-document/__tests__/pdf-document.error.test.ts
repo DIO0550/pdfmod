@@ -1,5 +1,5 @@
 import { assert, expect, test } from "vitest";
-import { PdfDocument } from "./pdf-document";
+import { PdfDocument } from "../../pdf-document";
 import {
   buildPdfHeaderOnly,
   buildPdfWithCorruptXRefAndNoTrailer,

@@ -1,6 +1,6 @@
-import type { PdfWarning } from "../pdf/errors/warning/index";
-import type { PdfString } from "../pdf/types/pdf-types/index";
-import { decodePdfDocEncoding } from "./pdf-doc-encoding";
+import type { PdfWarning } from "../../pdf/errors/warning/index";
+import type { PdfString } from "../../pdf/types/pdf-types/index";
+import { decodePdfDocEncoding } from "../pdf-doc-encoding";
 
 /** UTF-16BE BOM (Byte Order Mark) の 1 バイト目。 */
 const UTF16_BE_BOM_BYTE_0 = 0xfe;

@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
-import type { PdfWarning } from "../pdf/errors/warning/index";
-import { decodePdfDocEncoding, REPLACEMENT_CHAR } from "./pdf-doc-encoding";
+import type { PdfWarning } from "../../../pdf/errors/warning/index";
+import { decodePdfDocEncoding, REPLACEMENT_CHAR } from "../../pdf-doc-encoding";
 
 test("ASCII バイト列をそのままデコードする", () => {
   const warnings: PdfWarning[] = [];

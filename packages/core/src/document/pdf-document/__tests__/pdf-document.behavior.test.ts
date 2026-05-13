@@ -1,7 +1,7 @@
 import { assert, expect, test } from "vitest";
-import { GenerationNumber } from "../pdf/types/generation-number/index";
-import { ObjectNumber } from "../pdf/types/object-number/index";
-import { PdfDocument } from "./pdf-document";
+import { GenerationNumber } from "../../../pdf/types/generation-number/index";
+import { ObjectNumber } from "../../../pdf/types/object-number/index";
+import { PdfDocument } from "../../pdf-document";
 import {
   buildMinimalSinglePagePdf,
   buildPdfWithIncrementalUpdate,

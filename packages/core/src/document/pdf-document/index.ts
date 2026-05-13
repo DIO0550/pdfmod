@@ -1,24 +1,24 @@
-import { isPdfWhitespace, matchesBytesAt } from "../lexer/bytes/index";
-import { ObjectStore } from "../objects/object-store/index";
-import type { PdfError, PdfParseError, PdfWarning } from "../pdf/errors/index";
+import { isPdfWhitespace, matchesBytesAt } from "../../lexer/bytes/index";
+import { ObjectStore } from "../../objects/object-store/index";
+import type { PdfError, PdfParseError, PdfWarning } from "../../pdf/errors/index";
 import {
   ByteOffset,
   type TrailerDict,
   type XRefTable,
-} from "../pdf/types/index";
-import { PdfVersion } from "../pdf/version/index";
-import { none, type Option, some } from "../utils/option/index";
-import { err, ok, type Result } from "../utils/result/index";
-import { scanFallback } from "../xref/fallback/index";
-import { mergeXRefChain } from "../xref/merger/index";
-import { scanStartXRef } from "../xref/startxref/index";
-import { parseXRefTable } from "../xref/table/index";
-import { parseTrailer } from "../xref/trailer/index";
-import { CatalogParser, type ResolveRef } from "./catalog-parser";
-import { DocumentInfoParser } from "./document-info-parser";
-import type { DocumentMetadata } from "./document-metadata";
-import { PageTreeWalker } from "./page-tree/page-tree-walker";
-import type { ResolvedPage } from "./page-tree/resolved-page";
+} from "../../pdf/types/index";
+import { PdfVersion } from "../../pdf/version/index";
+import { none, type Option, some } from "../../utils/option/index";
+import { err, ok, type Result } from "../../utils/result/index";
+import { scanFallback } from "../../xref/fallback/index";
+import { mergeXRefChain } from "../../xref/merger/index";
+import { scanStartXRef } from "../../xref/startxref/index";
+import { parseXRefTable } from "../../xref/table/index";
+import { parseTrailer } from "../../xref/trailer/index";
+import { CatalogParser, type ResolveRef } from "../catalog-parser";
+import { DocumentInfoParser } from "../document-info-parser";
+import type { DocumentMetadata } from "../document-metadata";
+import { PageTreeWalker } from "../page-tree/page-tree-walker";
+import type { ResolvedPage } from "../page-tree/resolved-page";
 
 const PDF_HEADER_SIGNATURE: number[] = Array.from(
   new TextEncoder().encode("%PDF-"),

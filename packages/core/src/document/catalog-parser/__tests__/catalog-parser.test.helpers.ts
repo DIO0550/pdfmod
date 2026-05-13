@@ -1,17 +1,17 @@
 import { expect, type Mock, vi } from "vitest";
-import type { PdfError } from "../pdf/errors/error/index";
-import { GenerationNumber } from "../pdf/types/generation-number/index";
-import { ObjectNumber } from "../pdf/types/object-number/index";
+import type { PdfError } from "../../../pdf/errors/error/index";
+import { GenerationNumber } from "../../../pdf/types/generation-number/index";
+import { ObjectNumber } from "../../../pdf/types/object-number/index";
 import type {
   IndirectRef,
   PdfDictionary,
   PdfObject,
   PdfValue,
   TrailerDict,
-} from "../pdf/types/pdf-types/index";
-import { PdfVersion } from "../pdf/version/index";
-import type { Result } from "../utils/result/index";
-import type { ResolveRef } from "./catalog-parser";
+} from "../../../pdf/types/pdf-types/index";
+import { PdfVersion } from "../../../pdf/version/index";
+import type { Result } from "../../../utils/result/index";
+import type { ResolveRef } from "../../catalog-parser";
 
 /**
  * Result が Ok であることを `expect` で保証し、値を返す（テスト専用ヘルパ）。
