@@ -1,3 +1,10 @@
+/**
+ * `IndirectRef` を実体 `PdfObject` に解決する高レベル窓口。
+ * `XRefTable` のエントリ type を見て inline (type=1) は `object-parser`、ObjStm (type=2) は `object-stream-extractor` に dispatch し、LRU キャッシュと循環参照検出を提供する。
+ *
+ * @module
+ */
+
 import type { PdfError } from "../../pdf/errors/index";
 import { GenerationNumber } from "../../pdf/types/generation-number/index";
 import type { ObjectNumber } from "../../pdf/types/object-number/index";
