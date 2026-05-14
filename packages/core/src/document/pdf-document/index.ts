@@ -18,9 +18,9 @@ import { mergeXRefChain } from "../../xref/merger/index";
 import { scanStartXRef } from "../../xref/startxref/index";
 import { parseXRefTable } from "../../xref/table/index";
 import { parseTrailer } from "../../xref/trailer/index";
-import { CatalogParser, type ResolveRef } from "../catalog-parser";
-import { DocumentInfoParser } from "../document-info-parser";
-import type { DocumentMetadata } from "../document-metadata";
+import { CatalogParser, type ResolveRef } from "../catalog/catalog-parser";
+import { DocumentInfoParser } from "../metadata/document-info-parser";
+import type { DocumentMetadata } from "../metadata/document-metadata";
 import { PageTreeWalker } from "../page-tree/page-tree-walker";
 import type { ResolvedPage } from "../page-tree/resolved-page";
 
