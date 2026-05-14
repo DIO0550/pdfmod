@@ -1,3 +1,10 @@
+/**
+ * `Uint8Array` と `ByteOffset` を入力に、`PdfObject` / `PdfIndirectObject` を 1 個構文解析する低レベルパーサ。
+ * xref を参照せず、stream の `/Length` が間接参照の場合だけ `ObjectResolver` コールバックで解決する (それ以外の間接参照は `PdfIndirectRef` のまま呼び出し側へ返す)。
+ *
+ * @module
+ */
+
 import { NumberEx } from "../../ext/number/index";
 import { Tokenizer } from "../../lexer/tokenizer/index";
 import type { PdfError, PdfParseError } from "../../pdf/errors/index";
