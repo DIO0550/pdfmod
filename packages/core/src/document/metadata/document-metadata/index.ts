@@ -1,8 +1,8 @@
-import type { PdfWarning } from "../../pdf/errors/warning/index";
-import type { PdfValue } from "../../pdf/types/pdf-types/index";
-import type { Brand } from "../../utils/brand/index";
-import type { Result } from "../../utils/result/index";
-import { err, ok } from "../../utils/result/index";
+import type { PdfWarning } from "../../../pdf/errors/warning/index";
+import type { PdfValue } from "../../../pdf/types/pdf-types/index";
+import type { Brand } from "../../../utils/brand/index";
+import type { Result } from "../../../utils/result/index";
+import { err, ok } from "../../../utils/result/index";
 
 declare const PdfTrappedBrand: unique symbol;
 

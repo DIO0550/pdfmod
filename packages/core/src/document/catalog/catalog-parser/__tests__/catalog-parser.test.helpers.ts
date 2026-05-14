@@ -1,16 +1,16 @@
 import { expect, type Mock, vi } from "vitest";
-import type { PdfError } from "../../../pdf/errors/error/index";
-import { GenerationNumber } from "../../../pdf/types/generation-number/index";
-import { ObjectNumber } from "../../../pdf/types/object-number/index";
+import type { PdfError } from "../../../../pdf/errors/error/index";
+import { GenerationNumber } from "../../../../pdf/types/generation-number/index";
+import { ObjectNumber } from "../../../../pdf/types/object-number/index";
 import type {
   IndirectRef,
   PdfDictionary,
   PdfObject,
   PdfValue,
   TrailerDict,
-} from "../../../pdf/types/pdf-types/index";
-import { PdfVersion } from "../../../pdf/version/index";
-import type { Result } from "../../../utils/result/index";
+} from "../../../../pdf/types/pdf-types/index";
+import { PdfVersion } from "../../../../pdf/version/index";
+import type { Result } from "../../../../utils/result/index";
 import type { ResolveRef } from "../../catalog-parser";
 
 /**

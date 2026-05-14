@@ -11,7 +11,7 @@ import type {
 } from "../../../../pdf/types/pdf-types/index";
 import type { Result } from "../../../../utils/result/index";
 import { err, ok } from "../../../../utils/result/index";
-import type { ResolveRef } from "../../../catalog-parser";
+import type { ResolveRef } from "../../../catalog/catalog-parser";
 import type { PdfRectangle } from "../../resolved-page";
 
 /**
