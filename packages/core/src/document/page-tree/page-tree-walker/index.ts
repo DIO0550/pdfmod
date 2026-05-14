@@ -9,7 +9,7 @@ import type {
 } from "../../../pdf/types/pdf-types/index";
 import { none, type Option, some } from "../../../utils/option/index";
 import { err, ok, type Result } from "../../../utils/result/index";
-import type { ResolveRef } from "../../catalog-parser";
+import type { ResolveRef } from "../../catalog/catalog-parser";
 import { DictReader } from "../dict-reader";
 import {
   InheritanceResolver,

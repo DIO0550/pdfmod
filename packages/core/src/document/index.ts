@@ -1,9 +1,7 @@
-export type { ParsedCatalog, ResolveRef } from "./catalog-parser";
-export { CatalogParser } from "./catalog-parser";
-export type { ParsedDocumentInfo } from "./document-info-parser";
-export { DocumentInfoParser } from "./document-info-parser";
-export type { DocumentMetadata } from "./document-metadata";
-export { PdfTrapped } from "./document-metadata";
+export type { ParsedCatalog, ResolveRef } from "./catalog";
+export { CatalogParser } from "./catalog";
+export type { DocumentMetadata, ParsedDocumentInfo } from "./metadata";
+export { DocumentInfoParser, PdfTrapped } from "./metadata";
 export type {
   InheritedAttrs,
   PageRotate,
