@@ -1,12 +1,12 @@
 import { expect, test, vi } from "vitest";
-import type { PdfError } from "../../../pdf/errors/error/index";
+import type { PdfError } from "../../../../pdf/errors/error/index";
 import type {
   IndirectRef,
   PdfObject,
   PdfStream,
   PdfValue,
-} from "../../../pdf/types/pdf-types/index";
-import type { Result } from "../../../utils/result/index";
+} from "../../../../pdf/types/pdf-types/index";
+import type { Result } from "../../../../utils/result/index";
 import { DocumentInfoParser } from "../../document-info-parser";
 import {
   literalString,
