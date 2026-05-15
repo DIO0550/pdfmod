@@ -46,14 +46,4 @@ export const CurrentPath = {
   isEmpty(path: CurrentPath): boolean {
     return path.segments.length === 0;
   },
-  /**
-   * 内部 `ReadonlyArray<PathSegment>` を直接返す (コピーしない)。
-   * 型レベルで mutate を防御する。
-   *
-   * @param path - 取得対象
-   * @returns 内部 `ReadonlyArray<PathSegment>`
-   */
-  segments(path: CurrentPath): ReadonlyArray<PathSegment> {
-    return path.segments;
-  },
 } as const;
