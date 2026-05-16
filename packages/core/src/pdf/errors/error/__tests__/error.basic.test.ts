@@ -113,6 +113,21 @@ test("PdfOperatorOperandValueOutOfRangeError は operatorName/allowed/actual を
   expect(error.actual).toBe(3);
 });
 
+test("PdfOperatorPathNoCurrentPointError は operatorName を保持する", () => {
+  const error: Extract<PdfError, { code: "OPERATOR_PATH_NO_CURRENT_POINT" }> = {
+    code: "OPERATOR_PATH_NO_CURRENT_POINT",
+    message:
+      "Operator 'l' requires a current point established by a prior 'm' or 're'",
+    operatorName: "l",
+  };
+
+  expect(error.code).toBe("OPERATOR_PATH_NO_CURRENT_POINT");
+  expect(error.operatorName).toBe("l");
+  expect(error.message).toBe(
+    "Operator 'l' requires a current point established by a prior 'm' or 're'",
+  );
+});
+
 test("PdfParseErrorのoffsetは省略可能", () => {
   const withOffset: PdfParseError = {
     code: "INVALID_HEADER",
