@@ -78,6 +78,7 @@ export type {
   PdfOperatorOperandMissingError,
   PdfOperatorOperandTypeMismatchError,
   PdfOperatorOperandValueOutOfRangeError,
+  PdfOperatorPathNoCurrentPointError,
   PdfOperatorRegistryError,
   PdfParseError,
   PdfParseErrorCode,
