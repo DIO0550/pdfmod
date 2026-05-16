@@ -8,6 +8,7 @@ import {
 import { PathSegment } from "../../../../graphics-state/path-segment";
 import { OperandStack } from "../../../../operand-stack/index";
 import type { OperatorHandlerContext } from "../../../../operator-registry/index";
+import { mHandler } from "../../m/index";
 import { lHandler } from "../index";
 
 const buildContext = (operands: PdfObject[]): OperatorHandlerContext => {
@@ -96,25 +97,19 @@ test("既存 currentPath を持つ state から開始した場合、元 segment 
   ]);
 });
 
-test("`m(10,20)` 実行後 `l(30,40)` を実行すると [MoveTo, LineTo] になる", () => {
-  const initialState = GraphicsState.create();
-  const seededPath = CurrentPath.append(
-    initialState.currentPath,
-    PathSegment.moveTo(10, 20),
-  );
-  const seededState = GraphicsState.update(initialState, {
-    currentPath: seededPath,
-  });
-  const stack = GraphicsStateStack.replaceCurrent(
-    GraphicsStateStack.create(),
-    seededState,
-  );
+test("`mHandler(10,20)` 実行後 `lHandler(30,40)` を実行すると [MoveTo, LineTo] になる", () => {
+  const mCtx = buildContext([real(10), real(20)]);
+  const mResult = mHandler(mCtx);
+  assert(mResult.ok);
+
   const operandStack = OperandStack.create();
   for (const operand of [real(30), real(40)]) {
     OperandStack.push(operandStack, operand);
   }
-
-  const result = lHandler({ operandStack, graphicsStateStack: stack });
+  const result = lHandler({
+    operandStack,
+    graphicsStateStack: mResult.value.graphicsStateStack,
+  });
 
   assert(result.ok);
   const current = GraphicsStateStack.current(result.value.graphicsStateStack);
