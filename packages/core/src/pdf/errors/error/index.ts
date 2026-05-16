@@ -257,7 +257,8 @@ export interface PdfOperatorPathNoCurrentPointError {
 /**
  * 全致命的PDFエラーの判別共用体型。
  * パースエラー、循環参照エラー、型不一致エラー、operator registry エラー、
- * operator オペランド不足／型不一致エラーを包含する。
+ * operator オペランド不足／型不一致／値域外エラー、
+ * path operator の current point 未確立エラーを包含する。
  *
  * @example
  * ```ts
