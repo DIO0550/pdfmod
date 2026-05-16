@@ -1,3 +1,4 @@
+import { NumberEx } from "../../../ext/number/index";
 import type { Brand } from "../../../utils/brand/index";
 import type { MoveToSegment, PathSegment } from "../path-segment";
 
@@ -58,7 +59,10 @@ export const CurrentPath = {
   beginSubpath(path: CurrentPath, moveTo: MoveToSegment): CurrentPath {
     const segments = path.segments;
     const lastIndex = segments.length - 1;
-    if (lastIndex >= 0 && segments[lastIndex].kind === "moveTo") {
+    if (
+      NumberEx.isSafeIntegerAtLeastZero(lastIndex) &&
+      segments[lastIndex].kind === "moveTo"
+    ) {
       return {
         segments: [...segments.slice(0, lastIndex), moveTo],
       } as unknown as CurrentPath;
