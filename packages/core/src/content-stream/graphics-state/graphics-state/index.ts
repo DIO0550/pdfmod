@@ -1,10 +1,8 @@
 import type { Brand } from "../../../utils/brand/index";
-import type { LineCap } from "../line-cap";
-import { LineCap as LineCapFactory } from "../line-cap";
-import type { LineJoin } from "../line-join";
-import { LineJoin as LineJoinFactory } from "../line-join";
-import type { Matrix } from "../matrix";
-import { Matrix as MatrixFactory } from "../matrix";
+import { CurrentPath } from "../current-path";
+import { LineCap } from "../line-cap";
+import { LineJoin } from "../line-join";
+import { Matrix } from "../matrix";
 
 declare const GraphicsStateBrand: unique symbol;
 
@@ -14,6 +12,7 @@ type GraphicsStateFields = {
   readonly lineCap: LineCap;
   readonly lineJoin: LineJoin;
   readonly miterLimit: number;
+  readonly currentPath: CurrentPath;
 };
 
 /**
@@ -30,21 +29,23 @@ type GraphicsStatePartial = Partial<GraphicsStateFields>;
 export const GraphicsState = {
   /**
    * PDF 仕様 §4.1 デフォルト値で GraphicsState を生成する。
-   *   ctm        = identity
-   *   lineWidth  = 1.0
-   *   lineCap    = 0 (Butt)
-   *   lineJoin   = 0 (Miter)
-   *   miterLimit = 10.0
+   *   ctm         = identity
+   *   lineWidth   = 1.0
+   *   lineCap     = 0 (Butt)
+   *   lineJoin    = 0 (Miter)
+   *   miterLimit  = 10.0
+   *   currentPath = empty()
    *
    * @returns デフォルト値で初期化された GraphicsState
    */
   create(): GraphicsState {
     return {
-      ctm: MatrixFactory.identity(),
+      ctm: Matrix.identity(),
       lineWidth: 1.0,
-      lineCap: LineCapFactory.create(0),
-      lineJoin: LineJoinFactory.create(0),
+      lineCap: LineCap.create(0),
+      lineJoin: LineJoin.create(0),
       miterLimit: 10.0,
+      currentPath: CurrentPath.empty(),
     } as unknown as GraphicsState;
   },
 
@@ -68,6 +69,10 @@ export const GraphicsState = {
         partial.miterLimit !== undefined
           ? partial.miterLimit
           : state.miterLimit,
+      currentPath:
+        partial.currentPath !== undefined
+          ? partial.currentPath
+          : state.currentPath,
     } as unknown as GraphicsState;
   },
 } as const;
