@@ -240,7 +240,7 @@ export interface PdfOperatorOperandValueOutOfRangeError {
  * ```ts
  * const error: PdfOperatorPathNoCurrentPointError = {
  *   code: "OPERATOR_PATH_NO_CURRENT_POINT",
- *   message: "Operator 'l' requires a current point established by a prior 'm'",
+ *   message: "Operator 'l' requires a current point established by a prior 'm' or 're'",
  *   operatorName: "l",
  * };
  * ```
