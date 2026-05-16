@@ -19,17 +19,42 @@ const buildContext = (operands: PdfObject[]): OperatorHandlerContext => {
   return { operandStack, graphicsStateStack };
 };
 
+const buildContextWithCurrentPoint = (
+  operands: PdfObject[],
+): OperatorHandlerContext => {
+  const operandStack = OperandStack.create();
+  for (const operand of operands) {
+    OperandStack.push(operandStack, operand);
+  }
+  const initialState = GraphicsState.create();
+  const seededPath = CurrentPath.append(
+    initialState.currentPath,
+    PathSegment.moveTo(0, 0),
+  );
+  const seededState = GraphicsState.update(initialState, {
+    currentPath: seededPath,
+  });
+  const graphicsStateStack = GraphicsStateStack.replaceCurrent(
+    GraphicsStateStack.create(),
+    seededState,
+  );
+  return { operandStack, graphicsStateStack };
+};
+
 const real = (value: number): PdfObject => ({ type: "real", value });
 const int = (value: number): PdfObject => ({ type: "integer", value });
 
-test("`100 200 l` で LineTo(100, 200) が空 currentPath に append される", () => {
-  const ctx = buildContext([real(100), real(200)]);
+test("`100 200 l` で LineTo(100, 200) が current point 確立済み path に append される", () => {
+  const ctx = buildContextWithCurrentPoint([real(100), real(200)]);
 
   const result = lHandler(ctx);
 
   assert(result.ok);
   const current = GraphicsStateStack.current(result.value.graphicsStateStack);
-  expect(current.currentPath.segments).toEqual([PathSegment.lineTo(100, 200)]);
+  expect(current.currentPath.segments).toEqual([
+    PathSegment.moveTo(0, 0),
+    PathSegment.lineTo(100, 200),
+  ]);
 });
 
 test("既存 currentPath を持つ state から開始した場合、元 segment が保持され末尾に lineTo が追加される", () => {
@@ -100,7 +125,7 @@ test("`m(10,20)` 実行後 `l(30,40)` を実行すると [MoveTo, LineTo] にな
 });
 
 test("連続 `l → l` で 2 つの LineTo が append され、前 LineTo は上書きされない", () => {
-  const firstCtx = buildContext([real(10), real(20)]);
+  const firstCtx = buildContextWithCurrentPoint([real(10), real(20)]);
   const firstResult = lHandler(firstCtx);
   assert(firstResult.ok);
 
@@ -118,23 +143,27 @@ test("連続 `l → l` で 2 つの LineTo が append され、前 LineTo は上
     secondResult.value.graphicsStateStack,
   );
   expect(current.currentPath.segments).toEqual([
+    PathSegment.moveTo(0, 0),
     PathSegment.lineTo(10, 20),
     PathSegment.lineTo(30, 40),
   ]);
 });
 
 test("integer / real 混在 operand が許容される (int(10) + real(20.5))", () => {
-  const ctx = buildContext([int(10), real(20.5)]);
+  const ctx = buildContextWithCurrentPoint([int(10), real(20.5)]);
 
   const result = lHandler(ctx);
 
   assert(result.ok);
   const current = GraphicsStateStack.current(result.value.graphicsStateStack);
-  expect(current.currentPath.segments).toEqual([PathSegment.lineTo(10, 20.5)]);
+  expect(current.currentPath.segments).toEqual([
+    PathSegment.moveTo(0, 0),
+    PathSegment.lineTo(10, 20.5),
+  ]);
 });
 
 test("成功時 operandStack の depth は 0", () => {
-  const ctx = buildContext([real(100), real(200)]);
+  const ctx = buildContextWithCurrentPoint([real(100), real(200)]);
 
   const result = lHandler(ctx);
 
@@ -143,7 +172,7 @@ test("成功時 operandStack の depth は 0", () => {
 });
 
 test("成功時 result.value.operandStack は context.operandStack と同一参照 (in-place mutate)", () => {
-  const ctx = buildContext([real(100), real(200)]);
+  const ctx = buildContextWithCurrentPoint([real(100), real(200)]);
 
   const result = lHandler(ctx);
 
@@ -152,7 +181,7 @@ test("成功時 result.value.operandStack は context.operandStack と同一参�
 });
 
 test("成功時 ctm / lineWidth / lineCap / lineJoin / miterLimit は不変", () => {
-  const ctx = buildContext([real(100), real(200)]);
+  const ctx = buildContextWithCurrentPoint([real(100), real(200)]);
   const before = GraphicsStateStack.current(ctx.graphicsStateStack);
 
   const result = lHandler(ctx);
@@ -175,13 +204,14 @@ test.each([
 ])("境界値 $label が混入しても handler では検証せずそのまま LineTo に格納する", ({
   value,
 }) => {
-  const ctx = buildContext([real(100), real(value)]);
+  const ctx = buildContextWithCurrentPoint([real(100), real(value)]);
 
   const result = lHandler(ctx);
 
   assert(result.ok);
   const current = GraphicsStateStack.current(result.value.graphicsStateStack);
   expect(current.currentPath.segments).toEqual([
+    PathSegment.moveTo(0, 0),
     PathSegment.lineTo(100, value),
   ]);
 });
@@ -290,4 +320,29 @@ test("TYPE_MISMATCH 時に部分消費した operand stack は復元しない (d
   assert(!result.ok);
   expect(beforeDepth).toBe(2);
   expect(OperandStack.depth(ctx.operandStack)).toBe(1);
+});
+
+test("current point 未確立 (currentPath が空) のとき NO_CURRENT_POINT を返し path に append しない", () => {
+  const ctx = buildContext([real(100), real(200)]);
+
+  const result = lHandler(ctx);
+
+  assert(!result.ok);
+  assert(result.error.code === "OPERATOR_PATH_NO_CURRENT_POINT");
+  expect(result.error.operatorName).toBe("l");
+  expect(result.error.message).toBe(
+    "Operator 'l' requires a current point established by a prior 'm' or 're'",
+  );
+  const current = GraphicsStateStack.current(ctx.graphicsStateStack);
+  expect(current.currentPath.segments).toEqual([]);
+});
+
+test("NO_CURRENT_POINT 時に operand stack は (TYPE_MISMATCH と同様) 復元しない", () => {
+  const ctx = buildContext([real(100), real(200)]);
+
+  const result = lHandler(ctx);
+
+  assert(!result.ok);
+  assert(result.error.code === "OPERATOR_PATH_NO_CURRENT_POINT");
+  expect(OperandStack.depth(ctx.operandStack)).toBe(0);
 });
