@@ -40,7 +40,9 @@ export type PdfParseErrorCode =
 
 /**
  * 全致命的PDFエラーコードの共用体型。
- * パースエラーコードに加え、循環参照・型不一致・operator registry エラーを含む。
+ * パースエラーコードに加え、循環参照・型不一致・operator registry エラー、
+ * operator オペランド不足／型不一致／値域外エラー、
+ * path operator の current point 未確立エラーのコードを含む。
  *
  * @example
  * ```ts
