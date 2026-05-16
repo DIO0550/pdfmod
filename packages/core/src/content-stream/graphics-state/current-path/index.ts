@@ -1,5 +1,6 @@
+import { NumberEx } from "../../../ext/number/index";
 import type { Brand } from "../../../utils/brand/index";
-import type { PathSegment } from "../path-segment";
+import type { MoveToSegment, PathSegment } from "../path-segment";
 
 declare const CurrentPathBrand: unique symbol;
 
@@ -45,5 +46,29 @@ export const CurrentPath = {
    */
   isEmpty(path: CurrentPath): boolean {
     return path.segments.length === 0;
+  },
+  /**
+   * `m` operator (ISO 32000-1:2008 §8.5.2) で新しい subpath を開始する。
+   * 直前 segment が `moveTo` の場合は連続 `m` とみなし、前の `moveTo` を
+   * 残さず新しい `moveTo` で上書きする。それ以外は末尾に append する。
+   *
+   * @param path - 元の `CurrentPath` (変更されない)
+   * @param moveTo - 新しい subpath の起点 `MoveToSegment`
+   * @returns 上書き / append された新規 `CurrentPath`
+   */
+  beginSubpath(path: CurrentPath, moveTo: MoveToSegment): CurrentPath {
+    const segments = path.segments;
+    const lastIndex = segments.length - 1;
+    if (
+      NumberEx.isSafeIntegerAtLeastZero(lastIndex) &&
+      segments[lastIndex].kind === "moveTo"
+    ) {
+      return {
+        segments: [...segments.slice(0, lastIndex), moveTo],
+      } as unknown as CurrentPath;
+    }
+    return {
+      segments: [...segments, moveTo],
+    } as unknown as CurrentPath;
   },
 } as const;
