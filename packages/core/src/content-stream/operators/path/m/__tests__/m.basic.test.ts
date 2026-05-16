@@ -71,6 +71,56 @@ test("既存 currentPath を持つ state から開始した場合、元 segment 
   ]);
 });
 
+test("連続した `m` で前の MoveTo が上書きされる (ISO 32000-1:2008 §8.5.2)", () => {
+  const firstCtx = buildContext([real(10), real(20)]);
+  const firstResult = mHandler(firstCtx);
+  assert(firstResult.ok);
+
+  const operandStack = OperandStack.create();
+  for (const operand of [real(30), real(40)]) {
+    OperandStack.push(operandStack, operand);
+  }
+  const secondResult = mHandler({
+    operandStack,
+    graphicsStateStack: firstResult.value.graphicsStateStack,
+  });
+
+  assert(secondResult.ok);
+  const current = GraphicsStateStack.current(
+    secondResult.value.graphicsStateStack,
+  );
+  expect(current.currentPath.segments).toEqual([PathSegment.moveTo(30, 40)]);
+});
+
+test("`m → l → m` のとき直前 lineTo があるため 2 番目の m は上書きせず append する", () => {
+  const initialState = GraphicsState.create();
+  const seededPath = CurrentPath.append(
+    CurrentPath.append(initialState.currentPath, PathSegment.moveTo(10, 20)),
+    PathSegment.lineTo(30, 40),
+  );
+  const seededState = GraphicsState.update(initialState, {
+    currentPath: seededPath,
+  });
+  const stack = GraphicsStateStack.replaceCurrent(
+    GraphicsStateStack.create(),
+    seededState,
+  );
+  const operandStack = OperandStack.create();
+  for (const operand of [real(50), real(60)]) {
+    OperandStack.push(operandStack, operand);
+  }
+
+  const result = mHandler({ operandStack, graphicsStateStack: stack });
+
+  assert(result.ok);
+  const current = GraphicsStateStack.current(result.value.graphicsStateStack);
+  expect(current.currentPath.segments).toEqual([
+    PathSegment.moveTo(10, 20),
+    PathSegment.lineTo(30, 40),
+    PathSegment.moveTo(50, 60),
+  ]);
+});
+
 test("integer / real 混在 operand が許容される (int(100) + real(200.5))", () => {
   const ctx = buildContext([int(100), real(200.5)]);
 

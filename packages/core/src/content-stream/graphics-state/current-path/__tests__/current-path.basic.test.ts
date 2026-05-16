@@ -55,3 +55,59 @@ test("連続 append は順序を保持する", () => {
   );
   expect(final.segments).toEqual([moveTo, lineTo, close]);
 });
+
+test("CurrentPath.beginSubpath(empty, moveTo) の segments は [moveTo]", () => {
+  const next = CurrentPath.beginSubpath(
+    CurrentPath.empty(),
+    PathSegment.moveTo(1, 2),
+  );
+  expect(next.segments).toEqual([PathSegment.moveTo(1, 2)]);
+});
+
+test("末尾が non-moveTo (lineTo) のとき beginSubpath は末尾に append する", () => {
+  const prev = CurrentPath.append(
+    CurrentPath.append(CurrentPath.empty(), PathSegment.moveTo(1, 2)),
+    PathSegment.lineTo(3, 4),
+  );
+  const next = CurrentPath.beginSubpath(prev, PathSegment.moveTo(5, 6));
+  expect(next.segments).toEqual([
+    PathSegment.moveTo(1, 2),
+    PathSegment.lineTo(3, 4),
+    PathSegment.moveTo(5, 6),
+  ]);
+});
+
+test("末尾が moveTo のとき beginSubpath は前の moveTo を上書きする (§8.5.2)", () => {
+  const prev = CurrentPath.append(
+    CurrentPath.empty(),
+    PathSegment.moveTo(1, 2),
+  );
+  const next = CurrentPath.beginSubpath(prev, PathSegment.moveTo(5, 6));
+  expect(next.segments).toEqual([PathSegment.moveTo(5, 6)]);
+});
+
+test("末尾が moveTo のとき beginSubpath は手前の segment を保持する", () => {
+  const prev = CurrentPath.append(
+    CurrentPath.append(
+      CurrentPath.append(CurrentPath.empty(), PathSegment.moveTo(1, 2)),
+      PathSegment.lineTo(3, 4),
+    ),
+    PathSegment.moveTo(10, 20),
+  );
+  const next = CurrentPath.beginSubpath(prev, PathSegment.moveTo(30, 40));
+  expect(next.segments).toEqual([
+    PathSegment.moveTo(1, 2),
+    PathSegment.lineTo(3, 4),
+    PathSegment.moveTo(30, 40),
+  ]);
+});
+
+test("CurrentPath.beginSubpath 後も元 path は不変", () => {
+  const prev = CurrentPath.append(
+    CurrentPath.empty(),
+    PathSegment.moveTo(1, 2),
+  );
+  const beforeSegments = prev.segments;
+  CurrentPath.beginSubpath(prev, PathSegment.moveTo(5, 6));
+  expect(beforeSegments).toEqual([PathSegment.moveTo(1, 2)]);
+});

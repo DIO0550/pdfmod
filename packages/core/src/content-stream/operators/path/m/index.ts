@@ -20,8 +20,10 @@ const OPERAND_COUNT = 2;
  * PDF §8.5.2 `m` operator (moveto) のハンドラ。
  *
  * operand stack から `x y` の 2 個の数値を pop し、
- * `PathSegment.moveTo(x, y)` を現在 GraphicsState の currentPath に append した
+ * `PathSegment.moveTo(x, y)` で新しい subpath を開始した
  * 新しい GraphicsState を生成する (ISO 32000-1:2008 §8.5.2)。
+ * 直前の path construction operator も `m` の場合は、前の `moveTo` を残さず
+ * 上書きする (`CurrentPath.beginSubpath` が担う)。
  *
  * - operand 不足 (< 2) のとき `OPERATOR_OPERAND_MISSING` を返す
  *   `actual` には pop に成功した個数 (0 または 1) を入れる
@@ -67,7 +69,7 @@ export const mHandler: OperatorHandler = (context: OperatorHandlerContext) => {
     .map((operand) => operand.value);
 
   const current = GraphicsStateStack.current(context.graphicsStateStack);
-  const nextPath = CurrentPath.append(
+  const nextPath = CurrentPath.beginSubpath(
     current.currentPath,
     PathSegment.moveTo(x, y),
   );
