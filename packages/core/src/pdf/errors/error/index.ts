@@ -54,7 +54,8 @@ export type PdfErrorCode =
   | "OPERATOR_ALREADY_REGISTERED"
   | "OPERATOR_OPERAND_MISSING"
   | "OPERATOR_OPERAND_TYPE_MISMATCH"
-  | "OPERATOR_OPERAND_VALUE_OUT_OF_RANGE";
+  | "OPERATOR_OPERAND_VALUE_OUT_OF_RANGE"
+  | "OPERATOR_PATH_NO_CURRENT_POINT";
 
 /**
  * PDFパースエラーを表すインターフェース。
@@ -230,6 +231,30 @@ export interface PdfOperatorOperandValueOutOfRangeError {
 }
 
 /**
+ * Content stream path operator の current point 未定義エラー。
+ * `l` / `c` / `v` / `y` / `h` のように current point から segment を構築する
+ * operator が呼び出された時点で current point が確立されていない (`m` / `re`
+ * が先行していない) 場合に発生する (ISO 32000-1:2008 §8.5.2)。
+ *
+ * @example
+ * ```ts
+ * const error: PdfOperatorPathNoCurrentPointError = {
+ *   code: "OPERATOR_PATH_NO_CURRENT_POINT",
+ *   message: "Operator 'l' requires a current point established by a prior 'm'",
+ *   operatorName: "l",
+ * };
+ * ```
+ */
+export interface PdfOperatorPathNoCurrentPointError {
+  /** エラーコード（常に "OPERATOR_PATH_NO_CURRENT_POINT"） */
+  readonly code: "OPERATOR_PATH_NO_CURRENT_POINT";
+  /** 人間可読なエラーメッセージ */
+  readonly message: string;
+  /** current point 未定義を検出した operator 名 */
+  readonly operatorName: string;
+}
+
+/**
  * 全致命的PDFエラーの判別共用体型。
  * パースエラー、循環参照エラー、型不一致エラー、operator registry エラー、
  * operator オペランド不足／型不一致エラーを包含する。
@@ -253,4 +278,5 @@ export type PdfError =
   | PdfOperatorRegistryError
   | PdfOperatorOperandMissingError
   | PdfOperatorOperandTypeMismatchError
-  | PdfOperatorOperandValueOutOfRangeError;
+  | PdfOperatorOperandValueOutOfRangeError
+  | PdfOperatorPathNoCurrentPointError;

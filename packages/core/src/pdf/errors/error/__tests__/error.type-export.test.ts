@@ -7,6 +7,7 @@ import type {
   PdfOperatorOperandMissingError,
   PdfOperatorOperandTypeMismatchError,
   PdfOperatorOperandValueOutOfRangeError,
+  PdfOperatorPathNoCurrentPointError,
   PdfOperatorRegistryError,
   PdfParseError,
   PdfParseErrorCode,
@@ -165,4 +166,23 @@ test("PdfOperatorOperandValueOutOfRangeError は PdfError union から narrow �
   expect(error.code).toBe("OPERATOR_OPERAND_VALUE_OUT_OF_RANGE");
   expect(valueOutOfRangeError.allowed).toEqual([0, 1, 2]);
   expect(valueOutOfRangeError.actual).toBe(3);
+});
+
+test("PdfOperatorPathNoCurrentPointError は PdfError union から narrow できる", () => {
+  const noCurrentPointError: PdfOperatorPathNoCurrentPointError = {
+    code: "OPERATOR_PATH_NO_CURRENT_POINT",
+    message:
+      "Operator 'l' requires a current point established by a prior 'm' or 're'",
+    operatorName: "l",
+  };
+  const error: PdfError = noCurrentPointError;
+
+  const narrowed: Exact<
+    Extract<PdfError, { code: "OPERATOR_PATH_NO_CURRENT_POINT" }>,
+    PdfOperatorPathNoCurrentPointError
+  > = true;
+
+  expect(narrowed).toBe(true);
+  expect(error.code).toBe("OPERATOR_PATH_NO_CURRENT_POINT");
+  expect(noCurrentPointError.operatorName).toBe("l");
 });
