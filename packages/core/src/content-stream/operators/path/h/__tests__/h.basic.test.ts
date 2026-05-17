@@ -42,14 +42,24 @@ const buildContextWithSegments = (
   return { operandStack, graphicsStateStack };
 };
 
-test("空 path に対して `h` を実行すると segments が [close] になる", () => {
+test("空 path に対して `h` は no-op で segments が空のまま保たれる", () => {
   const ctx = buildContext([]);
 
   const result = hHandler(ctx);
 
   assert(result.ok);
   const current = GraphicsStateStack.current(result.value.graphicsStateStack);
-  expect(current.currentPath.segments).toEqual([PathSegment.close()]);
+  expect(current.currentPath.segments).toEqual([]);
+});
+
+test("空 path に対する `h` の後、後続 `l` / `c` が依拠する CurrentPath.isEmpty 不変条件は保たれる", () => {
+  const ctx = buildContext([]);
+
+  const result = hHandler(ctx);
+
+  assert(result.ok);
+  const current = GraphicsStateStack.current(result.value.graphicsStateStack);
+  expect(CurrentPath.isEmpty(current.currentPath)).toBe(true);
 });
 
 test("`m(0,0)` 済み path に `h` を実行すると segments が [moveTo(0,0), close] になる", () => {
@@ -142,8 +152,8 @@ test("`h` 実行で ctm / lineWidth / lineCap / lineJoin / miterLimit が変化�
   expect(after.miterLimit).toBe(before.miterLimit);
 });
 
-test("連続 `h → h` で segments が [close, close] になる", () => {
-  const ctx = buildContext([]);
+test("`m(0,0)` 済み path に対する連続 `h → h` で segments が [moveTo, close, close] になる", () => {
+  const ctx = buildContextWithSegments([PathSegment.moveTo(0, 0)]);
 
   const firstResult = hHandler(ctx);
   assert(firstResult.ok);
@@ -154,6 +164,7 @@ test("連続 `h → h` で segments が [close, close] になる", () => {
     secondResult.value.graphicsStateStack,
   );
   expect(current.currentPath.segments).toEqual([
+    PathSegment.moveTo(0, 0),
     PathSegment.close(),
     PathSegment.close(),
   ]);
