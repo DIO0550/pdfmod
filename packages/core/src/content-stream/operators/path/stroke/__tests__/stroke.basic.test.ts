@@ -185,7 +185,7 @@ test("非空 path + 非デフォルト ctm / lineWidth / lineCap / lineJoin / mi
   assert(result.ok);
   const after = GraphicsStateStack.current(result.value.graphicsStateStack);
   expect(after.currentPath.segments).toEqual([]);
-  expect(after.ctm).toEqual(seededCtm);
+  expect(after.ctm).toBe(seededCtm);
   expect(after.lineWidth).toBe(5);
   expect(after.lineCap).toBe(seededLineCap);
   expect(after.lineJoin).toBe(seededLineJoin);
@@ -216,4 +216,14 @@ test("成功時 `result.value.operandStack` は入力 `ctx.operandStack` と同�
 
   assert(result.ok);
   expect(result.value.operandStack).toBe(ctx.operandStack);
+});
+
+test("空 path 早期 return 分岐で `result.value.operandStack` / `graphicsStateStack` は入力と同一参照", () => {
+  const ctx = buildContext([real(1)]);
+
+  const result = strokeHandler(ctx);
+
+  assert(result.ok);
+  expect(result.value.operandStack).toBe(ctx.operandStack);
+  expect(result.value.graphicsStateStack).toBe(ctx.graphicsStateStack);
 });
