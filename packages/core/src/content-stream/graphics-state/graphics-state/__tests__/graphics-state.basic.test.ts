@@ -1,5 +1,7 @@
 import { expect, test } from "vitest";
 import {
+  Color,
+  ColorSpace,
   CurrentPath,
   GraphicsState,
   LineCap,
@@ -17,6 +19,10 @@ test("createはPDF仕様準拠のデフォルト値を返す", () => {
     lineJoin: LineJoin.create(0),
     miterLimit: 10.0,
     currentPath: CurrentPath.empty(),
+    strokeColor: Color.defaultBlack(),
+    fillColor: Color.defaultBlack(),
+    strokeColorSpace: ColorSpace.deviceGray(),
+    fillColorSpace: ColorSpace.deviceGray(),
   });
 });
 
@@ -63,6 +69,10 @@ test.each([
       ),
     },
   ],
+  ["strokeColor", { strokeColor: Color.rgb(1, 0, 0) }],
+  ["fillColor", { fillColor: Color.cmyk(0, 1, 1, 0) }],
+  ["strokeColorSpace", { strokeColorSpace: ColorSpace.deviceRGB() }],
+  ["fillColorSpace", { fillColorSpace: ColorSpace.deviceCMYK() }],
 ] as const)("update(state, %s) は該当フィールドだけ書き換える", (_label, partial) => {
   const state = GraphicsState.create();
   const updated = GraphicsState.update(state, partial);
@@ -95,17 +105,33 @@ test("updateはundefinedの明示指定で既存フィールドを壊さない",
     CurrentPath.empty(),
     PathSegment.moveTo(1, 2),
   );
+  const strokeColor = Color.rgb(1, 0, 0);
+  const fillColor = Color.cmyk(0, 1, 1, 0);
+  const strokeColorSpace = ColorSpace.deviceRGB();
+  const fillColorSpace = ColorSpace.deviceCMYK();
   const state = GraphicsState.update(GraphicsState.create(), {
     lineWidth: 2.0,
     miterLimit: 5.0,
     currentPath: path,
+    strokeColor,
+    fillColor,
+    strokeColorSpace,
+    fillColorSpace,
   });
   const updated = GraphicsState.update(state, {
     lineWidth: undefined,
     miterLimit: undefined,
     currentPath: undefined,
+    strokeColor: undefined,
+    fillColor: undefined,
+    strokeColorSpace: undefined,
+    fillColorSpace: undefined,
   });
   expect(updated.lineWidth).toBe(2.0);
   expect(updated.miterLimit).toBe(5.0);
   expect(updated.currentPath).toBe(path);
+  expect(updated.strokeColor).toBe(strokeColor);
+  expect(updated.fillColor).toBe(fillColor);
+  expect(updated.strokeColorSpace).toBe(strokeColorSpace);
+  expect(updated.fillColorSpace).toBe(fillColorSpace);
 });
