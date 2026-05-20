@@ -1,5 +1,7 @@
 import { expect, test } from "vitest";
 import {
+  Color,
+  ColorSpace,
   CurrentPath,
   GraphicsState,
   LineCap,
@@ -17,6 +19,10 @@ test("createはPDF仕様準拠のデフォルト値を返す", () => {
     lineJoin: LineJoin.create(0),
     miterLimit: 10.0,
     currentPath: CurrentPath.empty(),
+    strokeColor: Color.defaultBlack(),
+    fillColor: Color.defaultBlack(),
+    strokeColorSpace: ColorSpace.deviceGray(),
+    fillColorSpace: ColorSpace.deviceGray(),
   });
 });
 
