@@ -1,4 +1,6 @@
 import type { Brand } from "../../../utils/brand/index";
+import { Color } from "../color";
+import { ColorSpace } from "../color-space";
 import { CurrentPath } from "../current-path";
 import { LineCap } from "../line-cap";
 import { LineJoin } from "../line-join";
@@ -13,6 +15,10 @@ type GraphicsStateFields = {
   readonly lineJoin: LineJoin;
   readonly miterLimit: number;
   readonly currentPath: CurrentPath;
+  readonly strokeColor: Color;
+  readonly fillColor: Color;
+  readonly strokeColorSpace: ColorSpace;
+  readonly fillColorSpace: ColorSpace;
 };
 
 /**
@@ -29,12 +35,16 @@ type GraphicsStatePartial = Partial<GraphicsStateFields>;
 export const GraphicsState = {
   /**
    * PDF 仕様 §4.1 デフォルト値で GraphicsState を生成する。
-   *   ctm         = identity
-   *   lineWidth   = 1.0
-   *   lineCap     = 0 (Butt)
-   *   lineJoin    = 0 (Miter)
-   *   miterLimit  = 10.0
-   *   currentPath = empty()
+   *   ctm              = identity
+   *   lineWidth        = 1.0
+   *   lineCap          = 0 (Butt)
+   *   lineJoin         = 0 (Miter)
+   *   miterLimit       = 10.0
+   *   currentPath      = empty()
+   *   strokeColor      = defaultBlack (DeviceGray gray=0)
+   *   fillColor        = defaultBlack (DeviceGray gray=0)
+   *   strokeColorSpace = DeviceGray
+   *   fillColorSpace   = DeviceGray
    *
    * @returns デフォルト値で初期化された GraphicsState
    */
@@ -46,6 +56,10 @@ export const GraphicsState = {
       lineJoin: LineJoin.create(0),
       miterLimit: 10.0,
       currentPath: CurrentPath.empty(),
+      strokeColor: Color.defaultBlack(),
+      fillColor: Color.defaultBlack(),
+      strokeColorSpace: ColorSpace.deviceGray(),
+      fillColorSpace: ColorSpace.deviceGray(),
     } as unknown as GraphicsState;
   },
 
@@ -73,6 +87,20 @@ export const GraphicsState = {
         partial.currentPath !== undefined
           ? partial.currentPath
           : state.currentPath,
+      strokeColor:
+        partial.strokeColor !== undefined
+          ? partial.strokeColor
+          : state.strokeColor,
+      fillColor:
+        partial.fillColor !== undefined ? partial.fillColor : state.fillColor,
+      strokeColorSpace:
+        partial.strokeColorSpace !== undefined
+          ? partial.strokeColorSpace
+          : state.strokeColorSpace,
+      fillColorSpace:
+        partial.fillColorSpace !== undefined
+          ? partial.fillColorSpace
+          : state.fillColorSpace,
     } as unknown as GraphicsState;
   },
 } as const;
