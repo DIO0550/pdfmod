@@ -8,7 +8,7 @@ import {
 } from "../../../../graphics-state/index";
 import { OperandStack } from "../../../../operand-stack/index";
 import type { OperatorHandlerContext } from "../../../../operator-registry/index";
-import { GHandler } from "../index";
+import { gHandler } from "../fill";
 
 const buildContext = (operands: PdfObject[]): OperatorHandlerContext => {
   const operandStack = OperandStack.create();
@@ -22,65 +22,65 @@ const buildContext = (operands: PdfObject[]): OperatorHandlerContext => {
 const real = (value: number): PdfObject => ({ type: "real", value });
 const int = (value: number): PdfObject => ({ type: "integer", value });
 
-test("`0.5 G` で strokeColor が Color.gray(0.5) に更新される", () => {
+test("`0.5 g` で fillColor が Color.gray(0.5) に更新される", () => {
   const ctx = buildContext([real(0.5)]);
 
-  const result = GHandler(ctx);
+  const result = gHandler(ctx);
 
   assert(result.ok);
   const current = GraphicsStateStack.current(result.value.graphicsStateStack);
-  expect(current.strokeColor).toEqual(Color.gray(0.5));
+  expect(current.fillColor).toEqual(Color.gray(0.5));
 });
 
-test("初期 strokeColorSpace=deviceRGB/strokeColor=rgb の状態から `0.5 G` で deviceGray + gray(0.5) に切り替わる", () => {
+test("初期 fillColorSpace=deviceRGB/fillColor=rgb の状態から `0.5 g` で deviceGray + gray(0.5) に切り替わる", () => {
   const operandStack = OperandStack.create();
   OperandStack.push(operandStack, real(0.5));
   const baseStack = GraphicsStateStack.create();
   const base = GraphicsStateStack.current(baseStack);
   const rgbState = GraphicsState.update(base, {
-    strokeColor: Color.rgb(1, 0, 0),
-    strokeColorSpace: ColorSpace.deviceRGB(),
+    fillColor: Color.rgb(1, 0, 0),
+    fillColorSpace: ColorSpace.deviceRGB(),
   });
   const graphicsStateStack = GraphicsStateStack.replaceCurrent(
     baseStack,
     rgbState,
   );
 
-  const result = GHandler({ operandStack, graphicsStateStack });
+  const result = gHandler({ operandStack, graphicsStateStack });
 
   assert(result.ok);
   const current = GraphicsStateStack.current(result.value.graphicsStateStack);
-  expect(current.strokeColor).toEqual(Color.gray(0.5));
-  expect(current.strokeColorSpace).toEqual(ColorSpace.deviceGray());
+  expect(current.fillColor).toEqual(Color.gray(0.5));
+  expect(current.fillColorSpace).toEqual(ColorSpace.deviceGray());
 });
 
-test("integer operand `1 G` でも Color.gray(1) になる", () => {
+test("integer operand `1 g` でも Color.gray(1) になる", () => {
   const ctx = buildContext([int(1)]);
 
-  const result = GHandler(ctx);
+  const result = gHandler(ctx);
 
   assert(result.ok);
   const current = GraphicsStateStack.current(result.value.graphicsStateStack);
-  expect(current.strokeColor).toEqual(Color.gray(1));
+  expect(current.fillColor).toEqual(Color.gray(1));
 });
 
-test("成功時 fillColor / fillColorSpace は不変", () => {
+test("成功時 strokeColor / strokeColorSpace は不変", () => {
   const ctx = buildContext([real(0.5)]);
   const before = GraphicsStateStack.current(ctx.graphicsStateStack);
 
-  const result = GHandler(ctx);
+  const result = gHandler(ctx);
 
   assert(result.ok);
   const after = GraphicsStateStack.current(result.value.graphicsStateStack);
-  expect(after.fillColor).toEqual(before.fillColor);
-  expect(after.fillColorSpace).toEqual(before.fillColorSpace);
+  expect(after.strokeColor).toEqual(before.strokeColor);
+  expect(after.strokeColorSpace).toEqual(before.strokeColorSpace);
 });
 
 test("成功時 ctm / lineWidth / lineCap / lineJoin / miterLimit / currentPath は不変", () => {
   const ctx = buildContext([real(0.5)]);
   const before = GraphicsStateStack.current(ctx.graphicsStateStack);
 
-  const result = GHandler(ctx);
+  const result = gHandler(ctx);
 
   assert(result.ok);
   const after = GraphicsStateStack.current(result.value.graphicsStateStack);
@@ -95,7 +95,7 @@ test("成功時 ctm / lineWidth / lineCap / lineJoin / miterLimit / currentPath 
 test("成功時 pop で operand stack が空になる (depth 0)", () => {
   const ctx = buildContext([real(0.5)]);
 
-  const result = GHandler(ctx);
+  const result = gHandler(ctx);
 
   assert(result.ok);
   expect(OperandStack.depth(result.value.operandStack)).toBe(0);
@@ -104,7 +104,7 @@ test("成功時 pop で operand stack が空になる (depth 0)", () => {
 test("成功時 result.value.operandStack は context.operandStack と同一参照", () => {
   const ctx = buildContext([real(0.5)]);
 
-  const result = GHandler(ctx);
+  const result = gHandler(ctx);
 
   assert(result.ok);
   expect(result.value.operandStack).toBe(ctx.operandStack);
@@ -114,11 +114,11 @@ test("operand stack に余剰要素がある場合、末尾 1 個だけ pop し�
   const head = int(99);
   const ctx = buildContext([head, real(0.5)]);
 
-  const result = GHandler(ctx);
+  const result = gHandler(ctx);
 
   assert(result.ok);
   const current = GraphicsStateStack.current(result.value.graphicsStateStack);
-  expect(current.strokeColor).toEqual(Color.gray(0.5));
+  expect(current.fillColor).toEqual(Color.gray(0.5));
   expect(OperandStack.depth(result.value.operandStack)).toBe(1);
   const top = OperandStack.peek(result.value.operandStack);
   assert(top.some);
@@ -128,15 +128,15 @@ test("operand stack に余剰要素がある場合、末尾 1 個だけ pop し�
 test("operand 0 個のとき OPERATOR_OPERAND_MISSING を返し actual = 0", () => {
   const ctx = buildContext([]);
 
-  const result = GHandler(ctx);
+  const result = gHandler(ctx);
 
   assert(!result.ok);
   assert(result.error.code === "OPERATOR_OPERAND_MISSING");
-  expect(result.error.operatorName).toBe("G");
+  expect(result.error.operatorName).toBe("g");
   expect(result.error.required).toBe(1);
   expect(result.error.actual).toBe(0);
   expect(result.error.message).toBe(
-    "Operator 'G' requires 1 operand(s), got 0",
+    "Operator 'g' requires 1 operand(s), got 0",
   );
 });
 
@@ -179,15 +179,15 @@ test.each([
 }) => {
   const ctx = buildContext([operand]);
 
-  const result = GHandler(ctx);
+  const result = gHandler(ctx);
 
   assert(!result.ok);
   assert(result.error.code === "OPERATOR_OPERAND_TYPE_MISMATCH");
-  expect(result.error.operatorName).toBe("G");
+  expect(result.error.operatorName).toBe("g");
   expect(result.error.expected).toBe("number");
   expect(result.error.actual).toBe(label);
   expect(result.error.message).toBe(
-    `Operator 'G' expected number operand, got ${label}`,
+    `Operator 'g' expected number operand, got ${label}`,
   );
 });
 
@@ -195,7 +195,7 @@ test("TYPE_MISMATCH 時に pop 済みの operand は復元しない (depth が�
   const ctx = buildContext([{ type: "name", value: "Foo" }]);
   const beforeDepth = OperandStack.depth(ctx.operandStack);
 
-  const result = GHandler(ctx);
+  const result = gHandler(ctx);
 
   assert(!result.ok);
   expect(beforeDepth).toBe(1);
@@ -213,9 +213,9 @@ test.each([
 ])("境界値 $label は検証せず Color.gray にそのまま透過する", ({ value }) => {
   const ctx = buildContext([real(value)]);
 
-  const result = GHandler(ctx);
+  const result = gHandler(ctx);
 
   assert(result.ok);
   const current = GraphicsStateStack.current(result.value.graphicsStateStack);
-  expect(current.strokeColor).toEqual(Color.gray(value));
+  expect(current.fillColor).toEqual(Color.gray(value));
 });
