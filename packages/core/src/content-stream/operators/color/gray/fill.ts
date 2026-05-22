@@ -30,7 +30,7 @@ const OPERAND_COUNT = 1;
  * - エラー時に operand stack の部分消費は復元しない (既存ハンドラ規約)
  *
  * 実装は cmHandler とテンプレ統一のため `OPERAND_COUNT = 1` でもループ構造を維持する。
- * stroke 版は `GHandler` を参照。
+ * stroke 版は `./stroke` の `GHandler` を参照。
  *
  * @param context - 実行コンテキスト (operand stack / graphics state stack)
  * @returns 成功なら更新後コンテキスト、失敗なら PdfError
