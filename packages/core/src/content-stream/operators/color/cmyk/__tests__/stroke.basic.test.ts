@@ -3,9 +3,14 @@ import type { PdfObject } from "../../../../../pdf/types/pdf-types/index";
 import {
   Color,
   ColorSpace,
+  CurrentPath,
   GraphicsState,
   GraphicsStateStack,
+  LineCap,
+  LineJoin,
+  Matrix,
 } from "../../../../graphics-state/index";
+import { PathSegment } from "../../../../graphics-state/path-segment/index";
 import { OperandStack } from "../../../../operand-stack/index";
 import type { OperatorHandlerContext } from "../../../../operator-registry/index";
 import { KHandler } from "../stroke";
@@ -131,20 +136,44 @@ test("成功時 fillColor / fillColorSpace は不変", () => {
   expect(after.fillColorSpace).toEqual(before.fillColorSpace);
 });
 
-test("成功時 ctm / lineWidth / lineCap / lineJoin / miterLimit / currentPath は不変", () => {
-  const ctx = buildContext([real(0.2), real(0.4), real(0.6), real(0.8)]);
-  const before = GraphicsStateStack.current(ctx.graphicsStateStack);
+test("成功時 非デフォルトの ctm / lineWidth / lineCap / lineJoin / miterLimit / currentPath を seed しても全て不変", () => {
+  const operandStack = OperandStack.create();
+  OperandStack.push(operandStack, real(0.2));
+  OperandStack.push(operandStack, real(0.4));
+  OperandStack.push(operandStack, real(0.6));
+  OperandStack.push(operandStack, real(0.8));
 
-  const result = KHandler(ctx);
+  const baseStack = GraphicsStateStack.create();
+  const base = GraphicsStateStack.current(baseStack);
+  const seededCtm = Matrix.create(2, 0, 0, 3, 10, 20);
+  const seededPath = CurrentPath.append(
+    CurrentPath.append(CurrentPath.empty(), PathSegment.moveTo(1, 2)),
+    PathSegment.lineTo(3, 4),
+  );
+  const seeded = GraphicsState.update(base, {
+    ctm: seededCtm,
+    lineWidth: 2.5,
+    lineCap: LineCap.create(1),
+    lineJoin: LineJoin.create(2),
+    miterLimit: 4,
+    currentPath: seededPath,
+  });
+  const graphicsStateStack = GraphicsStateStack.replaceCurrent(
+    baseStack,
+    seeded,
+  );
+
+  const result = KHandler({ operandStack, graphicsStateStack });
 
   assert(result.ok);
   const after = GraphicsStateStack.current(result.value.graphicsStateStack);
-  expect(after.ctm).toEqual(before.ctm);
-  expect(after.lineWidth).toBe(before.lineWidth);
-  expect(after.lineCap).toBe(before.lineCap);
-  expect(after.lineJoin).toBe(before.lineJoin);
-  expect(after.miterLimit).toBe(before.miterLimit);
-  expect(after.currentPath).toEqual(before.currentPath);
+  expect(after.ctm).toEqual(seededCtm);
+  expect(after.lineWidth).toBe(2.5);
+  expect(after.lineCap).toBe(LineCap.create(1));
+  expect(after.lineJoin).toBe(LineJoin.create(2));
+  expect(after.miterLimit).toBe(4);
+  expect(after.currentPath).toEqual(seededPath);
+  expect(after.strokeColor).toEqual(Color.cmyk(0.2, 0.4, 0.6, 0.8));
 });
 
 test.each([
