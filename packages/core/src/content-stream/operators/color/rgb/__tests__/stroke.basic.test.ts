@@ -8,7 +8,7 @@ import {
 } from "../../../../graphics-state/index";
 import { OperandStack } from "../../../../operand-stack/index";
 import type { OperatorHandlerContext } from "../../../../operator-registry/index";
-import { RGHandler } from "../index";
+import { RGHandler } from "../stroke";
 
 const buildContext = (operands: PdfObject[]): OperatorHandlerContext => {
   const operandStack = OperandStack.create();
