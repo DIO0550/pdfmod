@@ -63,3 +63,21 @@ test("0.5 0.5 0.5 0.5 K を実行すると strokeColor が Color.cmyk(0.5, 0.5, 
   expect(current.strokeColor).toEqual(Color.cmyk(0.5, 0.5, 0.5, 0.5));
   expect(current.strokeColorSpace).toEqual(ColorSpace.deviceCMYK());
 });
+
+test("0.5 0.5 0.5 0.5 k を実行すると fillColor が Color.cmyk(0.5, 0.5, 0.5, 0.5) に更新される", () => {
+  const registered = registerColorOperators(OperatorRegistry.create());
+  assert(registered.ok);
+
+  const result = ContentStreamInterpreter.execute({
+    data: encode("0.5 0.5 0.5 0.5 k"),
+    registry: registered.value,
+  });
+  assert(result.ok);
+  expect(result.value.warnings).toEqual([]);
+
+  const current = GraphicsStateStack.current(
+    result.value.context.graphicsStateStack,
+  );
+  expect(current.fillColor).toEqual(Color.cmyk(0.5, 0.5, 0.5, 0.5));
+  expect(current.fillColorSpace).toEqual(ColorSpace.deviceCMYK());
+});

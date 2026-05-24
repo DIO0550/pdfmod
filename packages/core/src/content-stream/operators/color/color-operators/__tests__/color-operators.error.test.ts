@@ -1,6 +1,12 @@
 import { afterEach, assert, expect, test, vi } from "vitest";
 import { OperatorRegistry } from "../../../../operator-registry/index";
-import { GHandler, gHandler, KHandler, registerColorOperators } from "../index";
+import {
+  GHandler,
+  gHandler,
+  KHandler,
+  kHandler,
+  registerColorOperators,
+} from "../index";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -61,4 +67,23 @@ test("K 重複時、reduce は K で短絡し register は ['G', 'g', 'K'] で�
   expect(result.error.operatorName).toBe("K");
   const calledNames = registerSpy.mock.calls.map((call) => call[1]);
   expect(calledNames).toEqual(["G", "g", "K"]);
+});
+
+test("k 重複時、reduce は k で短絡し register は ['G', 'g', 'K', 'k'] で止まる", () => {
+  const seed = OperatorRegistry.register(
+    OperatorRegistry.create(),
+    "k",
+    kHandler,
+  );
+  assert(seed.ok);
+
+  const registerSpy = vi.spyOn(OperatorRegistry, "register");
+  const result = registerColorOperators(seed.value);
+
+  assert(!result.ok);
+  expect(result.error.code).toBe("OPERATOR_ALREADY_REGISTERED");
+  assert(result.error.code === "OPERATOR_ALREADY_REGISTERED");
+  expect(result.error.operatorName).toBe("k");
+  const calledNames = registerSpy.mock.calls.map((call) => call[1]);
+  expect(calledNames).toEqual(["G", "g", "K", "k"]);
 });
