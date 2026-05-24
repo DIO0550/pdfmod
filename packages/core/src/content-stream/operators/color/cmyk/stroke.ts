@@ -17,7 +17,7 @@ const OPERATOR_NAME = "K";
 const OPERAND_COUNT = 4;
 
 /**
- * PDF §8.6.5.3 `K c m y k` operator (DeviceCMYK stroke color) のハンドラ。
+ * PDF §8.6.5.4 `K c m y k` operator (DeviceCMYK stroke color) のハンドラ。
  *
  * operand stack から `c m y k` 4 個を pop し、`Color.cmyk(c, m, y, k)` と
  * `ColorSpace.deviceCMYK()` を生成して GraphicsState の strokeColor /
