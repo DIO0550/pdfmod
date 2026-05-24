@@ -8,7 +8,7 @@ import {
 } from "../../../../graphics-state/index";
 import { OperandStack } from "../../../../operand-stack/index";
 import type { OperatorHandlerContext } from "../../../../operator-registry/index";
-import { RGHandler } from "../index";
+import { rgHandler } from "../fill";
 
 const buildContext = (operands: PdfObject[]): OperatorHandlerContext => {
   const operandStack = OperandStack.create();
@@ -22,50 +22,50 @@ const buildContext = (operands: PdfObject[]): OperatorHandlerContext => {
 const real = (value: number): PdfObject => ({ type: "real", value });
 const int = (value: number): PdfObject => ({ type: "integer", value });
 
-test("`0 0 0 RG` で strokeColor が Color.rgb(0, 0, 0) に更新される", () => {
+test("`0 0 0 rg` で fillColor が Color.rgb(0, 0, 0) に更新される", () => {
   const ctx = buildContext([real(0), real(0), real(0)]);
 
-  const result = RGHandler(ctx);
+  const result = rgHandler(ctx);
 
   assert(result.ok);
   const current = GraphicsStateStack.current(result.value.graphicsStateStack);
-  expect(current.strokeColor).toEqual(Color.rgb(0, 0, 0));
+  expect(current.fillColor).toEqual(Color.rgb(0, 0, 0));
 });
 
-test("`1 0 0 RG` で strokeColor=Color.rgb(1, 0, 0) / strokeColorSpace=deviceRGB() になる", () => {
+test("`1 0 0 rg` で fillColor=Color.rgb(1, 0, 0) / fillColorSpace=deviceRGB() になる", () => {
   const ctx = buildContext([real(1), real(0), real(0)]);
 
-  const result = RGHandler(ctx);
+  const result = rgHandler(ctx);
 
   assert(result.ok);
   const current = GraphicsStateStack.current(result.value.graphicsStateStack);
-  expect(current.strokeColor).toEqual(Color.rgb(1, 0, 0));
-  expect(current.strokeColorSpace).toEqual(ColorSpace.deviceRGB());
+  expect(current.fillColor).toEqual(Color.rgb(1, 0, 0));
+  expect(current.fillColorSpace).toEqual(ColorSpace.deviceRGB());
 });
 
-test("integer operand `1 0 0 RG` でも Color.rgb(1, 0, 0) になる", () => {
+test("integer operand `1 0 0 rg` でも Color.rgb(1, 0, 0) になる", () => {
   const ctx = buildContext([int(1), int(0), int(0)]);
 
-  const result = RGHandler(ctx);
+  const result = rgHandler(ctx);
 
   assert(result.ok);
   const current = GraphicsStateStack.current(result.value.graphicsStateStack);
-  expect(current.strokeColor).toEqual(Color.rgb(1, 0, 0));
+  expect(current.fillColor).toEqual(Color.rgb(1, 0, 0));
 });
 
-test("成功時 fillColor / fillColorSpace は不変", () => {
+test("成功時 strokeColor / strokeColorSpace は不変", () => {
   const ctx = buildContext([real(0.1), real(0.2), real(0.3)]);
   const before = GraphicsStateStack.current(ctx.graphicsStateStack);
 
-  const result = RGHandler(ctx);
+  const result = rgHandler(ctx);
 
   assert(result.ok);
   const after = GraphicsStateStack.current(result.value.graphicsStateStack);
-  expect(after.fillColor).toEqual(before.fillColor);
-  expect(after.fillColorSpace).toEqual(before.fillColorSpace);
+  expect(after.strokeColor).toEqual(before.strokeColor);
+  expect(after.strokeColorSpace).toEqual(before.strokeColorSpace);
 });
 
-test("初期 fillColor=rgb(0.5, 0.5, 0.5) の状態でも RG 実行後 fillColor は変わらない", () => {
+test("初期 strokeColor=rgb(0.5, 0.5, 0.5) の状態でも rg 実行後 strokeColor は変わらない", () => {
   const operandStack = OperandStack.create();
   OperandStack.push(operandStack, real(1));
   OperandStack.push(operandStack, real(0));
@@ -73,28 +73,28 @@ test("初期 fillColor=rgb(0.5, 0.5, 0.5) の状態でも RG 実行後 fillColor
   const baseStack = GraphicsStateStack.create();
   const base = GraphicsStateStack.current(baseStack);
   const seeded = GraphicsState.update(base, {
-    fillColor: Color.rgb(0.5, 0.5, 0.5),
-    fillColorSpace: ColorSpace.deviceRGB(),
+    strokeColor: Color.rgb(0.5, 0.5, 0.5),
+    strokeColorSpace: ColorSpace.deviceRGB(),
   });
   const graphicsStateStack = GraphicsStateStack.replaceCurrent(
     baseStack,
     seeded,
   );
 
-  const result = RGHandler({ operandStack, graphicsStateStack });
+  const result = rgHandler({ operandStack, graphicsStateStack });
 
   assert(result.ok);
   const current = GraphicsStateStack.current(result.value.graphicsStateStack);
-  expect(current.fillColor).toEqual(Color.rgb(0.5, 0.5, 0.5));
-  expect(current.fillColorSpace).toEqual(ColorSpace.deviceRGB());
-  expect(current.strokeColor).toEqual(Color.rgb(1, 0, 0));
+  expect(current.strokeColor).toEqual(Color.rgb(0.5, 0.5, 0.5));
+  expect(current.strokeColorSpace).toEqual(ColorSpace.deviceRGB());
+  expect(current.fillColor).toEqual(Color.rgb(1, 0, 0));
 });
 
 test("成功時 ctm / lineWidth / lineCap / lineJoin / miterLimit / currentPath は不変", () => {
   const ctx = buildContext([real(0.1), real(0.2), real(0.3)]);
   const before = GraphicsStateStack.current(ctx.graphicsStateStack);
 
-  const result = RGHandler(ctx);
+  const result = rgHandler(ctx);
 
   assert(result.ok);
   const after = GraphicsStateStack.current(result.value.graphicsStateStack);
@@ -109,7 +109,7 @@ test("成功時 ctm / lineWidth / lineCap / lineJoin / miterLimit / currentPath 
 test("成功時 pop で operand stack が空になる (depth 0)", () => {
   const ctx = buildContext([real(0.1), real(0.2), real(0.3)]);
 
-  const result = RGHandler(ctx);
+  const result = rgHandler(ctx);
 
   assert(result.ok);
   expect(OperandStack.depth(result.value.operandStack)).toBe(0);
@@ -118,7 +118,7 @@ test("成功時 pop で operand stack が空になる (depth 0)", () => {
 test("成功時 result.value.operandStack は context.operandStack と同一参照", () => {
   const ctx = buildContext([real(0.1), real(0.2), real(0.3)]);
 
-  const result = RGHandler(ctx);
+  const result = rgHandler(ctx);
 
   assert(result.ok);
   expect(result.value.operandStack).toBe(ctx.operandStack);
@@ -129,11 +129,11 @@ test("operand stack に余剰要素 (5 個) がある場合、末尾 3 個だけ
   const head2 = int(98);
   const ctx = buildContext([head1, head2, real(0.1), real(0.2), real(0.3)]);
 
-  const result = RGHandler(ctx);
+  const result = rgHandler(ctx);
 
   assert(result.ok);
   const current = GraphicsStateStack.current(result.value.graphicsStateStack);
-  expect(current.strokeColor).toEqual(Color.rgb(0.1, 0.2, 0.3));
+  expect(current.fillColor).toEqual(Color.rgb(0.1, 0.2, 0.3));
   expect(OperandStack.depth(result.value.operandStack)).toBe(2);
   const top = OperandStack.peek(result.value.operandStack);
   assert(top.some);
@@ -152,11 +152,11 @@ test.each([
 ])("境界値 $label は検証せず Color.rgb にそのまま透過する", ({ r, g, b }) => {
   const ctx = buildContext([real(r), real(g), real(b)]);
 
-  const result = RGHandler(ctx);
+  const result = rgHandler(ctx);
 
   assert(result.ok);
   const current = GraphicsStateStack.current(result.value.graphicsStateStack);
-  expect(current.strokeColor).toEqual(Color.rgb(r, g, b));
+  expect(current.fillColor).toEqual(Color.rgb(r, g, b));
 });
 
 test("NaN operand を渡しても handler はエラーを返さず Color.rgb の各成分が NaN になる", () => {
@@ -166,14 +166,14 @@ test("NaN operand を渡しても handler はエラーを返さず Color.rgb の
     real(Number.NaN),
   ]);
 
-  const result = RGHandler(ctx);
+  const result = rgHandler(ctx);
 
   assert(result.ok);
   const current = GraphicsStateStack.current(result.value.graphicsStateStack);
-  assert(current.strokeColor.kind === "rgb");
-  expect(Number.isNaN(current.strokeColor.r)).toBe(true);
-  expect(Number.isNaN(current.strokeColor.g)).toBe(true);
-  expect(Number.isNaN(current.strokeColor.b)).toBe(true);
+  assert(current.fillColor.kind === "rgb");
+  expect(Number.isNaN(current.fillColor.r)).toBe(true);
+  expect(Number.isNaN(current.fillColor.g)).toBe(true);
+  expect(Number.isNaN(current.fillColor.b)).toBe(true);
 });
 
 test("+Infinity / -Infinity operand を渡しても handler はエラーを返さず Color.rgb にそのまま透過する", () => {
@@ -183,12 +183,12 @@ test("+Infinity / -Infinity operand を渡しても handler はエラーを返�
     real(Number.POSITIVE_INFINITY),
   ]);
 
-  const result = RGHandler(ctx);
+  const result = rgHandler(ctx);
 
   assert(result.ok);
   const current = GraphicsStateStack.current(result.value.graphicsStateStack);
-  assert(current.strokeColor.kind === "rgb");
-  expect(current.strokeColor.r).toBe(Number.POSITIVE_INFINITY);
-  expect(current.strokeColor.g).toBe(Number.NEGATIVE_INFINITY);
-  expect(current.strokeColor.b).toBe(Number.POSITIVE_INFINITY);
+  assert(current.fillColor.kind === "rgb");
+  expect(current.fillColor.r).toBe(Number.POSITIVE_INFINITY);
+  expect(current.fillColor.g).toBe(Number.NEGATIVE_INFINITY);
+  expect(current.fillColor.b).toBe(Number.POSITIVE_INFINITY);
 });
