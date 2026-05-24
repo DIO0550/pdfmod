@@ -6,7 +6,7 @@ import {
 } from "../../../../graphics-state/index";
 import { ContentStreamInterpreter } from "../../../../interpreter/index";
 import { OperatorRegistry } from "../../../../operator-registry/index";
-import { RGHandler } from "../index";
+import { RGHandler } from "../stroke";
 
 const encode = (s: string): Uint8Array => new TextEncoder().encode(s);
 
