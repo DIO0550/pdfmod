@@ -7,21 +7,27 @@ import { kHandler } from "../cmyk/fill";
 import { KHandler } from "../cmyk/stroke";
 import { gHandler } from "../gray/fill";
 import { GHandler } from "../gray/stroke";
+import { rgHandler } from "../rgb/fill";
+import { RGHandler } from "../rgb/stroke";
 
 export { kHandler } from "../cmyk/fill";
 export { KHandler } from "../cmyk/stroke";
 export { gHandler } from "../gray/fill";
 export { GHandler } from "../gray/stroke";
+export { rgHandler } from "../rgb/fill";
+export { RGHandler } from "../rgb/stroke";
 
 const COLOR_OPERATORS: ReadonlyArray<readonly [string, OperatorHandler]> = [
   ["G", GHandler],
   ["g", gHandler],
+  ["RG", RGHandler],
+  ["rg", rgHandler],
   ["K", KHandler],
   ["k", kHandler],
 ];
 
 /**
- * Color operator (G / g / K / k) を OperatorRegistry に一括登録するヘルパ (G/g/K/k 版)。
+ * Color operator (G / g / RG / rg / K / k) を OperatorRegistry に一括登録するヘルパ。
  *
  * fail-fast: いずれかの register が Err を返した時点で reduce 内 flatMap が
  * 短絡し、後続 operator の register は呼ばれない。
