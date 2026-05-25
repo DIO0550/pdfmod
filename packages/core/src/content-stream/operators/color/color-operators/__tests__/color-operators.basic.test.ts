@@ -8,12 +8,16 @@ import {
   gHandler,
   KHandler,
   kHandler,
+  RGHandler,
   registerColorOperators,
+  rgHandler,
 } from "../index";
 
 test.each<readonly [string, OperatorHandler]>([
   ["G", GHandler],
   ["g", gHandler],
+  ["RG", RGHandler],
+  ["rg", rgHandler],
   ["K", KHandler],
   ["k", kHandler],
 ])("registerColorOperators は %s に対応する handler を登録する", (name, expectedHandler) => {
@@ -30,6 +34,8 @@ test("registerColorOperators の戻り値は ok で OperatorRegistry を保持�
   assert(result.ok);
   expect(OperatorRegistry.has(result.value, "G")).toBe(true);
   expect(OperatorRegistry.has(result.value, "g")).toBe(true);
+  expect(OperatorRegistry.has(result.value, "RG")).toBe(true);
+  expect(OperatorRegistry.has(result.value, "rg")).toBe(true);
   expect(OperatorRegistry.has(result.value, "K")).toBe(true);
   expect(OperatorRegistry.has(result.value, "k")).toBe(true);
 });
