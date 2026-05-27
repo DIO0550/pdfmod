@@ -1,4 +1,5 @@
 import type { Brand } from "../../../utils/brand/index";
+import type { ValueOf } from "../../../utils/types/utility-type";
 
 declare const TextRenderingModeBrand: unique symbol;
 
@@ -17,7 +18,7 @@ const Mode = {
   CLIP: 7,
 } as const satisfies Record<string, number>;
 
-type TextRenderingModeValue = (typeof Mode)[keyof typeof Mode];
+type TextRenderingModeValue = ValueOf<typeof Mode>;
 
 /**
  * PDF 仕様 §9.3.6 の text rendering mode。
