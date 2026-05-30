@@ -100,6 +100,24 @@ export interface PdfName {
 }
 
 /**
+ * `PdfName` の判定関数を束ねた companion object。
+ * 型と value を同一識別子で公開する declaration merging パターン
+ * (`NumericPdfObject` と同流儀)。`.create()` はカテゴリ系 union ではないため追加しない。
+ */
+export const PdfName = {
+  /**
+   * PdfObject が name オブジェクトであるかを判定する type guard。
+   * Tf など name operand を取るオペレータが共通で行う型チェック。
+   *
+   * @param operand - 判定対象の PdfObject
+   * @returns name なら true
+   */
+  is(operand: PdfObject): operand is PdfName {
+    return operand.type === "name";
+  },
+} as const;
+
+/**
  * 配列オブジェクト (ISO 32000 7.3.6)。
  * 要素は PdfValue に限定され、stream を含むことはできない。
  */
