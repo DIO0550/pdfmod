@@ -16,12 +16,6 @@ test("createはPDF §9.3 デフォルト値を返す", () => {
   });
 });
 
-test("updateは指定したフィールドだけを書き換える", () => {
-  const state = TextState.create();
-  const updated = TextState.update(state, { charSpace: 2 });
-  expect(updated.charSpace).toBe(2);
-});
-
 test("updateは未指定フィールドを保持する", () => {
   const state = TextState.create();
   const updated = TextState.update(state, { charSpace: 2 });
@@ -60,12 +54,6 @@ test.each([
   const state = TextState.create();
   const updated = TextState.update(state, partial);
   expect(updated).toEqual({ ...state, ...partial });
-});
-
-test('update({ fontName: some("F1") }) は none から some へ遷移する', () => {
-  const state = TextState.create();
-  const updated = TextState.update(state, { fontName: some("F1") });
-  expect(updated.fontName).toEqual(some("F1"));
 });
 
 test("updateはundefinedの明示指定で既存フィールドを壊さない", () => {
