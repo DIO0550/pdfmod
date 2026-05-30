@@ -1,0 +1,87 @@
+# pdfmod (Rust)
+
+pdfmod の **Rust 実装**。TypeScript 版 (`packages/core` = `@pdfmod/core`) の PDF 処理エンジンを
+Rust に移植していくためのワークスペース。
+
+ISO 32000-1:2008 (PDF 1.7) / ISO 32000-2:2020 (PDF 2.0) 準拠を目標とする。
+
+## 設計方針
+
+- **外部 crate 依存ゼロ。** Rust 標準ライブラリ (`std`) のみを使う。zlib/inflate などの
+  フィルタ処理も自前で実装する。Cargo はビルド／テスト管理ツールとしてのみ使用する。
+- **`Result` / `Option` は std のものをそのまま使う。** TypeScript 版には自作の
+  `Result`/`Option` ユーティリティ（`packages/core/src/utils`）があるが、Rust ではこれらは
+  言語標準型のため再実装しない。これは欠落ではなく意図的な設計判断。
+- **Brand 型 + companion object → newtype + 関連関数。** TS の
+  `Brand<number, ...>` + `{ of, create }` パターンは、Rust の newtype（タプル構造体）と
+  関連関数 `of()` / `create()` / `value()` に移植する。
+- **discriminated union → `enum`。** `PdfObject` / `XRefEntry` / `PdfErrorCode` などは
+  Rust の `enum` に移植する。
+
+### 整数型の選定
+
+TS は全て `number` だが、Rust では幅を明示する:
+
+| 型 | Rust 表現 | 根拠 |
+|---|---|---|
+| `ObjectNumber` | `u64` | xref のオブジェクト番号は最大 10 桁 (9_999_999_999) で `u32` を超える |
+| `GenerationNumber` | `u16` | 世代番号は最大 5 桁 (65535) で `u16` にちょうど収まる |
+| `ByteOffset` | `u64` | ファイル内オフセット |
+| `PdfObject::Integer` | `i64` | PDF 整数オブジェクト |
+| `PdfObject::Real` | `f64` | PDF 実数オブジェクト |
+
+## ディレクトリ構成
+
+```
+rust/
+├── Cargo.toml            # ワークスペース定義
+└── crates/
+    └── core/             # pdfmod-core クレート（@pdfmod/core 相当）
+        ├── Cargo.toml
+        └── src/
+            ├── lib.rs
+            ├── pdf.rs            # PDF 基本型・オブジェクト・エラー・バージョン・フィルタ
+            ├── pdf/
+            │   ├── types.rs      # ✅ ObjectNumber / GenerationNumber / ByteOffset / IndirectRef
+            │   ├── object.rs     # ✅ PdfObject / XRefEntry / XRefTable / PdfIndirectObject
+            │   ├── errors.rs     # ✅ PdfErrorCode / PdfError
+            │   ├── version.rs    # ⬜ stub
+            │   └── filter.rs     # ⬜ stub
+            ├── lexer.rs          # ⬜ stub
+            ├── ext.rs            # ⬜ stub
+            ├── objects.rs        # ⬜ stub
+            ├── xref.rs           # ⬜ stub
+            ├── document.rs       # ⬜ stub
+            └── content_stream.rs # ⬜ stub
+```
+
+✅ = 土台として実装済み / ⬜ = モジュール宣言のみ（TS 版から順次移植予定）
+
+## ビルド・テスト
+
+```sh
+cd rust
+cargo build
+cargo test
+```
+
+> **注意:** 現在のコンテナには Rust ツールチェーン (`rustc` / `cargo`) が未インストール。
+> この足場のコードは **まだコンパイル検証されていない**。
+> `rustup` 等でツールチェーンを導入後、`cargo build` / `cargo test` で検証すること。
+
+## TS 版との対応
+
+| Rust モジュール | TS (`packages/core/src/`) |
+|---|---|
+| `pdf::types` / `pdf::object` | `pdf/types` |
+| `pdf::errors` | `pdf/errors` |
+| `pdf::version` | `pdf/version` |
+| `pdf::filter` | `pdf/filter` |
+| `lexer` | `lexer` |
+| `ext` | `ext` |
+| `objects` | `objects` |
+| `xref` | `xref` |
+| `document` | `document` |
+| `content_stream` | `content-stream` |
+| （std `Result`/`Option` で代替） | `utils/result`, `utils/option` |
+| （newtype で代替） | `utils/brand` |
