@@ -7,6 +7,8 @@ import {
   LineCap,
   LineJoin,
   Matrix,
+  TextObject,
+  TextState,
 } from "../../index";
 import { PathSegment } from "../../path-segment";
 
@@ -23,6 +25,8 @@ test("createはPDF仕様準拠のデフォルト値を返す", () => {
     fillColor: Color.defaultBlack(),
     strokeColorSpace: ColorSpace.deviceGray(),
     fillColorSpace: ColorSpace.deviceGray(),
+    textState: TextState.create(),
+    textObject: TextObject.inactive(),
   });
 });
 
@@ -73,6 +77,12 @@ test.each([
   ["fillColor", { fillColor: Color.cmyk(0, 1, 1, 0) }],
   ["strokeColorSpace", { strokeColorSpace: ColorSpace.deviceRGB() }],
   ["fillColorSpace", { fillColorSpace: ColorSpace.deviceCMYK() }],
+  [
+    "textState",
+    { textState: TextState.update(TextState.create(), { charSpace: 2 }) },
+  ],
+  ["textObject", { textObject: TextObject.begin() }],
+  ["empty", {}],
 ] as const)("update(state, %s) は該当フィールドだけ書き換える", (_label, partial) => {
   const state = GraphicsState.create();
   const updated = GraphicsState.update(state, partial);
@@ -109,6 +119,8 @@ test("updateはundefinedの明示指定で既存フィールドを壊さない",
   const fillColor = Color.cmyk(0, 1, 1, 0);
   const strokeColorSpace = ColorSpace.deviceRGB();
   const fillColorSpace = ColorSpace.deviceCMYK();
+  const textState = TextState.update(TextState.create(), { charSpace: 2 });
+  const textObject = TextObject.begin();
   const state = GraphicsState.update(GraphicsState.create(), {
     lineWidth: 2.0,
     miterLimit: 5.0,
@@ -117,6 +129,8 @@ test("updateはundefinedの明示指定で既存フィールドを壊さない",
     fillColor,
     strokeColorSpace,
     fillColorSpace,
+    textState,
+    textObject,
   });
   const updated = GraphicsState.update(state, {
     lineWidth: undefined,
@@ -126,6 +140,8 @@ test("updateはundefinedの明示指定で既存フィールドを壊さない",
     fillColor: undefined,
     strokeColorSpace: undefined,
     fillColorSpace: undefined,
+    textState: undefined,
+    textObject: undefined,
   });
   expect(updated.lineWidth).toBe(2.0);
   expect(updated.miterLimit).toBe(5.0);
@@ -134,4 +150,6 @@ test("updateはundefinedの明示指定で既存フィールドを壊さない",
   expect(updated.fillColor).toBe(fillColor);
   expect(updated.strokeColorSpace).toBe(strokeColorSpace);
   expect(updated.fillColorSpace).toBe(fillColorSpace);
+  expect(updated.textState).toBe(textState);
+  expect(updated.textObject).toBe(textObject);
 });

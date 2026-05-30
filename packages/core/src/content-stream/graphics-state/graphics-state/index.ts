@@ -5,6 +5,8 @@ import { CurrentPath } from "../current-path";
 import { LineCap } from "../line-cap";
 import { LineJoin } from "../line-join";
 import { Matrix } from "../matrix";
+import { TextObject } from "../text-object";
+import { TextState } from "../text-state";
 
 declare const GraphicsStateBrand: unique symbol;
 
@@ -19,6 +21,8 @@ type GraphicsStateFields = {
   readonly fillColor: Color;
   readonly strokeColorSpace: ColorSpace;
   readonly fillColorSpace: ColorSpace;
+  readonly textState: TextState;
+  readonly textObject: TextObject;
 };
 
 /**
@@ -45,6 +49,8 @@ export const GraphicsState = {
    *   fillColor        = defaultBlack (DeviceGray gray=0)
    *   strokeColorSpace = DeviceGray
    *   fillColorSpace   = DeviceGray
+   *   textState        = TextState.create()
+   *   textObject       = TextObject.inactive()
    *
    * @returns デフォルト値で初期化された GraphicsState
    */
@@ -60,6 +66,8 @@ export const GraphicsState = {
       fillColor: Color.defaultBlack(),
       strokeColorSpace: ColorSpace.deviceGray(),
       fillColorSpace: ColorSpace.deviceGray(),
+      textState: TextState.create(),
+      textObject: TextObject.inactive(),
     } as unknown as GraphicsState;
   },
 
@@ -101,6 +109,12 @@ export const GraphicsState = {
         partial.fillColorSpace !== undefined
           ? partial.fillColorSpace
           : state.fillColorSpace,
+      textState:
+        partial.textState !== undefined ? partial.textState : state.textState,
+      textObject:
+        partial.textObject !== undefined
+          ? partial.textObject
+          : state.textObject,
     } as unknown as GraphicsState;
   },
 } as const;
