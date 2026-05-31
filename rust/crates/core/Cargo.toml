@@ -1,0 +1,10 @@
+[package]
+name = "pdfmod-core"
+version = "0.0.1"
+edition = "2021"
+description = "PDF 処理エンジン（pdfmod の Rust 実装、std のみ・外部依存ゼロ）"
+license = "MIT"
+repository = "https://github.com/DIO0550/pdfmod"
+
+# 外部依存ゼロが本クレートの設計制約。ここには何も追加しないこと。
+[dependencies]

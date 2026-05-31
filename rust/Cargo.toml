@@ -1,0 +1,6 @@
+[workspace]
+resolver = "2"
+members = ["crates/core"]
+
+# pdfmod の Rust 実装。外部 crate には一切依存しない（std のみ）方針。
+# 依存を追加しないこと自体が設計制約のため、[workspace.dependencies] は空のままにする。
