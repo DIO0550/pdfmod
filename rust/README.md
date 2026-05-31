@@ -8,25 +8,9 @@ ISO 32000-1:2008 (PDF 1.7) / ISO 32000-2:2020 (PDF 2.0) 準拠を目標とする
 
 - **外部 crate 依存ゼロ。** Rust 標準ライブラリ (`std`) のみを使う。zlib/inflate などの
   フィルタ処理も自前で実装する。Cargo はビルド／テスト管理ツールとしてのみ使用する。
-- **`Result` / `Option` は std のものをそのまま使う。** 値を生成するか失敗する操作は
-  `Result<T, PdfError>`、値の有無は `Option<T>` で表す。独自のエラー／オプション型は作らない。
-- **ID 値は newtype（タプル構造体）で表す。** `ObjectNumber` / `GenerationNumber` /
-  `ByteOffset` などは裸の整数と混同しないよう newtype にし、生成・取り出しは関連関数
-  `of()` / `value()` に統一する。
-- **多態なオブジェクト値は `enum` で表す。** `PdfObject` / `XRefEntry` / `PdfErrorCode`
-  などは `enum` で表現する。
+- **`Result` / `Option` は std のものを使う。** 独自のエラー／オプション型は作らない。
 
-### 整数型の選定（実装時の方針）
-
-Rust では整数の型幅を明示する。以下は実装時に適用する方針:
-
-| 型 | Rust 表現 | 根拠 |
-|---|---|---|
-| `ObjectNumber` | `u64` | オブジェクト番号は正の整数で仕様上の固定幅上限は無い。大きな値・将来の余裕を見込み u64 |
-| `GenerationNumber` | `u16` | 世代番号は最大 5 桁 (65535) で `u16` にちょうど収まる |
-| `ByteOffset` | `u64` | ファイル内オフセット（従来型 xref テーブルの 10 桁固定幅フィールドの保持値） |
-| `PdfObject::Integer` | `i64` | PDF 整数オブジェクト |
-| `PdfObject::Real` | `f64` | PDF 実数オブジェクト |
+具体的な型設計・API・データ表現は実装時に決める。PDF 仕様は `docs/specs/` を参照。
 
 ## 現在の状態
 
