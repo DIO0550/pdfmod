@@ -57,19 +57,3 @@ cargo test
 
 > **注意:** 現在のコンテナには Rust ツールチェーン (`rustc` / `cargo`) が未インストール。
 > devcontainer 再ビルド後（rustup 導入後）に `cargo build` / `cargo test` で検証すること。
-
-## 移植計画（後続 PR）
-
-TS 版 (`packages/core/src/`) の各モジュールを順次 Rust へ移植する想定:
-
-| Rust モジュール（予定） | TS (`packages/core/src/`) |
-|---|---|
-| `pdf`（types / object / errors / version / filter） | `pdf` |
-| `lexer` | `lexer` |
-| `ext` | `ext` |
-| `objects` | `objects` |
-| `xref` | `xref` |
-| `document` | `document` |
-| `content_stream` | `content-stream` |
-| （std `Result`/`Option` で代替） | `utils/result`, `utils/option` |
-| （newtype で代替） | `utils/brand` |
