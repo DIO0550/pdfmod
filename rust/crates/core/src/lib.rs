@@ -8,5 +8,7 @@
 //! - **外部 crate 依存ゼロ**。Rust 標準ライブラリ (`std`) のみを使う。
 //! - **`Result` / `Option` は std のものをそのまま使う**（自作しない）。
 //!
-//! 本クレートは現在 **環境構築のみ**（空の crate root）。
 //! 各モジュールの実装は後続 PR で追加する。
+
+pub mod object;
+pub mod error;
