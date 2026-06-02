@@ -109,4 +109,10 @@ export {
 export type { Brand } from "./utils/index";
 export * as Option from "./utils/option/index";
 export * as Result from "./utils/result/index";
-export { parseTrailer, parseXRefTable, scanStartXRef } from "./xref/index";
+export type { FallbackScanResult } from "./xref/index";
+export {
+  parseTrailer,
+  parseXRefTable,
+  scanFallback,
+  scanStartXRef,
+} from "./xref/index";
