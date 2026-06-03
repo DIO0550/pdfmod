@@ -33,6 +33,8 @@ mod tests {
     use std::collections::HashMap;
     use std::collections::HashSet;
 
+    // 正常系（往復）: new(n) で包んだ値を value() で取り出すと入力 n と一致する。
+    // 代表値 [0, 1, 42, u16::MAX] で生成と取り出しが無損失（ラウンドトリップ）であることを確認する。
     #[test]
     fn new_then_value_roundtrips() {
         for n in [0, 1, 42, u16::MAX] {
@@ -40,37 +42,44 @@ mod tests {
         }
     }
 
+    // 境界値: 0（フリーオブジェクトの予約世代）を無検証で受理し、value() が 0 を返す。
     #[test]
     fn accepts_zero() {
         assert_eq!(GenerationNumber::new(0).value(), 0);
     }
 
+    // 境界値: 1（最小の「使用中」通常世代）を受理し、value() が 1 を返す。
     #[test]
     fn accepts_one() {
         assert_eq!(GenerationNumber::new(1).value(), 1);
     }
 
+    // 境界値: u16::MAX（= 65535、ISO 32000-1 §7.5.4 の世代上限）を受理し、範囲上限を取り出せる。
     #[test]
     fn accepts_u16_max() {
         assert_eq!(GenerationNumber::new(u16::MAX).value(), u16::MAX);
     }
 
+    // 正常系（等価）: 同じ u16 から生成した 2 値は == で等価になる（PartialEq/Eq が内部値に委譲）。
     #[test]
     fn equal_numbers_are_equal() {
         assert_eq!(GenerationNumber::new(7), GenerationNumber::new(7));
     }
 
+    // 正常系（非等価）: 異なる u16 から生成した 2 値は != で非等価になる。
     #[test]
     fn different_numbers_are_not_equal() {
         assert_ne!(GenerationNumber::new(7), GenerationNumber::new(8));
     }
 
+    // 正常系（順序）: < / > による大小比較が内部 u16 の大小と一致する（PartialOrd/Ord が内部値に委譲）。
     #[test]
     fn orders_by_inner_value() {
         assert!(GenerationNumber::new(1) < GenerationNumber::new(2));
         assert!(GenerationNumber::new(3) > GenerationNumber::new(2));
     }
 
+    // 正常系（ソート）: 配列を sort() すると内部 u16 の昇順に並ぶ（Ord により [3,1,2] → [1,2,3]）。
     #[test]
     fn sorts_in_ascending_order() {
         let mut numbers = [
@@ -89,6 +98,7 @@ mod tests {
         );
     }
 
+    // エッジケース（Copy）: 代入でコピーしても元の値はムーブされず、コピーと等価のまま使い続けられる。
     #[test]
     fn is_copy_so_original_stays_usable() {
         let original = GenerationNumber::new(5);
@@ -97,6 +107,7 @@ mod tests {
         assert_eq!(original, copied);
     }
 
+    // 正常系（HashMap キー）: HashMap のキーとして使え、同値キーで get すると挿入値を取得できる（Hash + Eq）。
     #[test]
     fn works_as_hash_map_key() {
         let mut map = HashMap::new();
@@ -104,6 +115,7 @@ mod tests {
         assert_eq!(map.get(&GenerationNumber::new(10)), Some(&"ten"));
     }
 
+    // エッジケース（HashSet 折りたたみ）: 同値を 2 回挿入しても要素数は 1 になる（同値が 1 つに折りたたまれる）。
     #[test]
     fn equal_keys_collapse_in_hash_set() {
         let mut set = HashSet::new();
