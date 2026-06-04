@@ -5,4 +5,4 @@
 
 // 後続 Issue でエラー型のサブモジュールを追加する:
 // pub mod pdf_error;
-// pub mod pdf_error_code;
+pub mod pdf_error_code;
