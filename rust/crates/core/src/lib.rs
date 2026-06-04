@@ -12,3 +12,4 @@
 
 pub mod object;
 pub mod error;
+pub mod byte_offset;
