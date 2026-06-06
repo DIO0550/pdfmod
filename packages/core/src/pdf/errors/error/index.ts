@@ -42,7 +42,8 @@ export type PdfParseErrorCode =
  * 全致命的PDFエラーコードの共用体型。
  * パースエラーコードに加え、循環参照・型不一致・operator registry エラー、
  * operator オペランド不足／型不一致／値域外エラー、
- * path operator の current point 未確立エラーのコードを含む。
+ * path operator の current point 未確立エラー、
+ * operator の不正なステート遷移エラー（OPERATOR_ILLEGAL_STATE）のコードを含む。
  *
  * @example
  * ```ts
@@ -57,7 +58,8 @@ export type PdfErrorCode =
   | "OPERATOR_OPERAND_MISSING"
   | "OPERATOR_OPERAND_TYPE_MISMATCH"
   | "OPERATOR_OPERAND_VALUE_OUT_OF_RANGE"
-  | "OPERATOR_PATH_NO_CURRENT_POINT";
+  | "OPERATOR_PATH_NO_CURRENT_POINT"
+  | "OPERATOR_ILLEGAL_STATE";
 
 /**
  * PDFパースエラーを表すインターフェース。
@@ -257,10 +259,34 @@ export interface PdfOperatorPathNoCurrentPointError {
 }
 
 /**
+ * Content stream operator の不正なステート遷移エラー。
+ * operator がその時点のグラフィックスステートでは実行できない場合に発生する。
+ * 例: text object が既に active な状態での `BT`（nested BT/ET。ISO 32000-1:2008 §9.4.1）。
+ *
+ * @example
+ * ```ts
+ * const error: PdfOperatorIllegalStateError = {
+ *   code: "OPERATOR_ILLEGAL_STATE",
+ *   message: "BT: text object already active (nested BT/ET is not allowed)",
+ *   operatorName: "BT",
+ * };
+ * ```
+ */
+export interface PdfOperatorIllegalStateError {
+  /** エラーコード（常に "OPERATOR_ILLEGAL_STATE"） */
+  readonly code: "OPERATOR_ILLEGAL_STATE";
+  /** 人間可読なエラーメッセージ */
+  readonly message: string;
+  /** 不正なステート遷移を検出した operator 名 */
+  readonly operatorName: string;
+}
+
+/**
  * 全致命的PDFエラーの判別共用体型。
  * パースエラー、循環参照エラー、型不一致エラー、operator registry エラー、
  * operator オペランド不足／型不一致／値域外エラー、
- * path operator の current point 未確立エラーを包含する。
+ * path operator の current point 未確立エラー、
+ * operator の不正なステート遷移エラー（PdfOperatorIllegalStateError）を包含する。
  *
  * @example
  * ```ts
@@ -282,4 +308,5 @@ export type PdfError =
   | PdfOperatorOperandMissingError
   | PdfOperatorOperandTypeMismatchError
   | PdfOperatorOperandValueOutOfRangeError
-  | PdfOperatorPathNoCurrentPointError;
+  | PdfOperatorPathNoCurrentPointError
+  | PdfOperatorIllegalStateError;
