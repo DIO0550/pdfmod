@@ -7,6 +7,7 @@ export type {
   PdfCircularReferenceError,
   PdfError,
   PdfErrorCode,
+  PdfOperatorIllegalStateError,
   PdfOperatorOperandMissingError,
   PdfOperatorOperandTypeMismatchError,
   PdfOperatorOperandValueOutOfRangeError,
