@@ -42,7 +42,8 @@ export type PdfParseErrorCode =
  * 全致命的PDFエラーコードの共用体型。
  * パースエラーコードに加え、循環参照・型不一致・operator registry エラー、
  * operator オペランド不足／型不一致／値域外エラー、
- * path operator の current point 未確立エラーのコードを含む。
+ * path operator の current point 未確立エラー、
+ * operator の不正なステート遷移エラー（OPERATOR_ILLEGAL_STATE）のコードを含む。
  *
  * @example
  * ```ts
@@ -284,7 +285,8 @@ export interface PdfOperatorIllegalStateError {
  * 全致命的PDFエラーの判別共用体型。
  * パースエラー、循環参照エラー、型不一致エラー、operator registry エラー、
  * operator オペランド不足／型不一致／値域外エラー、
- * path operator の current point 未確立エラーを包含する。
+ * path operator の current point 未確立エラー、
+ * operator の不正なステート遷移エラー（PdfOperatorIllegalStateError）を包含する。
  *
  * @example
  * ```ts
