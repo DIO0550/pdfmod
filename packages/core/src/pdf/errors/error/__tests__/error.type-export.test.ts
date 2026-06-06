@@ -4,6 +4,7 @@ import type {
   PdfCircularReferenceError,
   PdfError,
   PdfErrorCode,
+  PdfOperatorIllegalStateError,
   PdfOperatorOperandMissingError,
   PdfOperatorOperandTypeMismatchError,
   PdfOperatorOperandValueOutOfRangeError,
@@ -185,4 +186,22 @@ test("PdfOperatorPathNoCurrentPointError は PdfError union から narrow でき
   expect(narrowed).toBe(true);
   expect(error.code).toBe("OPERATOR_PATH_NO_CURRENT_POINT");
   expect(noCurrentPointError.operatorName).toBe("l");
+});
+
+test("PdfOperatorIllegalStateError は PdfError union から narrow できる", () => {
+  const illegalStateError: PdfOperatorIllegalStateError = {
+    code: "OPERATOR_ILLEGAL_STATE",
+    message: "BT: text object already active (nested BT/ET is not allowed)",
+    operatorName: "BT",
+  };
+  const error: PdfError = illegalStateError;
+
+  const narrowed: Exact<
+    Extract<PdfError, { code: "OPERATOR_ILLEGAL_STATE" }>,
+    PdfOperatorIllegalStateError
+  > = true;
+
+  expect(narrowed).toBe(true);
+  expect(error.code).toBe("OPERATOR_ILLEGAL_STATE");
+  expect(illegalStateError.operatorName).toBe("BT");
 });
