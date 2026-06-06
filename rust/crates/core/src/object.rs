@@ -5,6 +5,7 @@
 //! 後続 Issue で追加する。
 
 pub mod generation_number;
+pub mod name;
 pub mod object_number;
 
 // 後続 Issue で各オブジェクト型をサブモジュールとして追加する（以下は例の一部）:
