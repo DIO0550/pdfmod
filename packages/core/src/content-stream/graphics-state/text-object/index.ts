@@ -101,7 +101,7 @@ export const TextObject = {
    * `Tm' = Tlm' = matrix` に設定する (引数 matrix を両フィールドへ代入)。
    *
    * `active` は引数 state から引き継ぐ。元 state は変更しない (純粋関数)。
-   * `Matrix` は readonly tuple かつ常に新規生成されるため、引数 matrix を
+   * `Matrix` は readonly tuple のため要素を破壊的変更できず、引数 matrix を
    * 両フィールドへ同一参照で代入しても不変性は保たれる。
    *
    * @param state - 更新対象の TextObject
