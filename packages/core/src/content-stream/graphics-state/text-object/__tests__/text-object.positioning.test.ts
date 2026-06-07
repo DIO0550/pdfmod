@@ -4,8 +4,8 @@ import { TextObject } from "../../text-object";
 
 // active=true の任意 TextObject を生で組むヘルパ（dirty state 構築用）
 const buildActive = (
-  textMatrix: readonly number[],
-  textLineMatrix: readonly number[],
+  textMatrix: readonly [number, number, number, number, number, number],
+  textLineMatrix: readonly [number, number, number, number, number, number],
 ): TextObject =>
   ({
     active: true,
