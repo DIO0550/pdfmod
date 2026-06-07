@@ -1,6 +1,8 @@
 import { assert, expect, test } from "vitest";
-import type { OperatorHandler } from "../../../../operator-registry/index";
-import { OperatorRegistry } from "../../../../operator-registry/index";
+import {
+  type OperatorHandler,
+  OperatorRegistry,
+} from "../../../../operator-registry/index";
 import {
   btHandler,
   etHandler,

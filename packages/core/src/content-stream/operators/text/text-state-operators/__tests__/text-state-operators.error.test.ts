@@ -1,6 +1,8 @@
 import { afterEach, assert, expect, test, vi } from "vitest";
-import type { OperatorHandler } from "../../../../operator-registry/index";
-import { OperatorRegistry } from "../../../../operator-registry/index";
+import {
+  type OperatorHandler,
+  OperatorRegistry,
+} from "../../../../operator-registry/index";
 import {
   btHandler,
   etHandler,
@@ -29,7 +31,7 @@ test.each<readonly [string, OperatorHandler, readonly string[]]>([
   ["TL", tlHandler, ["BT", "ET", "Tf", "Tc", "Tw", "Tz", "TL"]],
   ["Tr", trHandler, ["BT", "ET", "Tf", "Tc", "Tw", "Tz", "TL", "Tr"]],
   ["Ts", tsHandler, ["BT", "ET", "Tf", "Tc", "Tw", "Tz", "TL", "Tr", "Ts"]],
-])("%s が登録済みのとき registerTextStateOperators は Err を返し reduce は %s で短絡する", (name, handler, expectedCalledNames) => {
+])("%s が登録済みのとき registerTextStateOperators は Err を返し reduce が登録順 prefix で短絡する", (name, handler, expectedCalledNames) => {
   const seed = OperatorRegistry.register(
     OperatorRegistry.create(),
     name,
