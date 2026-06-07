@@ -98,11 +98,12 @@ export const TextObject = {
   },
   /**
    * `Tm` operator (ISO 32000-1:2008 §9.4.2) のテキスト行列上書き。
-   * `Tm' = Tlm' = matrix` に設定する (引数 matrix を両フィールドへ代入)。
+   * `Tm' = Tlm' = matrix` に設定する (両フィールドを引数 matrix と同値にする)。
    *
    * `active` は引数 state から引き継ぐ。元 state は変更しない (純粋関数)。
-   * `Matrix` は readonly tuple のため要素を破壊的変更できず、引数 matrix を
-   * 両フィールドへ同一参照で代入しても不変性は保たれる。
+   * `Matrix` は readonly tuple として不変に扱う値であり、本コードベースでは
+   * 生成後に破壊的変更しない運用のため、引数 matrix をそのまま両フィールドへ
+   * 代入してよい (防御コピー不要)。
    *
    * @param state - 更新対象の TextObject
    * @param matrix - 新しい textMatrix / textLineMatrix
