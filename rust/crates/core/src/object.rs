@@ -6,6 +6,7 @@
 
 pub mod generation_number;
 pub mod name;
+pub mod object_id;
 pub mod object_number;
 pub mod pdf_object;
 

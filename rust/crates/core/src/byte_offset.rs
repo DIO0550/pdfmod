@@ -79,19 +79,11 @@ mod tests {
     #[test]
     fn sorts_in_ascending_order() {
         // 順不同の配列を sort() すると内部 u64 の昇順に並ぶことを確認する
-        let mut offsets = [
-            ByteOffset::new(3),
-            ByteOffset::new(1),
-            ByteOffset::new(2),
-        ];
+        let mut offsets = [ByteOffset::new(3), ByteOffset::new(1), ByteOffset::new(2)];
         offsets.sort();
         assert_eq!(
             offsets,
-            [
-                ByteOffset::new(1),
-                ByteOffset::new(2),
-                ByteOffset::new(3),
-            ]
+            [ByteOffset::new(1), ByteOffset::new(2), ByteOffset::new(3),]
         );
     }
 

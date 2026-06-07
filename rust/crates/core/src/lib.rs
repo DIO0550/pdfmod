@@ -10,6 +10,6 @@
 //!
 //! 各モジュールの実装は後続 PR で追加する。
 
-pub mod object;
-pub mod error;
 pub mod byte_offset;
+pub mod error;
+pub mod object;
