@@ -5,6 +5,8 @@
 //! 文字列・名前・配列・辞書・参照・ストリームは後続 Issue で追加する。
 //! 構築は無検証（infallible）で、妥当性検証は上位（lexer/parser）に委譲する。
 
+use crate::object::name::PdfName;
+
 /// PDF 基本オブジェクト（スカラ系 4 バリアントの起点）。
 ///
 /// 整数幅は `i64`、浮動小数点幅は `f64`（PDF パーサで最も一般的・桁あふれ耐性・
@@ -24,6 +26,14 @@ pub enum PdfObject {
     Integer(i64),
     /// 実数オブジェクト（`f64`、`NaN`/`±0.0`/`Inf` を無検証で保持）。
     Real(f64),
+    /// 文字列オブジェクト（**復号後** の生バイト列を保持）。
+    ///
+    /// テキストエンコーディングを仮定せず、リテラル文字列のエスケープや
+    /// 16進文字列のデコードは lexer の責務とする（`PdfName` と同方針）。
+    /// 妥当性検証は上位に委譲し、NUL/非UTF-8/空バイト列も無検証で忠実に保持する。
+    String(Vec<u8>),
+    /// 名前オブジェクト（`/Name` 本体）。`PdfName`（#261）をそのまま内包する。
+    Name(PdfName),
 }
 
 impl PdfObject {
@@ -54,6 +64,26 @@ impl PdfObject {
     pub fn as_real(&self) -> Option<f64> {
         match self {
             Self::Real(r) => Some(*r),
+            _ => None,
+        }
+    }
+
+    /// `String` のとき内部のバイト列を `&[u8]` として `Some` で取り出す（他は `None`）。
+    ///
+    /// ヒープ保持のため参照返し（`PdfName::as_bytes` と同方針）。
+    pub fn as_string(&self) -> Option<&[u8]> {
+        match self {
+            Self::String(bytes) => Some(bytes.as_slice()),
+            _ => None,
+        }
+    }
+
+    /// `Name` のとき内部の `PdfName` を `&PdfName` として `Some` で取り出す（他は `None`）。
+    ///
+    /// ヒープ保持のため参照返し（`PdfName::as_bytes` と同方針）。
+    pub fn as_name(&self) -> Option<&PdfName> {
+        match self {
+            Self::Name(name) => Some(name),
             _ => None,
         }
     }
@@ -256,5 +286,170 @@ mod tests {
         assert!(format!("{:?}", PdfObject::Boolean(true)).contains("Boolean"));
         assert!(format!("{:?}", PdfObject::Integer(0)).contains("Integer"));
         assert!(format!("{:?}", PdfObject::Real(0.0)).contains("Real"));
+    }
+
+    #[test]
+    fn string_constructs_and_matches_string_arm() {
+        // String(b"abc") を構築し matches! で String 腕に入ることを確認する
+        let obj = PdfObject::String(b"abc".to_vec());
+        assert!(matches!(obj, PdfObject::String(_)));
+    }
+
+    #[test]
+    fn as_string_returns_some_for_string() {
+        // String(b"abc") に as_string() を呼ぶと Some(b"abc") を返すことを確認する
+        assert_eq!(
+            PdfObject::String(b"abc".to_vec()).as_string(),
+            Some(b"abc".as_slice())
+        );
+    }
+
+    #[test]
+    fn name_constructs_and_matches_name_arm() {
+        // Name(PdfName::from("Type")) を構築し matches! で Name 腕に入ることを確認する
+        let obj = PdfObject::Name(PdfName::from("Type"));
+        assert!(matches!(obj, PdfObject::Name(_)));
+    }
+
+    #[test]
+    fn as_name_returns_some_for_name() {
+        // Name(PdfName::from("Type")) に as_name() を呼ぶと Some(&PdfName::from("Type")) を返すことを確認する
+        let name = PdfName::from("Type");
+        assert_eq!(
+            PdfObject::Name(PdfName::from("Type")).as_name(),
+            Some(&name)
+        );
+    }
+
+    #[test]
+    fn as_string_returns_none_for_non_string_variants() {
+        // String 以外（Null/Boolean/Integer/Real/Name）では as_string() が None を返すことを確認する
+        let variants = [
+            PdfObject::Null,
+            PdfObject::Boolean(true),
+            PdfObject::Integer(0),
+            PdfObject::Real(0.0),
+            PdfObject::Name(PdfName::from("Type")),
+        ];
+        for obj in &variants {
+            assert_eq!(obj.as_string(), None);
+        }
+    }
+
+    #[test]
+    fn as_name_returns_none_for_non_name_variants() {
+        // Name 以外（Null/Boolean/Integer/Real/String）では as_name() が None を返すことを確認する
+        let variants = [
+            PdfObject::Null,
+            PdfObject::Boolean(true),
+            PdfObject::Integer(0),
+            PdfObject::Real(0.0),
+            PdfObject::String(b"abc".to_vec()),
+        ];
+        for obj in &variants {
+            assert_eq!(obj.as_name(), None);
+        }
+    }
+
+    #[test]
+    fn as_string_returns_empty_slice_for_empty_string() {
+        // 空バイト列の String(b"") は as_string() で Some(空スライス) を返すことを確認する
+        assert_eq!(
+            PdfObject::String(b"".to_vec()).as_string(),
+            Some(b"".as_slice())
+        );
+    }
+
+    #[test]
+    fn as_string_preserves_nul_non_utf8_and_high_bytes() {
+        // String(vec![0x00, 0x80, 0xFF]) を as_string() で取り出すと同一バイト列がテキスト解釈されず忠実に返ることを確認する
+        let obj = PdfObject::String(vec![0x00, 0x80, 0xFF]);
+        assert_eq!(obj.as_string(), Some([0x00, 0x80, 0xFF].as_slice()));
+    }
+
+    #[test]
+    fn same_content_strings_are_equal() {
+        // 同内容の String 同士は == で等価になることを確認する
+        assert_eq!(
+            PdfObject::String(b"x".to_vec()),
+            PdfObject::String(b"x".to_vec())
+        );
+    }
+
+    #[test]
+    fn different_content_strings_are_not_equal() {
+        // 異内容の String 同士は != で非等価になることを確認する
+        assert_ne!(
+            PdfObject::String(b"x".to_vec()),
+            PdfObject::String(b"y".to_vec())
+        );
+    }
+
+    #[test]
+    fn same_content_names_are_equal() {
+        // 同内容の Name 同士は == で等価になることを確認する
+        assert_eq!(
+            PdfObject::Name(PdfName::from("A")),
+            PdfObject::Name(PdfName::from("A"))
+        );
+    }
+
+    #[test]
+    fn string_and_name_with_same_bytes_are_not_equal() {
+        // 同一バイト内容でも String と Name は異バリアントのため != で非等価になることを確認する
+        assert_ne!(
+            PdfObject::String(b"Type".to_vec()),
+            PdfObject::Name(PdfName::from("Type"))
+        );
+    }
+
+    #[test]
+    fn as_name_then_as_bytes_roundtrips() {
+        // Name の as_name().unwrap().as_bytes() が元の名前バイト列 b"Type" を返す（後段借用経路）ことを確認する
+        let obj = PdfObject::Name(PdfName::from("Type"));
+        assert_eq!(obj.as_name().unwrap().as_bytes(), b"Type");
+    }
+
+    #[test]
+    fn clone_preserves_string_and_name_and_keeps_original_usable() {
+        // String/Name を clone() すると複製の中身が元と一致し、元も引き続き使用可能なことを確認する
+        let original_string = PdfObject::String(b"abc".to_vec());
+        let cloned_string = original_string.clone();
+        assert_eq!(cloned_string.as_string(), Some(b"abc".as_slice()));
+        assert_eq!(original_string.as_string(), Some(b"abc".as_slice()));
+
+        let original_name = PdfObject::Name(PdfName::from("Type"));
+        let cloned_name = original_name.clone();
+        assert_eq!(cloned_name.as_name().unwrap().as_bytes(), b"Type");
+        assert_eq!(original_name.as_name().unwrap().as_bytes(), b"Type");
+    }
+
+    #[test]
+    fn as_string_preserves_long_multibyte_bytes() {
+        // 長い+多バイトUTF-8（"名前"）混在のバイト列が as_string() で往復一致することを確認する（任意・優先度低）
+        let mut bytes = "名前".as_bytes().to_vec();
+        bytes.resize(bytes.len() + 300, b'a');
+        let obj = PdfObject::String(bytes.clone());
+        assert_eq!(obj.as_string(), Some(bytes.as_slice()));
+    }
+
+    #[test]
+    fn strings_compare_on_trailing_byte() {
+        // 複数バイト・末尾1バイト差で String の等価/非等価が判定されることを確認する（任意・優先度低）
+        assert_eq!(
+            PdfObject::String(b"abc".to_vec()),
+            PdfObject::String(b"abc".to_vec())
+        );
+        assert_ne!(
+            PdfObject::String(b"abc".to_vec()),
+            PdfObject::String(b"abd".to_vec())
+        );
+    }
+
+    #[test]
+    fn debug_format_contains_string_and_name_variant_names() {
+        // Debug 出力が String / Name のバリアント名を含むことを確認する（任意・優先度低）
+        assert!(format!("{:?}", PdfObject::String(b"x".to_vec())).contains("String"));
+        assert!(format!("{:?}", PdfObject::Name(PdfName::from("A"))).contains("Name"));
     }
 }
