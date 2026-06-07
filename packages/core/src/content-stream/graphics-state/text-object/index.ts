@@ -73,4 +73,46 @@ export const TextObject = {
   isActive(state: TextObject): boolean {
     return state.active;
   },
+  /**
+   * `Td` / `TD` / `T*` operator (ISO 32000-1:2008 §9.4.2) の行送りに相当する
+   * テキスト行行列の更新。`Tlm' = translate(tx, ty) × Tlm` を計算し、
+   * `Tm'` も同値に設定する (`Tm' = Tlm'`)。
+   *
+   * `translate(tx, ty)` は `Matrix.create(1, 0, 0, 1, tx, ty)`。
+   * 引数の向きは「左 = 適用する変換」(`cm` ハンドラと同一規約)。
+   * `active` は引数 state から引き継ぐ。元 state は変更しない (純粋関数)。
+   *
+   * @param state - 更新対象の TextObject
+   * @param tx - x 方向の平行移動量
+   * @param ty - y 方向の平行移動量 (行送りは通常負値)
+   * @returns `textMatrix` / `textLineMatrix` を更新した新しい TextObject
+   */
+  translateLine(state: TextObject, tx: number, ty: number): TextObject {
+    const translation = Matrix.create(1, 0, 0, 1, tx, ty);
+    const next = Matrix.multiply(translation, state.textLineMatrix);
+    return {
+      active: state.active,
+      textMatrix: next,
+      textLineMatrix: next,
+    } as TextObject;
+  },
+  /**
+   * `Tm` operator (ISO 32000-1:2008 §9.4.2) のテキスト行列上書き。
+   * `Tm' = Tlm' = matrix` に設定する (引数 matrix を両フィールドへ代入)。
+   *
+   * `active` は引数 state から引き継ぐ。元 state は変更しない (純粋関数)。
+   * `Matrix` は readonly tuple かつ常に新規生成されるため、引数 matrix を
+   * 両フィールドへ同一参照で代入しても不変性は保たれる。
+   *
+   * @param state - 更新対象の TextObject
+   * @param matrix - 新しい textMatrix / textLineMatrix
+   * @returns `textMatrix` / `textLineMatrix` を matrix に置き換えた新しい TextObject
+   */
+  setMatrix(state: TextObject, matrix: Matrix): TextObject {
+    return {
+      active: state.active,
+      textMatrix: matrix,
+      textLineMatrix: matrix,
+    } as TextObject;
+  },
 } as const;
