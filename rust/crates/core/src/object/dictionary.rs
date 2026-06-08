@@ -53,6 +53,22 @@ impl PdfDictionary {
     pub fn contains_key(&self, key: &PdfName) -> bool {
         self.0.contains_key(key)
     }
+
+    /// キーに対応するエントリを削除し、削除した値を返す。
+    /// 未登録なら `None`（`Result` ではなく `Option`。std `BTreeMap::remove` と同セマンティクス）。
+    pub fn remove(&mut self, key: &PdfName) -> Option<PdfObject> {
+        self.0.remove(key)
+    }
+
+    /// 全キーをキーのソート順（`BTreeMap` の昇順）で走査するイテレータを返す。
+    pub fn keys(&self) -> impl Iterator<Item = &PdfName> {
+        self.0.keys()
+    }
+
+    /// 全 `(キー, 値)` ペアをキーのソート順（`BTreeMap` の昇順）で走査するイテレータを返す。
+    pub fn iter(&self) -> impl Iterator<Item = (&PdfName, &PdfObject)> {
+        self.0.iter()
+    }
 }
 
 #[cfg(test)]
@@ -251,5 +267,76 @@ mod tests {
             dict.get(&PdfName::from("Type")),
             Some(&PdfObject::Boolean(true))
         );
+    }
+
+    #[test]
+    fn remove_returns_some_value_and_deletes_entry() {
+        // insert 済みキーを remove すると削除値 Some(value) を返し、
+        // その後 get=None / contains_key=false / len()が 1 減ることを確認する
+        let mut dict = PdfDictionary::new();
+        dict.insert(PdfName::from("Type"), PdfObject::Integer(42));
+        let removed = dict.remove(&PdfName::from("Type"));
+        assert_eq!(removed, Some(PdfObject::Integer(42)));
+        assert_eq!(dict.get(&PdfName::from("Type")), None);
+        assert!(!dict.contains_key(&PdfName::from("Type")));
+        assert_eq!(dict.len(), 0);
+    }
+
+    #[test]
+    fn remove_returns_none_for_absent_key() {
+        // 未登録キーを remove すると削除対象が無いため None を返し、len() が不変であることを確認する
+        let mut dict = PdfDictionary::new();
+        dict.insert(PdfName::from("Type"), PdfObject::Integer(1));
+        let removed = dict.remove(&PdfName::from("Missing"));
+        assert_eq!(removed, None);
+        assert_eq!(dict.len(), 1);
+    }
+
+    #[test]
+    fn keys_yields_all_keys_in_sorted_order() {
+        // 挿入順と無関係に keys() が全キーを BTreeMap のソート順（昇順）で返すことを確認する
+        let mut dict = PdfDictionary::new();
+        dict.insert(PdfName::from("C"), PdfObject::Integer(3));
+        dict.insert(PdfName::from("A"), PdfObject::Integer(1));
+        dict.insert(PdfName::from("B"), PdfObject::Integer(2));
+        let keys: Vec<&PdfName> = dict.keys().collect();
+        assert_eq!(
+            keys,
+            vec![
+                &PdfName::from("A"),
+                &PdfName::from("B"),
+                &PdfName::from("C")
+            ]
+        );
+    }
+
+    #[test]
+    fn keys_yields_nothing_for_empty_dictionary() {
+        // 空辞書では keys() が 1 件も列挙しない（count()==0）ことを確認する
+        let dict = PdfDictionary::new();
+        assert_eq!(dict.keys().count(), 0);
+    }
+
+    #[test]
+    fn iter_yields_all_entries_in_sorted_key_order() {
+        // 挿入順と無関係に iter() が全 (キー, 値) ペアをキーのソート順（昇順）で返すことを確認する
+        let mut dict = PdfDictionary::new();
+        dict.insert(PdfName::from("B"), PdfObject::Real(2.5));
+        dict.insert(PdfName::from("A"), PdfObject::Integer(1));
+        let entries: Vec<(&PdfName, &PdfObject)> = dict.iter().collect();
+        assert_eq!(
+            entries,
+            vec![
+                (&PdfName::from("A"), &PdfObject::Integer(1)),
+                (&PdfName::from("B"), &PdfObject::Real(2.5)),
+            ]
+        );
+    }
+
+    #[test]
+    fn iter_yields_nothing_for_empty_dictionary() {
+        // 空辞書では iter() が 1 件も列挙しない（count()==0）ことを確認する
+        let dict = PdfDictionary::new();
+        assert_eq!(dict.iter().count(), 0);
     }
 }
