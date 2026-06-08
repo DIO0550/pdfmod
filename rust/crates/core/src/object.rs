@@ -4,6 +4,7 @@
 //! array / dictionary / stream / null / indirect reference）を表す型を
 //! 後続 Issue で追加する。
 
+pub mod dictionary;
 pub mod generation_number;
 pub mod name;
 pub mod object_id;
