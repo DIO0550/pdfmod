@@ -51,7 +51,7 @@ pub enum PdfObject {
     /// 値に `Real(NaN)` を含むと辞書同士は `==` で非等価になる（`Eq` 非実装の
     /// 根拠が再帰的に維持される）。
     Dictionary(PdfDictionary),
-    /// 間接参照オブジェクト（`N G R`）。`IndirectRef`（#073）をそのまま内包する。
+    /// 間接参照オブジェクト（`N G R`）。`IndirectRef`（#266）をそのまま内包する。
     ///
     /// `IndirectRef` は `Copy` 値型（ヒープ確保なし）。参照先の存在・妥当性
     /// 検証は行わず、無検証で忠実に保持する（解決は xref レイヤ R2 に委譲）。
