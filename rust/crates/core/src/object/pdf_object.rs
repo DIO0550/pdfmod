@@ -3,14 +3,15 @@
 //! ISO 32000-1 §7.3 の PDF オブジェクトを 1 つの enum で表す。現時点では
 //! スカラ系 4 バリアント（Null / Boolean / Integer / Real）に加え、文字列
 //! （復号後の生バイト列）・名前（`PdfName`）・配列（`Vec<PdfObject>` の自己再帰）・
-//! 辞書（`PdfDictionary`）を定義する。参照・ストリームは後続 Issue で追加する。
+//! 辞書（`PdfDictionary`）・参照（`IndirectRef`）を定義する。ストリームは後続 Issue で追加する。
 //! 構築は無検証（infallible）で、テキスト解釈や妥当性検証・正規化は上位
 //! （lexer/parser）に委譲する。
 
 use crate::object::dictionary::PdfDictionary;
+use crate::object::indirect_ref::IndirectRef;
 use crate::object::name::PdfName;
 
-/// PDF 基本オブジェクト（スカラ系・文字列・名前・配列・辞書バリアントを表す enum）。
+/// PDF 基本オブジェクト（スカラ系・文字列・名前・配列・辞書・参照バリアントを表す enum）。
 ///
 /// 整数幅は `i64`、浮動小数点幅は `f64`（PDF パーサで最も一般的・桁あふれ耐性・
 /// 後続レクサーとの相性で確定）。`Real(f64)` を含むため `Eq`/`Hash`/`Ord` は
@@ -50,6 +51,11 @@ pub enum PdfObject {
     /// 値に `Real(NaN)` を含むと辞書同士は `==` で非等価になる（`Eq` 非実装の
     /// 根拠が再帰的に維持される）。
     Dictionary(PdfDictionary),
+    /// 間接参照オブジェクト（`N G R`）。`IndirectRef`（#266）をそのまま内包する。
+    ///
+    /// `IndirectRef` は `Copy` 値型（ヒープ確保なし）。参照先の存在・妥当性
+    /// 検証は行わず、無検証で忠実に保持する（解決は xref レイヤ R2 に委譲）。
+    Reference(IndirectRef),
 }
 
 impl PdfObject {
@@ -123,11 +129,32 @@ impl PdfObject {
             _ => None,
         }
     }
+
+    /// `Reference` のとき内部の `IndirectRef` を `Some` で取り出す（他は `None`）。
+    ///
+    /// `IndirectRef` は `Copy` なので値返し（`as_bool`/`as_integer` と同方針）。
+    pub fn as_reference(&self) -> Option<IndirectRef> {
+        match self {
+            Self::Reference(r) => Some(*r),
+            _ => None,
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::object::generation_number::GenerationNumber;
+    use crate::object::object_id::ObjectId;
+    use crate::object::object_number::ObjectNumber;
+
+    // テスト用に代表的な IndirectRef を構築するヘルパ（オブジェクト番号 n・世代 g）
+    fn make_ref(n: u64, g: u16) -> IndirectRef {
+        IndirectRef::new(ObjectId::new(
+            ObjectNumber::new(n),
+            GenerationNumber::new(g),
+        ))
+    }
 
     #[test]
     fn null_constructs_and_matches_null_arm() {
@@ -204,19 +231,25 @@ mod tests {
 
     #[test]
     fn as_bool_returns_none_for_non_boolean_variants() {
-        // Boolean 以外（Null/Integer/Real）では as_bool() が None を返すことを確認する
-        for obj in &[PdfObject::Null, PdfObject::Integer(0), PdfObject::Real(0.0)] {
+        // Boolean 以外（Null/Integer/Real/Reference）では as_bool() が None を返すことを確認する
+        for obj in &[
+            PdfObject::Null,
+            PdfObject::Integer(0),
+            PdfObject::Real(0.0),
+            PdfObject::Reference(make_ref(1, 0)),
+        ] {
             assert_eq!(obj.as_bool(), None);
         }
     }
 
     #[test]
     fn as_integer_returns_none_for_non_integer_variants() {
-        // Integer 以外（Null/Boolean/Real）では as_integer() が None を返すことを確認する
+        // Integer 以外（Null/Boolean/Real/Reference）では as_integer() が None を返すことを確認する
         for obj in &[
             PdfObject::Null,
             PdfObject::Boolean(true),
             PdfObject::Real(0.0),
+            PdfObject::Reference(make_ref(1, 0)),
         ] {
             assert_eq!(obj.as_integer(), None);
         }
@@ -224,11 +257,12 @@ mod tests {
 
     #[test]
     fn as_real_returns_none_for_non_real_variants() {
-        // Real 以外（Null/Boolean/Integer）では as_real() が None を返すことを確認する
+        // Real 以外（Null/Boolean/Integer/Reference）では as_real() が None を返すことを確認する
         for obj in &[
             PdfObject::Null,
             PdfObject::Boolean(true),
             PdfObject::Integer(0),
+            PdfObject::Reference(make_ref(1, 0)),
         ] {
             assert_eq!(obj.as_real(), None);
         }
@@ -251,13 +285,19 @@ mod tests {
 
     #[test]
     fn all_distinct_variants_are_mutually_not_equal() {
-        // 4 バリアントを総当たりで比較し、同一インデックスのみ等価・他は非等価であることを確認する
-        // （NaN は等価判定が崩れるため代表値には含めない）
+        // 全 9 バリアントを総当たりで比較し、同一インデックスのみ等価・他は非等価であることを確認する
+        // （NaN は等価判定が崩れるため代表値には含めない。String/Name/Array/Dictionary は有限値・
+        // Reference は Eq なので NaN 制約に抵触しない）
         let variants = [
             PdfObject::Null,
             PdfObject::Boolean(false),
             PdfObject::Integer(0),
             PdfObject::Real(0.0),
+            PdfObject::String(b"abc".to_vec()),
+            PdfObject::Name(PdfName::from("Type")),
+            PdfObject::Array(vec![PdfObject::Integer(1)]),
+            PdfObject::Dictionary(PdfDictionary::new()),
+            PdfObject::Reference(make_ref(1, 0)),
         ];
         for (i, a) in variants.iter().enumerate() {
             for (j, b) in variants.iter().enumerate() {
@@ -359,13 +399,14 @@ mod tests {
 
     #[test]
     fn as_string_returns_none_for_non_string_variants() {
-        // String 以外（Null/Boolean/Integer/Real/Name）では as_string() が None を返すことを確認する
+        // String 以外（Null/Boolean/Integer/Real/Name/Reference）では as_string() が None を返すことを確認する
         let variants = [
             PdfObject::Null,
             PdfObject::Boolean(true),
             PdfObject::Integer(0),
             PdfObject::Real(0.0),
             PdfObject::Name(PdfName::from("Type")),
+            PdfObject::Reference(make_ref(1, 0)),
         ];
         for obj in &variants {
             assert_eq!(obj.as_string(), None);
@@ -374,13 +415,14 @@ mod tests {
 
     #[test]
     fn as_name_returns_none_for_non_name_variants() {
-        // Name 以外（Null/Boolean/Integer/Real/String）では as_name() が None を返すことを確認する
+        // Name 以外（Null/Boolean/Integer/Real/String/Reference）では as_name() が None を返すことを確認する
         let variants = [
             PdfObject::Null,
             PdfObject::Boolean(true),
             PdfObject::Integer(0),
             PdfObject::Real(0.0),
             PdfObject::String(b"abc".to_vec()),
+            PdfObject::Reference(make_ref(1, 0)),
         ];
         for obj in &variants {
             assert_eq!(obj.as_name(), None);
@@ -545,7 +587,7 @@ mod tests {
 
     #[test]
     fn as_array_returns_none_for_non_array_variants() {
-        // Array 以外（Null/Boolean/Integer/Real/String/Name/Dictionary）では as_array() が None を返すことを確認する
+        // Array 以外（Null/Boolean/Integer/Real/String/Name/Dictionary/Reference）では as_array() が None を返すことを確認する
         let variants = [
             PdfObject::Null,
             PdfObject::Boolean(true),
@@ -554,6 +596,7 @@ mod tests {
             PdfObject::String(b"abc".to_vec()),
             PdfObject::Name(PdfName::from("Type")),
             PdfObject::Dictionary(PdfDictionary::new()),
+            PdfObject::Reference(make_ref(1, 0)),
         ];
         for obj in &variants {
             assert_eq!(obj.as_array(), None);
@@ -562,7 +605,7 @@ mod tests {
 
     #[test]
     fn as_dictionary_returns_none_for_non_dictionary_variants() {
-        // Dictionary 以外（Null/Boolean/Integer/Real/String/Name/Array）では as_dictionary() が None を返すことを確認する
+        // Dictionary 以外（Null/Boolean/Integer/Real/String/Name/Array/Reference）では as_dictionary() が None を返すことを確認する
         let variants = [
             PdfObject::Null,
             PdfObject::Boolean(true),
@@ -571,6 +614,7 @@ mod tests {
             PdfObject::String(b"abc".to_vec()),
             PdfObject::Name(PdfName::from("Type")),
             PdfObject::Array(vec![PdfObject::Integer(1)]),
+            PdfObject::Reference(make_ref(1, 0)),
         ];
         for obj in &variants {
             assert_eq!(obj.as_dictionary(), None);
@@ -749,5 +793,71 @@ mod tests {
         // Debug 出力が Array / Dictionary のバリアント名を含むことを確認する
         assert!(format!("{:?}", PdfObject::Array(vec![PdfObject::Integer(1)])).contains("Array"));
         assert!(format!("{:?}", PdfObject::Dictionary(PdfDictionary::new())).contains("Dictionary"));
+    }
+
+    #[test]
+    fn reference_constructs_and_matches_reference_arm() {
+        // Reference(IndirectRef) を構築し matches! で Reference 腕に入ることを確認する
+        let obj = PdfObject::Reference(make_ref(1, 0));
+        assert!(matches!(obj, PdfObject::Reference(_)));
+    }
+
+    #[test]
+    fn as_reference_returns_some_for_reference() {
+        // Reference(ir) に as_reference() を呼ぶと Some(ir) を返す（Copy 値返し）ことを代表値・境界値で確認する
+        let ir = make_ref(5, 0);
+        assert_eq!(PdfObject::Reference(ir).as_reference(), Some(ir));
+        let boundary = make_ref(u64::MAX, u16::MAX);
+        assert_eq!(
+            PdfObject::Reference(boundary).as_reference(),
+            Some(boundary)
+        );
+    }
+
+    #[test]
+    fn as_reference_returns_none_for_non_reference_variants() {
+        // Reference 以外（Null/Boolean/Integer/Real/String/Name/Array/Dictionary）では as_reference() が None を返すことを確認する
+        let variants = [
+            PdfObject::Null,
+            PdfObject::Boolean(true),
+            PdfObject::Integer(0),
+            PdfObject::Real(0.0),
+            PdfObject::String(b"abc".to_vec()),
+            PdfObject::Name(PdfName::from("Type")),
+            PdfObject::Array(vec![PdfObject::Integer(1)]),
+            PdfObject::Dictionary(PdfDictionary::new()),
+        ];
+        for obj in &variants {
+            assert_eq!(obj.as_reference(), None);
+        }
+    }
+
+    #[test]
+    fn same_inner_references_are_equal() {
+        // 同一 IndirectRef を内包する Reference 同士は == で等価になることを確認する
+        assert_eq!(
+            PdfObject::Reference(make_ref(7, 3)),
+            PdfObject::Reference(make_ref(7, 3))
+        );
+    }
+
+    #[test]
+    fn different_inner_references_are_not_equal() {
+        // 内包 IndirectRef が異なる Reference 同士は != で非等価になることを確認する
+        // generation 差異・object_number 差異の両軸で非等価になることを確認する（片フィールド依存でないことを保証）
+        assert_ne!(
+            PdfObject::Reference(make_ref(7, 3)),
+            PdfObject::Reference(make_ref(7, 4))
+        );
+        assert_ne!(
+            PdfObject::Reference(make_ref(7, 3)),
+            PdfObject::Reference(make_ref(8, 3))
+        );
+    }
+
+    #[test]
+    fn debug_format_contains_reference_variant_name() {
+        // Debug 出力が Reference のバリアント名を含むことを確認する
+        assert!(format!("{:?}", PdfObject::Reference(make_ref(1, 0))).contains("Reference"));
     }
 }
