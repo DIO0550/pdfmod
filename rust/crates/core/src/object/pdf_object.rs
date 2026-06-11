@@ -3,15 +3,16 @@
 //! ISO 32000-1 §7.3 の PDF オブジェクトを 1 つの enum で表す。現時点では
 //! スカラ系 4 バリアント（Null / Boolean / Integer / Real）に加え、文字列
 //! （復号後の生バイト列）・名前（`PdfName`）・配列（`Vec<PdfObject>` の自己再帰）・
-//! 辞書（`PdfDictionary`）・参照（`IndirectRef`）を定義する。ストリームは後続 Issue で追加する。
+//! 辞書（`PdfDictionary`）・ストリーム（`PdfStream`）・参照（`IndirectRef`）を定義する。
 //! 構築は無検証（infallible）で、テキスト解釈や妥当性検証・正規化は上位
 //! （lexer/parser）に委譲する。
 
 use crate::object::dictionary::PdfDictionary;
 use crate::object::indirect_ref::IndirectRef;
 use crate::object::name::PdfName;
+use crate::object::stream::PdfStream;
 
-/// PDF 基本オブジェクト（スカラ系・文字列・名前・配列・辞書・参照バリアントを表す enum）。
+/// PDF 基本オブジェクト（スカラ系・文字列・名前・配列・辞書・ストリーム・参照バリアントを表す enum）。
 ///
 /// 整数幅は `i64`、浮動小数点幅は `f64`（PDF パーサで最も一般的・桁あふれ耐性・
 /// 後続レクサーとの相性で確定）。`Real(f64)` を含むため `Eq`/`Hash`/`Ord` は
@@ -51,6 +52,14 @@ pub enum PdfObject {
     /// 値に `Real(NaN)` を含むと辞書同士は `==` で非等価になる（`Eq` 非実装の
     /// 根拠が再帰的に維持される）。
     Dictionary(PdfDictionary),
+    /// ストリームオブジェクト。`PdfStream`（#267）をそのまま内包する。
+    ///
+    /// 生バイトは無検証・無復号で忠実に保持し、フィルタ復号や `/Length` 整合性
+    /// 検証は後続フェーズ（lexer/parser 層）に委譲する。ISO 32000-1 §7.3.8 の
+    /// 「stream は間接オブジェクトでなければならない」という制約は本 enum では
+    /// 型表現せず、上位レイヤで担保する。辞書部の値に `Real(NaN)` を含むと
+    /// ストリーム同士は `==` で非等価になる（`Eq` 非実装の根拠が再帰的に維持される）。
+    Stream(PdfStream),
     /// 間接参照オブジェクト（`N G R`）。`IndirectRef`（#266）をそのまま内包する。
     ///
     /// `IndirectRef` は `Copy` 値型（ヒープ確保なし）。参照先の存在・妥当性
@@ -130,6 +139,16 @@ impl PdfObject {
         }
     }
 
+    /// `Stream` のとき内部の `PdfStream` を `&PdfStream` として `Some` で取り出す（他は `None`）。
+    ///
+    /// ヒープ保持のため参照返し（`as_dictionary` の `&PdfDictionary` 返しと同方針）。
+    pub fn as_stream(&self) -> Option<&PdfStream> {
+        match self {
+            Self::Stream(stream) => Some(stream),
+            _ => None,
+        }
+    }
+
     /// `Reference` のとき内部の `IndirectRef` を `Some` で取り出す（他は `None`）。
     ///
     /// `IndirectRef` は `Copy` なので値返し（`as_bool`/`as_integer` と同方針）。
@@ -154,6 +173,11 @@ mod tests {
             ObjectNumber::new(n),
             GenerationNumber::new(g),
         ))
+    }
+
+    // テスト用に空辞書 + 指定データの PdfStream を構築するヘルパ
+    fn make_stream(data: &[u8]) -> PdfStream {
+        PdfStream::new(PdfDictionary::new(), data)
     }
 
     #[test]
@@ -231,11 +255,12 @@ mod tests {
 
     #[test]
     fn as_bool_returns_none_for_non_boolean_variants() {
-        // Boolean 以外（Null/Integer/Real/Reference）では as_bool() が None を返すことを確認する
+        // Boolean 以外（Null/Integer/Real/Stream/Reference）では as_bool() が None を返すことを確認する
         for obj in &[
             PdfObject::Null,
             PdfObject::Integer(0),
             PdfObject::Real(0.0),
+            PdfObject::Stream(make_stream(b"data")),
             PdfObject::Reference(make_ref(1, 0)),
         ] {
             assert_eq!(obj.as_bool(), None);
@@ -244,11 +269,12 @@ mod tests {
 
     #[test]
     fn as_integer_returns_none_for_non_integer_variants() {
-        // Integer 以外（Null/Boolean/Real/Reference）では as_integer() が None を返すことを確認する
+        // Integer 以外（Null/Boolean/Real/Stream/Reference）では as_integer() が None を返すことを確認する
         for obj in &[
             PdfObject::Null,
             PdfObject::Boolean(true),
             PdfObject::Real(0.0),
+            PdfObject::Stream(make_stream(b"data")),
             PdfObject::Reference(make_ref(1, 0)),
         ] {
             assert_eq!(obj.as_integer(), None);
@@ -257,11 +283,12 @@ mod tests {
 
     #[test]
     fn as_real_returns_none_for_non_real_variants() {
-        // Real 以外（Null/Boolean/Integer/Reference）では as_real() が None を返すことを確認する
+        // Real 以外（Null/Boolean/Integer/Stream/Reference）では as_real() が None を返すことを確認する
         for obj in &[
             PdfObject::Null,
             PdfObject::Boolean(true),
             PdfObject::Integer(0),
+            PdfObject::Stream(make_stream(b"data")),
             PdfObject::Reference(make_ref(1, 0)),
         ] {
             assert_eq!(obj.as_real(), None);
@@ -285,8 +312,8 @@ mod tests {
 
     #[test]
     fn all_distinct_variants_are_mutually_not_equal() {
-        // 全 9 バリアントを総当たりで比較し、同一インデックスのみ等価・他は非等価であることを確認する
-        // （NaN は等価判定が崩れるため代表値には含めない。String/Name/Array/Dictionary は有限値・
+        // 全 10 バリアントを総当たりで比較し、同一インデックスのみ等価・他は非等価であることを確認する
+        // （NaN は等価判定が崩れるため代表値には含めない。String/Name/Array/Dictionary/Stream は有限値・
         // Reference は Eq なので NaN 制約に抵触しない）
         let variants = [
             PdfObject::Null,
@@ -297,6 +324,7 @@ mod tests {
             PdfObject::Name(PdfName::from("Type")),
             PdfObject::Array(vec![PdfObject::Integer(1)]),
             PdfObject::Dictionary(PdfDictionary::new()),
+            PdfObject::Stream(PdfStream::new(PdfDictionary::new(), b"data")),
             PdfObject::Reference(make_ref(1, 0)),
         ];
         for (i, a) in variants.iter().enumerate() {
@@ -399,13 +427,14 @@ mod tests {
 
     #[test]
     fn as_string_returns_none_for_non_string_variants() {
-        // String 以外（Null/Boolean/Integer/Real/Name/Reference）では as_string() が None を返すことを確認する
+        // String 以外（Null/Boolean/Integer/Real/Name/Stream/Reference）では as_string() が None を返すことを確認する
         let variants = [
             PdfObject::Null,
             PdfObject::Boolean(true),
             PdfObject::Integer(0),
             PdfObject::Real(0.0),
             PdfObject::Name(PdfName::from("Type")),
+            PdfObject::Stream(make_stream(b"data")),
             PdfObject::Reference(make_ref(1, 0)),
         ];
         for obj in &variants {
@@ -415,13 +444,14 @@ mod tests {
 
     #[test]
     fn as_name_returns_none_for_non_name_variants() {
-        // Name 以外（Null/Boolean/Integer/Real/String/Reference）では as_name() が None を返すことを確認する
+        // Name 以外（Null/Boolean/Integer/Real/String/Stream/Reference）では as_name() が None を返すことを確認する
         let variants = [
             PdfObject::Null,
             PdfObject::Boolean(true),
             PdfObject::Integer(0),
             PdfObject::Real(0.0),
             PdfObject::String(b"abc".to_vec()),
+            PdfObject::Stream(make_stream(b"data")),
             PdfObject::Reference(make_ref(1, 0)),
         ];
         for obj in &variants {
@@ -587,7 +617,7 @@ mod tests {
 
     #[test]
     fn as_array_returns_none_for_non_array_variants() {
-        // Array 以外（Null/Boolean/Integer/Real/String/Name/Dictionary/Reference）では as_array() が None を返すことを確認する
+        // Array 以外（Null/Boolean/Integer/Real/String/Name/Dictionary/Stream/Reference）では as_array() が None を返すことを確認する
         let variants = [
             PdfObject::Null,
             PdfObject::Boolean(true),
@@ -596,6 +626,7 @@ mod tests {
             PdfObject::String(b"abc".to_vec()),
             PdfObject::Name(PdfName::from("Type")),
             PdfObject::Dictionary(PdfDictionary::new()),
+            PdfObject::Stream(make_stream(b"data")),
             PdfObject::Reference(make_ref(1, 0)),
         ];
         for obj in &variants {
@@ -605,7 +636,7 @@ mod tests {
 
     #[test]
     fn as_dictionary_returns_none_for_non_dictionary_variants() {
-        // Dictionary 以外（Null/Boolean/Integer/Real/String/Name/Array/Reference）では as_dictionary() が None を返すことを確認する
+        // Dictionary 以外（Null/Boolean/Integer/Real/String/Name/Array/Stream/Reference）では as_dictionary() が None を返すことを確認する
         let variants = [
             PdfObject::Null,
             PdfObject::Boolean(true),
@@ -614,6 +645,7 @@ mod tests {
             PdfObject::String(b"abc".to_vec()),
             PdfObject::Name(PdfName::from("Type")),
             PdfObject::Array(vec![PdfObject::Integer(1)]),
+            PdfObject::Stream(make_stream(b"data")),
             PdfObject::Reference(make_ref(1, 0)),
         ];
         for obj in &variants {
@@ -816,7 +848,7 @@ mod tests {
 
     #[test]
     fn as_reference_returns_none_for_non_reference_variants() {
-        // Reference 以外（Null/Boolean/Integer/Real/String/Name/Array/Dictionary）では as_reference() が None を返すことを確認する
+        // Reference 以外（Null/Boolean/Integer/Real/String/Name/Array/Dictionary/Stream）では as_reference() が None を返すことを確認する
         let variants = [
             PdfObject::Null,
             PdfObject::Boolean(true),
@@ -826,6 +858,7 @@ mod tests {
             PdfObject::Name(PdfName::from("Type")),
             PdfObject::Array(vec![PdfObject::Integer(1)]),
             PdfObject::Dictionary(PdfDictionary::new()),
+            PdfObject::Stream(make_stream(b"data")),
         ];
         for obj in &variants {
             assert_eq!(obj.as_reference(), None);
@@ -859,5 +892,98 @@ mod tests {
     fn debug_format_contains_reference_variant_name() {
         // Debug 出力が Reference のバリアント名を含むことを確認する
         assert!(format!("{:?}", PdfObject::Reference(make_ref(1, 0))).contains("Reference"));
+    }
+
+    #[test]
+    fn stream_constructs_and_matches_stream_arm() {
+        // Stream(PdfStream::new(...)) を構築し matches! で Stream 腕に入ることを確認する
+        let obj = PdfObject::Stream(make_stream(b"data"));
+        assert!(matches!(obj, PdfObject::Stream(_)));
+    }
+
+    #[test]
+    fn as_stream_returns_some_for_stream() {
+        // Stream に as_stream() を呼ぶと Some(&PdfStream) を返し内容が一致する（参照返し）ことを確認する
+        let stream = make_stream(b"data");
+        let obj = PdfObject::Stream(stream.clone());
+        assert_eq!(obj.as_stream(), Some(&stream));
+    }
+
+    #[test]
+    fn as_stream_returns_none_for_non_stream_variants() {
+        // Stream 以外（Null/Boolean/Integer/Real/String/Name/Array/Dictionary/Reference）では as_stream() が None を返すことを確認する
+        let variants = [
+            PdfObject::Null,
+            PdfObject::Boolean(true),
+            PdfObject::Integer(0),
+            PdfObject::Real(0.0),
+            PdfObject::String(b"abc".to_vec()),
+            PdfObject::Name(PdfName::from("Type")),
+            PdfObject::Array(vec![PdfObject::Integer(1)]),
+            PdfObject::Dictionary(PdfDictionary::new()),
+            PdfObject::Reference(make_ref(1, 0)),
+        ];
+        for obj in &variants {
+            assert_eq!(obj.as_stream(), None);
+        }
+    }
+
+    #[test]
+    fn as_stream_then_accessors_roundtrip() {
+        // as_stream().unwrap().dictionary() / .data() で構築時の辞書・バイト列が返る（後段借用経路）ことを確認する
+        let mut dict = PdfDictionary::new();
+        dict.insert(PdfName::from("Length"), PdfObject::Integer(4));
+        let obj = PdfObject::Stream(PdfStream::new(dict.clone(), b"body"));
+        let stream = obj.as_stream().unwrap();
+        assert_eq!(stream.dictionary(), &dict);
+        assert_eq!(stream.data(), b"body");
+    }
+
+    #[test]
+    fn same_content_streams_wrapped_are_equal() {
+        // 同内容の PdfStream を内包する Stream 同士は == で等価になることを確認する
+        assert_eq!(
+            PdfObject::Stream(make_stream(b"data")),
+            PdfObject::Stream(make_stream(b"data"))
+        );
+    }
+
+    #[test]
+    fn stream_and_dictionary_with_same_dictionary_are_not_equal() {
+        // 同一辞書を持つ Stream（空データ）と Dictionary は異バリアントのため != で非等価になることを確認する
+        let mut dict = PdfDictionary::new();
+        dict.insert(PdfName::from("Type"), PdfObject::Integer(1));
+        assert_ne!(
+            PdfObject::Stream(PdfStream::new(dict.clone(), b"")),
+            PdfObject::Dictionary(dict)
+        );
+    }
+
+    #[test]
+    fn stream_containing_nan_is_not_equal_to_itself_content() {
+        // 辞書値に Real(NaN) を含む Stream 同士は NaN != NaN が enum まで伝播し != になることを確認する
+        let mut dict_a = PdfDictionary::new();
+        dict_a.insert(PdfName::from("N"), PdfObject::Real(f64::NAN));
+        let mut dict_b = PdfDictionary::new();
+        dict_b.insert(PdfName::from("N"), PdfObject::Real(f64::NAN));
+        assert_ne!(
+            PdfObject::Stream(PdfStream::new(dict_a, b"data")),
+            PdfObject::Stream(PdfStream::new(dict_b, b"data"))
+        );
+    }
+
+    #[test]
+    fn clone_preserves_stream_and_keeps_original_usable() {
+        // Stream バリアントを clone() すると複製が元と == かつ元も引き続き使用可能なことを確認する
+        let original = PdfObject::Stream(make_stream(b"data"));
+        let cloned = original.clone();
+        assert_eq!(cloned, original);
+        assert_eq!(original.as_stream().unwrap().data(), b"data");
+    }
+
+    #[test]
+    fn debug_format_contains_stream_variant_name() {
+        // Debug 出力が Stream のバリアント名を含むことを確認する
+        assert!(format!("{:?}", PdfObject::Stream(make_stream(b"data"))).contains("Stream"));
     }
 }
