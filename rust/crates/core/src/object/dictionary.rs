@@ -3,7 +3,7 @@
 //! キーは `PdfName`（#261）、値は `PdfObject`（#262）。内部表現は
 //! `BTreeMap<PdfName, PdfObject>` で、キーがソート順に並ぶため出力が決定的になり
 //! テストが安定する（`HashMap` の順序非決定・`Vec` の O(n) ルックアップは不採用）。
-//! 後続の `PdfObject` 辞書ケース（#265）や `PdfStream`（#267）の辞書部の基盤となる。
+//! `PdfObject` の辞書ケース（#265）や `PdfStream`（#267）の辞書部の基盤である。
 //!
 //! 生成・挿入は無検証（infallible）。null エントリの正規化や妥当性検証は
 //! 上位（lexer/parser）の責務であり、本型はストレージ + アクセサのみを担う。
