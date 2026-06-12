@@ -26,6 +26,7 @@ test.each<readonly [string, OperatorHandler]>([
   expect(looked.value).toBe(expectedHandler);
 });
 
+// 一括登録後の registry を OperatorRegistry.has で全件確認する
 test("registerTextPositioningOperators の戻り値は ok で 4 operator すべてを保持する registry を返す", () => {
   const result = registerTextPositioningOperators(OperatorRegistry.create());
   assert(result.ok);
