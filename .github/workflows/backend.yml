@@ -5,6 +5,11 @@ on:
     paths:
       - 'rust/**'
       - '.github/workflows/backend.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'rust/**'
+      - '.github/workflows/backend.yml'
 
 concurrency:
   group: backend-ci-${{ github.event.pull_request.number || github.ref }}
@@ -112,7 +117,7 @@ jobs:
   coverage-comment:
     name: post coverage comment
     needs: check
-    if: always() && needs.check.result != 'cancelled'
+    if: always() && needs.check.result != 'cancelled' && github.event_name == 'pull_request'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
