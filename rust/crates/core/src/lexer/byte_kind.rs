@@ -24,7 +24,9 @@ const PERCENT: u8 = 0x25;
 /// PDF バイトの分類（ISO 32000 / `docs/specs/01_lexical_conventions.md` §2）。
 ///
 /// 全バイト値（0x00〜0xFF）は whitespace / delimiter / regular のいずれか
-/// ちょうど 1 つに排他的に分類される。
+/// ちょうど 1 つに排他的に分類される。バイト値からの分類は `From<u8>` で行う
+/// （`ByteKind::from(byte)` または `byte.into()`）。全バイトに対して定義される
+/// 全域変換のため `TryFrom` ではなく `From` を採用する。
 /// 軽量な分類タグとして `Copy` 可能。等価判定（`PartialEq`/`Eq`）は同一バリアントか
 /// 否かに従う。順序・ハッシュは用途上不要のため derive しない（`PdfErrorCode` と同方針）。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -38,37 +40,39 @@ pub enum ByteKind {
 }
 
 impl ByteKind {
-    /// バイト値を 3 分類のいずれかに分類する。
+    /// ホワイトスペースバイトかどうかを返す述語（関連関数）。
     ///
-    /// 全バイト値に対して定義される全域関数であり、panic しない。
-    pub fn classify(byte: u8) -> ByteKind {
+    /// 分類の単一情報源である `ByteKind::from` に委譲する。
+    pub fn is_whitespace(byte: u8) -> bool {
+        ByteKind::from(byte) == ByteKind::Whitespace
+    }
+
+    /// デリミタバイトかどうかを返す述語（関連関数）。
+    ///
+    /// 分類の単一情報源である `ByteKind::from` に委譲する。
+    pub fn is_delimiter(byte: u8) -> bool {
+        ByteKind::from(byte) == ByteKind::Delimiter
+    }
+
+    /// 通常の文字（whitespace でも delimiter でもない）かどうかを返す述語（関連関数）。
+    ///
+    /// 分類の単一情報源である `ByteKind::from` に委譲する。
+    pub fn is_regular(byte: u8) -> bool {
+        ByteKind::from(byte) == ByteKind::Regular
+    }
+}
+
+impl From<u8> for ByteKind {
+    /// バイト値を 3 分類のいずれかに変換する。
+    ///
+    /// 全バイト値に対して定義される全域変換であり、panic しない。
+    fn from(byte: u8) -> ByteKind {
         match byte {
             NUL | TAB | LF | FF | CR | SP => ByteKind::Whitespace,
             LEFT_PAREN | RIGHT_PAREN | LESS_THAN | GREATER_THAN | LEFT_BRACKET | RIGHT_BRACKET
             | LEFT_BRACE | RIGHT_BRACE | SLASH | PERCENT => ByteKind::Delimiter,
             _ => ByteKind::Regular,
         }
-    }
-
-    /// ホワイトスペースバイトかどうかを返す述語（関連関数）。
-    ///
-    /// 分類の単一情報源である `ByteKind::classify` に委譲する。
-    pub fn is_whitespace(byte: u8) -> bool {
-        ByteKind::classify(byte) == ByteKind::Whitespace
-    }
-
-    /// デリミタバイトかどうかを返す述語（関連関数）。
-    ///
-    /// 分類の単一情報源である `ByteKind::classify` に委譲する。
-    pub fn is_delimiter(byte: u8) -> bool {
-        ByteKind::classify(byte) == ByteKind::Delimiter
-    }
-
-    /// 通常の文字（whitespace でも delimiter でもない）かどうかを返す述語（関連関数）。
-    ///
-    /// 分類の単一情報源である `ByteKind::classify` に委譲する。
-    pub fn is_regular(byte: u8) -> bool {
-        ByteKind::classify(byte) == ByteKind::Regular
     }
 }
 
@@ -82,7 +86,7 @@ mod tests {
         let whitespace_bytes = [0x00, 0x09, 0x0A, 0x0C, 0x0D, 0x20];
         for byte in whitespace_bytes {
             assert_eq!(
-                ByteKind::classify(byte),
+                ByteKind::from(byte),
                 ByteKind::Whitespace,
                 "0x{byte:02X} should be Whitespace"
             );
@@ -95,7 +99,7 @@ mod tests {
         let delimiter_bytes = [0x28, 0x29, 0x3C, 0x3E, 0x5B, 0x5D, 0x7B, 0x7D, 0x2F, 0x25];
         for byte in delimiter_bytes {
             assert_eq!(
-                ByteKind::classify(byte),
+                ByteKind::from(byte),
                 ByteKind::Delimiter,
                 "0x{byte:02X} should be Delimiter"
             );
@@ -108,7 +112,7 @@ mod tests {
         let regular_bytes = [b'A', b'z', b'0', b'9', b't', b'n', 0x80, 0xFF];
         for byte in regular_bytes {
             assert_eq!(
-                ByteKind::classify(byte),
+                ByteKind::from(byte),
                 ByteKind::Regular,
                 "0x{byte:02X} should be Regular"
             );
@@ -125,7 +129,7 @@ mod tests {
         ];
         for byte in adjacent_bytes {
             assert_eq!(
-                ByteKind::classify(byte),
+                ByteKind::from(byte),
                 ByteKind::Regular,
                 "0x{byte:02X} should be Regular"
             );
@@ -140,7 +144,7 @@ mod tests {
         let mut delimiter_count = 0;
         let mut regular_count = 0;
         for byte in 0x00..=0xFFu8 {
-            match ByteKind::classify(byte) {
+            match ByteKind::from(byte) {
                 ByteKind::Whitespace => whitespace_count += 1,
                 ByteKind::Delimiter => delimiter_count += 1,
                 ByteKind::Regular => regular_count += 1,
@@ -152,9 +156,9 @@ mod tests {
     }
 
     #[test]
-    fn predicates_agree_with_classify_for_all_256_bytes() {
+    fn predicates_agree_with_byte_kind_for_all_256_bytes() {
         // 全 256 バイトで述語 3 関数のうちちょうど 1 つだけ true になり、
-        // その結果が classify の分類と一致することを確認する（委譲の整合性）
+        // その結果が ByteKind::from による分類と一致することを確認する（委譲の整合性）
         for byte in 0x00..=0xFFu8 {
             let predicates = [
                 ByteKind::is_whitespace(byte),
@@ -166,14 +170,14 @@ mod tests {
                 true_count, 1,
                 "0x{byte:02X} should satisfy exactly one predicate"
             );
-            let expected = match ByteKind::classify(byte) {
+            let expected = match ByteKind::from(byte) {
                 ByteKind::Whitespace => [true, false, false],
                 ByteKind::Delimiter => [false, true, false],
                 ByteKind::Regular => [false, false, true],
             };
             assert_eq!(
                 predicates, expected,
-                "0x{byte:02X}: predicates should agree with classify"
+                "0x{byte:02X}: predicates should agree with ByteKind::from"
             );
         }
     }
