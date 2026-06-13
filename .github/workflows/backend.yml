@@ -2,6 +2,9 @@ name: backend
 
 on:
   pull_request:
+    paths:
+      - 'rust/**'
+      - '.github/workflows/backend.yml'
 
 concurrency:
   group: backend-ci-${{ github.event.pull_request.number || github.ref }}

@@ -2,6 +2,15 @@ name: frontend
 
 on:
   pull_request:
+    paths:
+      - 'packages/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'tsconfig*.json'
+      - 'biome.json'
+      - 'vitest.config.ts'
+      - '.github/workflows/frontend.yml'
 
 concurrency:
   group: frontend-ci-${{ github.event.pull_request.number || github.ref }}
