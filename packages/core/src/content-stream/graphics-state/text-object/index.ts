@@ -117,7 +117,7 @@ export const TextObject = {
     } as TextObject;
   },
   /**
-   * `TJ` の数値要素による位置調整 (ISO 32000-1:2008 §9.4.3 / Issue #414 §6.5)
+   * `TJ` の数値要素による位置調整 (ISO 32000-1:2008 §9.4.3)
    * や将来のグリフ送り (advance) の基盤となる、テキスト行列のみの平行移動。
    * `Tm' = translate(tx, ty) × Tm` を計算する (ISO 32000-1:2008 §9.4.2 の
    * テキスト行列更新)。`textLineMatrix` (行頭) は据え置く点が `translateLine`
