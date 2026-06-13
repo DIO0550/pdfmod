@@ -153,3 +153,9 @@ vite.config.ts.timestamp-*
 
 .test-rules.yml
 .worktreeinclude
+
+# Claude Code / Codex 作業ファイル・ローカル設定
+.claude/settings.local.json
+.claude/plugin-workspace/
+/plugin-workspace/
+.codex/
