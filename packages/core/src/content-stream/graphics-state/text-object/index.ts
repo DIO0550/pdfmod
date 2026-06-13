@@ -116,4 +116,31 @@ export const TextObject = {
       textLineMatrix: matrix,
     } as TextObject;
   },
+  /**
+   * `TJ` の数値要素による位置調整 (ISO 32000-1:2008 §9.4.3 / Issue §6.5)
+   * や将来のグリフ送り (advance) の基盤となる、テキスト行列のみの平行移動。
+   * `Tm' = translate(tx, ty) × Tm` を計算する (ISO 32000-1:2008 §9.4.2 の
+   * テキスト行列更新)。`textLineMatrix` (行頭) は据え置く点が `translateLine`
+   * との差分。
+   *
+   * `translate(tx, ty)` は `Matrix.create(1, 0, 0, 1, tx, ty)`。
+   * 引数の向きは「左 = 適用する変換」(`cm` / `translateLine` ハンドラと同一規約)。
+   * `active` は引数 state から引き継ぐ。元 state は変更しない (純粋関数)。
+   * `Matrix` は readonly tuple であり、本コードベースでは生成後に破壊的変更しない
+   * 運用のため `state.textLineMatrix` をそのまま据え置いてよい (防御コピー不要)。
+   *
+   * @param state - 更新対象の TextObject
+   * @param tx - x 方向の平行移動量
+   * @param ty - y 方向の平行移動量
+   * @returns `textMatrix` のみを更新し `textLineMatrix` を据え置いた新しい TextObject
+   */
+  translateText(state: TextObject, tx: number, ty: number): TextObject {
+    const translation = Matrix.create(1, 0, 0, 1, tx, ty);
+    const next = Matrix.multiply(translation, state.textMatrix);
+    return {
+      active: state.active,
+      textMatrix: next,
+      textLineMatrix: state.textLineMatrix,
+    } as TextObject;
+  },
 } as const;
