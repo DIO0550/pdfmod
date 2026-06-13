@@ -5,5 +5,76 @@
   },
   "env": {
     "CLAUDE_CODE_NO_FLICKER": "1"
+  },
+  "enabledPlugins": {
+    "typescript-rules-plugin@d-market-typescript": true,
+    "react-rules-plugin@d-market-react": true,
+    "spec-plugin@d-market-spec": true,
+    "spec-review-plugin@d-market-spec": true,
+    "git-workflow-plugin@d-market-git": true,
+    "spec-to-issues-plugin@d-market-git": true,
+    "workflow-automation-plugin@d-market-git": true,
+    "doc-gen-plugin@d-market-doc-gen": true,
+    "statusline-plugin@d-market-statusline": true,
+    "skill-creator@d-market-skill": true,
+    "marketplace-template@d-market-skill": true,
+    "skill-grower@d-market-skill": true,
+    "rust-workflow-plugin@d-market-rust": true,
+    "typescript-lsp@claude-plugins-official": true
+  },
+  "extraKnownMarketplaces": {
+    "d-market-typescript": {
+      "source": {
+        "source": "git",
+        "url": "https://github.com/DIO0550/d-market-typescript.git"
+      },
+      "autoUpdate": true
+    },
+    "d-market-react": {
+      "source": {
+        "source": "git",
+        "url": "https://github.com/DIO0550/d-market-react.git"
+      }
+    },
+    "d-market-spec": {
+      "source": {
+        "source": "git",
+        "url": "https://github.com/DIO0550/d-market-spec.git"
+      },
+      "autoUpdate": true
+    },
+    "d-market-git": {
+      "source": {
+        "source": "git",
+        "url": "https://github.com/DIO0550/d-market-git.git"
+      },
+      "autoUpdate": true
+    },
+    "d-market-doc-gen": {
+      "source": {
+        "source": "git",
+        "url": "https://github.com/DIO0550/d-market-doc-gen.git"
+      }
+    },
+    "d-market-statusline": {
+      "source": {
+        "source": "git",
+        "url": "https://github.com/DIO0550/d-market-statusline.git"
+      },
+      "autoUpdate": true
+    },
+    "d-market-skill": {
+      "source": {
+        "source": "github",
+        "repo": "DIO0550/d-market-skill"
+      },
+      "autoUpdate": true
+    },
+    "d-market-rust": {
+      "source": {
+        "source": "github",
+        "repo": "DIO0550/d-market-rust"
+      }
+    }
   }
 }
