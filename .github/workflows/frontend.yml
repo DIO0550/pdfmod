@@ -9,6 +9,7 @@ on:
       - 'pnpm-workspace.yaml'
       - 'tsconfig*.json'
       - 'biome.json'
+      - '.oxlintrc.json'
       - 'vitest.config.ts'
       - '.github/workflows/frontend.yml'
 
