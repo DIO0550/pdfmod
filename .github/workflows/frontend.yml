@@ -1,16 +1,42 @@
-name: CI
+name: frontend
 
 on:
   pull_request:
-    types: [opened, synchronize]
+    paths:
+      - 'packages/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'tsconfig*.json'
+      - 'biome.json'
+      - '.oxlintrc.json'
+      - 'vitest.config.ts'
+      - '.storybook/**'
+      - '.github/workflows/frontend.yml'
   push:
     branches: [main]
+    paths:
+      - 'packages/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'tsconfig*.json'
+      - 'biome.json'
+      - '.oxlintrc.json'
+      - 'vitest.config.ts'
+      - '.storybook/**'
+      - '.github/workflows/frontend.yml'
+
+concurrency:
+  group: frontend-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
-  ci:
+  check:
+    name: lint / typecheck / test / build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -45,7 +71,7 @@ jobs:
           retention-days: 1
 
   coverage-comment:
-    needs: ci
+    needs: check
     if: github.event_name == 'pull_request' && !github.event.pull_request.head.repo.fork
     runs-on: ubuntu-latest
     permissions:
