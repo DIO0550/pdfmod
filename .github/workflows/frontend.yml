@@ -11,6 +11,7 @@ on:
       - 'biome.json'
       - '.oxlintrc.json'
       - 'vitest.config.ts'
+      - '.storybook/**'
       - '.github/workflows/frontend.yml'
   push:
     branches: [main]
@@ -23,6 +24,7 @@ on:
       - 'biome.json'
       - '.oxlintrc.json'
       - 'vitest.config.ts'
+      - '.storybook/**'
       - '.github/workflows/frontend.yml'
 
 concurrency:
