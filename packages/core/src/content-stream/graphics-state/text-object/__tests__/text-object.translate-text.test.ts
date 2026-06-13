@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { TextObject } from "../index";
+import { TextObject } from "../../text-object";
 
 // active=true の任意 TextObject を生で組むヘルパ（dirty state 構築用）
 const buildActive = (
