@@ -178,23 +178,20 @@ test.each<[string, PdfObject]>([
       data: new Uint8Array(),
     },
   ],
-])(
-  "top-level operand が %s のとき OPERATOR_OPERAND_TYPE_MISMATCH (expected=array) を返す",
-  (typeName, operand) => {
-    const context = buildActiveContext([operand]);
+])("top-level operand が %s のとき OPERATOR_OPERAND_TYPE_MISMATCH (expected=array) を返す", (typeName, operand) => {
+  const context = buildActiveContext([operand]);
 
-    const result = tjArrayHandler(context);
+  const result = tjArrayHandler(context);
 
-    assert(!result.ok);
-    assert(result.error.code === "OPERATOR_OPERAND_TYPE_MISMATCH");
-    expect(result.error.expected).toBe("array");
-    expect(result.error.actual).toBe(typeName);
-    expect(result.error.operatorName).toBe("TJ");
-    expect(result.error.message).toBe(
-      `Operator 'TJ' expected array operand, got ${typeName}`,
-    );
-  },
-);
+  assert(!result.ok);
+  assert(result.error.code === "OPERATOR_OPERAND_TYPE_MISMATCH");
+  expect(result.error.expected).toBe("array");
+  expect(result.error.actual).toBe(typeName);
+  expect(result.error.operatorName).toBe("TJ");
+  expect(result.error.message).toBe(
+    `Operator 'TJ' expected array operand, got ${typeName}`,
+  );
+});
 
 // top-level type mismatch 時、commit せず current 内部参照が維持される。
 test("top-level type mismatch 時、current.textObject と textState は同一参照で維持される", () => {
@@ -239,23 +236,20 @@ test.each<[string, PdfValue]>([
     "indirect-ref",
     { type: "indirect-ref", objectNumber: 1, generationNumber: 0 },
   ],
-])(
-  "配列要素が %s のとき OPERATOR_OPERAND_TYPE_MISMATCH (expected=string|integer|real) を返す",
-  (typeName, element) => {
-    const context = buildActiveContext([array([element])], { fontSize: 12 });
+])("配列要素が %s のとき OPERATOR_OPERAND_TYPE_MISMATCH (expected=string|integer|real) を返す", (typeName, element) => {
+  const context = buildActiveContext([array([element])], { fontSize: 12 });
 
-    const result = tjArrayHandler(context);
+  const result = tjArrayHandler(context);
 
-    assert(!result.ok);
-    assert(result.error.code === "OPERATOR_OPERAND_TYPE_MISMATCH");
-    expect(result.error.expected).toBe("string|integer|real");
-    expect(result.error.actual).toBe(typeName);
-    expect(result.error.operatorName).toBe("TJ");
-    expect(result.error.message).toBe(
-      `Operator 'TJ' expected string|integer|real array element, got ${typeName}`,
-    );
-  },
-);
+  assert(!result.ok);
+  assert(result.error.code === "OPERATOR_OPERAND_TYPE_MISMATCH");
+  expect(result.error.expected).toBe("string|integer|real");
+  expect(result.error.actual).toBe(typeName);
+  expect(result.error.operatorName).toBe("TJ");
+  expect(result.error.message).toBe(
+    `Operator 'TJ' expected string|integer|real array element, got ${typeName}`,
+  );
+});
 
 // 先頭要素が許可されない型のとき、何も累積していないため graphicsStateStack 同一参照で err。
 test("先頭要素が許可されない型のとき graphicsStateStack は同一参照のまま err", () => {
