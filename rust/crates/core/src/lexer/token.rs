@@ -125,8 +125,7 @@ impl Primitive {
 
 /// PDF レキシカル層の出力トークン（§7.2 / §7.3 全体に対応）。
 ///
-/// `Primitive` ラッパ 1 個 + 構造制御トークン 8 個 + `Keyword` / `Comment` の計 11 バリアント
-/// で構成される（バリアントは後続タスクで段階的に追加される）。
+/// `Primitive` ラッパ 1 個 + 構造制御トークン 8 個 + `Keyword` / `Comment` の計 11 バリアントで構成される。
 /// 内部に `Primitive` を含むため `Eq`/`Hash`/`Ord` は derive 不可（NaN 伝播）。
 /// `Keyword(Vec<u8>)` / `Comment(Vec<u8>)` / `Primitive` ラップのヒープにより `Copy` 不可。
 /// 順序（`PartialOrd`）はトークン間に意味ある全順序がないため不要。
