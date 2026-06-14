@@ -559,8 +559,9 @@ mod tests {
 
     #[test]
     fn token_is_array_begin_returns_false_for_non_array_begin_variants() {
-        // ArrayBegin 以外の構造制御トークン 7 個では is_array_begin() が false を返すことを確認する
+        // ArrayBegin 以外の全 10 バリアント（構造制御 7 + Primitive/Keyword/Comment）で is_array_begin() が false を返すことを確認する
         for t in &[
+            Token::Primitive(Primitive::Null),
             Token::ArrayEnd,
             Token::DictBegin,
             Token::DictEnd,
@@ -568,6 +569,8 @@ mod tests {
             Token::ObjEnd,
             Token::StreamBegin,
             Token::StreamEnd,
+            Token::Keyword(b"xref".to_vec()),
+            Token::Comment(b"x".to_vec()),
         ] {
             assert!(!t.is_array_begin());
         }
@@ -575,8 +578,9 @@ mod tests {
 
     #[test]
     fn token_is_array_end_returns_false_for_non_array_end_variants() {
-        // ArrayEnd 以外の構造制御トークン 7 個では is_array_end() が false を返すことを確認する
+        // ArrayEnd 以外の全 10 バリアント（構造制御 7 + Primitive/Keyword/Comment）で is_array_end() が false を返すことを確認する
         for t in &[
+            Token::Primitive(Primitive::Null),
             Token::ArrayBegin,
             Token::DictBegin,
             Token::DictEnd,
@@ -584,6 +588,8 @@ mod tests {
             Token::ObjEnd,
             Token::StreamBegin,
             Token::StreamEnd,
+            Token::Keyword(b"xref".to_vec()),
+            Token::Comment(b"x".to_vec()),
         ] {
             assert!(!t.is_array_end());
         }
@@ -591,8 +597,9 @@ mod tests {
 
     #[test]
     fn token_is_dict_begin_returns_false_for_non_dict_begin_variants() {
-        // DictBegin 以外の構造制御トークン 7 個では is_dict_begin() が false を返すことを確認する
+        // DictBegin 以外の全 10 バリアント（構造制御 7 + Primitive/Keyword/Comment）で is_dict_begin() が false を返すことを確認する
         for t in &[
+            Token::Primitive(Primitive::Null),
             Token::ArrayBegin,
             Token::ArrayEnd,
             Token::DictEnd,
@@ -600,6 +607,8 @@ mod tests {
             Token::ObjEnd,
             Token::StreamBegin,
             Token::StreamEnd,
+            Token::Keyword(b"xref".to_vec()),
+            Token::Comment(b"x".to_vec()),
         ] {
             assert!(!t.is_dict_begin());
         }
@@ -607,8 +616,9 @@ mod tests {
 
     #[test]
     fn token_is_dict_end_returns_false_for_non_dict_end_variants() {
-        // DictEnd 以外の構造制御トークン 7 個では is_dict_end() が false を返すことを確認する
+        // DictEnd 以外の全 10 バリアント（構造制御 7 + Primitive/Keyword/Comment）で is_dict_end() が false を返すことを確認する
         for t in &[
+            Token::Primitive(Primitive::Null),
             Token::ArrayBegin,
             Token::ArrayEnd,
             Token::DictBegin,
@@ -616,6 +626,8 @@ mod tests {
             Token::ObjEnd,
             Token::StreamBegin,
             Token::StreamEnd,
+            Token::Keyword(b"xref".to_vec()),
+            Token::Comment(b"x".to_vec()),
         ] {
             assert!(!t.is_dict_end());
         }
@@ -623,8 +635,9 @@ mod tests {
 
     #[test]
     fn token_is_obj_begin_returns_false_for_non_obj_begin_variants() {
-        // ObjBegin 以外の構造制御トークン 7 個では is_obj_begin() が false を返すことを確認する
+        // ObjBegin 以外の全 10 バリアント（構造制御 7 + Primitive/Keyword/Comment）で is_obj_begin() が false を返すことを確認する
         for t in &[
+            Token::Primitive(Primitive::Null),
             Token::ArrayBegin,
             Token::ArrayEnd,
             Token::DictBegin,
@@ -632,6 +645,8 @@ mod tests {
             Token::ObjEnd,
             Token::StreamBegin,
             Token::StreamEnd,
+            Token::Keyword(b"xref".to_vec()),
+            Token::Comment(b"x".to_vec()),
         ] {
             assert!(!t.is_obj_begin());
         }
@@ -639,8 +654,9 @@ mod tests {
 
     #[test]
     fn token_is_obj_end_returns_false_for_non_obj_end_variants() {
-        // ObjEnd 以外の構造制御トークン 7 個では is_obj_end() が false を返すことを確認する
+        // ObjEnd 以外の全 10 バリアント（構造制御 7 + Primitive/Keyword/Comment）で is_obj_end() が false を返すことを確認する
         for t in &[
+            Token::Primitive(Primitive::Null),
             Token::ArrayBegin,
             Token::ArrayEnd,
             Token::DictBegin,
@@ -648,6 +664,8 @@ mod tests {
             Token::ObjBegin,
             Token::StreamBegin,
             Token::StreamEnd,
+            Token::Keyword(b"xref".to_vec()),
+            Token::Comment(b"x".to_vec()),
         ] {
             assert!(!t.is_obj_end());
         }
@@ -655,8 +673,9 @@ mod tests {
 
     #[test]
     fn token_is_stream_begin_returns_false_for_non_stream_begin_variants() {
-        // StreamBegin 以外の構造制御トークン 7 個では is_stream_begin() が false を返すことを確認する
+        // StreamBegin 以外の全 10 バリアント（構造制御 7 + Primitive/Keyword/Comment）で is_stream_begin() が false を返すことを確認する
         for t in &[
+            Token::Primitive(Primitive::Null),
             Token::ArrayBegin,
             Token::ArrayEnd,
             Token::DictBegin,
@@ -664,6 +683,8 @@ mod tests {
             Token::ObjBegin,
             Token::ObjEnd,
             Token::StreamEnd,
+            Token::Keyword(b"xref".to_vec()),
+            Token::Comment(b"x".to_vec()),
         ] {
             assert!(!t.is_stream_begin());
         }
@@ -671,8 +692,9 @@ mod tests {
 
     #[test]
     fn token_is_stream_end_returns_false_for_non_stream_end_variants() {
-        // StreamEnd 以外の構造制御トークン 7 個では is_stream_end() が false を返すことを確認する
+        // StreamEnd 以外の全 10 バリアント（構造制御 7 + Primitive/Keyword/Comment）で is_stream_end() が false を返すことを確認する
         for t in &[
+            Token::Primitive(Primitive::Null),
             Token::ArrayBegin,
             Token::ArrayEnd,
             Token::DictBegin,
@@ -680,6 +702,8 @@ mod tests {
             Token::ObjBegin,
             Token::ObjEnd,
             Token::StreamBegin,
+            Token::Keyword(b"xref".to_vec()),
+            Token::Comment(b"x".to_vec()),
         ] {
             assert!(!t.is_stream_end());
         }
@@ -701,7 +725,7 @@ mod tests {
 
     #[test]
     fn token_as_primitive_returns_none_for_non_primitive_variants() {
-        // Primitive 以外（構造制御 8 個の代表）では as_primitive() が None を返すことを確認する
+        // Primitive 以外の全 10 バリアント（構造制御 8 + Keyword + Comment）では as_primitive() が None を返すことを確認する
         for t in &[
             Token::ArrayBegin,
             Token::ArrayEnd,
@@ -711,6 +735,8 @@ mod tests {
             Token::ObjEnd,
             Token::StreamBegin,
             Token::StreamEnd,
+            Token::Keyword(b"xref".to_vec()),
+            Token::Comment(b"x".to_vec()),
         ] {
             assert_eq!(t.as_primitive(), None);
         }
@@ -775,13 +801,17 @@ mod tests {
 
     #[test]
     fn token_as_keyword_returns_none_for_non_keyword_variants() {
-        // Keyword 以外（Primitive/構造制御 8 個から代表 + Comment）では as_keyword() が None を返すことを確認する
+        // Keyword 以外の全 10 バリアント（Primitive + 構造制御 8 + Comment）では as_keyword() が None を返すことを確認する
         for t in &[
             Token::Primitive(Primitive::Null),
             Token::ArrayBegin,
+            Token::ArrayEnd,
             Token::DictBegin,
+            Token::DictEnd,
             Token::ObjBegin,
+            Token::ObjEnd,
             Token::StreamBegin,
+            Token::StreamEnd,
             Token::Comment(b"x".to_vec()),
         ] {
             assert_eq!(t.as_keyword(), None);
@@ -790,13 +820,17 @@ mod tests {
 
     #[test]
     fn token_as_comment_returns_none_for_non_comment_variants() {
-        // Comment 以外（Primitive/構造制御 8 個から代表 + Keyword）では as_comment() が None を返すことを確認する
+        // Comment 以外の全 10 バリアント（Primitive + 構造制御 8 + Keyword）では as_comment() が None を返すことを確認する
         for t in &[
             Token::Primitive(Primitive::Null),
             Token::ArrayBegin,
+            Token::ArrayEnd,
             Token::DictBegin,
+            Token::DictEnd,
             Token::ObjBegin,
+            Token::ObjEnd,
             Token::StreamBegin,
+            Token::StreamEnd,
             Token::Keyword(b"xref".to_vec()),
         ] {
             assert_eq!(t.as_comment(), None);
