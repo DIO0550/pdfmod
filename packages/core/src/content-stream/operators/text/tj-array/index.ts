@@ -1,3 +1,4 @@
+import { MathEx } from "../../../../ext/math/index";
 import type { PdfError } from "../../../../pdf/errors/index";
 import { err, ok } from "../../../../utils/result/index";
 import {
@@ -87,7 +88,9 @@ export const tjArrayHandler: OperatorHandler = (
     }
     if (NumericPdfObject.is(element)) {
       const offset =
-        (-element.value / 1000) * fontSize * (horizontalScaling / 100);
+        MathEx.fromThousandths(-element.value) *
+        fontSize *
+        MathEx.fromPercent(horizontalScaling);
       if (offset === 0) {
         continue;
       }
