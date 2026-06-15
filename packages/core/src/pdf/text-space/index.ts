@@ -1,11 +1,11 @@
 /**
- * PDF text space (ISO 32000-1 §9.4.4) のスケール。
- *
- * グリフ幅辞書（/Widths）や TJ 配列内の数値は §9.4.3 で「thousandths of a unit
- * of text space」と定義されている。これは Adobe Type1 / AFM 形式の慣習で
- * 1 em = 1000 単位の整数エンコーディング（整数で 3 桁精度のグリフ幅を表現するため）。
+ * PDF text space (ISO 32000-1 §9.4.4) のスケール: 1 em は 1000 個の整数単位に
+ * 分割される。Adobe Type1 / AFM 形式の慣習で、グリフ幅辞書（/Widths）や TJ
+ * 配列内の数値はこの整数単位（§9.4.3 では "thousandths of a unit of text space"
+ * と表記）でエンコードされる。整数で 3 桁精度のグリフ幅を表現できるようにする
+ * ためのもの。
  */
-const THOUSANDTHS_PER_UNIT = 1000;
+const UNITS_PER_EM = 1000;
 
 /** PDF text space 関連の単位変換ユーティリティ。 */
 export const TextSpace = {
@@ -19,6 +19,5 @@ export const TextSpace = {
    * @param thousandths - thousandths-of-em で表された数値
    * @returns text space unit に変換した値（1.0 = 1 em）
    */
-  fromThousandths: (thousandths: number): number =>
-    thousandths / THOUSANDTHS_PER_UNIT,
+  fromThousandths: (thousandths: number): number => thousandths / UNITS_PER_EM,
 } as const;
