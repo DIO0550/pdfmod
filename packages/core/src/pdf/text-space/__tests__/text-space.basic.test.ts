@@ -16,6 +16,12 @@ test("toEm は TJ 配列値 40 を 0.04 に変換する", () => {
   expect(TextSpace.toEm(40)).toBeCloseTo(0.04);
 });
 
+// TJ 配列の数値要素は integer / real のいずれも取り得るため、小数入力も受理する。
+test("toEm は小数（real 値）入力も受理する", () => {
+  expect(TextSpace.toEm(40.5)).toBeCloseTo(0.0405);
+  expect(TextSpace.toEm(-0.5)).toBeCloseTo(-0.0005);
+});
+
 // 0 の境界。
 test("toEm は 0 を 0 に変換する", () => {
   expect(TextSpace.toEm(0)).toBe(0);
