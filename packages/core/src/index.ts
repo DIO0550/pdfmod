@@ -45,6 +45,7 @@ export {
   PdfPage,
   PdfTrapped,
 } from "./document/index";
+export { MathEx } from "./ext/math/index";
 export { NumberEx } from "./ext/number/index";
 export { Tokenizer } from "./lexer/index";
 export type {
