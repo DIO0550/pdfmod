@@ -106,6 +106,7 @@ export {
   ObjectNumber,
   Operator,
   PdfVersion,
+  TextSpace,
   TokenType,
 } from "./pdf/index";
 export type { Brand } from "./utils/index";
