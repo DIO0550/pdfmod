@@ -10,14 +10,14 @@ const UNITS_PER_EM = 1000;
 /** PDF text space 関連の単位変換ユーティリティ。 */
 export const TextSpace = {
   /**
-   * PDF の「thousandths of a unit of text space」エンコーディングを
-   * text space unit（≒ em 比）に変換する（`n / 1000`）。
+   * PDF text space グリッドの整数値（1 em = 1000 単位、ISO 32000-1 §9.4.3 では
+   * "thousandths of a unit of text space" と表記）を em 比に変換する。
    *
    * 用途: TJ 配列の位置調整値、/Widths のグリフ幅、`Type1` / `Type3` フォントの
-   * グリフ座標など。text matrix へ反映する前に本関数で 1 em 単位に戻す。
+   * グリフ座標など。text matrix へ反映する前に本関数で em 単位に戻す。
    *
-   * @param n - thousandths-of-em で表された数値
-   * @returns text space unit に変換した値（1.0 = 1 em）
+   * @param n - text space グリッドの整数値（1 em = 1000）
+   * @returns em 比（1.0 = 1 em）
    */
-  fromThousandths: (n: number): number => n / UNITS_PER_EM,
+  toEm: (n: number): number => n / UNITS_PER_EM,
 } as const;

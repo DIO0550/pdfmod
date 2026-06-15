@@ -90,7 +90,7 @@ export const tjArrayHandler: OperatorHandler = (
       continue;
     }
     if (NumericPdfObject.is(element)) {
-      const offset = TextSpace.fromThousandths(-element.value) * scaledFontSize;
+      const offset = TextSpace.toEm(-element.value) * scaledFontSize;
       if (offset === 0) {
         continue;
       }
