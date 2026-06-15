@@ -6,5 +6,6 @@
 //! 字句種別を表す `Token` enum およびトークナイザ等の上位機能は本モジュール配下に追加する。
 
 pub mod byte_kind;
+pub mod cursor;
 pub mod eol;
 pub mod token;
