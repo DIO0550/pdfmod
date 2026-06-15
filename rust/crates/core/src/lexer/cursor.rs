@@ -69,10 +69,11 @@ impl<'a> Lexer<'a> {
 
     /// ISO 32000 のホワイトスペース 6 バイト（NUL/TAB/LF/FF/CR/SP）を連続して読み飛ばす。
     ///
-    /// 非ホワイトスペースバイトまたは EOF に到達したら停止する。CRLF を 1 改行扱いする
-    /// 責務は本関数ではなく `skip_comment` 側（`EolKind` 経由）にあるが、
-    /// 本関数は CR と LF を独立した whitespace バイトとして 1 つずつスキップするため、
-    /// CRLF を 2 改行に「誤分解」する経路は存在しない（後続の処理に影響を与えない）。
+    /// 非ホワイトスペースバイトまたは EOF に到達したら停止する。本関数は CR と LF を
+    /// 独立した whitespace バイトとして 1 バイトずつ消費するだけで、改行（EOL）という
+    /// 概念は扱わない。改行を 1 単位として扱う必要がある場合（CRLF を 2 改行と数えない
+    /// 等）は本関数ではなく `EolKind::at` / `byte_len` を用いること（`skip_comment` 側で
+    /// この方針を担保している）。
     pub fn skip_whitespace(&mut self) {
         while let Some(byte) = self.input.get(self.pos) {
             if !ByteKind::is_whitespace(*byte) {
