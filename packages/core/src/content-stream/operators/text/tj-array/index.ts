@@ -1,5 +1,6 @@
 import { MathEx } from "../../../../ext/math/index";
 import type { PdfError } from "../../../../pdf/errors/index";
+import { TextSpace } from "../../../../pdf/text-space/index";
 import { err, ok } from "../../../../utils/result/index";
 import {
   GraphicsState,
@@ -89,7 +90,7 @@ export const tjArrayHandler: OperatorHandler = (
       continue;
     }
     if (NumericPdfObject.is(element)) {
-      const offset = MathEx.fromThousandths(-element.value) * scaledFontSize;
+      const offset = TextSpace.fromThousandths(-element.value) * scaledFontSize;
       if (offset === 0) {
         continue;
       }
