@@ -80,6 +80,8 @@ export const tjArrayHandler: OperatorHandler = (
   }
 
   const { fontSize, horizontalScaling } = current.textState;
+  // ループ不変。PDF §9.2.4 の Tfs × Th に相当する位置調整スケール係数。
+  const scaledFontSize = fontSize * MathEx.fromPercent(horizontalScaling);
   let textObject = current.textObject;
 
   for (const element of operand.elements) {
@@ -87,10 +89,7 @@ export const tjArrayHandler: OperatorHandler = (
       continue;
     }
     if (NumericPdfObject.is(element)) {
-      const offset =
-        MathEx.fromThousandths(-element.value) *
-        fontSize *
-        MathEx.fromPercent(horizontalScaling);
+      const offset = MathEx.fromThousandths(-element.value) * scaledFontSize;
       if (offset === 0) {
         continue;
       }
