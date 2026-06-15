@@ -62,7 +62,10 @@ impl<'a> Lexer<'a> {
         Some(byte)
     }
 
-    /// EOF に達しているか（`pos == input.len()`）。
+    /// `pos` が入力末尾に達しているか（EOF）。
+    ///
+    /// 不変条件 `0 ≦ pos ≦ input.len()` の下では `pos == input.len()` と等価だが、
+    /// 不変条件の破れを検知不能にしないため実装は `>=` で防衛的に判定する。
     pub fn is_eof(&self) -> bool {
         self.pos >= self.input.len()
     }
