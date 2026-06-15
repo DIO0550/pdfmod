@@ -16,8 +16,8 @@ export const TextSpace = {
    * 用途: TJ 配列の位置調整値、/Widths のグリフ幅、`Type1` / `Type3` フォントの
    * グリフ座標など。text matrix へ反映する前に本関数で 1 em 単位に戻す。
    *
-   * @param thousandths - thousandths-of-em で表された数値
+   * @param n - thousandths-of-em で表された数値
    * @returns text space unit に変換した値（1.0 = 1 em）
    */
-  fromThousandths: (thousandths: number): number => thousandths / UNITS_PER_EM,
+  fromThousandths: (n: number): number => n / UNITS_PER_EM,
 } as const;
