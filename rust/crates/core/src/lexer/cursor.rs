@@ -1,6 +1,6 @@
 //! PDF バイト列を走査する Lexer 本体の骨格。
 //!
-//! 借用ベース newtype として `Lexer<'a>` を提供し、カーソル位置の管理（pos）と
+//! `&'a [u8]` を借用する `Lexer<'a>` 構造体を提供し、カーソル位置の管理（pos）と
 //! 先読み（peek / peek_at）・前進（advance）・EOF 判定（is_eof）、
 //! および ISO 32000 lexical conventions に基づく
 //! ホワイトスペース・コメントのスキップ API を提供する。
