@@ -226,6 +226,126 @@ impl<'a> Lexer<'a> {
 
         Some(acc)
     }
+
+    /// ISO 32000-1 §7.3.3 に従う PDF 実数リテラルを読み取る。
+    ///
+    /// 受理する字句（いずれも `.` を必ず 1 つだけ含む）:
+    /// - 整数部 + `.` + 小数部（例: `34.5`、`123.456`）
+    /// - 整数部 + `.` のみ（例: `4.`、`0.`）
+    /// - `.` + 小数部のみ（例: `.002`、`.5`）
+    /// - 上記いずれにも先頭の `+` / `-` 符号を任意で付与可
+    /// - 末尾の whitespace / delimiter / EOF で字句が完結する
+    ///
+    /// 拒否する字句（`None` 返却 + `pos` を呼び出し前位置に完全巻き戻し）:
+    /// - 空入力 / EOF
+    /// - 先頭が whitespace / delimiter / 非数字 regular
+    /// - 符号 `+` / `-` の単独（直後が数字でも `.` でもない）
+    /// - 小数点 `.` の単独（整数部・小数部のいずれにも数字が無い）
+    /// - `.` を含まない字句（整数のみ入力）— `.` 必須の実数のみ担当し、整数は `read_integer` の責務として拒否
+    /// - 小数点の複数出現（`1.2.3`、`..`、`1..2`）
+    /// - 指数表記 `e` / `E`（`1.2e3` / `1.2E3` / `1e2` / `.5e3` / `1.e3`）— ISO 32000-1 仕様外として厳格拒否
+    /// - 数字読み中に whitespace / delimiter でも数字でも `.` でもない regular byte（`1.2abc` 等）
+    /// - 累積で `f64::INFINITY` 等の非有限値に飽和した場合
+    ///
+    /// 戻り値の `Some(f64)` は常に有限値（NaN / Inf を返さない）。任意の入力・任意の `pos` で panic しない。
+    pub fn read_real(&mut self) -> Option<f64> {
+        let start = self.pos;
+
+        let sign: f64 = match self.peek() {
+            Some(b'+') => {
+                self.pos = self.pos.checked_add(1)?;
+                1.0
+            }
+            Some(b'-') => {
+                self.pos = self.pos.checked_add(1)?;
+                -1.0
+            }
+            Some(b) if b.is_ascii_digit() || b == b'.' => 1.0,
+            _ => return None,
+        };
+
+        match self.peek() {
+            Some(b) if b.is_ascii_digit() || b == b'.' => {}
+            _ => {
+                self.pos = start;
+                return None;
+            }
+        }
+
+        let mut int_acc: f64 = 0.0;
+        let mut frac_acc: f64 = 0.0;
+        let mut scale: f64 = 0.1;
+        let mut has_int_digit = false;
+        let mut has_frac_digit = false;
+        let mut seen_dot = false;
+
+        // 停止条件が EOF だけでなく「境界 break / 巻き戻し return / 飽和 return」と
+        // 多岐にわたるため、while let ではなく loop + let-else で表現する。
+        #[allow(clippy::while_let_loop)]
+        loop {
+            let Some(b) = self.peek() else { break };
+
+            if ByteKind::is_whitespace(b) || ByteKind::is_delimiter(b) {
+                break;
+            }
+
+            if b == b'.' {
+                if seen_dot {
+                    self.pos = start;
+                    return None;
+                }
+                seen_dot = true;
+                let Some(next) = self.pos.checked_add(1) else {
+                    self.pos = start;
+                    return None;
+                };
+                self.pos = next;
+                continue;
+            }
+
+            if !b.is_ascii_digit() {
+                self.pos = start;
+                return None;
+            }
+
+            let d = (b - b'0') as f64;
+            if seen_dot {
+                frac_acc += d * scale;
+                scale *= 0.1;
+                has_frac_digit = true;
+            } else {
+                int_acc = int_acc * 10.0 + d;
+                has_int_digit = true;
+            }
+
+            let Some(next) = self.pos.checked_add(1) else {
+                self.pos = start;
+                return None;
+            };
+            self.pos = next;
+        }
+
+        // '.' を含まない字句は実数リテラルではない（read_integer の責務）
+        if !seen_dot {
+            self.pos = start;
+            return None;
+        }
+
+        // '.' を含むが整数部・小数部のいずれにも数字が無い場合は拒否（'.' 単独 / '+.' / '-.'）
+        if !has_int_digit && !has_frac_digit {
+            self.pos = start;
+            return None;
+        }
+
+        let value = sign * (int_acc + frac_acc);
+        // f64 累積が Inf に飽和した場合は仕様準拠の値ではないため拒否
+        if !value.is_finite() {
+            self.pos = start;
+            return None;
+        }
+
+        Some(value)
+    }
 }
 
 #[cfg(test)]
@@ -631,6 +751,7 @@ mod tests {
         let _ = lexer.skip_comment();
         lexer.skip_whitespace_and_comments();
         let _ = lexer.read_integer();
+        let _ = lexer.read_real();
         assert_eq!(lexer.position(), len);
         assert!(lexer.is_eof());
     }
@@ -647,6 +768,7 @@ mod tests {
         let _ = lexer.skip_comment();
         lexer.skip_whitespace_and_comments();
         let _ = lexer.read_integer();
+        let _ = lexer.read_real();
         assert_eq!(lexer.position(), 0);
     }
 
@@ -1110,5 +1232,789 @@ mod tests {
         assert_eq!(lexer.position(), 1);
         assert_eq!(lexer.read_integer(), None);
         assert_eq!(lexer.position(), 1);
+    }
+
+    // ---------- Phase 9: read_real ----------
+
+    // Phase 9-D: 整数部 + 小数部（N.M）
+
+    #[test]
+    fn read_real_reads_zero_dot_zero() {
+        // '0.0' を Some(0.0) として読み pos を 3 進めることを確認する
+        let mut lexer = Lexer::new(b"0.0");
+        assert_eq!(lexer.read_real(), Some(0.0));
+        assert_eq!(lexer.position(), 3);
+    }
+
+    #[test]
+    fn read_real_reads_simple_real_34_5() {
+        // '34.5' を Some(34.5) として読み pos を 4 進めることを確認する
+        let mut lexer = Lexer::new(b"34.5");
+        assert_eq!(lexer.read_real(), Some(34.5));
+        assert_eq!(lexer.position(), 4);
+    }
+
+    // Phase 9-B: 整数部のみ実数（N.）
+
+    #[test]
+    fn read_real_reads_zero_dot() {
+        // '0.' を Some(0.0) として読み pos を 2 進めることを確認する
+        let mut lexer = Lexer::new(b"0.");
+        assert_eq!(lexer.read_real(), Some(0.0));
+        assert_eq!(lexer.position(), 2);
+    }
+
+    #[test]
+    fn read_real_reads_four_dot() {
+        // '4.' を Some(4.0) として読み pos を 2 進めることを確認する
+        let mut lexer = Lexer::new(b"4.");
+        assert_eq!(lexer.read_real(), Some(4.0));
+        assert_eq!(lexer.position(), 2);
+    }
+
+    #[test]
+    fn read_real_reads_multi_digit_int_dot() {
+        // '123.' を Some(123.0) として読み pos を 4 進めることを確認する
+        let mut lexer = Lexer::new(b"123.");
+        assert_eq!(lexer.read_real(), Some(123.0));
+        assert_eq!(lexer.position(), 4);
+    }
+
+    #[test]
+    fn read_real_reads_leading_zeros_int_dot() {
+        // '00042.' を Some(42.0) として読み pos を 6 進めることを確認する（先頭ゼロ許容）
+        let mut lexer = Lexer::new(b"00042.");
+        assert_eq!(lexer.read_real(), Some(42.0));
+        assert_eq!(lexer.position(), 6);
+    }
+
+    // Phase 9-C: 小数部のみ実数（.N）
+
+    #[test]
+    fn read_real_reads_dot_zero() {
+        // '.0' を Some(0.0) として読み pos を 2 進めることを確認する
+        let mut lexer = Lexer::new(b".0");
+        assert_eq!(lexer.read_real(), Some(0.0));
+        assert_eq!(lexer.position(), 2);
+    }
+
+    #[test]
+    fn read_real_reads_dot_five() {
+        // '.5' を Some(0.5) として読み pos を 2 進めることを確認する
+        let mut lexer = Lexer::new(b".5");
+        assert_eq!(lexer.read_real(), Some(0.5));
+        assert_eq!(lexer.position(), 2);
+    }
+
+    #[test]
+    fn read_real_reads_dot_zero_one() {
+        // '.01' を Some(0.01) 近傍として読み pos を 3 進めることを確認する（先頭ゼロ小数部スケーリング検証）
+        let mut lexer = Lexer::new(b".01");
+        let v = lexer.read_real().expect("expected Some(0.01)");
+        assert!((v - 0.01).abs() < 1e-12, "expected ~0.01, got {v}");
+        assert_eq!(lexer.position(), 3);
+    }
+
+    #[test]
+    fn read_real_reads_dot_zero_zero_two() {
+        // '.002' を Some(0.002) 近傍として読み pos を 4 進めることを確認する
+        let mut lexer = Lexer::new(b".002");
+        let v = lexer.read_real().expect("expected Some(0.002)");
+        assert!((v - 0.002).abs() < 1e-12, "expected ~0.002, got {v}");
+        assert_eq!(lexer.position(), 4);
+    }
+
+    #[test]
+    fn read_real_reads_dot_trailing_zeros() {
+        // '.5000' を Some(0.5) として読み pos を 5 進めることを確認する
+        let mut lexer = Lexer::new(b".5000");
+        assert_eq!(lexer.read_real(), Some(0.5));
+        assert_eq!(lexer.position(), 5);
+    }
+
+    // Phase 9-D 続き: 整数部 + 小数部の他バリエーション
+
+    #[test]
+    fn read_real_reads_one_dot_zero() {
+        // '1.0' を Some(1.0) として読み pos を 3 進めることを確認する
+        let mut lexer = Lexer::new(b"1.0");
+        assert_eq!(lexer.read_real(), Some(1.0));
+        assert_eq!(lexer.position(), 3);
+    }
+
+    #[test]
+    fn read_real_reads_123_456() {
+        // '123.456' を Some(123.456) 近傍として読み pos を 7 進めることを確認する
+        let mut lexer = Lexer::new(b"123.456");
+        let v = lexer.read_real().expect("expected Some(123.456)");
+        assert!((v - 123.456).abs() < 1e-9, "expected ~123.456, got {v}");
+        assert_eq!(lexer.position(), 7);
+    }
+
+    #[test]
+    fn read_real_reads_int_with_trailing_zero_fraction() {
+        // '7.00' を Some(7.0) として読み pos を 4 進めることを確認する
+        let mut lexer = Lexer::new(b"7.00");
+        assert_eq!(lexer.read_real(), Some(7.0));
+        assert_eq!(lexer.position(), 4);
+    }
+
+    #[test]
+    fn read_real_reads_zero_with_long_fraction() {
+        // '0.000001' を Some(0.000001) 近傍として読み pos を 8 進めることを確認する
+        let mut lexer = Lexer::new(b"0.000001");
+        let v = lexer.read_real().expect("expected Some(0.000001)");
+        assert!((v - 0.000001).abs() < 1e-12, "expected ~0.000001, got {v}");
+        assert_eq!(lexer.position(), 8);
+    }
+
+    // Phase 9-E: 符号付き実数（±N.M / ±.M / ±N.）
+
+    #[test]
+    fn read_real_reads_plus_zero_dot_zero() {
+        // '+0.0' を Some(0.0) として読み pos を 4 進めることを確認する
+        let mut lexer = Lexer::new(b"+0.0");
+        assert_eq!(lexer.read_real(), Some(0.0));
+        assert_eq!(lexer.position(), 4);
+    }
+
+    #[test]
+    fn read_real_reads_minus_zero_dot_zero() {
+        // '-0.0' を Some(-0.0) として読み pos を 4 進めることを確認する（符号ビット保持）
+        let mut lexer = Lexer::new(b"-0.0");
+        let v = lexer.read_real().expect("expected Some(-0.0)");
+        assert_eq!(v, -0.0);
+        assert!(v.is_sign_negative(), "expected negative zero sign bit");
+        assert_eq!(lexer.position(), 4);
+    }
+
+    #[test]
+    fn read_real_reads_plus_123_6() {
+        // '+123.6' を Some(123.6) 近傍として読み pos を 6 進めることを確認する
+        let mut lexer = Lexer::new(b"+123.6");
+        let v = lexer.read_real().expect("expected Some(123.6)");
+        assert!((v - 123.6).abs() < 1e-9, "expected ~123.6, got {v}");
+        assert_eq!(lexer.position(), 6);
+    }
+
+    #[test]
+    fn read_real_reads_minus_3_62() {
+        // '-3.62' を Some(-3.62) 近傍として読み pos を 5 進めることを確認する
+        let mut lexer = Lexer::new(b"-3.62");
+        let v = lexer.read_real().expect("expected Some(-3.62)");
+        assert!((v - (-3.62)).abs() < 1e-9, "expected ~-3.62, got {v}");
+        assert_eq!(lexer.position(), 5);
+    }
+
+    #[test]
+    fn read_real_reads_plus_dot_5() {
+        // '+.5' を Some(0.5) として読み pos を 3 進めることを確認する
+        let mut lexer = Lexer::new(b"+.5");
+        assert_eq!(lexer.read_real(), Some(0.5));
+        assert_eq!(lexer.position(), 3);
+    }
+
+    #[test]
+    fn read_real_reads_minus_dot_002() {
+        // '-.002' を Some(-0.002) 近傍として読み pos を 5 進めることを確認する
+        let mut lexer = Lexer::new(b"-.002");
+        let v = lexer.read_real().expect("expected Some(-0.002)");
+        assert!((v - (-0.002)).abs() < 1e-12, "expected ~-0.002, got {v}");
+        assert_eq!(lexer.position(), 5);
+    }
+
+    #[test]
+    fn read_real_reads_plus_4_dot() {
+        // '+4.' を Some(4.0) として読み pos を 3 進めることを確認する
+        let mut lexer = Lexer::new(b"+4.");
+        assert_eq!(lexer.read_real(), Some(4.0));
+        assert_eq!(lexer.position(), 3);
+    }
+
+    #[test]
+    fn read_real_reads_minus_4_dot() {
+        // '-4.' を Some(-4.0) として読み pos を 3 進めることを確認する
+        let mut lexer = Lexer::new(b"-4.");
+        assert_eq!(lexer.read_real(), Some(-4.0));
+        assert_eq!(lexer.position(), 3);
+    }
+
+    // Phase 9-F: トークン境界（後続 ws/delim/EOF）
+
+    #[test]
+    fn read_real_stops_at_space() {
+        // '34.5 rest' を Some(34.5)・pos 4 として読み peek が ' ' を指すことを確認する
+        let mut lexer = Lexer::new(b"34.5 rest");
+        assert_eq!(lexer.read_real(), Some(34.5));
+        assert_eq!(lexer.position(), 4);
+        assert_eq!(lexer.peek(), Some(b' '));
+    }
+
+    #[test]
+    fn read_real_stops_at_lf() {
+        // '34.5\nrest' を Some(34.5)・pos 4 として読み peek が '\n' を指すことを確認する
+        let mut lexer = Lexer::new(b"34.5\nrest");
+        assert_eq!(lexer.read_real(), Some(34.5));
+        assert_eq!(lexer.position(), 4);
+        assert_eq!(lexer.peek(), Some(b'\n'));
+    }
+
+    #[test]
+    fn read_real_stops_at_cr() {
+        // '34.5\rrest' を Some(34.5)・pos 4 として読み peek が '\r' を指すことを確認する
+        let mut lexer = Lexer::new(b"34.5\rrest");
+        assert_eq!(lexer.read_real(), Some(34.5));
+        assert_eq!(lexer.position(), 4);
+        assert_eq!(lexer.peek(), Some(b'\r'));
+    }
+
+    #[test]
+    fn read_real_stops_at_right_bracket() {
+        // '5.7]rest' を Some(5.7) 近傍・pos 3 として読み peek が ']' を指すことを確認する
+        let mut lexer = Lexer::new(b"5.7]rest");
+        let v = lexer.read_real().expect("expected Some(5.7)");
+        assert!((v - 5.7).abs() < 1e-12, "expected ~5.7, got {v}");
+        assert_eq!(lexer.position(), 3);
+        assert_eq!(lexer.peek(), Some(b']'));
+    }
+
+    #[test]
+    fn read_real_stops_at_eof() {
+        // '5.7' 単独で Some(5.7) 近傍・pos 3 として読み EOF に達することを確認する
+        let mut lexer = Lexer::new(b"5.7");
+        let v = lexer.read_real().expect("expected Some(5.7)");
+        assert!((v - 5.7).abs() < 1e-12, "expected ~5.7, got {v}");
+        assert_eq!(lexer.position(), 3);
+        assert!(lexer.is_eof());
+    }
+
+    #[test]
+    fn read_real_stops_at_every_trailing_whitespace_byte() {
+        // '5.7' + whitespace 6 種の全組で Some(5.7) 近傍・pos 3 で停止することを確認する
+        let whitespace_bytes = [0x00, 0x09, 0x0A, 0x0C, 0x0D, 0x20];
+        for w in whitespace_bytes {
+            let input = [b'5', b'.', b'7', w];
+            let mut lexer = Lexer::new(&input);
+            let v = lexer
+                .read_real()
+                .unwrap_or_else(|| panic!("whitespace 0x{w:02X} should yield Some(5.7)"));
+            assert!(
+                (v - 5.7).abs() < 1e-12,
+                "whitespace 0x{w:02X} expected ~5.7, got {v}"
+            );
+            assert_eq!(lexer.position(), 3, "whitespace 0x{w:02X} should stop at 3");
+        }
+    }
+
+    #[test]
+    fn read_real_stops_at_every_trailing_delimiter_byte() {
+        // '5.7' + delimiter 10 種の全組で Some(5.7) 近傍・pos 3 で停止することを確認する
+        let delimiter_bytes = [0x28, 0x29, 0x3C, 0x3E, 0x5B, 0x5D, 0x7B, 0x7D, 0x2F, 0x25];
+        for d in delimiter_bytes {
+            let input = [b'5', b'.', b'7', d];
+            let mut lexer = Lexer::new(&input);
+            let v = lexer
+                .read_real()
+                .unwrap_or_else(|| panic!("delimiter 0x{d:02X} should yield Some(5.7)"));
+            assert!(
+                (v - 5.7).abs() < 1e-12,
+                "delimiter 0x{d:02X} expected ~5.7, got {v}"
+            );
+            assert_eq!(lexer.position(), 3, "delimiter 0x{d:02X} should stop at 3");
+        }
+    }
+
+    #[test]
+    fn read_real_stops_at_trailing_whitespace_after_int_dot() {
+        // '4. rest' を Some(4.0)・pos 2 として読むことを確認する
+        let mut lexer = Lexer::new(b"4. rest");
+        assert_eq!(lexer.read_real(), Some(4.0));
+        assert_eq!(lexer.position(), 2);
+    }
+
+    #[test]
+    fn read_real_stops_at_trailing_delimiter_after_dot_frac() {
+        // '.5]rest' を Some(0.5)・pos 2 として読むことを確認する
+        let mut lexer = Lexer::new(b".5]rest");
+        assert_eq!(lexer.read_real(), Some(0.5));
+        assert_eq!(lexer.position(), 2);
+    }
+
+    // Phase 9-A: 早期 None（先頭バイト不適合）
+
+    #[test]
+    fn read_real_returns_none_for_empty_input() {
+        // 空入力で None・pos 0 のままを確認する
+        let mut lexer = Lexer::new(&[]);
+        assert_eq!(lexer.read_real(), None);
+        assert_eq!(lexer.position(), 0);
+    }
+
+    #[test]
+    fn read_real_returns_none_at_eof() {
+        // EOF 状態で None・pos 不変を確認する
+        let mut lexer = Lexer::new(b"a");
+        lexer.advance();
+        assert_eq!(lexer.read_real(), None);
+        assert_eq!(lexer.position(), 1);
+    }
+
+    #[test]
+    fn read_real_returns_none_for_non_digit_non_dot_non_sign_regular_byte() {
+        // 先頭が 'x' / 'a' / 'A' 等の regular byte で None・pos 0 を確認する
+        for byte in [b'x', b'a', b'A'] {
+            let input = [byte, b'1', b'2'];
+            let mut lexer = Lexer::new(&input);
+            assert_eq!(
+                lexer.read_real(),
+                None,
+                "leading regular byte 0x{byte:02X} should yield None"
+            );
+            assert_eq!(
+                lexer.position(),
+                0,
+                "leading regular byte 0x{byte:02X} should keep pos 0"
+            );
+        }
+    }
+
+    #[test]
+    fn read_real_returns_none_for_lone_plus_at_eof() {
+        // '+' 1 バイトのみで None・pos 0 を確認する
+        let mut lexer = Lexer::new(b"+");
+        assert_eq!(lexer.read_real(), None);
+        assert_eq!(lexer.position(), 0);
+    }
+
+    #[test]
+    fn read_real_returns_none_for_lone_minus_at_eof() {
+        // '-' 1 バイトのみで None・pos 0 を確認する
+        let mut lexer = Lexer::new(b"-");
+        assert_eq!(lexer.read_real(), None);
+        assert_eq!(lexer.position(), 0);
+    }
+
+    #[test]
+    fn read_real_returns_none_for_lone_dot_at_eof() {
+        // '.' 1 バイトのみで None・pos 0 を確認する（数字無しの '.' 単独は実数ではない）
+        let mut lexer = Lexer::new(b".");
+        assert_eq!(lexer.read_real(), None);
+        assert_eq!(lexer.position(), 0);
+    }
+
+    #[test]
+    fn read_real_returns_none_for_plus_dot_eof() {
+        // '+.' で None・pos 0 を確認する（直後に数字なし）
+        let mut lexer = Lexer::new(b"+.");
+        assert_eq!(lexer.read_real(), None);
+        assert_eq!(lexer.position(), 0);
+    }
+
+    #[test]
+    fn read_real_returns_none_for_minus_dot_eof() {
+        // '-.' で None・pos 0 を確認する（直後に数字なし）
+        let mut lexer = Lexer::new(b"-.");
+        assert_eq!(lexer.read_real(), None);
+        assert_eq!(lexer.position(), 0);
+    }
+
+    #[test]
+    fn read_real_returns_none_for_every_leading_whitespace_byte() {
+        // 仕様 §2.1 の whitespace 6 バイト全てを先頭に置いた場合、各々 None・pos 0 を確認する
+        let whitespace_bytes = [0x00, 0x09, 0x0A, 0x0C, 0x0D, 0x20];
+        for w in whitespace_bytes {
+            let input = [w, b'1', b'.', b'2'];
+            let mut lexer = Lexer::new(&input);
+            assert_eq!(
+                lexer.read_real(),
+                None,
+                "whitespace 0x{w:02X} should yield None"
+            );
+            assert_eq!(
+                lexer.position(),
+                0,
+                "whitespace 0x{w:02X} should keep pos 0"
+            );
+        }
+    }
+
+    #[test]
+    fn read_real_returns_none_for_every_leading_delimiter_byte() {
+        // 仕様 §2.2 の delimiter 10 バイト全てを先頭に置いた場合、各々 None・pos 0 を確認する
+        let delimiter_bytes = [0x28, 0x29, 0x3C, 0x3E, 0x5B, 0x5D, 0x7B, 0x7D, 0x2F, 0x25];
+        for d in delimiter_bytes {
+            let input = [d, b'1', b'.', b'2'];
+            let mut lexer = Lexer::new(&input);
+            assert_eq!(
+                lexer.read_real(),
+                None,
+                "delimiter 0x{d:02X} should yield None"
+            );
+            assert_eq!(lexer.position(), 0, "delimiter 0x{d:02X} should keep pos 0");
+        }
+    }
+
+    #[test]
+    fn read_real_returns_none_for_sign_then_every_whitespace_byte() {
+        // 符号 ∈ {+, -} × whitespace 6 種の全 12 組で None・pos 0 を確認する
+        let signs = [b'+', b'-'];
+        let whitespace_bytes = [0x00, 0x09, 0x0A, 0x0C, 0x0D, 0x20];
+        for s in signs {
+            for w in whitespace_bytes {
+                let input = [s, w];
+                let mut lexer = Lexer::new(&input);
+                assert_eq!(
+                    lexer.read_real(),
+                    None,
+                    "sign 0x{s:02X} + whitespace 0x{w:02X} should yield None"
+                );
+                assert_eq!(
+                    lexer.position(),
+                    0,
+                    "sign 0x{s:02X} + whitespace 0x{w:02X} should rollback to 0"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn read_real_returns_none_for_sign_then_every_delimiter_byte() {
+        // 符号 ∈ {+, -} × delimiter 10 種の全 20 組で None・pos 0 を確認する
+        let signs = [b'+', b'-'];
+        let delimiter_bytes = [0x28, 0x29, 0x3C, 0x3E, 0x5B, 0x5D, 0x7B, 0x7D, 0x2F, 0x25];
+        for s in signs {
+            for d in delimiter_bytes {
+                let input = [s, d];
+                let mut lexer = Lexer::new(&input);
+                assert_eq!(
+                    lexer.read_real(),
+                    None,
+                    "sign 0x{s:02X} + delimiter 0x{d:02X} should yield None"
+                );
+                assert_eq!(
+                    lexer.position(),
+                    0,
+                    "sign 0x{s:02X} + delimiter 0x{d:02X} should rollback to 0"
+                );
+            }
+        }
+    }
+
+    // Phase 9-G: 指数表記の拒否 + 複数小数点拒否 + '.' 不在拒否
+
+    #[test]
+    fn read_real_returns_none_for_exponent_lowercase_e() {
+        // '1.2e3' は指数表記として拒否（ISO 32000-1 仕様外）。None・pos 0 を確認する
+        let mut lexer = Lexer::new(b"1.2e3");
+        assert_eq!(lexer.read_real(), None);
+        assert_eq!(lexer.position(), 0);
+    }
+
+    #[test]
+    fn read_real_returns_none_for_exponent_uppercase_e() {
+        // '1.2E3' は指数表記として拒否。None・pos 0 を確認する
+        let mut lexer = Lexer::new(b"1.2E3");
+        assert_eq!(lexer.read_real(), None);
+        assert_eq!(lexer.position(), 0);
+    }
+
+    #[test]
+    fn read_real_returns_none_for_exponent_int_only() {
+        // '1e2' は整数部のみ + 指数で拒否（'.' 不在 + 指数）。None・pos 0 を確認する
+        let mut lexer = Lexer::new(b"1e2");
+        assert_eq!(lexer.read_real(), None);
+        assert_eq!(lexer.position(), 0);
+    }
+
+    #[test]
+    fn read_real_returns_none_for_dot_frac_then_exponent() {
+        // '.5e3' は小数部側 + 指数で拒否。None・pos 0 を確認する
+        let mut lexer = Lexer::new(b".5e3");
+        assert_eq!(lexer.read_real(), None);
+        assert_eq!(lexer.position(), 0);
+    }
+
+    #[test]
+    fn read_real_returns_none_for_int_dot_then_exponent() {
+        // '1.e3' は末尾ドット + 指数で拒否。None・pos 0 を確認する
+        let mut lexer = Lexer::new(b"1.e3");
+        assert_eq!(lexer.read_real(), None);
+        assert_eq!(lexer.position(), 0);
+    }
+
+    #[test]
+    fn read_real_returns_none_for_two_dots_consecutive() {
+        // '..' は 2 個目の '.' で拒否。None・pos 0 を確認する
+        let mut lexer = Lexer::new(b"..");
+        assert_eq!(lexer.read_real(), None);
+        assert_eq!(lexer.position(), 0);
+    }
+
+    #[test]
+    fn read_real_returns_none_for_int_two_dots() {
+        // '1..2' は 2 個目の '.' で拒否。None・pos 0 を確認する
+        let mut lexer = Lexer::new(b"1..2");
+        assert_eq!(lexer.read_real(), None);
+        assert_eq!(lexer.position(), 0);
+    }
+
+    #[test]
+    fn read_real_returns_none_for_two_dots_in_real() {
+        // '1.2.3' は 2 個目の '.' で拒否。None・pos 0 を確認する
+        let mut lexer = Lexer::new(b"1.2.3");
+        assert_eq!(lexer.read_real(), None);
+        assert_eq!(lexer.position(), 0);
+    }
+
+    #[test]
+    fn read_real_returns_none_for_real_with_letters() {
+        // '1.2abc' は数字途中で非数字 regular byte 'a' を検出し拒否。None・pos 0 を確認する
+        let mut lexer = Lexer::new(b"1.2abc");
+        assert_eq!(lexer.read_real(), None);
+        assert_eq!(lexer.position(), 0);
+    }
+
+    #[test]
+    fn read_real_returns_none_for_signed_with_letters() {
+        // '-12x' は数字後の非数字 regular byte 'x' を検出して即時拒否する経路。None・pos 0 を確認する
+        let mut lexer = Lexer::new(b"-12x");
+        assert_eq!(lexer.read_real(), None);
+        assert_eq!(lexer.position(), 0);
+    }
+
+    #[test]
+    fn read_real_returns_none_for_unsigned_integer_only() {
+        // '123' は '.' を含まない整数のみ入力で拒否（read_integer 責務）。None・pos 0 を確認する
+        let mut lexer = Lexer::new(b"123");
+        assert_eq!(lexer.read_real(), None);
+        assert_eq!(lexer.position(), 0);
+    }
+
+    #[test]
+    fn read_real_returns_none_for_single_digit_only() {
+        // '0' 単独は '.' 不在で拒否。None・pos 0 を確認する
+        let mut lexer = Lexer::new(b"0");
+        assert_eq!(lexer.read_real(), None);
+        assert_eq!(lexer.position(), 0);
+    }
+
+    #[test]
+    fn read_real_returns_none_for_plus_integer_only() {
+        // '+45' は '.' 不在で拒否。None・pos 0 を確認する
+        let mut lexer = Lexer::new(b"+45");
+        assert_eq!(lexer.read_real(), None);
+        assert_eq!(lexer.position(), 0);
+    }
+
+    #[test]
+    fn read_real_returns_none_for_minus_integer_only() {
+        // '-7' は '.' 不在で拒否。None・pos 0 を確認する
+        let mut lexer = Lexer::new(b"-7");
+        assert_eq!(lexer.read_real(), None);
+        assert_eq!(lexer.position(), 0);
+    }
+
+    #[test]
+    fn read_real_returns_none_for_leading_zeros_integer_only() {
+        // '00042' は '.' 不在で拒否。None・pos 0 を確認する
+        let mut lexer = Lexer::new(b"00042");
+        assert_eq!(lexer.read_real(), None);
+        assert_eq!(lexer.position(), 0);
+    }
+
+    #[test]
+    fn read_real_returns_none_for_integer_followed_by_whitespace() {
+        // '123 rest' は ws までで '.' 不在のため拒否。None・pos 0 を確認する
+        let mut lexer = Lexer::new(b"123 rest");
+        assert_eq!(lexer.read_real(), None);
+        assert_eq!(lexer.position(), 0);
+    }
+
+    #[test]
+    fn read_real_returns_none_for_integer_followed_by_delimiter() {
+        // '42]rest' は delim までで '.' 不在のため拒否。None・pos 0 を確認する
+        let mut lexer = Lexer::new(b"42]rest");
+        assert_eq!(lexer.read_real(), None);
+        assert_eq!(lexer.position(), 0);
+    }
+
+    // Phase 9-H: IEEE 754 関連（±0.0 の符号保持）
+
+    #[test]
+    fn read_real_preserves_negative_zero_sign_bit() {
+        // '-0.0' の戻り値は f64::is_sign_negative == true（負ゼロ符号ビット保持）
+        let mut lexer = Lexer::new(b"-0.0");
+        let v = lexer.read_real().expect("expected Some(-0.0)");
+        assert!(v.is_sign_negative(), "expected negative zero sign bit");
+    }
+
+    #[test]
+    fn read_real_preserves_positive_zero_sign_bit() {
+        // '+0.0' の戻り値は f64::is_sign_negative == false（正ゼロ）
+        let mut lexer = Lexer::new(b"+0.0");
+        let v = lexer.read_real().expect("expected Some(0.0)");
+        assert!(!v.is_sign_negative(), "expected positive zero sign bit");
+    }
+
+    #[test]
+    fn read_real_unsigned_zero_is_positive_zero() {
+        // '0.0' は符号無しなので f64::is_sign_negative == false（正ゼロ）
+        let mut lexer = Lexer::new(b"0.0");
+        let v = lexer.read_real().expect("expected Some(0.0)");
+        assert!(!v.is_sign_negative(), "expected positive zero sign bit");
+    }
+
+    #[test]
+    fn read_real_always_returns_finite_value() {
+        // 受理形すべてで戻り値が is_finite() == true であることを確認する
+        let inputs: &[&[u8]] = &[
+            b"0.0",
+            b"34.5",
+            b"+0.0",
+            b"-0.0",
+            b"123.456",
+            b"-3.62",
+            b".5",
+            b"-.002",
+            b"4.",
+            b"+4.",
+            b"0.000001",
+        ];
+        for input in inputs {
+            let mut lexer = Lexer::new(input);
+            let v = lexer
+                .read_real()
+                .unwrap_or_else(|| panic!("input {input:?} should yield Some"));
+            assert!(
+                v.is_finite(),
+                "input {input:?} should yield finite value, got {v}"
+            );
+        }
+    }
+
+    // Phase 9-I: pos 巻き戻し（中間位置 / 部分失敗ロールバック）
+
+    #[test]
+    fn read_real_succeeds_at_mid_buffer_and_advances_pos_correctly() {
+        // 'x1.2' で 'x' を advance 後（pos == 1）に read_real を呼び Some(1.2) 近傍・pos == 4 を確認する
+        let mut lexer = Lexer::new(b"x1.2");
+        lexer.advance();
+        assert_eq!(lexer.position(), 1);
+        let v = lexer.read_real().expect("expected Some(1.2)");
+        assert!((v - 1.2).abs() < 1e-12, "expected ~1.2, got {v}");
+        assert_eq!(lexer.position(), 4);
+    }
+
+    #[test]
+    fn read_real_failure_at_mid_buffer_with_invalid_input_rolls_back() {
+        // 'x1.2.3' で 'x' を advance 後（pos == 1）に read_real を呼ぶと None・pos が呼び出し前位置 1 に厳密復元されることを確認する
+        let mut lexer = Lexer::new(b"x1.2.3");
+        lexer.advance();
+        assert_eq!(lexer.position(), 1);
+        assert_eq!(lexer.read_real(), None);
+        assert_eq!(lexer.position(), 1);
+    }
+
+    #[test]
+    fn read_real_partial_consume_then_reject_rolls_back() {
+        // 'x1.2e3' で 'x' を advance 後（pos == 1）に呼び出し、1.2 まで読んだ後 'e' で拒否されて pos が呼び出し前位置 1 に厳密復元されることを確認する
+        let mut lexer = Lexer::new(b"x1.2e3");
+        lexer.advance();
+        assert_eq!(lexer.position(), 1);
+        assert_eq!(lexer.read_real(), None);
+        assert_eq!(lexer.position(), 1);
+    }
+
+    #[test]
+    fn read_real_sign_then_invalid_rolls_back_to_start() {
+        // '+x' は '+' 消費後に 'x' で拒否。pos が 0 に巻き戻ることを確認する
+        let mut lexer = Lexer::new(b"+x");
+        assert_eq!(lexer.read_real(), None);
+        assert_eq!(lexer.position(), 0);
+    }
+
+    // Phase 9-J: 大桁数（精度劣化を許容しつつ panic 不在 + 有限値）
+
+    #[test]
+    fn read_real_handles_long_integer_part_without_panic() {
+        // 整数部 50 桁（'9' x 50 + '.0'）で panic せず Some(有限値) を返し pos が入力末尾に進むことを確認する
+        let mut input = vec![b'9'; 50];
+        input.extend_from_slice(b".0");
+        let mut lexer = Lexer::new(&input);
+        let v = lexer.read_real().expect("expected Some for 50-digit int");
+        assert!(v.is_finite(), "expected finite, got {v}");
+        assert_eq!(
+            lexer.position(),
+            input.len(),
+            "expected pos to reach end of input"
+        );
+    }
+
+    #[test]
+    fn read_real_handles_long_fractional_part_without_panic() {
+        // 小数部 50 桁（'0.' + '0' x 49 + '1'）で panic せず Some(有限値) を返し pos が入力末尾に進むことを確認する
+        let mut input = vec![b'0', b'.'];
+        input.extend(std::iter::repeat_n(b'0', 49));
+        input.push(b'1');
+        let mut lexer = Lexer::new(&input);
+        let v = lexer.read_real().expect("expected Some for 50-digit frac");
+        assert!(v.is_finite(), "expected finite, got {v}");
+        assert_eq!(
+            lexer.position(),
+            input.len(),
+            "expected pos to reach end of input"
+        );
+    }
+
+    #[test]
+    fn read_real_handles_very_long_input_without_panic() {
+        // 整数部 100 桁 + 小数部 100 桁で panic せず Some(有限値) を返し pos が入力末尾に進むことを確認する
+        let mut input = vec![b'9'; 100];
+        input.push(b'.');
+        input.extend(std::iter::repeat_n(b'1', 100));
+        let mut lexer = Lexer::new(&input);
+        let v = lexer
+            .read_real()
+            .expect("expected Some for 100+100 digit real");
+        assert!(v.is_finite(), "expected finite, got {v}");
+        assert_eq!(
+            lexer.position(),
+            input.len(),
+            "expected pos to reach end of input"
+        );
+    }
+
+    #[test]
+    fn read_real_rejects_infinity_saturated_input() {
+        // 整数部 400 桁 + '.0' は f64 が Inf に飽和するため None・pos 0 に巻き戻されることを確認する
+        let mut input = vec![b'9'; 400];
+        input.extend_from_slice(b".0");
+        let mut lexer = Lexer::new(&input);
+        assert_eq!(lexer.read_real(), None);
+        assert_eq!(lexer.position(), 0);
+    }
+
+    // Phase 9-K: 結合テスト（dispatcher パターン契約）
+
+    #[test]
+    fn read_integer_then_read_real_dispatcher_pattern_for_real() {
+        // '5.7' に対し read_integer() が None && pos == 0 で巻き戻し、続けて read_real() が Some(5.7) 近傍 + pos == 3 となる対称契約を確認する
+        let mut lexer = Lexer::new(b"5.7");
+        assert_eq!(lexer.read_integer(), None);
+        assert_eq!(lexer.position(), 0);
+        let v = lexer.read_real().expect("expected Some(5.7)");
+        assert!((v - 5.7).abs() < 1e-12, "expected ~5.7, got {v}");
+        assert_eq!(lexer.position(), 3);
+    }
+
+    #[test]
+    fn read_integer_then_read_real_dispatcher_pattern_for_signed_real() {
+        // '-.002' に対し read_integer() が None && pos == 0、続けて read_real() が Some(-0.002) 近傍 + pos == 5 となる契約を確認する
+        let mut lexer = Lexer::new(b"-.002");
+        assert_eq!(lexer.read_integer(), None);
+        assert_eq!(lexer.position(), 0);
+        let v = lexer.read_real().expect("expected Some(-0.002)");
+        assert!((v - (-0.002)).abs() < 1e-12, "expected ~-0.002, got {v}");
+        assert_eq!(lexer.position(), 5);
     }
 }
