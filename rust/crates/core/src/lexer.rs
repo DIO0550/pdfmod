@@ -264,60 +264,40 @@ impl<'a> Lexer<'a> {
             _ => return None,
         };
 
-        match self.peek() {
-            Some(b) if b.is_ascii_digit() || b == b'.' => {}
-            _ => {
-                self.pos = start;
-                return None;
-            }
-        }
-
-        let mut int_acc: f64 = 0.0;
-        let mut frac_acc: f64 = 0.0;
-        let mut scale: f64 = 0.1;
-        let mut has_int_digit = false;
-        let mut has_frac_digit = false;
-        let mut seen_dot = false;
-
-        // 停止条件が EOF だけでなく「境界 break / 巻き戻し return / 飽和 return」と
-        // 多岐にわたるため、while let ではなく loop + let-else で表現する。
-        #[allow(clippy::while_let_loop)]
-        loop {
-            let Some(b) = self.peek() else { break };
-
-            if ByteKind::is_whitespace(b) || ByteKind::is_delimiter(b) {
+        let int_start = self.pos;
+        let mut int_part: f64 = 0.0;
+        while let Some(b) = self.peek() {
+            if !b.is_ascii_digit() {
                 break;
             }
-
-            if b == b'.' {
-                if seen_dot {
-                    self.pos = start;
-                    return None;
-                }
-                seen_dot = true;
-                let Some(next) = self.pos.checked_add(1) else {
-                    self.pos = start;
-                    return None;
-                };
-                self.pos = next;
-                continue;
-            }
-
-            if !b.is_ascii_digit() {
+            int_part = int_part * 10.0 + (b - b'0') as f64;
+            let Some(next) = self.pos.checked_add(1) else {
                 self.pos = start;
                 return None;
-            }
+            };
+            self.pos = next;
+        }
+        let int_end = self.pos;
 
-            let d = (b - b'0') as f64;
-            if seen_dot {
-                frac_acc += d * scale;
-                scale *= 0.1;
-                has_frac_digit = true;
-            } else {
-                int_acc = int_acc * 10.0 + d;
-                has_int_digit = true;
-            }
+        // '.' を含まない字句は実数リテラルではない（read_integer の責務）
+        if self.peek() != Some(b'.') {
+            self.pos = start;
+            return None;
+        }
+        let Some(after_dot) = self.pos.checked_add(1) else {
+            self.pos = start;
+            return None;
+        };
+        self.pos = after_dot;
 
+        let mut frac_part: f64 = 0.0;
+        let mut scale: f64 = 0.1;
+        while let Some(b) = self.peek() {
+            if !b.is_ascii_digit() {
+                break;
+            }
+            frac_part += (b - b'0') as f64 * scale;
+            scale *= 0.1;
             let Some(next) = self.pos.checked_add(1) else {
                 self.pos = start;
                 return None;
@@ -325,19 +305,23 @@ impl<'a> Lexer<'a> {
             self.pos = next;
         }
 
-        // '.' を含まない字句は実数リテラルではない（read_integer の責務）
-        if !seen_dot {
-            self.pos = start;
-            return None;
-        }
-
         // '.' を含むが整数部・小数部のいずれにも数字が無い場合は拒否（'.' 単独 / '+.' / '-.'）
-        if !has_int_digit && !has_frac_digit {
+        if int_end == int_start && self.pos == after_dot {
             self.pos = start;
             return None;
         }
 
-        let value = sign * (int_acc + frac_acc);
+        // 後続が whitespace / delimiter / EOF 以外なら拒否（'1.2abc' / '1.2.3' / '1.2e3' 等）
+        match self.peek() {
+            None => {}
+            Some(b) if ByteKind::is_whitespace(b) || ByteKind::is_delimiter(b) => {}
+            _ => {
+                self.pos = start;
+                return None;
+            }
+        }
+
+        let value = sign * (int_part + frac_part);
         // f64 累積が Inf に飽和した場合は仕様準拠の値ではないため拒否
         if !value.is_finite() {
             self.pos = start;
@@ -1776,7 +1760,7 @@ mod tests {
 
     #[test]
     fn read_real_returns_none_for_signed_with_letters() {
-        // '-12x' は数字後の非数字 regular byte 'x' を検出して即時拒否する経路。None・pos 0 を確認する
+        // '-12x' は数字 '12' の後に非数字 'x' が続き '.' を含まないため実数として不正。None・pos 0 を確認する
         let mut lexer = Lexer::new(b"-12x");
         assert_eq!(lexer.read_real(), None);
         assert_eq!(lexer.position(), 0);
