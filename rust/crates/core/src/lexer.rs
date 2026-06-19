@@ -364,9 +364,6 @@ impl<'a> Lexer<'a> {
         if self.peek() != Some(b'/') {
             return None;
         }
-        // 以下の `checked_add` の None 分岐は self.pos == usize::MAX のときだけ発生する
-        // panic 不在契約上のガード。不変条件 0 ≦ pos ≦ input.len() のもとでは peek() が
-        // 先に None を返して break するため理論上到達不能だが、契約を機械的に守るために明示する。
         let Some(after_slash) = self.pos.checked_add(1) else {
             self.pos = start;
             return None;
@@ -384,6 +381,10 @@ impl<'a> Lexer<'a> {
 
             if b != b'#' {
                 bytes.push(b);
+                // checked_add の None 分岐は self.pos == usize::MAX のときだけ発生する
+                // panic 不在契約上のガード。不変条件 0 ≦ pos ≦ input.len() のもとでは
+                // peek() が先に None を返して break するため理論上到達不能だが、
+                // 契約を機械的に守るために明示する（以降の checked_add も同じ理由）。
                 let Some(next) = self.pos.checked_add(1) else {
                     self.pos = start;
                     return None;
