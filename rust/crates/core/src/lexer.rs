@@ -364,6 +364,9 @@ impl<'a> Lexer<'a> {
         if self.peek() != Some(b'/') {
             return None;
         }
+        // 以下の `checked_add` の None 分岐は self.pos == usize::MAX のときだけ発生する
+        // panic 不在契約上のガード。不変条件 0 ≦ pos ≦ input.len() のもとでは peek() が
+        // 先に None を返して break するため理論上到達不能だが、契約を機械的に守るために明示する。
         let Some(after_slash) = self.pos.checked_add(1) else {
             self.pos = start;
             return None;
@@ -390,15 +393,16 @@ impl<'a> Lexer<'a> {
             }
 
             // '#XX' エスケープ: 直後 2 バイトを ASCII 16 進数字として 1 バイトに復号する
-            let (Some(hi), Some(lo)) = (self.peek_at(1), self.peek_at(2)) else {
+            // （high_bits が上位 4bit、low_bits が下位 4bit を担当する 16 進数字）
+            let (Some(high_bits), Some(low_bits)) = (self.peek_at(1), self.peek_at(2)) else {
                 self.pos = start;
                 return None;
             };
-            if !hi.is_ascii_hexdigit() || !lo.is_ascii_hexdigit() {
+            if !high_bits.is_ascii_hexdigit() || !low_bits.is_ascii_hexdigit() {
                 self.pos = start;
                 return None;
             }
-            let decoded = hex_value(hi) * 16 + hex_value(lo);
+            let decoded = hex_value(high_bits) * 16 + hex_value(low_bits);
             bytes.push(decoded);
             let Some(next) = self.pos.checked_add(3) else {
                 self.pos = start;
