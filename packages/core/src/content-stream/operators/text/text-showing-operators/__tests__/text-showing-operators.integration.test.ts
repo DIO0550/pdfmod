@@ -88,9 +88,16 @@ test("TJ: barrel が TJ を登録し initialContext で渡した配列 operand �
   expect(TextObject.isActive(current.textObject)).toBe(true);
   // Tm で (72, 720) に絶対配置 → TJ の数値要素 40 が `textMatrix.e` を `-40 * fontSize / 1000 = -0.48` 移動。
   // 結果: textMatrix.e === 72 + (-40 * 12 / 1000) === 71.52
-  expect(current.textObject.textMatrix).toEqual(
-    Matrix.create(1, 0, 0, 1, 71.52, 720),
-  );
+  // e のみ浮動小数演算の丸め誤差が乗るため `toBeCloseTo` で検証する。
+  // 残りの 5 成分 (a/b/c/d/f) は Tm の整数値そのままなので等値比較で良い。
+  // Matrix は `[a, b, c, d, e, f]` のタプル表現。
+  const [a, b, c, d, e, f] = current.textObject.textMatrix;
+  expect(a).toBe(1);
+  expect(b).toBe(0);
+  expect(c).toBe(0);
+  expect(d).toBe(1);
+  expect(f).toBe(720);
+  expect(e).toBeCloseTo(71.52);
 });
 
 test("': BT 14 TL (Hi) ' で改行 (leading=14) が発生する", () => {
