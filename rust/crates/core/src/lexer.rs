@@ -379,18 +379,9 @@ impl<'a> Lexer<'a> {
                 break;
             }
 
-            if b == b'#' {
-                let (Some(hi), Some(lo)) = (self.peek_at(1), self.peek_at(2)) else {
-                    self.pos = start;
-                    return None;
-                };
-                if !hi.is_ascii_hexdigit() || !lo.is_ascii_hexdigit() {
-                    self.pos = start;
-                    return None;
-                }
-                let decoded = hex_value(hi) * 16 + hex_value(lo);
-                bytes.push(decoded);
-                let Some(next) = self.pos.checked_add(3) else {
+            if b != b'#' {
+                bytes.push(b);
+                let Some(next) = self.pos.checked_add(1) else {
                     self.pos = start;
                     return None;
                 };
@@ -398,8 +389,18 @@ impl<'a> Lexer<'a> {
                 continue;
             }
 
-            bytes.push(b);
-            let Some(next) = self.pos.checked_add(1) else {
+            // '#XX' エスケープ: 直後 2 バイトを ASCII 16 進数字として 1 バイトに復号する
+            let (Some(hi), Some(lo)) = (self.peek_at(1), self.peek_at(2)) else {
+                self.pos = start;
+                return None;
+            };
+            if !hi.is_ascii_hexdigit() || !lo.is_ascii_hexdigit() {
+                self.pos = start;
+                return None;
+            }
+            let decoded = hex_value(hi) * 16 + hex_value(lo);
+            bytes.push(decoded);
+            let Some(next) = self.pos.checked_add(3) else {
                 self.pos = start;
                 return None;
             };
