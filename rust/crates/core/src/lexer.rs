@@ -15,6 +15,7 @@
 
 pub mod byte_kind;
 pub mod eol;
+pub mod literal_string;
 pub mod token;
 
 use crate::object::name::PdfName;
@@ -41,8 +42,8 @@ fn hex_value(b: u8) -> u8 {
 /// `slice::get` の `Option` で吸収し、`usize` の加算は `checked_add` で扱う。
 #[derive(Debug)]
 pub struct Lexer<'a> {
-    input: &'a [u8],
-    pos: usize,
+    pub(in crate::lexer) input: &'a [u8],
+    pub(in crate::lexer) pos: usize,
 }
 
 impl<'a> Lexer<'a> {
@@ -821,6 +822,7 @@ mod tests {
         let _ = lexer.read_integer();
         let _ = lexer.read_real();
         let _ = lexer.read_name();
+        let _ = lexer.read_literal_string();
         assert_eq!(lexer.position(), len);
         assert!(lexer.is_eof());
     }
@@ -839,6 +841,7 @@ mod tests {
         let _ = lexer.read_integer();
         let _ = lexer.read_real();
         let _ = lexer.read_name();
+        let _ = lexer.read_literal_string();
         assert_eq!(lexer.position(), 0);
     }
 
