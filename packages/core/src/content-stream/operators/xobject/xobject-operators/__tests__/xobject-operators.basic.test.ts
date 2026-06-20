@@ -1,4 +1,5 @@
 import { assert, expect, test } from "vitest";
+import { ok } from "../../../../../utils/result/index";
 import {
   type OperatorHandler,
   OperatorRegistry,
@@ -28,10 +29,7 @@ test("registerXObjectOperators の戻り値は ok で XObject 系 operator す�
 // 既存 operator を持つ registry に対しても非破壊で Do を追加できる（State Management 非破壊更新）
 test("registerXObjectOperators は既存 operator を持つ registry に対しても非破壊で Do を追加する", () => {
   // テスト用ダミー operator を 1 件登録した seed registry を用意
-  const dummyHandler: OperatorHandler = (context) => ({
-    ok: true,
-    value: context,
-  });
+  const dummyHandler: OperatorHandler = (context) => ok(context);
   const seed = OperatorRegistry.register(
     OperatorRegistry.create(),
     "__dummy__",
