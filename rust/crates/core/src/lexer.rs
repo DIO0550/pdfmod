@@ -15,7 +15,7 @@
 
 pub mod byte_kind;
 pub mod eol;
-pub mod literal_string;
+mod literal_string;
 pub mod token;
 
 use crate::object::name::PdfName;
