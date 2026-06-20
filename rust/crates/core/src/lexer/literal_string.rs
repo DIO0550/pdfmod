@@ -5,7 +5,8 @@
 //! `decode_escape` / `decode_octal` はモジュール内部の純関数で、入力バッファと位置だけ受け取り
 //! `(push バイト, 消費バイト数)` を返す（Lexer の状態に依存しない単体テスト可能な計算ロジック）。
 
-use super::{EolKind, Lexer};
+use super::eol::EolKind;
+use super::Lexer;
 
 /// `\\` 起点のエスケープシーケンスをデコードする純関数。
 /// `input[pos] == b'\\'` を想定。
