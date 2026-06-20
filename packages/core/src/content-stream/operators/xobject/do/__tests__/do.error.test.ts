@@ -73,7 +73,7 @@ test("MISSING 時 graphics state stack の current は不変", () => {
 
 test.each<[string, PdfObject]>(
   NON_NAME_CASES,
-)("top が %s のとき TYPE_MISMATCH を返す（expected:'name', actual:%s）", (type, operand) => {
+)("top が %s のとき TYPE_MISMATCH を返す（expected:'name', actual=top の type 名）", (type, operand) => {
   const ctx = buildContext([operand]);
 
   const result = doHandler(ctx);
