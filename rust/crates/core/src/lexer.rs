@@ -15,6 +15,7 @@
 
 pub mod byte_kind;
 pub mod eol;
+mod literal_string;
 pub mod token;
 
 use crate::object::name::PdfName;
@@ -821,6 +822,7 @@ mod tests {
         let _ = lexer.read_integer();
         let _ = lexer.read_real();
         let _ = lexer.read_name();
+        let _ = lexer.read_literal_string();
         assert_eq!(lexer.position(), len);
         assert!(lexer.is_eof());
     }
@@ -839,6 +841,7 @@ mod tests {
         let _ = lexer.read_integer();
         let _ = lexer.read_real();
         let _ = lexer.read_name();
+        let _ = lexer.read_literal_string();
         assert_eq!(lexer.position(), 0);
     }
 
