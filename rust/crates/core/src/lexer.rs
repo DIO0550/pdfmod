@@ -42,8 +42,8 @@ fn hex_value(b: u8) -> u8 {
 /// `slice::get` の `Option` で吸収し、`usize` の加算は `checked_add` で扱う。
 #[derive(Debug)]
 pub struct Lexer<'a> {
-    pub(in crate::lexer) input: &'a [u8],
-    pub(in crate::lexer) pos: usize,
+    input: &'a [u8],
+    pos: usize,
 }
 
 impl<'a> Lexer<'a> {
