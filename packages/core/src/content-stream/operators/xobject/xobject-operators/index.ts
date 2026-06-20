@@ -7,8 +7,6 @@ import { doHandler } from "../do/index";
 
 export { doHandler } from "../do/index";
 
-// 登録順は Issue 指定順（現状 Do のみ）。
-// この順序は error テストの fail-fast 呼び出し順検証に直結する。
 // 拡張時はこの配列末尾に追記する（例: ["BI", biHandler], ["ID", idHandler], ["EI", eiHandler]）。
 const XOBJECT_OPERATORS: ReadonlyArray<readonly [string, OperatorHandler]> = [
   ["Do", doHandler],
