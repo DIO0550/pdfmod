@@ -34,8 +34,11 @@ mod tests {
         assert_eq!(combine_pair(0xA, 0x0), 0xA0);
     }
 
+    // `debug_assert!` は release ビルドで no-op になるため、`#[should_panic]` テストは
+    // debug ビルド限定（`cargo test --release` でスキップ）にする。
     #[test]
     #[should_panic]
+    #[cfg(debug_assertions)]
     fn combine_pair_panics_on_high_nibble_out_of_range_in_debug() {
         // 契約違反: high が 0x10 以上のとき debug build で debug_assert! が発火することを確認する
         let _ = combine_pair(0x10, 0x0);
@@ -43,6 +46,7 @@ mod tests {
 
     #[test]
     #[should_panic]
+    #[cfg(debug_assertions)]
     fn combine_pair_panics_on_low_nibble_out_of_range_in_debug() {
         // 契約違反: low が 0x10 以上のとき debug build で debug_assert! が発火することを確認する
         let _ = combine_pair(0x0, 0x10);
