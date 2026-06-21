@@ -17,6 +17,7 @@ const INLINE_IMAGE_DICT_ABBREVIATIONS: Partial<Record<string, string>> = {
   BPC: "BitsPerComponent",
   CS: "ColorSpace",
   F: "Filter",
+  D: "Decode",
   DP: "DecodeParms",
   IM: "ImageMask",
   I: "Interpolate",
