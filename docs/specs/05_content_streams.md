@@ -496,6 +496,7 @@ EI
 | `/BPC` | `/BitsPerComponent` |
 | `/CS` | `/ColorSpace` |
 | `/F` | `/Filter` |
+| `/D` | `/Decode` |
 | `/DP` | `/DecodeParms` |
 | `/IM` | `/ImageMask` |
 | `/I` | `/Interpolate` |
