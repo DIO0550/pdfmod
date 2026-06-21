@@ -14,7 +14,9 @@
 //! 対して panic しない契約を厳守する（既存 `EolKind::at` と同方針）。
 
 pub mod byte_kind;
+mod byte_ops;
 pub mod eol;
+mod hex_string;
 mod literal_string;
 pub mod token;
 
@@ -823,6 +825,7 @@ mod tests {
         let _ = lexer.read_real();
         let _ = lexer.read_name();
         let _ = lexer.read_literal_string();
+        let _ = lexer.read_hex_string();
         assert_eq!(lexer.position(), len);
         assert!(lexer.is_eof());
     }
@@ -842,6 +845,7 @@ mod tests {
         let _ = lexer.read_real();
         let _ = lexer.read_name();
         let _ = lexer.read_literal_string();
+        let _ = lexer.read_hex_string();
         assert_eq!(lexer.position(), 0);
     }
 
