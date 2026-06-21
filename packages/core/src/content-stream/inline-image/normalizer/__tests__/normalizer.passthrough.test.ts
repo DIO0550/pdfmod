@@ -1,15 +1,12 @@
 import { expect, test } from "vitest";
 import {
   ByteOffset,
-  TokenType,
   type TokenInlineImageDictEntry,
+  TokenType,
 } from "../../../../pdf/index";
 import { normalizeInlineImageDict } from "../index";
 
-const makeEntry = (
-  name: string,
-  offset = 0,
-): TokenInlineImageDictEntry => ({
+const makeEntry = (name: string, offset = 0): TokenInlineImageDictEntry => ({
   key: {
     type: TokenType.Name,
     value: name,
@@ -52,17 +49,14 @@ test.each<[string]>([
   ["constructor"],
   ["toString"],
   ["__proto__"],
-])(
-  "Object.prototype 由来キー (%s) は hasOwn ガードで誤展開されず passthrough",
-  (protoKey) => {
-    const entry = makeEntry(protoKey);
+])("Object.prototype 由来キー (%s) は hasOwn ガードで誤展開されず passthrough", (protoKey) => {
+  const entry = makeEntry(protoKey);
 
-    const result = normalizeInlineImageDict([entry]);
+  const result = normalizeInlineImageDict([entry]);
 
-    expect(result[0]).toBe(entry);
-    expect(result[0]?.key.value).toBe(protoKey);
-  },
-);
+  expect(result[0]).toBe(entry);
+  expect(result[0]?.key.value).toBe(protoKey);
+});
 
 test("入力順 [/W, /H, /CS] は [Width, Height, ColorSpace] の順で返る", () => {
   const entries = [makeEntry("W"), makeEntry("H"), makeEntry("CS")];

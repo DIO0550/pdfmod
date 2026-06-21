@@ -1,9 +1,9 @@
 import { expect, test } from "vitest";
 import {
   ByteOffset,
-  TokenType,
   type Token,
   type TokenInlineImageDictEntry,
+  TokenType,
 } from "../../../../pdf/index";
 import { normalizeInlineImageDict } from "../index";
 

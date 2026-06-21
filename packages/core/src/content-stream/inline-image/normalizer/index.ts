@@ -1,7 +1,4 @@
-import type {
-  TokenInlineImageDictEntry,
-  TokenName,
-} from "../../../pdf/index";
+import type { TokenInlineImageDictEntry, TokenName } from "../../../pdf/index";
 import { TokenType } from "../../../pdf/index";
 
 /**
@@ -48,10 +45,7 @@ export const normalizeInlineImageDict = (
     const key = entry.key.value;
     // Object.prototype 由来キー (`constructor` / `toString` / `__proto__` 等) が
     // 誤って略号として hit するのを防ぐため hasOwn ガードで自前プロパティのみ参照する。
-    const expanded = Object.prototype.hasOwnProperty.call(
-      INLINE_IMAGE_DICT_ABBREVIATIONS,
-      key,
-    )
+    const expanded = Object.hasOwn(INLINE_IMAGE_DICT_ABBREVIATIONS, key)
       ? INLINE_IMAGE_DICT_ABBREVIATIONS[key]
       : undefined;
     if (expanded === undefined) {
