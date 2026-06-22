@@ -8,8 +8,9 @@
 //! 本モジュール直下では、`&'a [u8]` を借用する `Lexer<'a>` 構造体を提供し、
 //! カーソル位置の管理（pos）と先読み（peek / peek_at）・前進（advance）・
 //! EOF 判定（is_eof）、および ISO 32000 lexical conventions に基づく
-//! ホワイトスペース・コメントのスキップ API を提供する。
-//! Token 生成（`next_token`）は本モジュールでは扱わず、後続の Tokenize 層に委ねる。
+//! ホワイトスペース・コメントのスキップ API、低レベル read API（整数 / 実数 /
+//! 名前 / 配列・辞書デリミタ / キーワード等）と、それらをまとめて 1 トークン分の
+//! ディスパッチを行う `next_token` API を提供する。
 //! 本層は PDF レキシカル層の最下層 API であり、任意の入力・任意の pos に
 //! 対して panic しない契約を厳守する（既存 `EolKind::at` と同方針）。
 
@@ -23,6 +24,7 @@ pub mod token;
 use crate::object::name::PdfName;
 use byte_kind::ByteKind;
 use eol::EolKind;
+use token::{Primitive, Token};
 
 // 内部ヘルパ: 16進数字 1 バイト ('0'-'9' / 'a'-'f' / 'A'-'F') を 0-15 に変換する。
 // 呼び出し側で is_ascii_hexdigit を確認済みであることを前提とする。
@@ -416,6 +418,242 @@ impl<'a> Lexer<'a> {
         }
 
         Some(PdfName::new(bytes))
+    }
+
+    /// 配列開始デリミタ `[`（ISO 32000-1 §7.3.6）を 1 バイト消費して `Token::ArrayBegin` を返す。
+    ///
+    /// 受理する字句:
+    /// - `[`（0x5B）1 バイトのみ
+    ///
+    /// 拒否する字句（`None` 返却 + `pos` 不変）:
+    /// - 先頭バイトが `[` 以外のすべて（whitespace / 別 delimiter / regular / EOF）
+    ///
+    /// 巻き戻し: 先頭バイトが `[` でない場合 `pos` を一切動かさず `None` を返すため、
+    /// 明示的な巻き戻し処理は不要。
+    ///
+    /// panic 不在: `peek()` の `Option` と `checked_add(1)` で範囲外を吸収する。
+    /// 不変条件 `0 ≦ pos ≦ input.len()` のもとでは `checked_add(1)` の `None` 分岐は
+    /// `pos == usize::MAX` のときだけ理論上発生するが、その場合は直前の `peek()` が
+    /// `None` を返して早期 return しているため到達不能。契約を機械的に守るため `?` で明示する。
+    pub fn read_array_begin(&mut self) -> Option<Token> {
+        if self.peek() != Some(b'[') {
+            return None;
+        }
+        self.pos = self.pos.checked_add(1)?;
+        Some(Token::ArrayBegin)
+    }
+
+    /// 配列終了デリミタ `]`（ISO 32000-1 §7.3.6）を 1 バイト消費して `Token::ArrayEnd` を返す。
+    ///
+    /// 受理する字句:
+    /// - `]`（0x5D）1 バイトのみ
+    ///
+    /// 拒否する字句（`None` 返却 + `pos` 不変）:
+    /// - 先頭バイトが `]` 以外のすべて（whitespace / 別 delimiter / regular / EOF）
+    ///
+    /// 巻き戻し / panic 不在: `read_array_begin` と同方針。
+    pub fn read_array_end(&mut self) -> Option<Token> {
+        if self.peek() != Some(b']') {
+            return None;
+        }
+        self.pos = self.pos.checked_add(1)?;
+        Some(Token::ArrayEnd)
+    }
+
+    /// 辞書開始デリミタ `<<`（ISO 32000-1 §7.3.7）を 2 バイト消費して `Token::DictBegin` を返す。
+    ///
+    /// 受理する字句:
+    /// - `<<`（0x3C 0x3C）2 バイトのみ
+    ///
+    /// 拒否する字句（`None` 返却 + `pos` 不変）:
+    /// - 先頭バイトが `<` 以外（whitespace / 別 delimiter / regular / EOF）
+    /// - 先頭が `<` でも 2 バイト目が `<` でない場合（例: `<a`（16 進開始）、`<>`（空 16 進文字列）、`< `、`<` 単独）
+    ///
+    /// 上記の `<` 単独や `<` + 非 `<` のケースは `read_hex_string` の責務範囲（16 進文字列 / 空 16 進文字列）に
+    /// 該当しうるため、本関数は `pos` を一切動かさずに `None` を返すことで `read_hex_string` への
+    /// フォールバックを可能にする。
+    ///
+    /// 巻き戻し: `peek_at(1)` で 2 バイト目を先読みするため、判定で `None` を返すときに `pos` を
+    /// 動かす必要はない（先頭バイトを消費しない）。
+    ///
+    /// panic 不在: `peek()` / `peek_at(1)` は内部で `checked_add` を使い、`checked_add(2)` で
+    /// 範囲外を吸収する。
+    pub fn read_dict_begin(&mut self) -> Option<Token> {
+        if self.peek() != Some(b'<') {
+            return None;
+        }
+        if self.peek_at(1) != Some(b'<') {
+            return None;
+        }
+        self.pos = self.pos.checked_add(2)?;
+        Some(Token::DictBegin)
+    }
+
+    /// 辞書終了デリミタ `>>`（ISO 32000-1 §7.3.7）を 2 バイト消費して `Token::DictEnd` を返す。
+    ///
+    /// 受理する字句:
+    /// - `>>`（0x3E 0x3E）2 バイトのみ
+    ///
+    /// 拒否する字句（`None` 返却 + `pos` 不変）:
+    /// - 先頭バイトが `>` 以外
+    /// - 先頭が `>` でも 2 バイト目が `>` でない場合（`>` 単独 / `>x` / `> ` / `>` + EOF）
+    ///
+    /// 巻き戻し / panic 不在: `read_dict_begin` と同方針。
+    pub fn read_dict_end(&mut self) -> Option<Token> {
+        if self.peek() != Some(b'>') {
+            return None;
+        }
+        if self.peek_at(1) != Some(b'>') {
+            return None;
+        }
+        self.pos = self.pos.checked_add(2)?;
+        Some(Token::DictEnd)
+    }
+
+    /// 連続する regular バイト列を 1 つ読み取り、既知キーワードなら専用 `Token` バリアントに、
+    /// それ以外なら `Token::Keyword(Vec<u8>)` として返す（ISO 32000-1 §7.2 / §7.3.2 / §7.3.8 / §7.3.9 / §7.3.10）。
+    ///
+    /// 受理する字句:
+    /// - `ByteKind::is_regular` を満たすバイトの 1 個以上の連続
+    /// - 境界は whitespace / delimiter / EOF（バイト境界を越えて消費しない）
+    ///
+    /// マッピング（case-sensitive 厳守。`True` / `OBJ` 等は平坦化される）:
+    /// - `true`      → `Token::Primitive(Primitive::Boolean(true))`
+    /// - `false`     → `Token::Primitive(Primitive::Boolean(false))`
+    /// - `null`      → `Token::Primitive(Primitive::Null)`
+    /// - `obj`       → `Token::ObjBegin`
+    /// - `endobj`    → `Token::ObjEnd`
+    /// - `stream`    → `Token::StreamBegin`
+    /// - `endstream` → `Token::StreamEnd`
+    /// - その他（`R` / `xref` / `trailer` / `startxref` / `f` / `n` / `True` / `OBJ` / `trueX` 連結 / 未知バイト列）
+    ///   → `Token::Keyword(<収集バイト列>)`
+    ///
+    /// 拒否する字句（`None` 返却 + `pos` 不変）:
+    /// - 空入力 / EOF
+    /// - 先頭バイトが whitespace / delimiter
+    ///
+    /// 巻き戻し: regular バイトを 0 個も収集できなかった場合（先頭が ws / delim / EOF）に
+    /// `pos` を一切動かさず `None` を返す。
+    ///
+    /// panic 不在: `peek()` の `Option` と `checked_add(1)` で範囲外を吸収する。
+    /// 実装参照: regular バイト列収集ループは `read_name` の `#XX` エスケープ処理を除いた構造を流用している。
+    pub fn read_keyword(&mut self) -> Option<Token> {
+        let start = self.pos;
+        let mut bytes: Vec<u8> = Vec::new();
+        #[allow(clippy::while_let_loop)]
+        loop {
+            let Some(b) = self.peek() else { break };
+            if ByteKind::is_whitespace(b) || ByteKind::is_delimiter(b) {
+                break;
+            }
+            bytes.push(b);
+            let Some(next) = self.pos.checked_add(1) else {
+                self.pos = start;
+                return None;
+            };
+            self.pos = next;
+        }
+        if bytes.is_empty() {
+            return None;
+        }
+        match bytes.as_slice() {
+            b"true" => Some(Token::Primitive(Primitive::Boolean(true))),
+            b"false" => Some(Token::Primitive(Primitive::Boolean(false))),
+            b"null" => Some(Token::Primitive(Primitive::Null)),
+            b"obj" => Some(Token::ObjBegin),
+            b"endobj" => Some(Token::ObjEnd),
+            b"stream" => Some(Token::StreamBegin),
+            b"endstream" => Some(Token::StreamEnd),
+            _ => Some(Token::Keyword(bytes)),
+        }
+    }
+
+    /// 次のトークン 1 個を取り出す統合ディスパッチ API（ISO 32000-1 §7.2 / §7.3 全体）。
+    ///
+    /// 処理順:
+    /// 1. `skip_whitespace` で whitespace 6 種のみ消費（コメントは消費しない。`%PDF-1.7` /
+    ///    `%%EOF` を parser が拾えるようにするため）
+    /// 2. `peek()` で先頭バイトを取得（`None` なら EOF として `None` を返す）
+    /// 3. 先頭バイトに応じて以下にディスパッチ:
+    ///    - `%`               → `skip_comment` の本文を `to_vec()` で `Token::Comment` に組み立て
+    ///    - `[` / `]`         → `read_array_begin` / `read_array_end`
+    ///    - `<`               → `read_dict_begin` を先に試行し、`None` なら `read_hex_string` にフォールバック
+    ///    - `>`               → `read_dict_end`（`None` ならそのまま `None`）
+    ///    - `(`               → `read_literal_string` の戻り値を `Primitive::LiteralString` で包む
+    ///    - `/`               → `read_name` の戻り値を `Primitive::Name` で包む
+    ///    - `+` / `-` / digit → `read_integer` → 失敗時 `read_real` → 失敗時 `read_keyword`
+    ///    - `.`               → `read_real`
+    ///    - その他 regular    → `read_keyword`
+    ///    - 上記以外          → `None`（pos 不変）
+    ///
+    /// `<` 分岐の二段構えは安全である（`read_hex_string` が `<<` 入力では `None` + `pos` 不変を
+    /// 返すことが既存テストで保証されているため）。`+ABC` のような `+` / `-` 始まりの連結は
+    /// `read_integer` / `read_real` が失敗した時点で `read_keyword` に流れ、`Token::Keyword` として吸収される。
+    ///
+    /// `None` 返却時の EOF / malformed 区別（呼び出し側の責務）:
+    /// - `lexer.is_eof()` が `true`  → 真 EOF（入力末尾に到達）
+    /// - `lexer.is_eof()` が `false` → malformed input（仕様外バイトが残存）
+    ///   - 例: `>` 単独・`{` / `}` のような仕様外 delimiter・`< ` のような `<<` でも 16 進開始
+    ///     でもない `<` パターン
+    ///   - これらは本層では `None` + `pos` 不変を返すだけで、エラー化しない（panic 不在 /
+    ///     エラー型なしの契約）
+    ///
+    /// `position()` 比較の用途: 「同じ malformed input で `next_token` を再試行したときに
+    /// 無限ループしないための no-progress 検知」。malformed と判定した parser は呼び出し前後の
+    /// `position()` を比較し、進んでいなければ 1 バイト強制スキップなどのヒューリスティックを
+    /// 適用する。EOF / malformed の分類自体には使わない（先頭 `skip_whitespace` のため
+    /// whitespace のみ入力で pos が進むなど混在があるため）。
+    ///
+    /// panic 不在: 各ディスパッチ先（既存 `read_*` / 新規 6 メソッド）がすべて panic 不在
+    /// 契約を満たすため、本 API も任意の入力・任意の pos で panic しない。
+    ///
+    /// 注意: `stream` キーワード直後の改行スキップと stream データ本体（`/Length` バイト分）の
+    /// 読み出しは本 API のスコープ外。本層は `Token::StreamBegin` を返すまでが責務。
+    pub fn next_token(&mut self) -> Option<Token> {
+        self.skip_whitespace();
+        let b = self.peek()?;
+        match b {
+            b'%' => {
+                let body = self.skip_comment()?;
+                Some(Token::Comment(body.to_vec()))
+            }
+            b'[' => self.read_array_begin(),
+            b']' => self.read_array_end(),
+            b'<' => self.read_dict_begin().or_else(|| {
+                self.read_hex_string()
+                    .map(|bytes| Token::Primitive(Primitive::HexString(bytes)))
+            }),
+            b'>' => self.read_dict_end(),
+            b'(' => self
+                .read_literal_string()
+                .map(|bytes| Token::Primitive(Primitive::LiteralString(bytes))),
+            b'/' => self
+                .read_name()
+                .map(|name| Token::Primitive(Primitive::Name(name))),
+            b'+' | b'-' => self.dispatch_numeric_or_keyword(),
+            b'.' => self
+                .read_real()
+                .map(|r| Token::Primitive(Primitive::Real(r))),
+            b if b.is_ascii_digit() => self.dispatch_numeric_or_keyword(),
+            b if ByteKind::is_regular(b) => self.read_keyword(),
+            _ => None,
+        }
+    }
+
+    /// 先頭が `+` / `-` / digit のときに使う数値→キーワードへの 3 段フォールバック。
+    ///
+    /// `next_token` の `+` / `-` 分岐と digit 分岐は ISO 32000-1 §7.3.3 + §7.3.10 の同一
+    /// ドメイン（Numeric Objects + Keyword への合流）であり、`read_integer` → `read_real`
+    /// → `read_keyword` の優先順位も共通であるため、本ヘルパに集約してチェーンの重複を排除する。
+    /// 失敗時は各 `read_*` が `pos` を巻き戻すため呼び出し側で巻き戻し管理は不要。
+    fn dispatch_numeric_or_keyword(&mut self) -> Option<Token> {
+        self.read_integer()
+            .map(|i| Token::Primitive(Primitive::Integer(i)))
+            .or_else(|| {
+                self.read_real()
+                    .map(|r| Token::Primitive(Primitive::Real(r)))
+            })
+            .or_else(|| self.read_keyword())
     }
 }
 
@@ -826,6 +1064,12 @@ mod tests {
         let _ = lexer.read_name();
         let _ = lexer.read_literal_string();
         let _ = lexer.read_hex_string();
+        let _ = lexer.read_array_begin();
+        let _ = lexer.read_array_end();
+        let _ = lexer.read_dict_begin();
+        let _ = lexer.read_dict_end();
+        let _ = lexer.read_keyword();
+        let _ = lexer.next_token();
         assert_eq!(lexer.position(), len);
         assert!(lexer.is_eof());
     }
@@ -846,12 +1090,18 @@ mod tests {
         let _ = lexer.read_name();
         let _ = lexer.read_literal_string();
         let _ = lexer.read_hex_string();
+        let _ = lexer.read_array_begin();
+        let _ = lexer.read_array_end();
+        let _ = lexer.read_dict_begin();
+        let _ = lexer.read_dict_end();
+        let _ = lexer.read_keyword();
+        let _ = lexer.next_token();
         assert_eq!(lexer.position(), 0);
     }
 
     #[test]
     fn position_never_exceeds_input_len_after_skip() {
-        // 各種入力で skip 系を呼んだ後 position が input.len() を超えないことを確認する
+        // 各種入力で skip 系と read 系を呼んだ後 position が input.len() を超えないことを確認する
         let inputs: &[&[u8]] = &[b"", b" ", b"%c\n", b" %a\n %b\n"];
         for input in inputs {
             let mut lexer = Lexer::new(input);
@@ -860,6 +1110,18 @@ mod tests {
             let _ = lexer.skip_comment();
             assert!(lexer.position() <= input.len());
             lexer.skip_whitespace_and_comments();
+            assert!(lexer.position() <= input.len());
+            let _ = lexer.read_array_begin();
+            assert!(lexer.position() <= input.len());
+            let _ = lexer.read_array_end();
+            assert!(lexer.position() <= input.len());
+            let _ = lexer.read_dict_begin();
+            assert!(lexer.position() <= input.len());
+            let _ = lexer.read_dict_end();
+            assert!(lexer.position() <= input.len());
+            let _ = lexer.read_keyword();
+            assert!(lexer.position() <= input.len());
+            let _ = lexer.next_token();
             assert!(lexer.position() <= input.len());
         }
     }
@@ -2457,5 +2719,837 @@ mod tests {
         assert_eq!(lexer.position(), 1);
         assert_eq!(lexer.read_name(), None);
         assert_eq!(lexer.position(), 1);
+    }
+
+    // ---------- Phase A: read_array_begin / read_array_end ----------
+
+    #[test]
+    fn read_array_begin_returns_none_for_empty_input() {
+        // 空入力に対する read_array_begin が None を返し pos が 0 のままであることを確認する
+        let mut lexer = Lexer::new(&[]);
+        assert_eq!(lexer.read_array_begin(), None);
+        assert_eq!(lexer.position(), 0);
+    }
+
+    #[test]
+    fn read_array_begin_returns_none_for_non_bracket_byte() {
+        // 先頭バイトが `[` でない `(` を入力すると None / pos 不変であることを確認する
+        let mut lexer = Lexer::new(b"(abc");
+        assert_eq!(lexer.read_array_begin(), None);
+        assert_eq!(lexer.position(), 0);
+    }
+
+    #[test]
+    fn read_array_begin_returns_none_at_eof() {
+        // EOF 状態の read_array_begin が None を返し pos が EOF 位置のままであることを確認する
+        let mut lexer = Lexer::new(b"a");
+        lexer.advance();
+        assert_eq!(lexer.read_array_begin(), None);
+        assert_eq!(lexer.position(), 1);
+    }
+
+    #[test]
+    fn read_array_begin_reads_bracket() {
+        // `[` 単独入力で Some(Token::ArrayBegin) を返し pos == 1 になることを確認する
+        let mut lexer = Lexer::new(b"[");
+        assert_eq!(lexer.read_array_begin(), Some(Token::ArrayBegin));
+        assert_eq!(lexer.position(), 1);
+    }
+
+    #[test]
+    fn read_array_begin_reads_bracket_followed_by_digit() {
+        // `[123` のように regular byte が直接続いても pos == 1 で停止することを確認する
+        let mut lexer = Lexer::new(b"[123");
+        assert_eq!(lexer.read_array_begin(), Some(Token::ArrayBegin));
+        assert_eq!(lexer.position(), 1);
+    }
+
+    #[test]
+    fn read_array_begin_reads_bracket_followed_by_whitespace() {
+        // `[ ` のように whitespace が続いても pos == 1 で停止することを確認する
+        let mut lexer = Lexer::new(b"[ ");
+        assert_eq!(lexer.read_array_begin(), Some(Token::ArrayBegin));
+        assert_eq!(lexer.position(), 1);
+    }
+
+    #[test]
+    fn read_array_end_returns_none_for_empty_input() {
+        // 空入力に対する read_array_end が None を返し pos が 0 のままであることを確認する
+        let mut lexer = Lexer::new(&[]);
+        assert_eq!(lexer.read_array_end(), None);
+        assert_eq!(lexer.position(), 0);
+    }
+
+    #[test]
+    fn read_array_end_returns_none_for_non_bracket_byte() {
+        // 先頭バイトが `]` でない `}` を入力すると None / pos 不変であることを確認する
+        let mut lexer = Lexer::new(b"}abc");
+        assert_eq!(lexer.read_array_end(), None);
+        assert_eq!(lexer.position(), 0);
+    }
+
+    #[test]
+    fn read_array_end_reads_close_bracket_followed_by_eof() {
+        // `]` 1 バイトのみで入力終端の場合、Some(ArrayEnd) / pos == 1 / is_eof を確認する
+        let mut lexer = Lexer::new(b"]");
+        assert_eq!(lexer.read_array_end(), Some(Token::ArrayEnd));
+        assert_eq!(lexer.position(), 1);
+        assert!(lexer.is_eof());
+    }
+
+    #[test]
+    fn read_array_end_reads_close_bracket_followed_by_delimiter() {
+        // `]>>` のように別 delimiter が続いても pos == 1 で停止することを確認する
+        let mut lexer = Lexer::new(b"]>>");
+        assert_eq!(lexer.read_array_end(), Some(Token::ArrayEnd));
+        assert_eq!(lexer.position(), 1);
+    }
+
+    #[test]
+    fn read_array_apis_handle_nested_pattern_with_position_advance() {
+        // `[[]]` を 4 回呼び出すと ArrayBegin / ArrayBegin / ArrayEnd / ArrayEnd が順に返り pos == 4 になることを確認する
+        let mut lexer = Lexer::new(b"[[]]");
+        assert_eq!(lexer.read_array_begin(), Some(Token::ArrayBegin));
+        assert_eq!(lexer.read_array_begin(), Some(Token::ArrayBegin));
+        assert_eq!(lexer.read_array_end(), Some(Token::ArrayEnd));
+        assert_eq!(lexer.read_array_end(), Some(Token::ArrayEnd));
+        assert_eq!(lexer.position(), 4);
+    }
+
+    // ---------- Phase B: read_dict_begin / read_dict_end ----------
+
+    #[test]
+    fn read_dict_begin_returns_none_for_empty_input() {
+        // 空入力に対する read_dict_begin が None を返し pos が 0 のままであることを確認する
+        let mut lexer = Lexer::new(&[]);
+        assert_eq!(lexer.read_dict_begin(), None);
+        assert_eq!(lexer.position(), 0);
+    }
+
+    #[test]
+    fn read_dict_begin_returns_none_for_single_less_than() {
+        // `<` 単独で次バイトが無い場合に None / pos 不変であることを確認する
+        let mut lexer = Lexer::new(b"<");
+        assert_eq!(lexer.read_dict_begin(), None);
+        assert_eq!(lexer.position(), 0);
+    }
+
+    #[test]
+    fn read_dict_begin_returns_none_for_less_than_plus_hex_digit() {
+        // `<a` のように 16 進開始を示す入力では None / pos 不変であることを確認する（read_hex_string の責務範囲）
+        let mut lexer = Lexer::new(b"<a");
+        assert_eq!(lexer.read_dict_begin(), None);
+        assert_eq!(lexer.position(), 0);
+    }
+
+    #[test]
+    fn read_dict_begin_returns_none_for_less_than_plus_gt() {
+        // `<>` （空 16 進文字列）でも `<<` 不一致のため None / pos 不変であることを確認する
+        let mut lexer = Lexer::new(b"<>");
+        assert_eq!(lexer.read_dict_begin(), None);
+        assert_eq!(lexer.position(), 0);
+    }
+
+    #[test]
+    fn read_dict_begin_returns_none_for_less_than_at_eof() {
+        // `<` 1 バイトのみで EOF の場合に None / pos 不変 / is_eof は false（pos == 0 で input.len() == 1 のため）であることを確認する
+        let mut lexer = Lexer::new(b"<");
+        assert_eq!(lexer.read_dict_begin(), None);
+        assert_eq!(lexer.position(), 0);
+        assert!(!lexer.is_eof());
+    }
+
+    #[test]
+    fn read_dict_begin_reads_double_less_than_followed_by_name() {
+        // `<</Type` のように 名前が続いても pos == 2 で停止することを確認する
+        let mut lexer = Lexer::new(b"<</Type");
+        assert_eq!(lexer.read_dict_begin(), Some(Token::DictBegin));
+        assert_eq!(lexer.position(), 2);
+    }
+
+    #[test]
+    fn read_dict_begin_reads_double_less_than_followed_by_eof() {
+        // `<<` 2 バイトのみで EOF の場合 Some(DictBegin) / pos == 2 / is_eof を確認する
+        let mut lexer = Lexer::new(b"<<");
+        assert_eq!(lexer.read_dict_begin(), Some(Token::DictBegin));
+        assert_eq!(lexer.position(), 2);
+        assert!(lexer.is_eof());
+    }
+
+    #[test]
+    fn read_dict_end_returns_none_for_empty_input() {
+        // 空入力に対する read_dict_end が None を返し pos が 0 のままであることを確認する
+        let mut lexer = Lexer::new(&[]);
+        assert_eq!(lexer.read_dict_end(), None);
+        assert_eq!(lexer.position(), 0);
+    }
+
+    #[test]
+    fn read_dict_end_returns_none_for_single_greater_than() {
+        // `>` 単独で次バイトが無い場合に None / pos 不変であることを確認する
+        let mut lexer = Lexer::new(b">");
+        assert_eq!(lexer.read_dict_end(), None);
+        assert_eq!(lexer.position(), 0);
+    }
+
+    #[test]
+    fn read_dict_end_returns_none_for_greater_than_plus_other() {
+        // `>x` のように 2 バイト目が `>` でない場合に None / pos 不変であることを確認する
+        let mut lexer = Lexer::new(b">x");
+        assert_eq!(lexer.read_dict_end(), None);
+        assert_eq!(lexer.position(), 0);
+    }
+
+    #[test]
+    fn read_dict_end_returns_none_for_greater_than_at_eof() {
+        // `>` 1 バイトのみで EOF の場合に None / pos 不変 / is_eof は false（pos == 0 で input.len() == 1 のため）であることを確認する
+        let mut lexer = Lexer::new(b">");
+        assert_eq!(lexer.read_dict_end(), None);
+        assert_eq!(lexer.position(), 0);
+        assert!(!lexer.is_eof());
+    }
+
+    #[test]
+    fn read_dict_end_reads_double_greater_than_followed_by_whitespace() {
+        // `>>\n` のように whitespace が続いても pos == 2 で停止することを確認する
+        let mut lexer = Lexer::new(b">>\n");
+        assert_eq!(lexer.read_dict_end(), Some(Token::DictEnd));
+        assert_eq!(lexer.position(), 2);
+    }
+
+    #[test]
+    fn read_dict_end_reads_double_greater_than_followed_by_eof() {
+        // `>>` 2 バイトのみで EOF の場合 Some(DictEnd) / pos == 2 / is_eof を確認する
+        let mut lexer = Lexer::new(b">>");
+        assert_eq!(lexer.read_dict_end(), Some(Token::DictEnd));
+        assert_eq!(lexer.position(), 2);
+        assert!(lexer.is_eof());
+    }
+
+    #[test]
+    fn read_dict_apis_handle_empty_dict_pattern() {
+        // `<<>>` を 2 回呼び出すと DictBegin / DictEnd が順に返り pos == 4 になることを確認する
+        let mut lexer = Lexer::new(b"<<>>");
+        assert_eq!(lexer.read_dict_begin(), Some(Token::DictBegin));
+        assert_eq!(lexer.read_dict_end(), Some(Token::DictEnd));
+        assert_eq!(lexer.position(), 4);
+    }
+
+    // ---------- Phase C: read_keyword の Primitive マッピング ----------
+
+    #[test]
+    fn read_keyword_maps_true_to_primitive_boolean_true() {
+        // `true` 単独入力で Some(Primitive(Boolean(true))) を返し pos == 4 になることを確認する
+        let mut lexer = Lexer::new(b"true");
+        assert_eq!(
+            lexer.read_keyword(),
+            Some(Token::Primitive(Primitive::Boolean(true)))
+        );
+        assert_eq!(lexer.position(), 4);
+    }
+
+    #[test]
+    fn read_keyword_maps_false_to_primitive_boolean_false() {
+        // `false` 単独入力で Some(Primitive(Boolean(false))) を返し pos == 5 になることを確認する
+        let mut lexer = Lexer::new(b"false");
+        assert_eq!(
+            lexer.read_keyword(),
+            Some(Token::Primitive(Primitive::Boolean(false)))
+        );
+        assert_eq!(lexer.position(), 5);
+    }
+
+    #[test]
+    fn read_keyword_distinguishes_true_and_false() {
+        // true と false のマッピング結果が同じ Primitive::Boolean 内でも非等価であることを確認する
+        let mut lexer_t = Lexer::new(b"true");
+        let mut lexer_f = Lexer::new(b"false");
+        assert_ne!(lexer_t.read_keyword(), lexer_f.read_keyword());
+    }
+
+    #[test]
+    fn read_keyword_maps_true_followed_by_whitespace() {
+        // `true ` のように whitespace が続いても pos == 4 で停止し Boolean(true) を返すことを確認する
+        let mut lexer = Lexer::new(b"true ");
+        assert_eq!(
+            lexer.read_keyword(),
+            Some(Token::Primitive(Primitive::Boolean(true)))
+        );
+        assert_eq!(lexer.position(), 4);
+    }
+
+    #[test]
+    fn read_keyword_maps_false_followed_by_delimiter() {
+        // `false]` のように delimiter が続いても pos == 5 で停止し Boolean(false) を返すことを確認する
+        let mut lexer = Lexer::new(b"false]");
+        assert_eq!(
+            lexer.read_keyword(),
+            Some(Token::Primitive(Primitive::Boolean(false)))
+        );
+        assert_eq!(lexer.position(), 5);
+    }
+
+    #[test]
+    fn read_keyword_maps_null_followed_by_eof() {
+        // `null` で入力終端の場合 Some(Primitive(Null)) / pos == 4 / is_eof を確認する
+        let mut lexer = Lexer::new(b"null");
+        assert_eq!(
+            lexer.read_keyword(),
+            Some(Token::Primitive(Primitive::Null))
+        );
+        assert_eq!(lexer.position(), 4);
+        assert!(lexer.is_eof());
+    }
+
+    #[test]
+    fn read_keyword_maps_null_followed_by_slash() {
+        // `null/Type` のように / delimiter が続いても pos == 4 で停止し Null を返すことを確認する
+        let mut lexer = Lexer::new(b"null/Type");
+        assert_eq!(
+            lexer.read_keyword(),
+            Some(Token::Primitive(Primitive::Null))
+        );
+        assert_eq!(lexer.position(), 4);
+    }
+
+    // ---------- Phase D: read_keyword の構造制御マッピング ----------
+
+    #[test]
+    fn read_keyword_maps_stream_to_stream_begin() {
+        // `stream` 単独入力で Some(Token::StreamBegin) を返し pos == 6 になることを確認する
+        let mut lexer = Lexer::new(b"stream");
+        assert_eq!(lexer.read_keyword(), Some(Token::StreamBegin));
+        assert_eq!(lexer.position(), 6);
+    }
+
+    #[test]
+    fn read_keyword_maps_endstream_to_stream_end() {
+        // `endstream` 単独入力で Some(Token::StreamEnd) を返し pos == 9 になることを確認する
+        let mut lexer = Lexer::new(b"endstream");
+        assert_eq!(lexer.read_keyword(), Some(Token::StreamEnd));
+        assert_eq!(lexer.position(), 9);
+    }
+
+    #[test]
+    fn read_keyword_distinguishes_obj_and_endobj() {
+        // obj と endobj の桁違いマッピングが別バリアント（ObjBegin ≠ ObjEnd）であることを確認する
+        let mut lexer_obj = Lexer::new(b"obj");
+        let mut lexer_endobj = Lexer::new(b"endobj");
+        assert_ne!(lexer_obj.read_keyword(), lexer_endobj.read_keyword());
+    }
+
+    #[test]
+    fn read_keyword_distinguishes_stream_and_endstream() {
+        // stream と endstream の桁違いマッピングが別バリアント（StreamBegin ≠ StreamEnd）であることを確認する
+        let mut lexer_s = Lexer::new(b"stream");
+        let mut lexer_es = Lexer::new(b"endstream");
+        assert_ne!(lexer_s.read_keyword(), lexer_es.read_keyword());
+    }
+
+    #[test]
+    fn read_keyword_maps_obj_followed_by_whitespace() {
+        // `obj\n` のように LF が続いても pos == 3 で停止し ObjBegin を返すことを確認する
+        let mut lexer = Lexer::new(b"obj\n");
+        assert_eq!(lexer.read_keyword(), Some(Token::ObjBegin));
+        assert_eq!(lexer.position(), 3);
+    }
+
+    #[test]
+    fn read_keyword_maps_endobj_followed_by_eof() {
+        // `endobj` で入力終端の場合 Some(ObjEnd) / pos == 6 / is_eof を確認する
+        let mut lexer = Lexer::new(b"endobj");
+        assert_eq!(lexer.read_keyword(), Some(Token::ObjEnd));
+        assert_eq!(lexer.position(), 6);
+        assert!(lexer.is_eof());
+    }
+
+    #[test]
+    fn read_keyword_maps_stream_followed_by_lf() {
+        // `stream\n` のように LF が続いても pos == 6 で停止し StreamBegin を返すことを確認する（stream データ本体は本層スコープ外）
+        let mut lexer = Lexer::new(b"stream\n");
+        assert_eq!(lexer.read_keyword(), Some(Token::StreamBegin));
+        assert_eq!(lexer.position(), 6);
+    }
+
+    #[test]
+    fn read_keyword_maps_endstream_followed_by_endobj() {
+        // `endstream\nendobj` の最初の呼び出しで Some(StreamEnd) / pos == 9 を確認する
+        let mut lexer = Lexer::new(b"endstream\nendobj");
+        assert_eq!(lexer.read_keyword(), Some(Token::StreamEnd));
+        assert_eq!(lexer.position(), 9);
+    }
+
+    // ---------- Phase E: read_keyword の未知キーワード平坦化 ----------
+
+    #[test]
+    fn read_keyword_flattens_uppercase_true_to_keyword() {
+        // 大文字始まり `True` は case-sensitive により Boolean ではなく Keyword(b"True") へ平坦化されることを確認する
+        let mut lexer = Lexer::new(b"True");
+        assert_eq!(lexer.read_keyword(), Some(Token::Keyword(b"True".to_vec())));
+        assert_eq!(lexer.position(), 4);
+    }
+
+    #[test]
+    fn read_keyword_flattens_uppercase_false_to_keyword() {
+        // 全大文字 `FALSE` は case-sensitive により Boolean ではなく Keyword(b"FALSE") へ平坦化されることを確認する
+        let mut lexer = Lexer::new(b"FALSE");
+        assert_eq!(
+            lexer.read_keyword(),
+            Some(Token::Keyword(b"FALSE".to_vec()))
+        );
+        assert_eq!(lexer.position(), 5);
+    }
+
+    #[test]
+    fn read_keyword_flattens_uppercase_null_to_keyword() {
+        // 大文字始まり `Null` は case-sensitive により Null ではなく Keyword(b"Null") へ平坦化されることを確認する
+        let mut lexer = Lexer::new(b"Null");
+        assert_eq!(lexer.read_keyword(), Some(Token::Keyword(b"Null".to_vec())));
+        assert_eq!(lexer.position(), 4);
+    }
+
+    #[test]
+    fn read_keyword_flattens_uppercase_obj_to_keyword() {
+        // 全大文字 `OBJ` は case-sensitive により ObjBegin ではなく Keyword(b"OBJ") へ平坦化されることを確認する
+        let mut lexer = Lexer::new(b"OBJ");
+        assert_eq!(lexer.read_keyword(), Some(Token::Keyword(b"OBJ".to_vec())));
+        assert_eq!(lexer.position(), 3);
+    }
+
+    #[test]
+    fn read_keyword_flattens_uppercase_stream_to_keyword() {
+        // 大文字始まり `Stream` は case-sensitive により StreamBegin ではなく Keyword(b"Stream") へ平坦化されることを確認する
+        let mut lexer = Lexer::new(b"Stream");
+        assert_eq!(
+            lexer.read_keyword(),
+            Some(Token::Keyword(b"Stream".to_vec()))
+        );
+        assert_eq!(lexer.position(), 6);
+    }
+
+    #[test]
+    fn read_keyword_flattens_indirect_ref_marker_r() {
+        // `R` 単独は間接参照マーカだが Lexer 層では Keyword(b"R") へ平坦化されることを確認する（組み立ては parser の責務）
+        let mut lexer = Lexer::new(b"R");
+        assert_eq!(lexer.read_keyword(), Some(Token::Keyword(b"R".to_vec())));
+        assert_eq!(lexer.position(), 1);
+    }
+
+    #[test]
+    fn read_keyword_flattens_xref_keyword() {
+        // `xref` キーワードが Keyword(b"xref") として平坦化されることを確認する
+        let mut lexer = Lexer::new(b"xref");
+        assert_eq!(lexer.read_keyword(), Some(Token::Keyword(b"xref".to_vec())));
+        assert_eq!(lexer.position(), 4);
+    }
+
+    #[test]
+    fn read_keyword_flattens_trailer_keyword() {
+        // `trailer` キーワードが Keyword(b"trailer") として平坦化されることを確認する
+        let mut lexer = Lexer::new(b"trailer");
+        assert_eq!(
+            lexer.read_keyword(),
+            Some(Token::Keyword(b"trailer".to_vec()))
+        );
+        assert_eq!(lexer.position(), 7);
+    }
+
+    #[test]
+    fn read_keyword_flattens_startxref_keyword() {
+        // `startxref` キーワードが Keyword(b"startxref") として平坦化されることを確認する
+        let mut lexer = Lexer::new(b"startxref");
+        assert_eq!(
+            lexer.read_keyword(),
+            Some(Token::Keyword(b"startxref".to_vec()))
+        );
+        assert_eq!(lexer.position(), 9);
+    }
+
+    #[test]
+    fn read_keyword_flattens_xref_entry_f_keyword() {
+        // xref エントリ末尾 `f` 単独が Keyword(b"f") として平坦化されることを確認する
+        let mut lexer = Lexer::new(b"f");
+        assert_eq!(lexer.read_keyword(), Some(Token::Keyword(b"f".to_vec())));
+        assert_eq!(lexer.position(), 1);
+    }
+
+    #[test]
+    fn read_keyword_flattens_xref_entry_n_keyword() {
+        // xref エントリ末尾 `n` 単独が Keyword(b"n") として平坦化されることを確認する
+        let mut lexer = Lexer::new(b"n");
+        assert_eq!(lexer.read_keyword(), Some(Token::Keyword(b"n".to_vec())));
+        assert_eq!(lexer.position(), 1);
+    }
+
+    #[test]
+    fn read_keyword_flattens_true_x_as_single_keyword() {
+        // `trueX` のように true キーワードに regular byte が連結された字句は分割せず Keyword(b"trueX") として吸収されることを確認する
+        let mut lexer = Lexer::new(b"trueX");
+        assert_eq!(
+            lexer.read_keyword(),
+            Some(Token::Keyword(b"trueX".to_vec()))
+        );
+        assert_eq!(lexer.position(), 5);
+    }
+
+    // ---------- Phase F: read_keyword の境界条件 ----------
+
+    #[test]
+    fn read_keyword_returns_none_for_empty_input() {
+        // 空入力に対する read_keyword が None を返し pos が 0 のままであることを確認する
+        let mut lexer = Lexer::new(&[]);
+        assert_eq!(lexer.read_keyword(), None);
+        assert_eq!(lexer.position(), 0);
+    }
+
+    #[test]
+    fn read_keyword_returns_none_at_eof() {
+        // EOF 状態の read_keyword が None を返し pos が EOF 位置のままであることを確認する
+        let mut lexer = Lexer::new(b"a");
+        lexer.advance();
+        assert_eq!(lexer.read_keyword(), None);
+        assert_eq!(lexer.position(), 1);
+    }
+
+    #[test]
+    fn read_keyword_returns_none_for_every_leading_whitespace_byte() {
+        // ISO 32000 whitespace 6 種を先頭に置くと read_keyword が None / pos 不変であることを総当たりで確認する
+        let whitespaces: [u8; 6] = [0x00, 0x09, 0x0A, 0x0C, 0x0D, 0x20];
+        for ws in whitespaces {
+            let input = [ws, b'X'];
+            let mut lexer = Lexer::new(&input);
+            assert_eq!(lexer.read_keyword(), None, "whitespace byte = {:#x}", ws);
+            assert_eq!(lexer.position(), 0, "whitespace byte = {:#x}", ws);
+        }
+    }
+
+    #[test]
+    fn read_keyword_returns_none_for_every_leading_delimiter_byte() {
+        // ISO 32000 delimiter 10 種を先頭に置くと read_keyword が None / pos 不変であることを総当たりで確認する
+        let delimiters: [u8; 10] = [0x28, 0x29, 0x3C, 0x3E, 0x5B, 0x5D, 0x7B, 0x7D, 0x2F, 0x25];
+        for delim in delimiters {
+            let input = [delim, b'X'];
+            let mut lexer = Lexer::new(&input);
+            assert_eq!(lexer.read_keyword(), None, "delimiter byte = {:#x}", delim);
+            assert_eq!(lexer.position(), 0, "delimiter byte = {:#x}", delim);
+        }
+    }
+
+    #[test]
+    fn read_keyword_stops_at_every_whitespace_byte() {
+        // `true<ws>x` の whitespace 6 種総当たりで pos == 4 / Boolean(true) を返すことを確認する
+        let whitespaces: [u8; 6] = [0x00, 0x09, 0x0A, 0x0C, 0x0D, 0x20];
+        for ws in whitespaces {
+            let input = [b't', b'r', b'u', b'e', ws, b'x'];
+            let mut lexer = Lexer::new(&input);
+            assert_eq!(
+                lexer.read_keyword(),
+                Some(Token::Primitive(Primitive::Boolean(true))),
+                "whitespace byte = {:#x}",
+                ws
+            );
+            assert_eq!(lexer.position(), 4, "whitespace byte = {:#x}", ws);
+        }
+    }
+
+    #[test]
+    fn read_keyword_stops_at_every_delimiter_byte() {
+        // `true<delim>x` の delimiter 10 種総当たりで pos == 4 / Boolean(true) を返すことを確認する
+        let delimiters: [u8; 10] = [0x28, 0x29, 0x3C, 0x3E, 0x5B, 0x5D, 0x7B, 0x7D, 0x2F, 0x25];
+        for delim in delimiters {
+            let input = [b't', b'r', b'u', b'e', delim, b'x'];
+            let mut lexer = Lexer::new(&input);
+            assert_eq!(
+                lexer.read_keyword(),
+                Some(Token::Primitive(Primitive::Boolean(true))),
+                "delimiter byte = {:#x}",
+                delim
+            );
+            assert_eq!(lexer.position(), 4, "delimiter byte = {:#x}", delim);
+        }
+    }
+
+    #[test]
+    fn read_keyword_stops_at_eof() {
+        // `obj` で入力終端の場合 Some(ObjBegin) / pos == 3 / is_eof を確認する
+        let mut lexer = Lexer::new(b"obj");
+        assert_eq!(lexer.read_keyword(), Some(Token::ObjBegin));
+        assert_eq!(lexer.position(), 3);
+        assert!(lexer.is_eof());
+    }
+
+    #[test]
+    fn read_keyword_reads_single_regular_byte() {
+        // 単一の regular byte `R` が Keyword(b"R") として読み取られることを確認する
+        let mut lexer = Lexer::new(b"R");
+        assert_eq!(lexer.read_keyword(), Some(Token::Keyword(b"R".to_vec())));
+        assert_eq!(lexer.position(), 1);
+    }
+
+    #[test]
+    fn read_keyword_reads_long_unknown_byte_sequence() {
+        // 長い未知バイト列 `MyCustomKeyword123` が分割されず 1 Keyword として読み取られることを確認する
+        let mut lexer = Lexer::new(b"MyCustomKeyword123");
+        assert_eq!(
+            lexer.read_keyword(),
+            Some(Token::Keyword(b"MyCustomKeyword123".to_vec()))
+        );
+        assert_eq!(lexer.position(), 18);
+    }
+
+    #[test]
+    fn read_keyword_does_not_rewind_on_successful_read() {
+        // 成功時に pos が必ず前進する（巻き戻されない）ことを確認する
+        let mut lexer = Lexer::new(b"obj");
+        let start = lexer.position();
+        let _ = lexer.read_keyword();
+        assert!(lexer.position() > start);
+    }
+
+    #[test]
+    fn read_keyword_keeps_position_zero_on_leading_whitespace() {
+        // 先頭が whitespace の入力 ` true` では None / pos == 0 を維持することを確認する
+        let mut lexer = Lexer::new(b" true");
+        assert_eq!(lexer.read_keyword(), None);
+        assert_eq!(lexer.position(), 0);
+    }
+
+    #[test]
+    fn read_keyword_preserves_non_ascii_bytes_in_keyword() {
+        // 非 ASCII バイト 0xC3 0xA9 を含む regular 列が Keyword(<原文 bytes>) として忠実に保持されることを確認する
+        let input: &[u8] = &[b'a', 0xC3, 0xA9, b'z'];
+        let mut lexer = Lexer::new(input);
+        assert_eq!(
+            lexer.read_keyword(),
+            Some(Token::Keyword(vec![b'a', 0xC3, 0xA9, b'z']))
+        );
+        assert_eq!(lexer.position(), 4);
+    }
+
+    // ---------- Phase G: next_token の合流 ----------
+
+    #[test]
+    fn next_token_returns_none_for_empty_input() {
+        // 空入力に対する next_token が None を返し pos が 0 のままであることを確認する
+        let mut lexer = Lexer::new(&[]);
+        assert_eq!(lexer.next_token(), None);
+        assert_eq!(lexer.position(), 0);
+    }
+
+    #[test]
+    fn next_token_returns_none_at_eof() {
+        // EOF 状態の next_token が None を返すことを確認する
+        let mut lexer = Lexer::new(b"a");
+        lexer.advance();
+        assert_eq!(lexer.next_token(), None);
+    }
+
+    #[test]
+    fn next_token_returns_none_for_only_whitespace() {
+        // whitespace のみの入力 `   ` で next_token が None を返し pos == 入力長まで進むことを確認する
+        let mut lexer = Lexer::new(b"   ");
+        assert_eq!(lexer.next_token(), None);
+        assert_eq!(lexer.position(), 3);
+    }
+
+    #[test]
+    fn next_token_dispatches_to_array_begin() {
+        // `[` 入力で next_token が Some(ArrayBegin) を返し pos == 1 になることを確認する
+        let mut lexer = Lexer::new(b"[");
+        assert_eq!(lexer.next_token(), Some(Token::ArrayBegin));
+        assert_eq!(lexer.position(), 1);
+    }
+
+    #[test]
+    fn next_token_dispatches_to_array_end() {
+        // `]` 入力で next_token が Some(ArrayEnd) を返し pos == 1 になることを確認する
+        let mut lexer = Lexer::new(b"]");
+        assert_eq!(lexer.next_token(), Some(Token::ArrayEnd));
+        assert_eq!(lexer.position(), 1);
+    }
+
+    #[test]
+    fn next_token_dispatches_to_dict_begin_on_double_less_than() {
+        // `<<` 入力で next_token が Some(DictBegin) を返し pos == 2 になることを確認する
+        let mut lexer = Lexer::new(b"<<");
+        assert_eq!(lexer.next_token(), Some(Token::DictBegin));
+        assert_eq!(lexer.position(), 2);
+    }
+
+    #[test]
+    fn next_token_falls_back_to_hex_string_on_single_less_than() {
+        // `<48656C6C6F>` のような 16 進文字列で next_token が Primitive(HexString(b"Hello")) を返すことを確認する
+        let mut lexer = Lexer::new(b"<48656C6C6F>");
+        assert_eq!(
+            lexer.next_token(),
+            Some(Token::Primitive(Primitive::HexString(b"Hello".to_vec())))
+        );
+        assert_eq!(lexer.position(), 12);
+    }
+
+    #[test]
+    fn next_token_falls_back_to_hex_string_on_empty_hex_string() {
+        // 空 16 進文字列 `<>` で next_token が Primitive(HexString(b"")) を返し pos == 2 になることを確認する
+        let mut lexer = Lexer::new(b"<>");
+        assert_eq!(
+            lexer.next_token(),
+            Some(Token::Primitive(Primitive::HexString(b"".to_vec())))
+        );
+        assert_eq!(lexer.position(), 2);
+    }
+
+    #[test]
+    fn next_token_dispatches_to_dict_end_on_double_greater_than() {
+        // `>>` 入力で next_token が Some(DictEnd) を返し pos == 2 になることを確認する
+        let mut lexer = Lexer::new(b">>");
+        assert_eq!(lexer.next_token(), Some(Token::DictEnd));
+        assert_eq!(lexer.position(), 2);
+    }
+
+    #[test]
+    fn next_token_dispatches_to_literal_string() {
+        // `(hello)` 入力で next_token が Primitive(LiteralString(b"hello")) を返すことを確認する
+        let mut lexer = Lexer::new(b"(hello)");
+        assert_eq!(
+            lexer.next_token(),
+            Some(Token::Primitive(Primitive::LiteralString(
+                b"hello".to_vec()
+            )))
+        );
+    }
+
+    #[test]
+    fn next_token_dispatches_to_name() {
+        // `/Type` 入力で next_token が Primitive(Name(b"Type")) を返すことを確認する
+        let mut lexer = Lexer::new(b"/Type");
+        assert_eq!(
+            lexer.next_token(),
+            Some(Token::Primitive(Primitive::Name(PdfName::new(
+                b"Type".to_vec()
+            ))))
+        );
+    }
+
+    #[test]
+    fn next_token_dispatches_to_integer_on_digit() {
+        // `123` 入力で next_token が Primitive(Integer(123)) を返すことを確認する
+        let mut lexer = Lexer::new(b"123");
+        assert_eq!(
+            lexer.next_token(),
+            Some(Token::Primitive(Primitive::Integer(123)))
+        );
+    }
+
+    #[test]
+    fn next_token_dispatches_to_real_on_dot() {
+        // `.5` 入力で next_token が Primitive(Real(0.5)) を返すことを確認する（小数部 1 桁のため f64 累積誤差なし）
+        let mut lexer = Lexer::new(b".5");
+        assert_eq!(
+            lexer.next_token(),
+            Some(Token::Primitive(Primitive::Real(0.5)))
+        );
+    }
+
+    #[test]
+    fn next_token_dispatches_to_real_on_digit_with_dot() {
+        // `1.5` 入力で digit 分岐が read_integer 失敗 → read_real 成功で Primitive(Real(1.5)) を返し pos == 3 になることを確認する
+        let mut lexer = Lexer::new(b"1.5");
+        assert_eq!(
+            lexer.next_token(),
+            Some(Token::Primitive(Primitive::Real(1.5)))
+        );
+        assert_eq!(lexer.position(), 3);
+    }
+
+    #[test]
+    fn next_token_falls_back_to_keyword_on_digit_with_non_numeric_suffix() {
+        // `123abc` 入力で digit 分岐が read_integer / read_real 失敗 → read_keyword に到達し Keyword(b"123abc") を返すことを確認する
+        let mut lexer = Lexer::new(b"123abc");
+        assert_eq!(lexer.next_token(), Some(Token::Keyword(b"123abc".to_vec())));
+        assert_eq!(lexer.position(), 6);
+    }
+
+    #[test]
+    fn next_token_dispatches_to_keyword_on_plus_letter() {
+        // `+ABC` のように read_integer / read_real が失敗する `+` 始まり連結が Keyword(b"+ABC") に吸収されることを確認する
+        let mut lexer = Lexer::new(b"+ABC");
+        assert_eq!(lexer.next_token(), Some(Token::Keyword(b"+ABC".to_vec())));
+        assert_eq!(lexer.position(), 4);
+    }
+
+    #[test]
+    fn next_token_dispatches_to_keyword_for_obj() {
+        // `obj` 入力で next_token が Some(ObjBegin) を返すことを確認する
+        let mut lexer = Lexer::new(b"obj");
+        assert_eq!(lexer.next_token(), Some(Token::ObjBegin));
+    }
+
+    #[test]
+    fn next_token_returns_comment_token() {
+        // `%PDF-1.7\n` 入力で next_token が Comment(b"PDF-1.7") を返し pos == 9（改行直後）になることを確認する
+        let mut lexer = Lexer::new(b"%PDF-1.7\n");
+        assert_eq!(
+            lexer.next_token(),
+            Some(Token::Comment(b"PDF-1.7".to_vec()))
+        );
+        assert_eq!(lexer.position(), 9);
+    }
+
+    #[test]
+    fn next_token_returns_comment_for_double_percent() {
+        // `%%EOF` 入力で next_token が Comment(b"%EOF") を返す（2 個目の `%` は本文の一部）ことを確認する
+        let mut lexer = Lexer::new(b"%%EOF");
+        assert_eq!(lexer.next_token(), Some(Token::Comment(b"%EOF".to_vec())));
+    }
+
+    #[test]
+    fn next_token_skips_leading_whitespace_then_dispatches() {
+        // ` \n\t[1` 入力で先頭の whitespace 3 バイトを消費し `[` から Some(ArrayBegin) / pos == 4 を確認する
+        let mut lexer = Lexer::new(b" \n\t[1");
+        assert_eq!(lexer.next_token(), Some(Token::ArrayBegin));
+        assert_eq!(lexer.position(), 4);
+    }
+
+    #[test]
+    fn next_token_sequence_for_empty_array_and_dict() {
+        // `<<[]>>` を 4 回呼び出すと DictBegin / ArrayBegin / ArrayEnd / DictEnd の順に返り 5 回目で None になることを確認する
+        let mut lexer = Lexer::new(b"<<[]>>");
+        assert_eq!(lexer.next_token(), Some(Token::DictBegin));
+        assert_eq!(lexer.next_token(), Some(Token::ArrayBegin));
+        assert_eq!(lexer.next_token(), Some(Token::ArrayEnd));
+        assert_eq!(lexer.next_token(), Some(Token::DictEnd));
+        assert_eq!(lexer.next_token(), None);
+    }
+
+    #[test]
+    fn next_token_returns_none_without_advancing_for_isolated_greater_than() {
+        // `>` 単独入力で next_token が None / pos == 0 を維持することを確認する（malformed 検知は parser 側に委譲）
+        let mut lexer = Lexer::new(b">");
+        assert_eq!(lexer.next_token(), None);
+        assert_eq!(lexer.position(), 0);
+    }
+
+    #[test]
+    fn next_token_returns_none_without_advancing_for_unrecognized_delimiter() {
+        // `{` のような仕様外 delimiter で next_token が None / pos == 0 を維持することを確認する
+        let mut lexer = Lexer::new(b"{");
+        assert_eq!(lexer.next_token(), None);
+        assert_eq!(lexer.position(), 0);
+    }
+
+    #[test]
+    fn next_token_returns_none_without_advancing_for_less_than_then_whitespace() {
+        // `< ` のように `<<` でも 16 進開始でもない `<` パターンで next_token が None / pos == 0 を維持することを確認する
+        let mut lexer = Lexer::new(b"< ");
+        assert_eq!(lexer.next_token(), None);
+        assert_eq!(lexer.position(), 0);
+    }
+
+    #[test]
+    fn next_token_returns_comment_then_dispatches_next_call() {
+        // `% c\n[1]` を 2 回呼ぶと 1 回目 Comment(b" c") / 2 回目 ArrayBegin が返ることを確認する
+        let mut lexer = Lexer::new(b"% c\n[1]");
+        assert_eq!(lexer.next_token(), Some(Token::Comment(b" c".to_vec())));
+        assert_eq!(lexer.next_token(), Some(Token::ArrayBegin));
     }
 }
