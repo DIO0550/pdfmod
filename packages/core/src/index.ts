@@ -71,6 +71,7 @@ export type {
   PdfErrorCode,
   PdfIndirectObject,
   PdfIndirectRef,
+  PdfInlineImageRequiredKeyMissingError,
   PdfInteger,
   PdfName,
   PdfNull,

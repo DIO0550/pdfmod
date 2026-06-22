@@ -59,7 +59,8 @@ export type PdfErrorCode =
   | "OPERATOR_OPERAND_TYPE_MISMATCH"
   | "OPERATOR_OPERAND_VALUE_OUT_OF_RANGE"
   | "OPERATOR_PATH_NO_CURRENT_POINT"
-  | "OPERATOR_ILLEGAL_STATE";
+  | "OPERATOR_ILLEGAL_STATE"
+  | "INLINE_IMAGE_REQUIRED_KEY_MISSING";
 
 /**
  * PDFパースエラーを表すインターフェース。
@@ -282,6 +283,33 @@ export interface PdfOperatorIllegalStateError {
 }
 
 /**
+ * Inline image (`BI ... ID ... EI`) dict の必須キー欠落エラー。
+ * ISO 32000-1:2008 §8.9.5 で必須とされる Width / Height / BitsPerComponent /
+ * ColorSpace のいずれかが dict 内に存在しない場合に発生する。
+ * ImageMask=true の場合（PDF §8.9.6 stencil mask）は ColorSpace は不要。
+ *
+ * @example
+ * ```ts
+ * const error: PdfInlineImageRequiredKeyMissingError = {
+ *   code: "INLINE_IMAGE_REQUIRED_KEY_MISSING",
+ *   message: "Inline image is missing required key 'Width'",
+ *   missingKey: "Width",
+ *   offset: ByteOffset.of(42),
+ * };
+ * ```
+ */
+export interface PdfInlineImageRequiredKeyMissingError {
+  /** エラーコード（常に "INLINE_IMAGE_REQUIRED_KEY_MISSING"） */
+  readonly code: "INLINE_IMAGE_REQUIRED_KEY_MISSING";
+  /** 人間可読なエラーメッセージ */
+  readonly message: string;
+  /** 欠落していた必須キー名 */
+  readonly missingKey: "Width" | "Height" | "BitsPerComponent" | "ColorSpace";
+  /** 該当 inline image token の開始バイト位置 */
+  readonly offset: ByteOffset;
+}
+
+/**
  * 全致命的PDFエラーの判別共用体型。
  * パースエラー、循環参照エラー、型不一致エラー、operator registry エラー、
  * operator オペランド不足／型不一致／値域外エラー、
@@ -309,4 +337,5 @@ export type PdfError =
   | PdfOperatorOperandTypeMismatchError
   | PdfOperatorOperandValueOutOfRangeError
   | PdfOperatorPathNoCurrentPointError
-  | PdfOperatorIllegalStateError;
+  | PdfOperatorIllegalStateError
+  | PdfInlineImageRequiredKeyMissingError;
