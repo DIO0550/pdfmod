@@ -284,9 +284,12 @@ export interface PdfOperatorIllegalStateError {
 
 /**
  * Inline image (`BI ... ID ... EI`) dict の必須キー欠落エラー。
- * ISO 32000-1:2008 §8.9.5 で必須とされる Width / Height / BitsPerComponent /
- * ColorSpace のいずれかが dict 内に存在しない場合に発生する。
- * ImageMask=true の場合（PDF §8.9.6 stencil mask）は ColorSpace は不要。
+ * ISO 32000-1:2008 §8.9.5 Table 89 で必須とされる Width / Height /
+ * BitsPerComponent / ColorSpace のいずれかが dict 内に存在しない場合に発生する。
+ * ImageMask=true（stencil mask）の場合、Table 89 に従い:
+ *   - BitsPerComponent は optional（不在時の default 値は 1）
+ *   - ColorSpace は仕様上禁止（指定してはならない）
+ * このため stencil mask 時は Width / Height のみが必須となる。
  *
  * @example
  * ```ts
