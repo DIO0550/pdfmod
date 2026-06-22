@@ -582,7 +582,7 @@ impl<'a> Lexer<'a> {
     ///    - `(`               → `read_literal_string` の戻り値を `Primitive::LiteralString` で包む
     ///    - `/`               → `read_name` の戻り値を `Primitive::Name` で包む
     ///    - `+` / `-` / digit → `read_integer` → 失敗時 `read_real` → 失敗時 `read_keyword`
-    ///    - `.`               → `read_real`
+    ///    - `.`               → `read_real` → 失敗時 `read_keyword`（`.foo` のような `.` 始まりの regular byte 連結を `Token::Keyword` で吸収するため、`+/-` / digit と対称）
     ///    - その他 regular    → `read_keyword`
     ///    - 上記以外          → `None`（pos 不変）
     ///
@@ -633,7 +633,8 @@ impl<'a> Lexer<'a> {
             b'+' | b'-' => self.dispatch_numeric_or_keyword(),
             b'.' => self
                 .read_real()
-                .map(|r| Token::Primitive(Primitive::Real(r))),
+                .map(|r| Token::Primitive(Primitive::Real(r)))
+                .or_else(|| self.read_keyword()),
             b if b.is_ascii_digit() => self.dispatch_numeric_or_keyword(),
             b if ByteKind::is_regular(b) => self.read_keyword(),
             _ => None,
@@ -3448,6 +3449,22 @@ mod tests {
             lexer.next_token(),
             Some(Token::Primitive(Primitive::Real(0.5)))
         );
+    }
+
+    #[test]
+    fn next_token_falls_back_to_keyword_on_lone_dot() {
+        // `.` 単独入力で next_token が read_real 失敗 → read_keyword フォールバックで Keyword(b".") を返すことを確認する（+/- / digit との対称性）
+        let mut lexer = Lexer::new(b".");
+        assert_eq!(lexer.next_token(), Some(Token::Keyword(b".".to_vec())));
+        assert_eq!(lexer.position(), 1);
+    }
+
+    #[test]
+    fn next_token_falls_back_to_keyword_on_dot_followed_by_alpha() {
+        // `.foo` 入力で next_token が read_real 失敗 → read_keyword フォールバックで Keyword(b".foo") を返すことを確認する
+        let mut lexer = Lexer::new(b".foo");
+        assert_eq!(lexer.next_token(), Some(Token::Keyword(b".foo".to_vec())));
+        assert_eq!(lexer.position(), 4);
     }
 
     #[test]
