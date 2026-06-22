@@ -150,10 +150,7 @@ test("エラーは PdfInlineImageRequiredKeyMissingError として narrow でき
 
   assert(!result.ok);
   const error: PdfError = result.error;
-  if (error.code === "INLINE_IMAGE_REQUIRED_KEY_MISSING") {
-    const narrowed: PdfInlineImageRequiredKeyMissingError = error;
-    expect(narrowed.missingKey).toBe("Width");
-  } else {
-    throw new Error("expected INLINE_IMAGE_REQUIRED_KEY_MISSING error code");
-  }
+  assert(error.code === "INLINE_IMAGE_REQUIRED_KEY_MISSING");
+  const narrowed: PdfInlineImageRequiredKeyMissingError = error;
+  expect(narrowed.missingKey).toBe("Width");
 });
