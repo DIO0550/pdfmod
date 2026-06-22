@@ -69,6 +69,32 @@ test("/ImageMask true + ColorSpace なしで成功する（stencil mask 例外�
   assert(result.ok);
 });
 
+test("/ImageMask true + BitsPerComponent なしで成功する", () => {
+  // ISO 32000-1:2008 §8.9.5 Table 89: stencil mask では BPC も optional (default 1)
+  const token = buildToken([
+    buildEntry("Width", integerToken(1)),
+    buildEntry("Height", integerToken(1)),
+    buildEntry("ImageMask", booleanToken(true)),
+  ]);
+
+  const result = inlineImageHandler(buildContext(), token);
+
+  assert(result.ok);
+});
+
+test("/IM true（略号）+ BitsPerComponent なし + ColorSpace なしで成功する", () => {
+  // stencil mask の最小構成: Width / Height / IM true のみで通る
+  const token = buildToken([
+    buildEntry("Width", integerToken(8)),
+    buildEntry("Height", integerToken(8)),
+    buildEntry("IM", booleanToken(true)),
+  ]);
+
+  const result = inlineImageHandler(buildContext(), token);
+
+  assert(result.ok);
+});
+
 test("/IM true（略号）+ ColorSpace なしで成功する", () => {
   // normalizer が /IM → /ImageMask に展開するため stencil mask 例外が成立
   const token = buildToken([

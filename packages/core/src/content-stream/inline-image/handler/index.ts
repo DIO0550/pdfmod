@@ -17,8 +17,12 @@ const REQUIRED_KEYS_NON_MASK = [
   "ColorSpace",
 ] as const;
 
-/** ImageMask=true 時の必須キー列（PDF §8.9.6 で ColorSpace を除く）。 */
-const REQUIRED_KEYS_MASK = ["Width", "Height", "BitsPerComponent"] as const;
+/**
+ * ImageMask=true 時の必須キー列。
+ * ISO 32000-1:2008 §8.9.5 Table 89 により、stencil mask 時は
+ * BitsPerComponent と ColorSpace の双方が optional（BPC は default 1、CS は不可）。
+ */
+const REQUIRED_KEYS_MASK = ["Width", "Height"] as const;
 
 type RequiredKey = (typeof REQUIRED_KEYS_NON_MASK)[number];
 
@@ -29,7 +33,9 @@ type RequiredKey = (typeof REQUIRED_KEYS_NON_MASK)[number];
  *   (1) `normalizeInlineImageDict(token.dict)` で略号→完全名を展開
  *   (2) ImageMask の真偽判定（`TokenBoolean` かつ `value === true`）
  *   (3) 必須キー存在検査: Width → Height → BitsPerComponent → ColorSpace
- *       （ImageMask=true 時は ColorSpace をスキップ。PDF §8.9.6 stencil mask 例外）
+ *       （ImageMask=true 時は BitsPerComponent / ColorSpace をスキップ。
+ *        ISO 32000-1:2008 §8.9.5 Table 89: stencil mask では BPC は optional
+ *        (default 1)、CS は不可）
  *
  * 重複キーの扱い:
  *   `TokenInlineImage.dict` は重複と順序を保持する `ReadonlyArray` 型である。本フェーズでは
