@@ -147,7 +147,6 @@ test.each([
 test.each([
   { input: "[ (A) 120 ] TJ", code: "NOT_IMPLEMENTED" },
   { input: "<< /K /V >> op", code: "NOT_IMPLEMENTED" },
-  { input: "BI /W 1 /H 1 ID abc EI op", code: "NOT_IMPLEMENTED" },
   { input: "] op", code: "OBJECT_PARSE_UNEXPECTED_TOKEN" },
   { input: ">> op", code: "OBJECT_PARSE_UNEXPECTED_TOKEN" },
 ])("composite tokenはstackを汚染せずErrで中断する: $input", ({

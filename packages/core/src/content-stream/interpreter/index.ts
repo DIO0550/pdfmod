@@ -10,6 +10,7 @@ import { none, some } from "../../utils/option/index";
 import type { Result } from "../../utils/result/index";
 import { err, ok } from "../../utils/result/index";
 import { GraphicsStateStack } from "../graphics-state/index";
+import { inlineImageHandler } from "../inline-image/handler/index";
 import { OperandStack } from "../operand-stack/index";
 import {
   type OperatorHandlerContext,
@@ -103,6 +104,13 @@ function executeToken(options: {
     });
   }
 
+  if (options.token.type === TokenType.InlineImage) {
+    return dispatchInlineImage({
+      token: options.token,
+      context: options.context,
+    });
+  }
+
   return pushPrimitiveOperand(options.token, options.context);
 }
 
@@ -135,6 +143,25 @@ function dispatchOperator(options: {
     return err(handled.error);
   }
 
+  return ok({ type: "continue", context: handled.value });
+}
+
+/**
+ * TokenInlineImage を inlineImageHandler に委譲する。
+ * OperatorRegistry は経由しない（token 種別レベルで直接分岐するため、
+ * 既存 operator 系の登録経路とは別経路で扱う）。
+ *
+ * @param options - inline image token と現在context
+ * @returns 次step、または検査エラー
+ */
+function dispatchInlineImage(options: {
+  readonly token: Extract<Token, { readonly type: TokenType.InlineImage }>;
+  readonly context: OperatorHandlerContext;
+}): Result<InterpreterStep, PdfError> {
+  const handled = inlineImageHandler(options.context, options.token);
+  if (!handled.ok) {
+    return err(handled.error);
+  }
   return ok({ type: "continue", context: handled.value });
 }
 
@@ -206,7 +233,6 @@ function tokenToPrimitivePdfObject(
       return ok(some({ type: "null" }));
     case TokenType.ArrayBegin:
     case TokenType.DictBegin:
-    case TokenType.InlineImage:
       return err({
         code: "NOT_IMPLEMENTED",
         message: `Composite content stream operand is not supported in Phase 3: ${token.type}`,
