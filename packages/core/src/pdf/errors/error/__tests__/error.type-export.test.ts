@@ -4,6 +4,7 @@ import type {
   PdfCircularReferenceError,
   PdfError,
   PdfErrorCode,
+  PdfInlineImageRequiredKeyMissingError,
   PdfOperatorIllegalStateError,
   PdfOperatorOperandMissingError,
   PdfOperatorOperandTypeMismatchError,
@@ -16,6 +17,7 @@ import type {
   PdfWarning,
   PdfWarningCode,
 } from "../../../../index";
+import { ByteOffset } from "../../../types/byte-offset/index";
 import { GenerationNumber } from "../../../types/generation-number/index";
 import { ObjectNumber } from "../../../types/object-number/index";
 
@@ -204,4 +206,23 @@ test("PdfOperatorIllegalStateError は PdfError union から narrow できる", 
   expect(narrowed).toBe(true);
   expect(error.code).toBe("OPERATOR_ILLEGAL_STATE");
   expect(illegalStateError.operatorName).toBe("BT");
+});
+
+test("PdfInlineImageRequiredKeyMissingError は PdfError union から narrow できる", () => {
+  const inlineImageError: PdfInlineImageRequiredKeyMissingError = {
+    code: "INLINE_IMAGE_REQUIRED_KEY_MISSING",
+    message: "Inline image is missing required key 'Width'",
+    missingKey: "Width",
+    offset: ByteOffset.of(0),
+  };
+  const error: PdfError = inlineImageError;
+
+  const narrowed: Exact<
+    Extract<PdfError, { code: "INLINE_IMAGE_REQUIRED_KEY_MISSING" }>,
+    PdfInlineImageRequiredKeyMissingError
+  > = true;
+
+  expect(narrowed).toBe(true);
+  expect(error.code).toBe("INLINE_IMAGE_REQUIRED_KEY_MISSING");
+  expect(inlineImageError.missingKey).toBe("Width");
 });
