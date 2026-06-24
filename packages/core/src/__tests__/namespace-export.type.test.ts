@@ -20,6 +20,7 @@ import {
   Option,
   PdfVersion,
   Result,
+  StringArrayEx,
 } from "../index";
 
 test("Result.okがランタイムで動作する", () => {
@@ -150,4 +151,32 @@ test("LoadOptions 型がルートから参照できる", () => {
 test("PdfDocumentLoadError 型がルートから参照できる", () => {
   const error: PdfDocumentLoadError = new RangeError("cacheCapacity");
   expect(error.message).toBe("cacheCapacity");
+});
+
+// IsExact: 型 A と B が完全一致するかをコンパイル時に判定するヘルパー。
+// 代入可能性ではなく型の完全一致を見るため、Option<string> から
+// Option<"Width" | "Height"> 等の narrower な型への変化も検出できる。
+type IsExact<A, B> =
+  (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2
+    ? (<T>() => T extends B ? 1 : 2) extends <T>() => T extends A ? 1 : 2
+      ? true
+      : false
+    : false;
+type Assert<T extends true> = T;
+
+test("StringArrayEx.firstMissingがOption<string>を返す", () => {
+  // ジェネリクス化しない（Option<string> 固定）型回帰防止。
+  // 代入可能性ではなく完全一致で検証することで、将来の誤ったジェネリクス化を
+  // コンパイル時に検出する。
+  const missing = StringArrayEx.firstMissing(
+    ["Width"] as const,
+    ["Width", "Height"] as const,
+  );
+  // 型アサーションを値に落とすことで lint で「未使用型」と検出されないようにし、
+  // 同時にコンパイル時の型一致検証とランタイム expect の両方を兼ねる。
+  const returnTypeIsExactlyOptionString: Assert<
+    IsExact<typeof missing, Option.Option<string>>
+  > = true;
+  expect(returnTypeIsExactlyOptionString).toBe(true);
+  expect(missing).toEqual(Option.some("Height"));
 });

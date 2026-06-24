@@ -1,3 +1,4 @@
+import { StringArrayEx } from "../../../ext/string-array/index";
 import type { PdfError } from "../../../pdf/errors/index";
 import type {
   TokenInlineImage,
@@ -68,12 +69,15 @@ export const inlineImageHandler = (
   const imageMask = isImageMaskTrue(normalized);
   const requiredKeys = imageMask ? REQUIRED_KEYS_MASK : REQUIRED_KEYS_NON_MASK;
 
-  const missing = findFirstMissingKey(normalized, requiredKeys);
-  if (missing !== undefined) {
+  const keys = normalized.map((e) => e.key.value);
+  const missing = StringArrayEx.firstMissing(keys, requiredKeys);
+  if (missing.some) {
+    // requiredKeys は as const 由来の RequiredKey 列なので、some に乗る値は必ず RequiredKey のいずれか
+    const missingKey = missing.value as RequiredKey;
     return err({
       code: "INLINE_IMAGE_REQUIRED_KEY_MISSING",
-      message: `Inline image is missing required key '${missing}'`,
-      missingKey: missing,
+      message: `Inline image is missing required key '${missingKey}'`,
+      missingKey,
       offset: token.offset,
     });
   }
@@ -99,20 +103,4 @@ function isImageMaskTrue(
     return false;
   }
   return first.type === TokenType.Boolean && first.value === true;
-}
-
-/**
- * 必須キー列を順に走査し、最初に欠落したキーを返す。すべて存在すれば undefined。
- */
-function findFirstMissingKey(
-  entries: ReadonlyArray<TokenInlineImageDictEntry>,
-  requiredKeys: ReadonlyArray<RequiredKey>,
-): RequiredKey | undefined {
-  for (const key of requiredKeys) {
-    const exists = entries.some((e) => e.key.value === key);
-    if (!exists) {
-      return key;
-    }
-  }
-  return undefined;
 }

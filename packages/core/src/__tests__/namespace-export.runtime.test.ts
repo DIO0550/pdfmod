@@ -27,6 +27,7 @@ import {
   parseTrailer,
   parseXRefTable,
   Result,
+  StringArrayEx,
   scanFallback,
   scanStartXRef,
   Tokenizer,
@@ -115,4 +116,12 @@ test("OperatorRegistry.registerでルート公開済みのAPIだけからoperato
     some: true,
     value: handler,
   });
+});
+
+test("StringArrayExがルートからexportされている", () => {
+  // firstMissing / containsAll / allMissing の 3 メソッドが root から
+  // 取り出せることを確認。runtime 露出の回帰防止。
+  expect(typeof StringArrayEx.firstMissing).toBe("function");
+  expect(typeof StringArrayEx.containsAll).toBe("function");
+  expect(typeof StringArrayEx.allMissing).toBe("function");
 });
