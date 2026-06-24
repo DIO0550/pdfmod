@@ -46,6 +46,7 @@ export {
   PdfTrapped,
 } from "./document/index";
 export { NumberEx } from "./ext/number/index";
+export { StringArrayEx } from "./ext/string-array/index";
 export { Tokenizer } from "./lexer/index";
 export type {
   ObjectResolver,
