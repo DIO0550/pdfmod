@@ -55,6 +55,9 @@ export const StringArrayEx = {
     keys: ReadonlyArray<string>,
     requiredKeys: ReadonlyArray<string>,
   ): ReadonlyArray<string> => {
+    // 入力は PDF dict の必須キー列など数件〜十数件規模を想定するため、
+    // Set による重複排除や keys 側のハッシュ化は行わず、includes ベースの
+    // 素直な O(n·m) ナイーブ実装を維持する。
     const missing: string[] = [];
     for (const key of requiredKeys) {
       if (!keys.includes(key) && !missing.includes(key)) {
