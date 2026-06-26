@@ -96,7 +96,7 @@ test("/IM true（略号）+ BitsPerComponent なし + ColorSpace なしで成功
 });
 
 test("/IM true（略号）+ ColorSpace なしで成功する", () => {
-  // normalizer が /IM → /ImageMask に展開するため stencil mask 例外が成立
+  // InlineImageDict.normalize が /IM → /ImageMask に展開するため stencil mask 例外が成立
   const token = buildToken([
     ...dimensions(),
     buildEntry("IM", booleanToken(true)),
