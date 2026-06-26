@@ -1,0 +1,634 @@
+use super::*;
+
+// ========================================================================
+// Phase 11-A: 早期 None（先頭バイト不適合）
+// ========================================================================
+
+#[test]
+fn read_literal_string_returns_none_for_empty_input() {
+    // 空入力で None を返し pos == 0 を維持することを確認する
+    let mut lexer = Lexer::new(&[]);
+    assert_eq!(lexer.read_literal_string(), None);
+    assert_eq!(lexer.position(), 0);
+}
+
+#[test]
+fn read_literal_string_returns_none_at_eof() {
+    // 1 バイトを advance で消費した EOF 状態で None を返し pos == 1 を維持することを確認する
+    let mut lexer = Lexer::new(b"a");
+    let _ = lexer.advance();
+    assert_eq!(lexer.read_literal_string(), None);
+    assert_eq!(lexer.position(), 1);
+}
+
+#[test]
+fn read_literal_string_returns_none_for_non_paren_leading_byte() {
+    // 先頭が非 '(' バイト 'a' の入力で None を返し pos == 0 を維持することを確認する
+    let mut lexer = Lexer::new(b"abc");
+    assert_eq!(lexer.read_literal_string(), None);
+    assert_eq!(lexer.position(), 0);
+}
+
+#[test]
+fn read_literal_string_returns_none_for_every_leading_whitespace_byte() {
+    // whitespace 6 種（NUL/TAB/LF/FF/CR/SP）を先頭に置いた全 6 組で None・pos == 0 を確認する
+    for w in [0x00u8, 0x09, 0x0A, 0x0C, 0x0D, 0x20] {
+        let input = [w];
+        let mut lexer = Lexer::new(&input);
+        assert_eq!(lexer.read_literal_string(), None, "whitespace 0x{:02X}", w);
+        assert_eq!(lexer.position(), 0, "whitespace 0x{:02X}", w);
+    }
+}
+
+#[test]
+fn read_literal_string_returns_none_for_every_non_open_paren_delimiter_byte() {
+    // delimiter 10 種から '(' を除いた 9 種で None・pos == 0 を確認する
+    for d in [b')', b'<', b'>', b'[', b']', b'{', b'}', b'/', b'%'] {
+        let input = [d];
+        let mut lexer = Lexer::new(&input);
+        assert_eq!(
+            lexer.read_literal_string(),
+            None,
+            "delimiter {:?}",
+            d as char
+        );
+        assert_eq!(lexer.position(), 0, "delimiter {:?}", d as char);
+    }
+}
+
+// ========================================================================
+// Phase 11-B: 空・単純 ASCII
+// ========================================================================
+
+#[test]
+fn read_literal_string_reads_empty_string() {
+    // b"()" で Some(b"") を返し pos == 2 で停止することを確認する
+    let mut lexer = Lexer::new(b"()");
+    assert_eq!(lexer.read_literal_string(), Some(b"".to_vec()));
+    assert_eq!(lexer.position(), 2);
+}
+
+#[test]
+fn read_literal_string_reads_simple_ascii() {
+    // b"(abc)" で Some(b"abc") を返し pos == 5 で停止することを確認する
+    let mut lexer = Lexer::new(b"(abc)");
+    assert_eq!(lexer.read_literal_string(), Some(b"abc".to_vec()));
+    assert_eq!(lexer.position(), 5);
+}
+
+#[test]
+fn read_literal_string_reads_single_byte_string() {
+    // 1 バイト文字列 b"(x)" で Some(b"x") を返し pos == 3 で停止することを確認する（桁数別の三角測量）
+    let mut lexer = Lexer::new(b"(x)");
+    assert_eq!(lexer.read_literal_string(), Some(b"x".to_vec()));
+    assert_eq!(lexer.position(), 3);
+}
+
+#[test]
+fn read_literal_string_success_at_mid_buffer_advances_correctly() {
+    // b"x(a)y" で先頭 1 バイト advance 後に呼び出すと Some(b"a")・pos == 4・後続 b'y' が見えることを確認する
+    let mut lexer = Lexer::new(b"x(a)y");
+    let _ = lexer.advance();
+    assert_eq!(lexer.read_literal_string(), Some(b"a".to_vec()));
+    assert_eq!(lexer.position(), 4);
+    assert_eq!(lexer.peek(), Some(b'y'));
+}
+
+#[test]
+fn read_literal_string_success_stops_just_after_closing_paren() {
+    // b"(a)b" で Some(b"a")・pos == 3 で停止し、閉じ ')' の直後で後続 b'b' を消費しないことを確認する
+    let mut lexer = Lexer::new(b"(a)b");
+    assert_eq!(lexer.read_literal_string(), Some(b"a".to_vec()));
+    assert_eq!(lexer.position(), 3);
+    assert_eq!(lexer.peek(), Some(b'b'));
+}
+
+// ========================================================================
+// Phase 11-C: バランスネスト
+// ========================================================================
+
+#[test]
+fn read_literal_string_reads_balanced_nest_one_level() {
+    // b"(a(b)c)" でネスト内の '(' / ')' をそのまま含み Some(b"a(b)c")・pos == 7 を返すことを確認する
+    let mut lexer = Lexer::new(b"(a(b)c)");
+    assert_eq!(lexer.read_literal_string(), Some(b"a(b)c".to_vec()));
+    assert_eq!(lexer.position(), 7);
+}
+
+#[test]
+fn read_literal_string_reads_deeply_nested_string() {
+    // 深さ 3 の b"((()))" で内側 b"(())"・pos == 6 を返すことを確認する
+    let mut lexer = Lexer::new(b"((()))");
+    assert_eq!(lexer.read_literal_string(), Some(b"(())".to_vec()));
+    assert_eq!(lexer.position(), 6);
+}
+
+#[test]
+fn read_literal_string_reads_sibling_nests() {
+    // 兄弟ネスト b"(()())" で b"()()"・pos == 6 を返すことを確認する
+    let mut lexer = Lexer::new(b"(()())");
+    assert_eq!(lexer.read_literal_string(), Some(b"()()".to_vec()));
+    assert_eq!(lexer.position(), 6);
+}
+
+// ========================================================================
+// Phase 11-D: エスケープ 8 種
+// ========================================================================
+
+#[test]
+fn read_literal_string_decodes_escape_n() {
+    // b"(\\n)" で改行 LF (0x0A) にデコードし pos == 4 を返すことを確認する
+    let mut lexer = Lexer::new(b"(\\n)");
+    assert_eq!(lexer.read_literal_string(), Some(b"\n".to_vec()));
+    assert_eq!(lexer.position(), 4);
+}
+
+#[test]
+fn read_literal_string_decodes_escape_r() {
+    // b"(\\r)" で復帰 CR (0x0D) にデコードし pos == 4 を返すことを確認する
+    let mut lexer = Lexer::new(b"(\\r)");
+    assert_eq!(lexer.read_literal_string(), Some(b"\r".to_vec()));
+    assert_eq!(lexer.position(), 4);
+}
+
+#[test]
+fn read_literal_string_decodes_escape_t() {
+    // b"(\\t)" でタブ HT (0x09) にデコードし pos == 4 を返すことを確認する
+    let mut lexer = Lexer::new(b"(\\t)");
+    assert_eq!(lexer.read_literal_string(), Some(b"\t".to_vec()));
+    assert_eq!(lexer.position(), 4);
+}
+
+#[test]
+fn read_literal_string_decodes_escape_b() {
+    // b"(\\b)" でバックスペース BS (0x08) にデコードし pos == 4 を返すことを確認する
+    let mut lexer = Lexer::new(b"(\\b)");
+    assert_eq!(lexer.read_literal_string(), Some(b"\x08".to_vec()));
+    assert_eq!(lexer.position(), 4);
+}
+
+#[test]
+fn read_literal_string_decodes_escape_f() {
+    // b"(\\f)" でフォームフィード FF (0x0C) にデコードし pos == 4 を返すことを確認する
+    let mut lexer = Lexer::new(b"(\\f)");
+    assert_eq!(lexer.read_literal_string(), Some(b"\x0C".to_vec()));
+    assert_eq!(lexer.position(), 4);
+}
+
+#[test]
+fn read_literal_string_decodes_escape_left_paren() {
+    // b"(\\()" でリテラル '(' にデコードし pos == 4 を返すことを確認する
+    let mut lexer = Lexer::new(b"(\\()");
+    assert_eq!(lexer.read_literal_string(), Some(b"(".to_vec()));
+    assert_eq!(lexer.position(), 4);
+}
+
+#[test]
+fn read_literal_string_decodes_escape_right_paren() {
+    // b"(\\))" でリテラル ')' にデコードし pos == 4 を返すことを確認する
+    let mut lexer = Lexer::new(b"(\\))");
+    assert_eq!(lexer.read_literal_string(), Some(b")".to_vec()));
+    assert_eq!(lexer.position(), 4);
+}
+
+#[test]
+fn read_literal_string_decodes_escape_backslash() {
+    // b"(\\\\)" でリテラル '\\' にデコードし pos == 4 を返すことを確認する
+    let mut lexer = Lexer::new(b"(\\\\)");
+    assert_eq!(lexer.read_literal_string(), Some(b"\\".to_vec()));
+    assert_eq!(lexer.position(), 4);
+}
+
+// ========================================================================
+// Phase 11-E: 8 進エスケープ greediness（最大 3 桁・mod 256）
+// ========================================================================
+
+#[test]
+fn read_literal_string_decodes_octal_three_digits() {
+    // b"(\\101)" で 3 桁 8 進 'A' (0x41) にデコードし pos == 6 を返すことを確認する
+    let mut lexer = Lexer::new(b"(\\101)");
+    assert_eq!(lexer.read_literal_string(), Some(b"A".to_vec()));
+    assert_eq!(lexer.position(), 6);
+}
+
+#[test]
+fn read_literal_string_decodes_octal_two_digits_followed_by_space() {
+    // b"(\\12 )" で 2 桁 8 進終端後 LF + space を保持し pos == 6 を返すことを確認する
+    let mut lexer = Lexer::new(b"(\\12 )");
+    assert_eq!(lexer.read_literal_string(), Some(b"\n ".to_vec()));
+    assert_eq!(lexer.position(), 6);
+}
+
+#[test]
+fn read_literal_string_decodes_octal_one_digit_followed_by_8() {
+    // b"(\\189)" で 1 桁 8 進 0x01 + リテラル '8' '9' を保持し pos == 6 を返すことを確認する
+    let mut lexer = Lexer::new(b"(\\189)");
+    assert_eq!(lexer.read_literal_string(), Some(b"\x0189".to_vec()));
+    assert_eq!(lexer.position(), 6);
+}
+
+#[test]
+fn read_literal_string_decodes_octal_one_digit_followed_by_paren() {
+    // b"(\\1)" で 1 桁 8 進 0x01 のみ保持し pos == 4 を返すことを確認する
+    let mut lexer = Lexer::new(b"(\\1)");
+    assert_eq!(lexer.read_literal_string(), Some(b"\x01".to_vec()));
+    assert_eq!(lexer.position(), 4);
+}
+
+#[test]
+fn read_literal_string_decodes_octal_greedy_three_digits_then_literal() {
+    // b"(\\1234)" で 3 桁 greedy → 'S' (0x53) + リテラル '4' を保持し pos == 7 を返すことを確認する
+    let mut lexer = Lexer::new(b"(\\1234)");
+    assert_eq!(lexer.read_literal_string(), Some(b"S4".to_vec()));
+    assert_eq!(lexer.position(), 7);
+}
+
+#[test]
+fn read_literal_string_decodes_octal_overflow_mod_256() {
+    // b"(\\777)" で 8 進 511 を下位 8 ビット採用で 0xFF にデコードし pos == 6 を返すことを確認する
+    let mut lexer = Lexer::new(b"(\\777)");
+    assert_eq!(lexer.read_literal_string(), Some(b"\xFF".to_vec()));
+    assert_eq!(lexer.position(), 6);
+}
+
+#[test]
+fn read_literal_string_decodes_octal_zero() {
+    // b"(\\0)" で 1 桁 8 進 0 を NUL にデコードし pos == 4 を返すことを確認する
+    let mut lexer = Lexer::new(b"(\\0)");
+    assert_eq!(lexer.read_literal_string(), Some(b"\x00".to_vec()));
+    assert_eq!(lexer.position(), 4);
+}
+
+// ========================================================================
+// Phase 11-F: 裸 EOL 正規化
+// ========================================================================
+
+#[test]
+fn read_literal_string_normalizes_bare_lf() {
+    // 裸 LF を含む b"(a\nb)" で LF をそのまま保持し pos == 5 を返すことを確認する
+    let mut lexer = Lexer::new(b"(a\nb)");
+    assert_eq!(lexer.read_literal_string(), Some(b"a\nb".to_vec()));
+    assert_eq!(lexer.position(), 5);
+}
+
+#[test]
+fn read_literal_string_normalizes_bare_cr_to_lf() {
+    // 裸 CR を含む b"(a\rb)" で CR を LF に正規化し pos == 5 を返すことを確認する
+    let mut lexer = Lexer::new(b"(a\rb)");
+    assert_eq!(lexer.read_literal_string(), Some(b"a\nb".to_vec()));
+    assert_eq!(lexer.position(), 5);
+}
+
+#[test]
+fn read_literal_string_normalizes_bare_crlf_to_lf() {
+    // 裸 CRLF を含む b"(a\r\nb)" で CRLF を 1 個の LF に正規化し pos == 6 を返すことを確認する
+    let mut lexer = Lexer::new(b"(a\r\nb)");
+    assert_eq!(lexer.read_literal_string(), Some(b"a\nb".to_vec()));
+    assert_eq!(lexer.position(), 6);
+}
+
+// ========================================================================
+// Phase 11-G: 行継続（行末 \ + EOL）
+// ========================================================================
+
+#[test]
+fn read_literal_string_handles_line_continuation_lf() {
+    // b"(a\\\nb)" で \\ + LF が行継続として出力に追加されず pos == 6 を返すことを確認する
+    let mut lexer = Lexer::new(b"(a\\\nb)");
+    assert_eq!(lexer.read_literal_string(), Some(b"ab".to_vec()));
+    assert_eq!(lexer.position(), 6);
+}
+
+#[test]
+fn read_literal_string_handles_line_continuation_cr() {
+    // b"(a\\\rb)" で \\ + CR が行継続として出力に追加されず pos == 6 を返すことを確認する
+    let mut lexer = Lexer::new(b"(a\\\rb)");
+    assert_eq!(lexer.read_literal_string(), Some(b"ab".to_vec()));
+    assert_eq!(lexer.position(), 6);
+}
+
+#[test]
+fn read_literal_string_handles_line_continuation_crlf() {
+    // b"(a\\\r\nb)" で \\ + CRLF が行継続として出力に追加されず pos == 7 を返すことを確認する
+    let mut lexer = Lexer::new(b"(a\\\r\nb)");
+    assert_eq!(lexer.read_literal_string(), Some(b"ab".to_vec()));
+    assert_eq!(lexer.position(), 7);
+}
+
+// ========================================================================
+// Phase 11-H: 未知エスケープ（バックスラッシュ捨て）
+// ========================================================================
+
+#[test]
+fn read_literal_string_unknown_escape_drops_backslash() {
+    // b"(\\x)" で未知エスケープがバックスラッシュ捨て + 'x' 保持となり pos == 4 を返すことを確認する
+    let mut lexer = Lexer::new(b"(\\x)");
+    assert_eq!(lexer.read_literal_string(), Some(b"x".to_vec()));
+    assert_eq!(lexer.position(), 4);
+}
+
+#[test]
+fn read_literal_string_unknown_escape_with_exclamation() {
+    // b"(\\!)" で未知エスケープ '!' をそのまま保持し pos == 4 を返すことを確認する
+    let mut lexer = Lexer::new(b"(\\!)");
+    assert_eq!(lexer.read_literal_string(), Some(b"!".to_vec()));
+    assert_eq!(lexer.position(), 4);
+}
+
+#[test]
+fn read_literal_string_unknown_escape_with_uppercase_letter() {
+    // b"(\\A)" で 8 進数字外の 'A' を未知エスケープ扱いで保持し pos == 4 を返すことを確認する
+    let mut lexer = Lexer::new(b"(\\A)");
+    assert_eq!(lexer.read_literal_string(), Some(b"A".to_vec()));
+    assert_eq!(lexer.position(), 4);
+}
+
+// ========================================================================
+// Phase 11-I: 未終端 / 巻き戻し（異常系）
+// ========================================================================
+
+#[test]
+fn read_literal_string_returns_none_for_unterminated_string() {
+    // 閉じ ')' のない b"(abc" で None を返し pos == 0 に完全巻き戻しすることを確認する
+    let mut lexer = Lexer::new(b"(abc");
+    assert_eq!(lexer.read_literal_string(), None);
+    assert_eq!(lexer.position(), 0);
+}
+
+#[test]
+fn read_literal_string_returns_none_for_unterminated_nested() {
+    // ネスト未閉鎖 b"(a(b" で None を返し pos == 0 に完全巻き戻しすることを確認する
+    let mut lexer = Lexer::new(b"(a(b");
+    assert_eq!(lexer.read_literal_string(), None);
+    assert_eq!(lexer.position(), 0);
+}
+
+#[test]
+fn read_literal_string_returns_none_for_lone_open_paren() {
+    // 単独 '(' で None を返し pos == 0 に完全巻き戻しすることを確認する
+    let mut lexer = Lexer::new(b"(");
+    assert_eq!(lexer.read_literal_string(), None);
+    assert_eq!(lexer.position(), 0);
+}
+
+#[test]
+fn read_literal_string_returns_none_for_bare_backslash_at_eof() {
+    // b"(\\" の \\ 直後 EOF で次反復が本体で EOF を検出して None・pos == 0 に巻き戻しすることを確認する
+    let mut lexer = Lexer::new(b"(\\");
+    assert_eq!(lexer.read_literal_string(), None);
+    assert_eq!(lexer.position(), 0);
+}
+
+#[test]
+fn read_literal_string_returns_none_for_line_continuation_then_eof() {
+    // b"(a\\\n" で行継続後すぐ EOF となり None・pos == 0 に巻き戻しすることを確認する
+    let mut lexer = Lexer::new(b"(a\\\n");
+    assert_eq!(lexer.read_literal_string(), None);
+    assert_eq!(lexer.position(), 0);
+}
+
+#[test]
+fn read_literal_string_returns_none_for_line_continuation_crlf_then_eof() {
+    // b"(a\\\r\n" で CRLF 行継続後すぐ EOF となり None・pos == 0 に巻き戻しすることを確認する
+    let mut lexer = Lexer::new(b"(a\\\r\n");
+    assert_eq!(lexer.read_literal_string(), None);
+    assert_eq!(lexer.position(), 0);
+}
+
+#[test]
+fn read_literal_string_returns_none_for_unknown_escape_then_eof() {
+    // b"(\\x" で未知エスケープ後すぐ EOF となり None・pos == 0 に巻き戻しすることを確認する
+    let mut lexer = Lexer::new(b"(\\x");
+    assert_eq!(lexer.read_literal_string(), None);
+    assert_eq!(lexer.position(), 0);
+}
+
+#[test]
+fn read_literal_string_failure_at_mid_buffer_rolls_back_to_call_site() {
+    // b"xabc" で advance 後 pos == 1 から呼び None・pos == 1 に完全巻き戻しすることを確認する
+    let mut lexer = Lexer::new(b"xabc");
+    let _ = lexer.advance();
+    assert_eq!(lexer.read_literal_string(), None);
+    assert_eq!(lexer.position(), 1);
+}
+
+#[test]
+fn read_literal_string_unterminated_at_mid_buffer_rolls_back_to_call_site() {
+    // b"x(abc" で advance 後 pos == 1 から呼び未終端で None・pos == 1 に完全巻き戻しすることを確認する
+    let mut lexer = Lexer::new(b"x(abc");
+    let _ = lexer.advance();
+    assert_eq!(lexer.read_literal_string(), None);
+    assert_eq!(lexer.position(), 1);
+}
+
+// ========================================================================
+// Phase 11-J: 非 ASCII / NUL / 高位バイト保持
+// ========================================================================
+
+#[test]
+fn read_literal_string_preserves_nul_byte() {
+    // b"(\x00)" で NUL バイトをそのまま保持し pos == 3 を返すことを確認する
+    let mut lexer = Lexer::new(b"(\x00)");
+    assert_eq!(lexer.read_literal_string(), Some(b"\x00".to_vec()));
+    assert_eq!(lexer.position(), 3);
+}
+
+#[test]
+fn read_literal_string_preserves_high_byte() {
+    // b"(\xFF)" で 0xFF バイトをそのまま保持し pos == 3 を返すことを確認する
+    let mut lexer = Lexer::new(b"(\xFF)");
+    assert_eq!(lexer.read_literal_string(), Some(b"\xFF".to_vec()));
+    assert_eq!(lexer.position(), 3);
+}
+
+#[test]
+fn read_literal_string_preserves_non_utf8_sequence() {
+    // b"(\x80\xC0)" で非 UTF-8 連続バイト列をそのまま保持し pos == 4 を返すことを確認する
+    let mut lexer = Lexer::new(b"(\x80\xC0)");
+    assert_eq!(lexer.read_literal_string(), Some(b"\x80\xC0".to_vec()));
+    assert_eq!(lexer.position(), 4);
+}
+
+// ========================================================================
+// decode_escape 純関数の単体テスト
+// ========================================================================
+
+#[test]
+fn decode_escape_decodes_simple_n() {
+    // input=b"\\n" pos=0 で decode_escape が (Some(0x0A), 2) を返すことを確認する
+    let input = b"\\n";
+    assert_eq!(decode_escape(input, 0), Some((Some(0x0A), 2)));
+}
+
+#[test]
+fn decode_escape_decodes_simple_backslash() {
+    // input=b"\\\\" pos=0 で decode_escape が (Some(b'\\'), 2) を返すことを確認する
+    let input = b"\\\\";
+    assert_eq!(decode_escape(input, 0), Some((Some(b'\\'), 2)));
+}
+
+#[test]
+fn decode_escape_decodes_octal_three_digits() {
+    // input=b"\\101" pos=0 で decode_escape が (Some(0x41), 4) を返すことを確認する
+    let input = b"\\101";
+    assert_eq!(decode_escape(input, 0), Some((Some(0x41), 4)));
+}
+
+#[test]
+fn decode_escape_decodes_octal_two_digits_terminated_by_non_octal() {
+    // input=b"\\12x" pos=0 で 2 桁で打ち止めとなり (Some(0x0A), 3) を返すことを確認する
+    let input = b"\\12x";
+    assert_eq!(decode_escape(input, 0), Some((Some(0x0A), 3)));
+}
+
+#[test]
+fn decode_escape_decodes_octal_overflow_mod_256() {
+    // input=b"\\777" pos=0 で 8 進 511 を下位 8 ビット採用で (Some(0xFF), 4) を返すことを確認する
+    let input = b"\\777";
+    assert_eq!(decode_escape(input, 0), Some((Some(0xFF), 4)));
+}
+
+#[test]
+fn decode_escape_returns_skip_for_line_continuation_lf() {
+    // input=b"\\\n" pos=0 で行継続 LF が (None, 2) を返すことを確認する
+    let input = b"\\\n";
+    assert_eq!(decode_escape(input, 0), Some((None, 2)));
+}
+
+#[test]
+fn decode_escape_returns_skip_for_line_continuation_crlf() {
+    // input=b"\\\r\n" pos=0 で行継続 CRLF が (None, 3) を返すことを確認する
+    let input = b"\\\r\n";
+    assert_eq!(decode_escape(input, 0), Some((None, 3)));
+}
+
+#[test]
+fn decode_escape_returns_skip_for_line_continuation_cr() {
+    // input=b"\\\r" pos=0 で行継続 CR が (None, 2) を返すことを確認する
+    let input = b"\\\r";
+    assert_eq!(decode_escape(input, 0), Some((None, 2)));
+}
+
+#[test]
+fn decode_escape_returns_skip_for_eof_after_backslash() {
+    // input=b"\\" pos=0 で \\ 直後 EOF が (None, 1) を返すことを確認する
+    let input = b"\\";
+    assert_eq!(decode_escape(input, 0), Some((None, 1)));
+}
+
+#[test]
+fn decode_escape_decodes_unknown_to_literal() {
+    // input=b"\\x" pos=0 で未知エスケープが (Some(b'x'), 2) を返すことを確認する
+    let input = b"\\x";
+    assert_eq!(decode_escape(input, 0), Some((Some(b'x'), 2)));
+}
+
+// decode_escape 簡易エスケープ 8 種網羅（n / \\ は既出）
+
+#[test]
+fn decode_escape_decodes_simple_r() {
+    // input=b"\\r" pos=0 で decode_escape が (Some(0x0D), 2) を返すことを確認する
+    let input = b"\\r";
+    assert_eq!(decode_escape(input, 0), Some((Some(0x0D), 2)));
+}
+
+#[test]
+fn decode_escape_decodes_simple_t() {
+    // input=b"\\t" pos=0 で decode_escape が (Some(0x09), 2) を返すことを確認する
+    let input = b"\\t";
+    assert_eq!(decode_escape(input, 0), Some((Some(0x09), 2)));
+}
+
+#[test]
+fn decode_escape_decodes_simple_b() {
+    // input=b"\\b" pos=0 で decode_escape が (Some(0x08), 2) を返すことを確認する
+    let input = b"\\b";
+    assert_eq!(decode_escape(input, 0), Some((Some(0x08), 2)));
+}
+
+#[test]
+fn decode_escape_decodes_simple_f() {
+    // input=b"\\f" pos=0 で decode_escape が (Some(0x0C), 2) を返すことを確認する
+    let input = b"\\f";
+    assert_eq!(decode_escape(input, 0), Some((Some(0x0C), 2)));
+}
+
+#[test]
+fn decode_escape_decodes_simple_left_paren() {
+    // input=b"\\(" pos=0 で decode_escape が (Some(b'('), 2) を返すことを確認する
+    let input = b"\\(";
+    assert_eq!(decode_escape(input, 0), Some((Some(b'('), 2)));
+}
+
+#[test]
+fn decode_escape_decodes_simple_right_paren() {
+    // input=b"\\)" pos=0 で decode_escape が (Some(b')'), 2) を返すことを確認する
+    let input = b"\\)";
+    assert_eq!(decode_escape(input, 0), Some((Some(b')'), 2)));
+}
+
+// ========================================================================
+// decode_octal 内部ヘルパの直接単体テスト
+// ========================================================================
+
+#[test]
+fn decode_octal_one_digit_zero() {
+    // input=b"0" digits_start=0 で 1 桁 8 進 0 が (Some(0x00), 2) を返すことを確認する
+    let input = b"0";
+    assert_eq!(decode_octal(input, 0), Some((Some(0x00), 2)));
+}
+
+#[test]
+fn decode_octal_one_digit_seven() {
+    // input=b"7" digits_start=0 で 1 桁 8 進 7 が (Some(0x07), 2) を返すことを確認する
+    let input = b"7";
+    assert_eq!(decode_octal(input, 0), Some((Some(0x07), 2)));
+}
+
+#[test]
+fn decode_octal_three_digits_max() {
+    // input=b"377" digits_start=0 で 3 桁 8 進 255 が (Some(0xFF), 4) を返すことを確認する
+    let input = b"377";
+    assert_eq!(decode_octal(input, 0), Some((Some(0xFF), 4)));
+}
+
+#[test]
+fn decode_octal_three_digits_400_wraps_to_zero() {
+    // input=b"400" digits_start=0 で 3 桁 8 進 256 が下位 8 ビット採用で (Some(0x00), 4) を返すことを確認する
+    let input = b"400";
+    assert_eq!(decode_octal(input, 0), Some((Some(0x00), 4)));
+}
+
+#[test]
+fn decode_octal_three_digits_zero() {
+    // input=b"000" digits_start=0 で 3 桁全 0 が (Some(0x00), 4) を返し digits == 3 で greedy 打ち止めを確認する
+    let input = b"000";
+    assert_eq!(decode_octal(input, 0), Some((Some(0x00), 4)));
+}
+
+#[test]
+fn decode_octal_terminated_by_non_octal_after_one_digit() {
+    // input=b"1x" digits_start=0 で 1 桁で打ち止めとなり (Some(0x01), 2) を返すことを確認する
+    let input = b"1x";
+    assert_eq!(decode_octal(input, 0), Some((Some(0x01), 2)));
+}
+
+// ========================================================================
+// read_literal_string 8 進境界値テスト追加
+// ========================================================================
+
+#[test]
+fn read_literal_string_decodes_octal_400_wraps_to_zero() {
+    // b"(\\400)" で 8 進 256 を下位 8 ビット採用で 0x00 にデコードし pos == 6 を返すことを確認する
+    let mut lexer = Lexer::new(b"(\\400)");
+    assert_eq!(lexer.read_literal_string(), Some(b"\x00".to_vec()));
+    assert_eq!(lexer.position(), 6);
+}
+
+#[test]
+fn read_literal_string_decodes_octal_000_three_digit_zero() {
+    // b"(\\000)" で 3 桁全 0 を NUL にデコードし pos == 6 を返し greedy が 3 桁で打ち止めとなることを確認する
+    let mut lexer = Lexer::new(b"(\\000)");
+    assert_eq!(lexer.read_literal_string(), Some(b"\x00".to_vec()));
+    assert_eq!(lexer.position(), 6);
+}
