@@ -64,7 +64,7 @@ test("完全名のみで揃った dict を受理する", () => {
 });
 
 test("略号のみで揃った dict を受理する（W / H / BPC / CS）", () => {
-  // PDF §8.9.5.1 Table 89 の略号も normalizer が完全名へ展開して通る
+  // PDF §8.9.5.1 Table 89 の略号も InlineImageDict.normalize が完全名へ展開して通る
   const token = buildInlineImageToken([
     buildEntry("W", integerToken(1)),
     buildEntry("H", integerToken(1)),
@@ -80,7 +80,7 @@ test("略号のみで揃った dict を受理する（W / H / BPC / CS）", () =
 });
 
 test("混在パターン A: Width のみ完全名で受理する", () => {
-  // 先頭キー Width が完全名、残りは略号でも normalizer 展開で通る
+  // 先頭キー Width が完全名、残りは略号でも InlineImageDict.normalize 展開で通る
   const token = buildInlineImageToken([
     buildEntry("Width", integerToken(1)),
     buildEntry("H", integerToken(1)),
