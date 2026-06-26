@@ -5,7 +5,7 @@ import {
   type TokenInlineImageDictEntry,
   TokenType,
 } from "../../../../pdf/index";
-import { normalizeInlineImageDict } from "../index";
+import { InlineImageDict } from "../index";
 
 const makeEntry = (
   abbrev: string,
@@ -33,7 +33,7 @@ test.each<[string, string]>([
 ])("略号 /%s は完全名 /%s へ展開される", (abbrev, fullName) => {
   const entry = makeEntry(abbrev);
 
-  const result = normalizeInlineImageDict([entry]);
+  const result = InlineImageDict.normalize([entry]);
 
   expect(result[0]?.key.value).toBe(fullName);
 });
@@ -41,7 +41,7 @@ test.each<[string, string]>([
 test("展開後の TokenName.offset は略号 entry の元 offset を保持する", () => {
   const entry = makeEntry("W", 42);
 
-  const result = normalizeInlineImageDict([entry]);
+  const result = InlineImageDict.normalize([entry]);
 
   expect(result[0]?.key.offset).toBe(ByteOffset.of(42));
 });
@@ -52,7 +52,7 @@ test("展開後の entry.value は元 entry の value 参照と同一", () => {
   ];
   const entry = makeEntry("W", 0, value);
 
-  const result = normalizeInlineImageDict([entry]);
+  const result = InlineImageDict.normalize([entry]);
 
   expect(result[0]?.value).toBe(value);
 });
@@ -60,7 +60,7 @@ test("展開後の entry.value は元 entry の value 参照と同一", () => {
 test("展開後の key.type は Name のまま", () => {
   const entry = makeEntry("W");
 
-  const result = normalizeInlineImageDict([entry]);
+  const result = InlineImageDict.normalize([entry]);
 
   expect(result[0]?.key.type).toBe(TokenType.Name);
 });
@@ -71,7 +71,7 @@ test("スコープ境界: /CS の値配列に Name `RGB` があっても key の
   ];
   const entry = makeEntry("CS", 0, value);
 
-  const result = normalizeInlineImageDict([entry]);
+  const result = InlineImageDict.normalize([entry]);
 
   expect(result[0]?.key.value).toBe("ColorSpace");
   expect(result[0]?.value).toBe(value);
@@ -88,7 +88,7 @@ test("スコープ境界: /F の値配列に Name `Fl` があっても key の�
   ];
   const entry = makeEntry("F", 0, value);
 
-  const result = normalizeInlineImageDict([entry]);
+  const result = InlineImageDict.normalize([entry]);
 
   expect(result[0]?.key.value).toBe("Filter");
   expect(result[0]?.value).toBe(value);

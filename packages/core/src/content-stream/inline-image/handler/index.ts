@@ -8,7 +8,7 @@ import { TokenType } from "../../../pdf/index";
 import type { Result } from "../../../utils/result/index";
 import { err, ok } from "../../../utils/result/index";
 import type { OperatorHandlerContext } from "../../operator-registry/index";
-import { normalizeInlineImageDict } from "../normalizer/index";
+import { InlineImageDict } from "../inline-image-dict/index";
 
 /** ImageMask=false 時の必須キー列（検査順）。 */
 const REQUIRED_KEYS_NON_MASK = [
@@ -34,7 +34,7 @@ type RequiredKey = (typeof REQUIRED_KEYS_NON_MASK)[number];
  * PDF §8.9 InlineImage (`BI ... ID ... EI`) のハンドラ骨格。
  *
  * 検査順序（厳守）:
- *   (1) `normalizeInlineImageDict(token.dict)` で略号→完全名を展開
+ *   (1) `InlineImageDict.normalize(token.dict)` で略号→完全名を展開
  *   (2) ImageMask の真偽判定（`TokenBoolean` かつ `value === true`）
  *   (3) 必須キー存在検査: Width → Height → BitsPerComponent → ColorSpace
  *       ImageMask=true（stencil mask）の場合、ISO 32000-1:2008 §8.9.5 Table 89 に従い:
@@ -65,7 +65,7 @@ export const inlineImageHandler = (
   context: OperatorHandlerContext,
   token: TokenInlineImage,
 ): Result<OperatorHandlerContext, PdfError> => {
-  const normalized = normalizeInlineImageDict(token.dict);
+  const normalized = InlineImageDict.normalize(token.dict);
   const imageMask = isImageMaskTrue(normalized);
   const requiredKeys = imageMask ? REQUIRED_KEYS_MASK : REQUIRED_KEYS_NON_MASK;
 
