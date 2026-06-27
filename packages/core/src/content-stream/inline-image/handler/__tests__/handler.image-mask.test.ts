@@ -1,4 +1,4 @@
-import { assert, test } from "vitest";
+import { assert, expect, test } from "vitest";
 import type {
   Token,
   TokenInlineImage,
@@ -58,7 +58,8 @@ test("/ImageMask true + ColorSpace なしで成功する（stencil mask 例外�
 });
 
 test("/ImageMask false + ColorSpace なしで ColorSpace 欠落の err を返す（通常画像経路）", () => {
-  // imageMask=false に倒れて 4 必須キー集合に戻ることを統合経路で pin down
+  // imageMask=false に倒れて 4 必須キー集合に戻ることを統合経路で pin down。
+  // missingKey も明示的に検査し、handler の欠落キー判定が ColorSpace に倒れることをリグレッション検出可能にする。
   const token = buildToken([
     buildEntry("Width", integerToken(1)),
     buildEntry("Height", integerToken(1)),
@@ -70,6 +71,7 @@ test("/ImageMask false + ColorSpace なしで ColorSpace 欠落の err を返す
 
   assert(!result.ok);
   assert(result.error.code === "INLINE_IMAGE_REQUIRED_KEY_MISSING");
+  expect(result.error.missingKey).toBe("ColorSpace");
 });
 
 test("/IM true + /W /H の略号 dict で stencil mask 例外が成立する（略号→normalize→isImageMaskTrue→findMissingRequiredKey の完全鎖）", () => {
