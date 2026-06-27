@@ -164,19 +164,20 @@ type IsExact<A, B> =
     : false;
 type Assert<T extends true> = T;
 
-test("StringArrayEx.firstMissingがOption<string>を返す", () => {
-  // ジェネリクス化しない（Option<string> 固定）型回帰防止。
-  // 代入可能性ではなく完全一致で検証することで、将来の誤ったジェネリクス化を
-  // コンパイル時に検出する。
+test("StringArrayEx.firstMissingがrequiredKeysの要素型にnarrowされたOption<K>を返す", () => {
+  // firstMissing は <K extends string> でジェネリック化されており、
+  // requiredKeys の要素型 K に narrow された Option<K> を返す。
+  // 呼び出し側がリテラル union を持つ as const 配列を渡せば cast 依存なしで
+  // narrow された missing キーが得られる（handler 側の二重ロック型整合に利用）。
   const missing = StringArrayEx.firstMissing(
     ["Width"] as const,
     ["Width", "Height"] as const,
   );
   // 型アサーションを値に落とすことで lint で「未使用型」と検出されないようにし、
   // 同時にコンパイル時の型一致検証とランタイム expect の両方を兼ねる。
-  const returnTypeIsExactlyOptionString: Assert<
-    IsExact<typeof missing, Option.Option<string>>
+  const returnTypeIsExactlyOptionNarrowed: Assert<
+    IsExact<typeof missing, Option.Option<"Width" | "Height">>
   > = true;
-  expect(returnTypeIsExactlyOptionString).toBe(true);
+  expect(returnTypeIsExactlyOptionNarrowed).toBe(true);
   expect(missing).toEqual(Option.some("Height"));
 });
