@@ -1,9 +1,9 @@
 //! PDF オブジェクトのパース層。
 //!
 //! lexer が返す [`Token`](crate::lexer::token::Token) を ISO 32000-1 §7.3 の
-//! スカラオブジェクトに意味付けして [`PdfObject`] に変換する。本モジュールは
+//! オブジェクトに意味付けして [`PdfObject`] に変換する。本モジュールは
 //! スカラ 7 種（Null / Boolean / Integer / Real / LiteralString / HexString /
-//! Name）のみを扱い、配列・辞書・stream・間接参照は対象外。
+//! Name）と配列（要素はスカラまたは配列）を扱い、辞書・stream・間接参照は対象外。
 //!
 //! `LiteralString` と `HexString` は出自情報を落として `PdfObject::String` に統合する
 //! （所有ムーブのため clone は発生しない）。`Token::Comment` は透過的にスキップする。
@@ -44,20 +44,60 @@ impl<'a> Parser<'a> {
         ByteOffset::new(self.lexer.position() as u64)
     }
 
-    /// 次のスカラオブジェクトを 1 つ読み取る。
+    /// 次のオブジェクトを 1 つ読み取る。
     ///
-    /// [`Token::Comment`] は透過的にスキップする。スカラでないトークン
-    /// （配列・辞書開始/終了・`obj`/`endobj`/`stream`/`endstream`・キーワード）が
-    /// 来た場合は [`ParseErrorKind::UnexpectedToken`](error::ParseErrorKind::UnexpectedToken)、
+    /// スカラ 7 種に加え [`Token::ArrayBegin`] を検出した場合は配列パスに分岐し
+    /// [`PdfObject::Array`] を構築する。[`Token::Comment`] は透過的にスキップする。
+    /// 辞書開始/終了・`obj`/`endobj`/`stream`/`endstream`・キーワード等の対象外
+    /// トークンが来た場合は [`ParseErrorKind::UnexpectedToken`](error::ParseErrorKind::UnexpectedToken)、
     /// 入力が尽きていれば [`ParseErrorKind::UnexpectedEof`](error::ParseErrorKind::UnexpectedEof)、
     /// lexer が malformed を検知して `None` を返した場合は
     /// [`ParseErrorKind::LexerError`](error::ParseErrorKind::LexerError) を返す。
     pub fn parse_object(&mut self) -> Result<PdfObject, ParseError> {
         loop {
+            self.lexer.skip_whitespace();
             let pos_before = self.lexer.position();
             match self.lexer.next_token() {
                 Some(Token::Comment(_)) => continue,
                 Some(Token::Primitive(p)) => return Ok(Self::primitive_to_object(p)),
+                Some(Token::ArrayBegin) => return self.parse_array_body(),
+                Some(other) => {
+                    return Err(ParseError::unexpected_token_at(
+                        ByteOffset::new(pos_before as u64),
+                        Self::token_kind_label(&other),
+                    ));
+                }
+                None => {
+                    let pos = ByteOffset::new(self.lexer.position() as u64);
+                    if self.lexer.is_eof() {
+                        return Err(ParseError::unexpected_eof_at(pos));
+                    }
+                    return Err(ParseError::lexer_error_at(pos));
+                }
+            }
+        }
+    }
+
+    /// `[` を消費済の状態から配列ボディをパースし [`PdfObject::Array`] を返す
+    /// （ISO 32000-1 §7.3.6）。要素間 [`Token::Comment`] は透過スキップ、
+    /// [`Token::Primitive`] は所有ムーブで [`PdfObject`] に変換して `items` に
+    /// push、[`Token::ArrayBegin`] はネストとして自身を再帰呼び出しする。
+    /// [`Token::ArrayEnd`] でループを脱出する。対象外トークンは
+    /// [`ParseErrorKind::UnexpectedToken`](error::ParseErrorKind::UnexpectedToken)、
+    /// `]` 不在で入力が尽きた場合は
+    /// [`ParseErrorKind::UnexpectedEof`](error::ParseErrorKind::UnexpectedEof)、
+    /// lexer が malformed を検知して `None` を返した場合は
+    /// [`ParseErrorKind::LexerError`](error::ParseErrorKind::LexerError) を fail-fast で返す。
+    fn parse_array_body(&mut self) -> Result<PdfObject, ParseError> {
+        let mut items: Vec<PdfObject> = Vec::new();
+        loop {
+            self.lexer.skip_whitespace();
+            let pos_before = self.lexer.position();
+            match self.lexer.next_token() {
+                Some(Token::Comment(_)) => continue,
+                Some(Token::ArrayEnd) => return Ok(PdfObject::Array(items)),
+                Some(Token::Primitive(p)) => items.push(Self::primitive_to_object(p)),
+                Some(Token::ArrayBegin) => items.push(self.parse_array_body()?),
                 Some(other) => {
                     return Err(ParseError::unexpected_token_at(
                         ByteOffset::new(pos_before as u64),
@@ -108,6 +148,9 @@ impl<'a> Parser<'a> {
         }
     }
 }
+
+#[cfg(test)]
+mod array_tests;
 
 #[cfg(test)]
 mod tests {
@@ -345,16 +388,11 @@ mod tests {
     // ---------- 異常系: UnexpectedToken ----------
 
     #[test]
-    fn parse_object_returns_unexpected_token_for_array_begin() {
-        // 入力 b"[" で UnexpectedToken { actual_kind: "ArrayBegin" } を返すことを確認する
+    fn parse_object_returns_unexpected_eof_for_unclosed_array_begin() {
+        // 入力 b"[" で配列パスに入った結果 `]` 不在 EOF として UnexpectedEof を返すことを確認する
         let mut p = parser(b"[");
-        let err = p.parse_object().expect_err("array begin must error");
-        assert_eq!(
-            err.kind,
-            ParseErrorKind::UnexpectedToken {
-                actual_kind: "ArrayBegin"
-            }
-        );
+        let err = p.parse_object().expect_err("unclosed array must error");
+        assert_eq!(err.kind, ParseErrorKind::UnexpectedEof);
     }
 
     #[test]
