@@ -385,8 +385,6 @@ mod tests {
         assert_eq!(err.kind, ParseErrorKind::UnexpectedEof);
     }
 
-    // ---------- 異常系: UnexpectedToken ----------
-
     #[test]
     fn parse_object_returns_unexpected_eof_for_unclosed_array_begin() {
         // 入力 b"[" で配列パスに入った結果 `]` 不在 EOF として UnexpectedEof を返すことを確認する
@@ -394,6 +392,8 @@ mod tests {
         let err = p.parse_object().expect_err("unclosed array must error");
         assert_eq!(err.kind, ParseErrorKind::UnexpectedEof);
     }
+
+    // ---------- 異常系: UnexpectedToken ----------
 
     #[test]
     fn parse_object_returns_unexpected_token_for_array_end() {
