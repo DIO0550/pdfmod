@@ -146,16 +146,22 @@ const expandValueArray = (
   value: ReadonlyArray<Token>,
   table: Partial<Record<string, string>>,
 ): ReadonlyArray<Token> => {
-  let mutated = false;
-  const next: Token[] = [];
-  for (const original of value) {
+  let next: Token[] | undefined;
+  for (let i = 0; i < value.length; i++) {
+    const original = value[i] as Token;
     const replaced = expandIfAbbrevName(original, table);
-    if (replaced !== original) {
-      mutated = true;
+    if (replaced === original) {
+      if (next !== undefined) {
+        next.push(original);
+      }
+      continue;
+    }
+    if (next === undefined) {
+      next = value.slice(0, i);
     }
     next.push(replaced);
   }
-  return mutated ? next : value;
+  return next ?? value;
 };
 
 /**
