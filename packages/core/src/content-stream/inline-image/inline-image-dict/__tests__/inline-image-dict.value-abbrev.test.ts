@@ -84,7 +84,7 @@ test.each<[string, string]>([
   ["CCF", "CCITTFaxDecode"],
   ["DCT", "DCTDecode"],
 ])("Filter 略号 /%s は完全名 /%s に展開される", (abbrev, fullName) => {
-  // PDF §8.9.5.1 Table 89 の Filter 値側略号 7 種を network 1 ケースずつ展開
+  // PDF §8.9.5.1 Table 89 の Filter 値側略号 7 種をそれぞれ 1 ケースずつ展開
   const dict = [makeEntry("Filter", [nameToken(abbrev)])];
 
   const result = InlineImageDict.expandValueAbbrevs(dict);
