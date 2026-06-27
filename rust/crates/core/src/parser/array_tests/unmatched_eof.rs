@@ -61,16 +61,14 @@ fn parse_object_returns_unexpected_eof_for_nested_close_then_eof() {
 }
 
 #[test]
-fn parse_object_handles_comment_without_eol_then_eof() {
-    // 入力 b"[1 %comment" でコメントが EOL なしで EOF に到達する場合、lexer 挙動に応じて UnexpectedEof または LexerError のいずれかになることを確認する
+fn parse_object_returns_unexpected_eof_for_comment_without_eol_then_eof() {
+    // 入力 b"[1 %comment" でコメントが EOL なしで EOF に到達する場合、Lexer::skip_comment が EOF without EOL を本文として返すため Token::Comment が透過スキップされ、次の next_token で UnexpectedEof, position=11 が確定的に返ることを確認する
     let mut p = parser(b"[1 %comment");
     let err = p
         .parse_object()
         .expect_err("comment without eol then eof must error");
-    assert!(matches!(
-        err.kind,
-        ParseErrorKind::UnexpectedEof | ParseErrorKind::LexerError
-    ));
+    assert_eq!(err.kind, ParseErrorKind::UnexpectedEof);
+    assert_eq!(err.position, ByteOffset::new(11));
 }
 
 #[test]
