@@ -1,12 +1,6 @@
-import {
-  decodeHexString,
-  decodeLiteralString,
-} from "../../objects/object-parser/string-decoder/index";
 import type { PdfWarning } from "../../pdf/errors/warning/index";
-import type { PdfError, PdfObject, Token } from "../../pdf/index";
+import type { PdfError, Token, TokenArrayBegin } from "../../pdf/index";
 import { TokenType } from "../../pdf/index";
-import type { Option } from "../../utils/option/index";
-import { none, some } from "../../utils/option/index";
 import type { Result } from "../../utils/result/index";
 import { err, ok } from "../../utils/result/index";
 import { GraphicsStateStack } from "../graphics-state/index";
@@ -16,7 +10,9 @@ import {
   type OperatorHandlerContext,
   OperatorRegistry,
 } from "../operator-registry/index";
+import { toPrimitivePdfValue } from "../primitive-operand-converter/index";
 import { ContentStreamTokenizer } from "../tokenizer/index";
+import { readArrayOperand } from "./composite-operand/index";
 
 export type ContentStreamInterpreterExecuteOptions = {
   readonly data: Uint8Array;
@@ -59,6 +55,7 @@ export const ContentStreamInterpreter = {
 
       const step = executeToken({
         token: tokenResult.value,
+        tokenizer,
         registry: options.registry,
         context,
         warnings,
@@ -80,13 +77,21 @@ export const ContentStreamInterpreter = {
 } as const;
 
 /**
- * 1 token を分類し、EOF / operator dispatch / operand push のいずれかを実行する。
+ * 1 token を分類して以下のいずれかを実行する:
+ * EOF（完了）/ operator dispatch / inline image dispatch / array reader dispatch /
+ * 辞書開きの NOT_IMPLEMENTED / 複合 delimiter (`]` `>>`) の UNEXPECTED_TOKEN /
+ * primitive operand の push。
  *
- * @param options - 実行対象token、現在context、warnings バッファ
- * @returns 次step、または処理エラー
+ * @param options.token - 実行対象 token
+ * @param options.tokenizer - 配列リテラル `[ ... ]` の読み取りに使う tokenizer（reader へ委譲）
+ * @param options.registry - operator handler 登録簿
+ * @param options.context - 現在 context
+ * @param options.warnings - 警告蓄積バッファ
+ * @returns 次 step、または処理エラー
  */
 function executeToken(options: {
   readonly token: Token;
+  readonly tokenizer: ContentStreamTokenizer;
   readonly registry: OperatorRegistry;
   readonly context: OperatorHandlerContext;
   readonly warnings: PdfWarning[];
@@ -108,6 +113,33 @@ function executeToken(options: {
     return dispatchInlineImage({
       token: options.token,
       context: options.context,
+    });
+  }
+
+  if (options.token.type === TokenType.ArrayBegin) {
+    return dispatchArrayOperand({
+      tokenizer: options.tokenizer,
+      openToken: options.token,
+      context: options.context,
+    });
+  }
+
+  if (options.token.type === TokenType.DictBegin) {
+    return err({
+      code: "NOT_IMPLEMENTED",
+      message: `Composite dictionary operand is not supported`,
+      offset: options.token.offset,
+    });
+  }
+
+  if (
+    options.token.type === TokenType.ArrayEnd ||
+    options.token.type === TokenType.DictEnd
+  ) {
+    return err({
+      code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
+      message: `Unexpected composite delimiter: ${options.token.type}`,
+      offset: options.token.offset,
     });
   }
 
@@ -166,6 +198,25 @@ function dispatchInlineImage(options: {
 }
 
 /**
+ * 配列リテラル `[ ... ]` を reader に委譲して PdfArray を operand stack へ積む。
+ *
+ * @param options - tokenizer・開きトークン・現在 context
+ * @returns 次 step、または reader エラー
+ */
+function dispatchArrayOperand(options: {
+  readonly tokenizer: ContentStreamTokenizer;
+  readonly openToken: TokenArrayBegin;
+  readonly context: OperatorHandlerContext;
+}): Result<InterpreterStep, PdfError> {
+  const array = readArrayOperand(options.tokenizer, options.openToken);
+  if (!array.ok) {
+    return err(array.error);
+  }
+  OperandStack.push(options.context.operandStack, array.value);
+  return ok({ type: "continue", context: options.context });
+}
+
+/**
  * primitive token をPdfObjectへ変換してoperand stackへ積む。
  *
  * @param token - operand候補token
@@ -176,7 +227,7 @@ function pushPrimitiveOperand(
   token: Token,
   context: OperatorHandlerContext,
 ): Result<InterpreterStep, PdfError> {
-  const objectResult = tokenToPrimitivePdfObject(token);
+  const objectResult = toPrimitivePdfValue(token);
   if (!objectResult.ok) {
     return err(objectResult.error);
   }
@@ -205,141 +256,4 @@ function createInitialContext(
     operandStack: OperandStack.create(),
     graphicsStateStack: GraphicsStateStack.create(),
   };
-}
-
-/**
- * content stream の primitive token をPdfObjectへ変換する。
- *
- * @param token - 変換対象token
- * @returns 変換したPdfObject、変換対象外tokenのNone、または変換エラー
- */
-function tokenToPrimitivePdfObject(
-  token: Token,
-): Result<Option<PdfObject>, PdfError> {
-  switch (token.type) {
-    case TokenType.Boolean:
-      return ok(some({ type: "boolean", value: token.value }));
-    case TokenType.Integer:
-      return integerToPdfObject(token);
-    case TokenType.Real:
-      return realToPdfObject(token);
-    case TokenType.LiteralString:
-      return literalStringToPdfObject(token);
-    case TokenType.HexString:
-      return hexStringToPdfObject(token);
-    case TokenType.Name:
-      return ok(some({ type: "name", value: token.value }));
-    case TokenType.Null:
-      return ok(some({ type: "null" }));
-    case TokenType.ArrayBegin:
-    case TokenType.DictBegin:
-      return err({
-        code: "NOT_IMPLEMENTED",
-        message: `Composite content stream operand is not supported in Phase 3: ${token.type}`,
-        offset: token.offset,
-      });
-    case TokenType.ArrayEnd:
-    case TokenType.DictEnd:
-      return err({
-        code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
-        message: `Unexpected composite delimiter in content stream: ${token.type}`,
-        offset: token.offset,
-      });
-    default:
-      return ok(none);
-  }
-}
-
-/**
- * integer token をPdfIntegerへ変換する。
- *
- * @param token - integer token
- * @returns 変換したPdfInteger、またはNaN tokenエラー
- */
-function integerToPdfObject(
-  token: Extract<Token, { readonly type: TokenType.Integer }>,
-): Result<Option<PdfObject>, PdfError> {
-  if (Number.isNaN(token.value)) {
-    return err({
-      code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
-      message: `NaN integer token at offset ${token.offset}`,
-      offset: token.offset,
-    });
-  }
-
-  return ok(some({ type: "integer", value: token.value }));
-}
-
-/**
- * real token をPdfRealへ変換する。
- *
- * @param token - real token
- * @returns 変換したPdfReal、またはNaN tokenエラー
- */
-function realToPdfObject(
-  token: Extract<Token, { readonly type: TokenType.Real }>,
-): Result<Option<PdfObject>, PdfError> {
-  if (Number.isNaN(token.value)) {
-    return err({
-      code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
-      message: `NaN real token at offset ${token.offset}`,
-      offset: token.offset,
-    });
-  }
-
-  return ok(some({ type: "real", value: token.value }));
-}
-
-/**
- * literal string token をPdfStringへ変換する。
- *
- * @param token - literal string token
- * @returns 変換したPdfString、またはdecodeエラー
- */
-function literalStringToPdfObject(
-  token: Extract<Token, { readonly type: TokenType.LiteralString }>,
-): Result<Option<PdfObject>, PdfError> {
-  const decoded = decodeLiteralString(token.value);
-  if (!decoded.ok) {
-    return err({
-      code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
-      message: decoded.error,
-      offset: token.offset,
-    });
-  }
-
-  return ok(
-    some({
-      type: "string",
-      value: decoded.value,
-      encoding: "literal",
-    }),
-  );
-}
-
-/**
- * hex string token をPdfStringへ変換する。
- *
- * @param token - hex string token
- * @returns 変換したPdfString、またはdecodeエラー
- */
-function hexStringToPdfObject(
-  token: Extract<Token, { readonly type: TokenType.HexString }>,
-): Result<Option<PdfObject>, PdfError> {
-  const decoded = decodeHexString(token.value);
-  if (!decoded.ok) {
-    return err({
-      code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
-      message: decoded.error,
-      offset: token.offset,
-    });
-  }
-
-  return ok(
-    some({
-      type: "string",
-      value: decoded.value,
-      encoding: "hex",
-    }),
-  );
 }
