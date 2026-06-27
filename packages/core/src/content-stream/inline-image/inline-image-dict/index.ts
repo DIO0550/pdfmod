@@ -1,3 +1,4 @@
+import { StringArrayEx } from "../../../ext/string-array/index";
 import type {
   Token,
   TokenInlineImageDictEntry,
@@ -5,7 +6,6 @@ import type {
 } from "../../../pdf/index";
 import { TokenType } from "../../../pdf/index";
 import type { Option } from "../../../utils/option/index";
-import { none, some } from "../../../utils/option/index";
 
 /**
  * PDF §8.9.5.1 で定義される **インラインイメージ辞書** の正規化前/後の値域。
@@ -251,13 +251,10 @@ export const InlineImageDict = {
     const required: ReadonlyArray<InlineImageRequiredKey> = imageMask
       ? REQUIRED_KEYS_MASK
       : REQUIRED_KEYS_NON_MASK;
-    const present = new Set(dict.map((entry) => entry.key.value));
-    for (const key of required) {
-      if (!present.has(key)) {
-        return some(key);
-      }
-    }
-    return none;
+    return StringArrayEx.firstMissing(
+      dict.map((entry) => entry.key.value),
+      required,
+    );
   },
 
   /**
