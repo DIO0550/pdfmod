@@ -63,7 +63,7 @@ test.each<[string, string]>([
   ["CMYK", "DeviceCMYK"],
   ["I", "Indexed"],
 ])("ColorSpace 略号 /%s は完全名 /%s に展開される", (abbrev, fullName) => {
-  // PDF §8.9.5.1 Table 89 の ColorSpace 値側略号 4 種を network 1 ケースずつ展開
+  // PDF §8.9.5.1 Table 89 の ColorSpace 値側略号 4 種をそれぞれ 1 ケースずつ展開
   const dict = [makeEntry("ColorSpace", [nameToken(abbrev)])];
 
   const result = InlineImageDict.expandValueAbbrevs(dict);
