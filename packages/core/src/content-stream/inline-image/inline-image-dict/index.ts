@@ -263,6 +263,10 @@ export const InlineImageDict = {
   /**
    * 値側略号（PDF §8.9.5.1 Table 89）を完全名に展開した新 dict を返す純関数。
    *
+   * **前提条件**: 入力 dict は `normalize` を経由した **完全名キー** であること。
+   * 略号キーのまま（例: `/CS` / `/F`）渡された場合は key scope 判定に match せず value 側略号は展開されない。
+   * 呼び出し側は `expandValueAbbrevs(normalize(rawDict))` の順に必ず連鎖させること。
+   *
    * **key scoped**: `/ColorSpace` または `/Filter` entry の value 配列内 Name token のみが対象。
    * 他キー（`/Width` / `/Decode` / `/Interpolate` 等）の value は走査せず entry を同一参照で素通す。
    *
