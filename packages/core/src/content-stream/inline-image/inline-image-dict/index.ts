@@ -245,9 +245,9 @@ export const InlineImageDict = {
     const required: ReadonlyArray<InlineImageRequiredKey> = imageMask
       ? REQUIRED_KEYS_MASK
       : REQUIRED_KEYS_NON_MASK;
-    const present = dict.map((entry) => entry.key.value);
+    const present = new Set(dict.map((entry) => entry.key.value));
     for (const key of required) {
-      if (!present.includes(key)) {
+      if (!present.has(key)) {
         return some(key);
       }
     }
