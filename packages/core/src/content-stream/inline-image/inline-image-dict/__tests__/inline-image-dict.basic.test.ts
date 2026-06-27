@@ -65,7 +65,7 @@ test("展開後の key.type は Name のまま", () => {
   expect(result[0]?.key.type).toBe(TokenType.Name);
 });
 
-test("スコープ境界: /CS の値配列に Name `RGB` があっても key のみ ColorSpace に展開され value は加工されない", () => {
+test("スコープ境界: normalize は /CS key のみ ColorSpace に展開し value は加工しない（値側展開は expandValueAbbrevs の責務）", () => {
   const value: ReadonlyArray<Token> = [
     { type: TokenType.Name, value: "RGB", offset: ByteOffset.of(3) },
   ];
@@ -82,7 +82,7 @@ test("スコープ境界: /CS の値配列に Name `RGB` があっても key の
   });
 });
 
-test("スコープ境界: /F の値配列に Name `Fl` があっても key のみ Filter に展開され value は加工されない", () => {
+test("スコープ境界: normalize は /F key のみ Filter に展開し value は加工しない（値側展開は expandValueAbbrevs の責務）", () => {
   const value: ReadonlyArray<Token> = [
     { type: TokenType.Name, value: "Fl", offset: ByteOffset.of(4) },
   ];

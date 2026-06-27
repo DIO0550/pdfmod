@@ -7,14 +7,18 @@ export const StringArrayEx = {
    * 必須キー列を順に走査し、入力に存在しない最初のキーを返す。
    * 全て存在すれば none を返す。
    *
+   * 戻り値型は `requiredKeys` の要素型 `K` に narrow される（`K extends string`）。
+   * 呼び出し側がリテラル union を持つ `as const` 由来の配列を渡せば、`Option<K>` として
+   * narrow された値が返るため cast 依存を排除できる。
+   *
    * @param keys - 検査対象のキー名集合（重複可、順序は意味を持たない）
    * @param requiredKeys - 必須キー名の列（走査順に意味あり）
    * @returns 欠落キーがあれば some(欠落キー名)、全て揃っていれば none
    */
-  firstMissing: (
+  firstMissing: <K extends string>(
     keys: ReadonlyArray<string>,
-    requiredKeys: ReadonlyArray<string>,
-  ): Option<string> => {
+    requiredKeys: ReadonlyArray<K>,
+  ): Option<K> => {
     for (const key of requiredKeys) {
       if (!keys.includes(key)) {
         return some(key);

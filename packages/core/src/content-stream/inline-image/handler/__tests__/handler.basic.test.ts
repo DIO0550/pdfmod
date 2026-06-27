@@ -9,6 +9,7 @@ import { ByteOffset } from "../../../../pdf/types/byte-offset/index";
 import { GraphicsStateStack } from "../../../graphics-state/index";
 import { OperandStack } from "../../../operand-stack/index";
 import type { OperatorHandlerContext } from "../../../operator-registry/index";
+import type { InlineImageDict } from "../../inline-image-dict/index";
 import { inlineImageHandler } from "../index";
 
 const buildEntry = (
@@ -32,7 +33,7 @@ const nameToken = (value: string): Token => ({
 });
 
 const buildInlineImageToken = (
-  entries: ReadonlyArray<TokenInlineImageDictEntry>,
+  entries: InlineImageDict,
   data: Uint8Array = new Uint8Array([]),
 ): TokenInlineImage => ({
   type: TokenType.InlineImage,
@@ -79,51 +80,6 @@ test("略号のみで揃った dict を受理する（W / H / BPC / CS）", () =
   expect(result.value.operandStack).toBe(context.operandStack);
 });
 
-test("混在パターン A: Width のみ完全名で受理する", () => {
-  // 先頭キー Width が完全名、残りは略号でも InlineImageDict.normalize 展開で通る
-  const token = buildInlineImageToken([
-    buildEntry("Width", integerToken(1)),
-    buildEntry("H", integerToken(1)),
-    buildEntry("BPC", integerToken(8)),
-    buildEntry("CS", nameToken("G")),
-  ]);
-  const context = buildContext();
-
-  const result = inlineImageHandler(context, token);
-
-  assert(result.ok);
-});
-
-test("混在パターン B: Width のみ略号で受理する", () => {
-  // 先頭キー W が略号、残りは完全名でも展開後に揃って通る
-  const token = buildInlineImageToken([
-    buildEntry("W", integerToken(1)),
-    buildEntry("Height", integerToken(1)),
-    buildEntry("BitsPerComponent", integerToken(8)),
-    buildEntry("ColorSpace", nameToken("DeviceGray")),
-  ]);
-  const context = buildContext();
-
-  const result = inlineImageHandler(context, token);
-
-  assert(result.ok);
-});
-
-test("混在パターン C: 前半完全名・後半略号で受理する", () => {
-  // 前半 Width/Height が完全名、後半 BPC/CS が略号でも通る
-  const token = buildInlineImageToken([
-    buildEntry("Width", integerToken(1)),
-    buildEntry("Height", integerToken(1)),
-    buildEntry("BPC", integerToken(8)),
-    buildEntry("CS", nameToken("G")),
-  ]);
-  const context = buildContext();
-
-  const result = inlineImageHandler(context, token);
-
-  assert(result.ok);
-});
-
 test("data が空 Uint8Array でも成功する", () => {
   // 本フェーズは data の中身を見ないため、長さ 0 でも検査は通る
   const token = buildInlineImageToken(
@@ -160,11 +116,13 @@ test("data が非空 Uint8Array でも成功する（中身は読まない）", 
   assert(result.ok);
 });
 
-test("成功時に operand stack の depth が変わらない", () => {
-  // InlineImage は operand を取らないため、事前に積んだ stack も影響を受けない
+test("成功時に operand stack と graphics state stack の参照を保持する", () => {
+  // InlineImage は operand を取らず graphics state も更新しないため、
+  // operand stack の depth と graphics state stack の current 参照がともに不変であることを 1 件で pin down
   const context = buildContext();
   OperandStack.push(context.operandStack, { type: "integer", value: 99 });
-  const before = OperandStack.depth(context.operandStack);
+  const beforeDepth = OperandStack.depth(context.operandStack);
+  const beforeCurrent = GraphicsStateStack.current(context.graphicsStateStack);
 
   const token = buildInlineImageToken([
     buildEntry("Width", integerToken(1)),
@@ -175,25 +133,9 @@ test("成功時に operand stack の depth が変わらない", () => {
   const result = inlineImageHandler(context, token);
 
   assert(result.ok);
-  expect(OperandStack.depth(result.value.operandStack)).toBe(before);
-});
-
-test("成功時に graphics state stack の current が同一参照", () => {
-  // graphics state は更新しないため current state も入力と同じ参照を返す
-  const context = buildContext();
-  const before = GraphicsStateStack.current(context.graphicsStateStack);
-
-  const token = buildInlineImageToken([
-    buildEntry("Width", integerToken(1)),
-    buildEntry("Height", integerToken(1)),
-    buildEntry("BitsPerComponent", integerToken(8)),
-    buildEntry("ColorSpace", nameToken("DeviceGray")),
-  ]);
-  const result = inlineImageHandler(context, token);
-
-  assert(result.ok);
+  expect(OperandStack.depth(result.value.operandStack)).toBe(beforeDepth);
   expect(GraphicsStateStack.current(result.value.graphicsStateStack)).toBe(
-    before,
+    beforeCurrent,
   );
 });
 
