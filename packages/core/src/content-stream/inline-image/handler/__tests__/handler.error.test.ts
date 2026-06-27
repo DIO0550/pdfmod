@@ -13,6 +13,7 @@ import { ByteOffset } from "../../../../pdf/types/byte-offset/index";
 import { GraphicsStateStack } from "../../../graphics-state/index";
 import { OperandStack } from "../../../operand-stack/index";
 import type { OperatorHandlerContext } from "../../../operator-registry/index";
+import type { InlineImageDict } from "../../inline-image-dict/index";
 import { inlineImageHandler } from "../index";
 
 const TOKEN_OFFSET = ByteOffset.of(42);
@@ -37,9 +38,7 @@ const nameToken = (value: string): Token => ({
   offset: ByteOffset.of(0),
 });
 
-const buildToken = (
-  entries: ReadonlyArray<TokenInlineImageDictEntry>,
-): TokenInlineImage => ({
+const buildToken = (entries: InlineImageDict): TokenInlineImage => ({
   type: TokenType.InlineImage,
   dict: entries,
   data: new Uint8Array([]),
@@ -51,36 +50,11 @@ const buildContext = (): OperatorHandlerContext => ({
   graphicsStateStack: GraphicsStateStack.create(),
 });
 
-const fullEntries = (): TokenInlineImageDictEntry[] => [
-  buildEntry("Width", integerToken(1)),
-  buildEntry("Height", integerToken(1)),
-  buildEntry("BitsPerComponent", integerToken(8)),
-  buildEntry("ColorSpace", nameToken("DeviceGray")),
-];
-
-test.each<["Width" | "Height" | "BitsPerComponent" | "ColorSpace"]>([
-  ["Width"],
-  ["Height"],
-  ["BitsPerComponent"],
-  ["ColorSpace"],
-])("%s 欠落で INLINE_IMAGE_REQUIRED_KEY_MISSING を返す", (missingKey) => {
-  // 必須キー 4 種それぞれの単独欠落で対応する missingKey を持つ err が返る
-  const entries = fullEntries().filter((e) => e.key.value !== missingKey);
-  const token = buildToken(entries);
-
-  const result = inlineImageHandler(buildContext(), token);
-
-  assert(!result.ok);
-  expect(result.error.code).toBe("INLINE_IMAGE_REQUIRED_KEY_MISSING");
-  assert(result.error.code === "INLINE_IMAGE_REQUIRED_KEY_MISSING");
-  expect(result.error.missingKey).toBe(missingKey);
-  expect(result.error.offset).toBe(TOKEN_OFFSET);
-  expect(result.error.message).toContain(`'${missingKey}'`);
-});
-
-test("Width と Height の両方が欠落のとき最初に発見された Width を返す", () => {
-  // 検査順序は Width → Height → BitsPerComponent → ColorSpace。Width が先に検出される
+test("Width 欠落で err.code/missingKey/offset/message を載せる（err 生成と offset 伝搬の統合）", () => {
+  // 必須キー欠落バリエーションの網羅は dict 側 required-keys.test.ts に移植済み。
+  // ここでは handler 統合経路で err 生成・offset 伝搬・message 整形が動くことを 1 件 pin down する。
   const token = buildToken([
+    buildEntry("Height", integerToken(1)),
     buildEntry("BitsPerComponent", integerToken(8)),
     buildEntry("ColorSpace", nameToken("DeviceGray")),
   ]);
@@ -90,52 +64,8 @@ test("Width と Height の両方が欠落のとき最初に発見された Width
   assert(!result.ok);
   assert(result.error.code === "INLINE_IMAGE_REQUIRED_KEY_MISSING");
   expect(result.error.missingKey).toBe("Width");
-});
-
-test("Height のみ欠落で Height を返す", () => {
-  // 検査順序の 2 番目で初めて欠落するケース
-  const token = buildToken([
-    buildEntry("Width", integerToken(1)),
-    buildEntry("BitsPerComponent", integerToken(8)),
-    buildEntry("ColorSpace", nameToken("DeviceGray")),
-  ]);
-
-  const result = inlineImageHandler(buildContext(), token);
-
-  assert(!result.ok);
-  assert(result.error.code === "INLINE_IMAGE_REQUIRED_KEY_MISSING");
-  expect(result.error.missingKey).toBe("Height");
-});
-
-test("BitsPerComponent のみ欠落で BitsPerComponent を返す", () => {
-  // 検査順序の 3 番目で初めて欠落するケース
-  const token = buildToken([
-    buildEntry("Width", integerToken(1)),
-    buildEntry("Height", integerToken(1)),
-    buildEntry("ColorSpace", nameToken("DeviceGray")),
-  ]);
-
-  const result = inlineImageHandler(buildContext(), token);
-
-  assert(!result.ok);
-  assert(result.error.code === "INLINE_IMAGE_REQUIRED_KEY_MISSING");
-  expect(result.error.missingKey).toBe("BitsPerComponent");
-});
-
-test("エラーの offset は token.offset と一致する", () => {
-  // offset 伝搬: handler は token の開始位置をそのまま err に載せる
-  const token = buildToken([
-    buildEntry("Height", integerToken(1)),
-    buildEntry("BitsPerComponent", integerToken(8)),
-    buildEntry("ColorSpace", nameToken("DeviceGray")),
-  ]);
-
-  const result = inlineImageHandler(buildContext(), token);
-
-  assert(!result.ok);
-  expect(result.error.code).toBe("INLINE_IMAGE_REQUIRED_KEY_MISSING");
-  assert(result.error.code === "INLINE_IMAGE_REQUIRED_KEY_MISSING");
   expect(result.error.offset).toBe(TOKEN_OFFSET);
+  expect(result.error.message).toContain("'Width'");
 });
 
 test("エラーは PdfInlineImageRequiredKeyMissingError として narrow できる", () => {
