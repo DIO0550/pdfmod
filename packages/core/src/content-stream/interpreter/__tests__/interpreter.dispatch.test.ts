@@ -145,7 +145,6 @@ test.each([
 });
 
 test.each([
-  { input: "[ (A) 120 ] TJ", code: "NOT_IMPLEMENTED" },
   { input: "<< /K /V >> op", code: "NOT_IMPLEMENTED" },
   { input: "] op", code: "OBJECT_PARSE_UNEXPECTED_TOKEN" },
   { input: ">> op", code: "OBJECT_PARSE_UNEXPECTED_TOKEN" },
@@ -170,6 +169,85 @@ test.each([
 
   assert(!result.ok);
   expect(result.error.code).toBe(code);
+  expect(called).toBe(false);
+});
+
+// 配列リテラルが reader 経由で PdfArray として handler に渡る完走テスト
+test("`[ (A) 120 ]` operand を含む handler が PdfArray を pop できる", () => {
+  const observed: PdfObject[][] = [];
+  const registry = registerOperator(
+    OperatorRegistry.create(),
+    "capture",
+    (context) => {
+      observed.push(popAll(context.operandStack));
+      return ok(context);
+    },
+  );
+
+  const result = ContentStreamInterpreter.execute({
+    data: encode("[ (A) 120 ] capture"),
+    registry,
+  });
+
+  assert(result.ok);
+  expect(observed).toEqual([
+    [
+      {
+        type: "array",
+        elements: [
+          {
+            type: "string",
+            value: new Uint8Array([0x41]),
+            encoding: "literal",
+          },
+          { type: "integer", value: 120 },
+        ],
+      },
+    ],
+  ]);
+});
+
+// 未終端配列では handler が呼ばれず operand stack に副作用も残らない
+test("`[1 2` を実行すると OBJECT_PARSE_UNTERMINATED で Err となり handler が呼ばれない", () => {
+  let called = false;
+  const registry = registerOperator(
+    OperatorRegistry.create(),
+    "capture",
+    (context) => {
+      called = true;
+      return ok(context);
+    },
+  );
+
+  const result = ContentStreamInterpreter.execute({
+    data: encode("[1 2"),
+    registry,
+  });
+
+  assert(!result.ok);
+  expect(result.error.code).toBe("OBJECT_PARSE_UNTERMINATED");
+  expect(called).toBe(false);
+});
+
+// reader が完走した後に余剰 `]` が来ると interpreter ループが UNEXPECTED_TOKEN を返す
+test("`[1] ] capture` で reader 完走後の余剰 `]` が OBJECT_PARSE_UNEXPECTED_TOKEN を返し handler 未実行", () => {
+  let called = false;
+  const registry = registerOperator(
+    OperatorRegistry.create(),
+    "capture",
+    (context) => {
+      called = true;
+      return ok(context);
+    },
+  );
+
+  const result = ContentStreamInterpreter.execute({
+    data: encode("[1] ] capture"),
+    registry,
+  });
+
+  assert(!result.ok);
+  expect(result.error.code).toBe("OBJECT_PARSE_UNEXPECTED_TOKEN");
   expect(called).toBe(false);
 });
 
