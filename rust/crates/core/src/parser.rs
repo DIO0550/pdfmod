@@ -3,16 +3,21 @@
 //! lexer が返す [`Token`](crate::lexer::token::Token) を ISO 32000-1 §7.3 の
 //! オブジェクトに意味付けして [`PdfObject`] に変換する。本モジュールは
 //! スカラ 7 種（Null / Boolean / Integer / Real / LiteralString / HexString /
-//! Name）と配列（要素はスカラまたは配列）を扱い、辞書・stream・間接参照は対象外。
+//! Name）・配列（ISO §7.3.6）・辞書（ISO §7.3.7、`PdfDictionary` を内包）を扱い、
+//! 配列/辞書は要素/値に配列・辞書を含むネストを再帰的にサポートする。stream・
+//! 間接参照は対象外。
 //!
 //! `LiteralString` と `HexString` は出自情報を落として `PdfObject::String` に統合する
 //! （所有ムーブのため clone は発生しない）。`Token::Comment` は透過的にスキップする。
+//! 辞書のキーは `Primitive::Name` のみ受理、値が `Null` のエントリは ISO §7.3.7 準拠で
+//! `PdfDictionary` に登録しない（重複キーで既存値がある場合は削除する）。
 
 pub mod error;
 
 use crate::byte_offset::ByteOffset;
 use crate::lexer::token::{Primitive, Token};
 use crate::lexer::Lexer;
+use crate::object::dictionary::PdfDictionary;
 use crate::object::pdf_object::PdfObject;
 use crate::parser::error::ParseError;
 
@@ -47,9 +52,10 @@ impl<'a> Parser<'a> {
     /// 次のオブジェクトを 1 つ読み取る。
     ///
     /// スカラ 7 種に加え [`Token::ArrayBegin`] を検出した場合は配列パスに分岐し
-    /// [`PdfObject::Array`] を構築する。[`Token::Comment`] は透過的にスキップする。
-    /// 辞書開始/終了・`obj`/`endobj`/`stream`/`endstream`・キーワード等の対象外
-    /// トークンが来た場合は [`ParseErrorKind::UnexpectedToken`](error::ParseErrorKind::UnexpectedToken)、
+    /// [`PdfObject::Array`] を、[`Token::DictBegin`] を検出した場合は辞書パスに分岐し
+    /// [`PdfObject::Dictionary`] を構築する。[`Token::Comment`] は透過的にスキップする。
+    /// `obj`/`endobj`/`stream`/`endstream`・キーワード等の対象外トークンが来た場合は
+    /// [`ParseErrorKind::UnexpectedToken`](error::ParseErrorKind::UnexpectedToken)、
     /// 入力が尽きていれば [`ParseErrorKind::UnexpectedEof`](error::ParseErrorKind::UnexpectedEof)、
     /// lexer が malformed を検知して `None` を返した場合は
     /// [`ParseErrorKind::LexerError`](error::ParseErrorKind::LexerError) を返す。
@@ -61,6 +67,7 @@ impl<'a> Parser<'a> {
                 Some(Token::Comment(_)) => continue,
                 Some(Token::Primitive(p)) => return Ok(Self::primitive_to_object(p)),
                 Some(Token::ArrayBegin) => return self.parse_array_body(),
+                Some(Token::DictBegin) => return self.parse_dictionary_body(),
                 Some(other) => {
                     return Err(ParseError::unexpected_token_at(
                         ByteOffset::new(pos_before as u64),
@@ -81,8 +88,9 @@ impl<'a> Parser<'a> {
     /// `[` を消費済の状態から配列ボディをパースし [`PdfObject::Array`] を返す
     /// （ISO 32000-1 §7.3.6）。要素間 [`Token::Comment`] は透過スキップ、
     /// [`Token::Primitive`] は所有ムーブで [`PdfObject`] に変換して `items` に
-    /// push、[`Token::ArrayBegin`] はネストとして自身を再帰呼び出しする。
-    /// [`Token::ArrayEnd`] でループを脱出する。対象外トークンは
+    /// push、[`Token::ArrayBegin`] はネストとして自身を再帰呼び出しし、
+    /// [`Token::DictBegin`] は辞書要素として [`Self::parse_dictionary_body`] を
+    /// 再帰呼び出しする。[`Token::ArrayEnd`] でループを脱出する。対象外トークンは
     /// [`ParseErrorKind::UnexpectedToken`](error::ParseErrorKind::UnexpectedToken)、
     /// `]` 不在で入力が尽きた場合は
     /// [`ParseErrorKind::UnexpectedEof`](error::ParseErrorKind::UnexpectedEof)、
@@ -98,6 +106,56 @@ impl<'a> Parser<'a> {
                 Some(Token::ArrayEnd) => return Ok(PdfObject::Array(items)),
                 Some(Token::Primitive(p)) => items.push(Self::primitive_to_object(p)),
                 Some(Token::ArrayBegin) => items.push(self.parse_array_body()?),
+                Some(Token::DictBegin) => items.push(self.parse_dictionary_body()?),
+                Some(other) => {
+                    return Err(ParseError::unexpected_token_at(
+                        ByteOffset::new(pos_before as u64),
+                        Self::token_kind_label(&other),
+                    ));
+                }
+                None => {
+                    let pos = ByteOffset::new(self.lexer.position() as u64);
+                    if self.lexer.is_eof() {
+                        return Err(ParseError::unexpected_eof_at(pos));
+                    }
+                    return Err(ParseError::lexer_error_at(pos));
+                }
+            }
+        }
+    }
+
+    /// `<<` を消費済の状態から辞書ボディをパースし [`PdfObject::Dictionary`] を返す
+    /// （ISO 32000-1 §7.3.7）。エントリ間 [`Token::Comment`] は透過スキップ、
+    /// キーは [`Primitive::Name`] のみ受理して所有ムーブで [`PdfName`] として保持し、
+    /// 値は [`Self::parse_object`] の再帰呼び出しで取得する。
+    /// 値が [`PdfObject::Null`] の場合は ISO §7.3.7 に従い [`PdfDictionary::remove`]
+    /// で既存エントリを削除し未登録状態に正規化する。それ以外は
+    /// [`PdfDictionary::insert`] で登録し、重複キーは `BTreeMap` の自動上書きで
+    /// 「最後の値を採用」となる。[`Token::DictEnd`] でループを脱出する。
+    /// キー位置に Name 以外のトークンが来た場合は
+    /// [`ParseErrorKind::UnexpectedToken`](error::ParseErrorKind::UnexpectedToken)、
+    /// `>>` 不在で入力が尽きた場合は
+    /// [`ParseErrorKind::UnexpectedEof`](error::ParseErrorKind::UnexpectedEof)、
+    /// lexer が malformed を検知して `None` を返した場合は
+    /// [`ParseErrorKind::LexerError`](error::ParseErrorKind::LexerError) を fail-fast で返す。
+    ///
+    /// [`PdfName`]: crate::object::name::PdfName
+    fn parse_dictionary_body(&mut self) -> Result<PdfObject, ParseError> {
+        let mut dict = PdfDictionary::new();
+        loop {
+            self.lexer.skip_whitespace();
+            let pos_before = self.lexer.position();
+            match self.lexer.next_token() {
+                Some(Token::Comment(_)) => continue,
+                Some(Token::DictEnd) => return Ok(PdfObject::Dictionary(dict)),
+                Some(Token::Primitive(Primitive::Name(key))) => {
+                    let value = self.parse_object()?;
+                    if value.is_null() {
+                        let _ = dict.remove(&key);
+                    } else {
+                        let _ = dict.insert(key, value);
+                    }
+                }
                 Some(other) => {
                     return Err(ParseError::unexpected_token_at(
                         ByteOffset::new(pos_before as u64),
@@ -151,6 +209,9 @@ impl<'a> Parser<'a> {
 
 #[cfg(test)]
 mod array_tests;
+
+#[cfg(test)]
+mod dictionary_tests;
 
 #[cfg(test)]
 mod tests {
@@ -404,19 +465,6 @@ mod tests {
             err.kind,
             ParseErrorKind::UnexpectedToken {
                 actual_kind: "ArrayEnd"
-            }
-        );
-    }
-
-    #[test]
-    fn parse_object_returns_unexpected_token_for_dict_begin() {
-        // 入力 b"<<" で UnexpectedToken { actual_kind: "DictBegin" } を返すことを確認する
-        let mut p = parser(b"<<");
-        let err = p.parse_object().expect_err("dict begin must error");
-        assert_eq!(
-            err.kind,
-            ParseErrorKind::UnexpectedToken {
-                actual_kind: "DictBegin"
             }
         );
     }
