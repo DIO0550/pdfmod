@@ -200,7 +200,11 @@ export type Token =
   | TokenInlineImage
   | TokenEOF;
 
-const OperatorCompanion = {
+/**
+ * `Operator` の factory utility を束ねた companion object。
+ * 型と value を同一識別子で公開する declaration merging パターン。
+ */
+export const Operator = {
   /**
    * Operator バリアントを生成する。検証は行わず、生 string をそのまま受け取る。
    *
@@ -214,12 +218,10 @@ const OperatorCompanion = {
 } as const;
 
 /**
- * `Operator` の factory utility を束ねた companion object。
- * 型と value を同一識別子で公開する declaration merging パターン。
+ * `Token` の domain utility を束ねた companion object。
+ * 型と value を同一識別子で公開する declaration merging パターン（`Operator` と同様）。
  */
-export const Operator = OperatorCompanion;
-
-const TokenCompanion = {
+export const Token = {
   /**
    * content stream の primitive token を PdfValue へ変換する。
    *
@@ -253,12 +255,6 @@ const TokenCompanion = {
     }
   },
 } as const;
-
-/**
- * `Token` の domain utility を束ねた companion object。
- * 型と value を同一識別子で公開する declaration merging パターン（`Operator` と同様）。
- */
-export const Token = TokenCompanion;
 
 function integerToPdfValue(
   token: TokenInteger,
