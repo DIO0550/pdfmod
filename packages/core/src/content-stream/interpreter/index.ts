@@ -1,6 +1,6 @@
 import type { PdfWarning } from "../../pdf/errors/warning/index";
-import type { PdfError, Token, TokenArrayBegin } from "../../pdf/index";
-import { TokenType } from "../../pdf/index";
+import type { PdfError, TokenArrayBegin } from "../../pdf/index";
+import { Token, TokenType } from "../../pdf/index";
 import type { Result } from "../../utils/result/index";
 import { err, ok } from "../../utils/result/index";
 import { GraphicsStateStack } from "../graphics-state/index";
@@ -10,7 +10,6 @@ import {
   type OperatorHandlerContext,
   OperatorRegistry,
 } from "../operator-registry/index";
-import { toPrimitivePdfValue } from "../primitive-operand-converter/index";
 import { ContentStreamTokenizer } from "../tokenizer/index";
 import { readArrayOperand } from "./composite-operand/index";
 
@@ -227,7 +226,7 @@ function pushPrimitiveOperand(
   token: Token,
   context: OperatorHandlerContext,
 ): Result<InterpreterStep, PdfError> {
-  const objectResult = toPrimitivePdfValue(token);
+  const objectResult = Token.toPrimitivePdfValue(token);
   if (!objectResult.ok) {
     return err(objectResult.error);
   }

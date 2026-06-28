@@ -4,10 +4,9 @@ import type {
   PdfValue,
   TokenArrayBegin,
 } from "../../../pdf/index";
-import { TokenType, tokenDisplayString } from "../../../pdf/index";
+import { Token, TokenType, tokenDisplayString } from "../../../pdf/index";
 import type { Result } from "../../../utils/result/index";
 import { err, ok } from "../../../utils/result/index";
-import { toPrimitivePdfValue } from "../../primitive-operand-converter/index";
 import type { ContentStreamTokenizer } from "../../tokenizer/index";
 
 /**
@@ -79,7 +78,7 @@ function readArrayInner(
       continue;
     }
 
-    const objectResult = toPrimitivePdfValue(token);
+    const objectResult = Token.toPrimitivePdfValue(token);
     if (!objectResult.ok) {
       return err(objectResult.error);
     }

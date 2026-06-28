@@ -68,7 +68,7 @@ test("`[1 >> 2]` の `>>` を検出すると OBJECT_PARSE_UNEXPECTED_TOKEN を�
   expect(result.error.offset).toBe(positionOf(">>"));
 });
 
-test("`[ . ]` (NaN real) で OBJECT_PARSE_UNEXPECTED_TOKEN を返す (toPrimitivePdfValue 由来)", () => {
+test("`[ . ]` (NaN real) で OBJECT_PARSE_UNEXPECTED_TOKEN を返す (Token.toPrimitivePdfValue 由来)", () => {
   const { tokenizer, openToken } = setupAfterArrayBegin("[ . ]");
 
   const result = readArrayOperand(tokenizer, openToken);
