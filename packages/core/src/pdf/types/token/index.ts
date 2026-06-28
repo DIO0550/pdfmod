@@ -205,7 +205,9 @@ export const Token = {
 
 /**
  * Token をエラーメッセージなどに埋め込むための文字列表現。
- * Operator は name、Null/EOF は "null"、それ以外は value を文字列化する。
+ * Operator は name、InlineImage は固定文字列 `"BI ... ID ... EI"`
+ * （`data: Uint8Array` を文字列化しても意味がないため）、
+ * Null/EOF は `"null"`、それ以外は value を文字列化する。
  *
  * @param token - 表示対象のトークン
  * @returns 表示用文字列
