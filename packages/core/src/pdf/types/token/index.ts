@@ -1,14 +1,25 @@
-import {
-  decodeHexString,
-  decodeLiteralString,
-} from "../../../objects/object-parser/string-decoder/index";
 import type { Option } from "../../../utils/option/index";
-import { none, some } from "../../../utils/option/index";
+import { none } from "../../../utils/option/index";
 import type { Result } from "../../../utils/result/index";
-import { err, ok } from "../../../utils/result/index";
+import { ok } from "../../../utils/result/index";
 import type { PdfError } from "../../errors/index";
 import type { ByteOffset } from "../byte-offset/index";
 import type { PdfValue } from "../pdf-types/index";
+import { TokenBoolean } from "./boolean/index";
+import { TokenHexString } from "./hex-string/index";
+import { TokenInteger } from "./integer/index";
+import { TokenLiteralString } from "./literal-string/index";
+import { TokenName } from "./name/index";
+import { TokenNull } from "./null/index";
+import { TokenReal } from "./real/index";
+
+export { TokenBoolean } from "./boolean/index";
+export { TokenHexString } from "./hex-string/index";
+export { TokenInteger } from "./integer/index";
+export { TokenLiteralString } from "./literal-string/index";
+export { TokenName } from "./name/index";
+export { TokenNull } from "./null/index";
+export { TokenReal } from "./real/index";
 
 /**
  * PDFトークンの種別を表す列挙型。
@@ -30,60 +41,6 @@ export enum TokenType {
   Operator = "Operator",
   InlineImage = "InlineImage",
   EOF = "EOF",
-}
-
-/**
- * Boolean リテラル (`true` / `false`) トークン。
- */
-export interface TokenBoolean {
-  type: TokenType.Boolean;
-  value: boolean;
-  offset: ByteOffset;
-}
-
-/**
- * 整数リテラル (`123`, `-7`) トークン。
- */
-export interface TokenInteger {
-  type: TokenType.Integer;
-  value: number;
-  offset: ByteOffset;
-}
-
-/**
- * 実数リテラル (`3.14`, `.5`) トークン。
- */
-export interface TokenReal {
-  type: TokenType.Real;
-  value: number;
-  offset: ByteOffset;
-}
-
-/**
- * リテラル文字列 (`(...)`) トークン。
- */
-export interface TokenLiteralString {
-  type: TokenType.LiteralString;
-  value: string;
-  offset: ByteOffset;
-}
-
-/**
- * 16進文字列 (`<...>`) トークン。
- */
-export interface TokenHexString {
-  type: TokenType.HexString;
-  value: string;
-  offset: ByteOffset;
-}
-
-/**
- * 名前オブジェクト (`/Name`) トークン。
- */
-export interface TokenName {
-  type: TokenType.Name;
-  value: string;
-  offset: ByteOffset;
 }
 
 /**
@@ -119,16 +76,6 @@ export interface TokenDictBegin {
 export interface TokenDictEnd {
   type: TokenType.DictEnd;
   value: ">>";
-  offset: ByteOffset;
-}
-
-/**
- * `null` リテラルトークン。
- * PDF 仕様の `null` オブジェクトを保持するため、value は `null` 固定。
- */
-export interface TokenNull {
-  type: TokenType.Null;
-  value: null;
   offset: ByteOffset;
 }
 
@@ -226,10 +173,10 @@ export const Token = {
    * content stream の primitive token を PdfValue へ変換する。
    *
    * interpreter のメインループと配列リテラル reader の両方から呼ばれる共有純関数。
-   * primitive 7 種（Boolean / Integer / Real / Name / Null / LiteralString / HexString）
-   * のみ `Some(PdfValue)` を返し、それ以外（Operator / Keyword / InlineImage /
-   * Array/Dict 開閉 / EOF）は `None` を返す。複合 delimiter の拒否や operator
-   * dispatch は呼び出し側の責務。
+   * 各 primitive 種別 companion の `toPdfValue` へ dispatch するだけで、変換ロジック
+   * は各 sub-directory に局在化されている。primitive 7 種以外（Operator / Keyword /
+   * InlineImage / Array/Dict 開閉 / EOF）は `None` を返し、複合 delimiter の拒否や
+   * operator dispatch は呼び出し側の責務。
    *
    * @param token - 変換対象 token
    * @returns 変換した PdfValue、対象外 token の None、または変換エラー
@@ -237,96 +184,30 @@ export const Token = {
   toPrimitivePdfValue(token: Token): Result<Option<PdfValue>, PdfError> {
     switch (token.type) {
       case TokenType.Boolean:
-        return ok(some({ type: "boolean", value: token.value }));
+        return TokenBoolean.toPdfValue(token);
       case TokenType.Integer:
-        return integerToPdfValue(token);
+        return TokenInteger.toPdfValue(token);
       case TokenType.Real:
-        return realToPdfValue(token);
-      case TokenType.LiteralString:
-        return literalStringToPdfValue(token);
-      case TokenType.HexString:
-        return hexStringToPdfValue(token);
+        return TokenReal.toPdfValue(token);
       case TokenType.Name:
-        return ok(some({ type: "name", value: token.value }));
+        return TokenName.toPdfValue(token);
       case TokenType.Null:
-        return ok(some({ type: "null" }));
+        return TokenNull.toPdfValue(token);
+      case TokenType.LiteralString:
+        return TokenLiteralString.toPdfValue(token);
+      case TokenType.HexString:
+        return TokenHexString.toPdfValue(token);
       default:
         return ok(none);
     }
   },
 } as const;
 
-function integerToPdfValue(
-  token: TokenInteger,
-): Result<Option<PdfValue>, PdfError> {
-  if (Number.isNaN(token.value)) {
-    return err({
-      code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
-      message: `NaN integer token at offset ${token.offset}`,
-      offset: token.offset,
-    });
-  }
-
-  return ok(some({ type: "integer", value: token.value }));
-}
-
-function realToPdfValue(token: TokenReal): Result<Option<PdfValue>, PdfError> {
-  if (Number.isNaN(token.value)) {
-    return err({
-      code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
-      message: `NaN real token at offset ${token.offset}`,
-      offset: token.offset,
-    });
-  }
-
-  return ok(some({ type: "real", value: token.value }));
-}
-
-function literalStringToPdfValue(
-  token: TokenLiteralString,
-): Result<Option<PdfValue>, PdfError> {
-  const decoded = decodeLiteralString(token.value);
-  if (!decoded.ok) {
-    return err({
-      code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
-      message: decoded.error,
-      offset: token.offset,
-    });
-  }
-
-  return ok(
-    some({
-      type: "string",
-      value: decoded.value,
-      encoding: "literal",
-    }),
-  );
-}
-
-function hexStringToPdfValue(
-  token: TokenHexString,
-): Result<Option<PdfValue>, PdfError> {
-  const decoded = decodeHexString(token.value);
-  if (!decoded.ok) {
-    return err({
-      code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
-      message: decoded.error,
-      offset: token.offset,
-    });
-  }
-
-  return ok(
-    some({
-      type: "string",
-      value: decoded.value,
-      encoding: "hex",
-    }),
-  );
-}
-
 /**
  * Token をエラーメッセージなどに埋め込むための文字列表現。
- * Operator は name、Null/EOF は "null"、それ以外は value を文字列化する。
+ * Operator は name、InlineImage は固定文字列 `"BI ... ID ... EI"`
+ * （`data: Uint8Array` を文字列化しても意味がないため）、
+ * Null/EOF は `"null"`、それ以外は value を文字列化する。
  *
  * @param token - 表示対象のトークン
  * @returns 表示用文字列
