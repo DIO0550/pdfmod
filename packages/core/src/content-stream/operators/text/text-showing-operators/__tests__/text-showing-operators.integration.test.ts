@@ -42,38 +42,15 @@ const execute = (
   return result.value;
 };
 
-// シナリオ 1 用: TJ に渡す PdfObject 配列を operand stack に事前 push した初期 context を作る。
-// 配列リテラル `[...]` は interpreter で NOT_IMPLEMENTED のため、content stream には
-// 含めず、operand stack に直接 push してから `TJ` を流す。
-// PdfString には `encoding: "literal"` が必須。
-const createInitialContextWithArrayOperand = (): OperatorHandlerContext => {
-  const operandStack = OperandStack.create();
-  OperandStack.push(operandStack, {
-    type: "array",
-    elements: [
-      { type: "string", value: encode("H"), encoding: "literal" },
-      { type: "integer", value: 40 },
-      { type: "string", value: encode("ello"), encoding: "literal" },
-    ],
-  });
-  return {
-    operandStack,
-    graphicsStateStack: GraphicsStateStack.create(),
-  };
-};
-
-test("TJ: barrel が TJ を登録し initialContext で渡した配列 operand を tjArrayHandler が消費し textMatrix を水平移動する", () => {
-  // シナリオ 1: stream には配列リテラル `[...]` を含めない（interpreter で NOT_IMPLEMENTED）。
-  // initialContext.operandStack に PdfObject の array を事前 push し、
-  // `BT /F1 12 Tf 1 0 0 1 72 720 Tm TJ` を流す。
+test("TJ: barrel が TJ を登録し stream 内の配列リテラル `[...]` を tjArrayHandler が消費し textMatrix を水平移動する", () => {
+  // シナリオ 1: stream に配列リテラル `[(H) 40 (ello)]` を直接含める。
+  // interpreter が `[ ... ]` を PdfArray として組み立てるため、
+  // initialContext で operand を事前 push する必要はない。
   // - /F1 12 Tf: fontSize=12 を設定（fontSize=0 だと TJ 数値要素の textMatrix 移動量が常に 0 になり short-circuit する）
   // - Tm で (72, 720) に絶対配置
-  // - TJ で initialContext の配列を pop し、数値要素 40 を反映して textMatrix.e を移動
+  // - TJ で reader が組み立てた配列を pop し、数値要素 40 を反映して textMatrix.e を移動
   // ET は含めない（ET は textMatrix / textLineMatrix を identity にリセットするため、移動結果を観測できなくなる）。
-  const executed = execute(
-    "BT /F1 12 Tf 1 0 0 1 72 720 Tm TJ",
-    createInitialContextWithArrayOperand(),
-  );
+  const executed = execute("BT /F1 12 Tf 1 0 0 1 72 720 Tm [(H) 40 (ello)] TJ");
   // UNKNOWN_OPERATOR が一切出ていない = barrel が 4 operator (および Tf/Tm/BT) を正しく登録した
   expect(executed.warnings).toEqual([]);
 
@@ -144,20 +121,17 @@ test('": BT 14 TL 2 1 (Hi) " で wordSpace=2 / charSpace=1 を設定し改行す
 // active 検査エラーを返すことを test.each で網羅する（UNKNOWN_OPERATOR ではなく
 // OPERATOR_ILLEGAL_STATE が返ることが barrel 登録の確証になる）。
 // 異常系のため execute ヘルパは使わず ContentStreamInterpreter.execute を直接呼ぶ。
-test.each<readonly [string, string, OperatorHandlerContext | undefined]>([
-  // [operator, BT 外 stream, initialContext]
-  // - Tj / ' / " は operand を stream で積める
-  // - TJ は配列リテラル `[...]` が interpreter で NOT_IMPLEMENTED のため
-  //   initialContext.operandStack に配列を事前 push し、stream は `TJ` のみ
-  ["Tj", "(Hi) Tj", undefined],
-  ["TJ", "TJ", createInitialContextWithArrayOperand()],
-  ["'", "(Hi) '", undefined],
-  ['"', '2 1 (Hi) "', undefined],
-])("%s: BT なしで実行すると execute が OPERATOR_ILLEGAL_STATE の Err を返す", (_name, stream, initialContext) => {
+test.each<readonly [string, string]>([
+  // [operator, BT 外 stream]
+  // TJ は reader が `[...]` を PdfArray として組み立てた上で BT 外検査に到達する
+  ["Tj", "(Hi) Tj"],
+  ["TJ", "[(H) 40 (ello)] TJ"],
+  ["'", "(Hi) '"],
+  ['"', '2 1 (Hi) "'],
+])("%s: BT なしで実行すると execute が OPERATOR_ILLEGAL_STATE の Err を返す", (_name, stream) => {
   const result = ContentStreamInterpreter.execute({
     data: encode(stream),
     registry: createRegistry(),
-    initialContext,
   });
 
   assert(!result.ok);
