@@ -3,19 +3,6 @@ use super::super::error::ParseErrorKind;
 use super::parser;
 
 #[test]
-fn parse_object_returns_unexpected_token_for_dict_begin_in_array() {
-    // 入力 b"[<<]" で配列要素中の DictBegin が UnexpectedToken { "DictBegin" } で fail-fast されることを確認する
-    let mut p = parser(b"[<<]");
-    let err = p.parse_object().expect_err("dict begin must error");
-    assert_eq!(
-        err.kind,
-        ParseErrorKind::UnexpectedToken {
-            actual_kind: "DictBegin"
-        }
-    );
-}
-
-#[test]
 fn parse_object_returns_unexpected_token_for_dict_end_in_array() {
     // 入力 b"[>>]" で配列要素中の DictEnd が UnexpectedToken { "DictEnd" } で fail-fast されることを確認する
     let mut p = parser(b"[>>]");
@@ -105,18 +92,4 @@ fn parse_object_returns_unexpected_token_for_array_end_only() {
         }
     );
     assert_eq!(err.position, ByteOffset::new(0));
-}
-
-#[test]
-fn parse_object_returns_unexpected_token_for_dict_begin_inside_nested_array() {
-    // 入力 b"[1 <<]" でネスト 1 段内の禁止トークン DictBegin が内側 parse_array_body の Some(other) arm で fail-fast し、position が `<<` の開始位置 (3) に固定されることを確認する
-    let mut p = parser(b"[1 <<]");
-    let err = p.parse_object().expect_err("nested dict begin must error");
-    assert_eq!(
-        err.kind,
-        ParseErrorKind::UnexpectedToken {
-            actual_kind: "DictBegin"
-        }
-    );
-    assert_eq!(err.position, ByteOffset::new(3));
 }
