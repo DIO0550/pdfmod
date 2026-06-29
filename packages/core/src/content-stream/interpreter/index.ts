@@ -1,5 +1,9 @@
 import type { PdfWarning } from "../../pdf/errors/warning/index";
-import type { PdfError, TokenArrayBegin } from "../../pdf/index";
+import type {
+  PdfError,
+  TokenArrayBegin,
+  TokenDictBegin,
+} from "../../pdf/index";
 import { Token, TokenType } from "../../pdf/index";
 import type { Result } from "../../utils/result/index";
 import { err, ok } from "../../utils/result/index";
@@ -11,7 +15,7 @@ import {
   OperatorRegistry,
 } from "../operator-registry/index";
 import { ContentStreamTokenizer } from "../tokenizer/index";
-import { readArrayOperand } from "./composite-operand/index";
+import { readArrayOperand, readDictOperand } from "./composite-operand/index";
 
 export type ContentStreamInterpreterExecuteOptions = {
   readonly data: Uint8Array;
@@ -78,11 +82,11 @@ export const ContentStreamInterpreter = {
 /**
  * 1 token を分類して以下のいずれかを実行する:
  * EOF（完了）/ operator dispatch / inline image dispatch / array reader dispatch /
- * 辞書開きの NOT_IMPLEMENTED / 複合 delimiter (`]` `>>`) の UNEXPECTED_TOKEN /
+ * dict reader dispatch / 複合 delimiter (`]` `>>`) の UNEXPECTED_TOKEN /
  * primitive operand の push。
  *
  * @param options.token - 実行対象 token
- * @param options.tokenizer - 配列リテラル `[ ... ]` の読み取りに使う tokenizer（reader へ委譲）
+ * @param options.tokenizer - 配列・辞書リテラルの読み取りに使う tokenizer（reader へ委譲）
  * @param options.registry - operator handler 登録簿
  * @param options.context - 現在 context
  * @param options.warnings - 警告蓄積バッファ
@@ -124,10 +128,10 @@ function executeToken(options: {
   }
 
   if (options.token.type === TokenType.DictBegin) {
-    return err({
-      code: "NOT_IMPLEMENTED",
-      message: `Composite dictionary operand is not supported`,
-      offset: options.token.offset,
+    return dispatchDictOperand({
+      tokenizer: options.tokenizer,
+      openToken: options.token,
+      context: options.context,
     });
   }
 
@@ -212,6 +216,25 @@ function dispatchArrayOperand(options: {
     return err(array.error);
   }
   OperandStack.push(options.context.operandStack, array.value);
+  return ok({ type: "continue", context: options.context });
+}
+
+/**
+ * 辞書リテラル `<< ... >>` を reader に委譲して PdfDictionary を operand stack へ積む。
+ *
+ * @param options - tokenizer・開きトークン・現在 context
+ * @returns 次 step、または reader エラー
+ */
+function dispatchDictOperand(options: {
+  readonly tokenizer: ContentStreamTokenizer;
+  readonly openToken: TokenDictBegin;
+  readonly context: OperatorHandlerContext;
+}): Result<InterpreterStep, PdfError> {
+  const dictionary = readDictOperand(options.tokenizer, options.openToken);
+  if (!dictionary.ok) {
+    return err(dictionary.error);
+  }
+  OperandStack.push(options.context.operandStack, dictionary.value);
   return ok({ type: "continue", context: options.context });
 }
 

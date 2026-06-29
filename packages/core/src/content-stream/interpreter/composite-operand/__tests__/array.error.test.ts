@@ -46,17 +46,6 @@ test("`[1 BT 2]` の `BT` を検出すると OBJECT_PARSE_UNEXPECTED_TOKEN を�
   expect(result.error.offset).toBe(positionOf("BT"));
 });
 
-test("`[<< /K /V >>]` の `<<` を検出すると OBJECT_PARSE_UNEXPECTED_TOKEN を返し offset が `<<` の位置と一致する", () => {
-  const stream = "[<< /K /V >>]";
-  const { tokenizer, openToken, positionOf } = setupAfterArrayBegin(stream);
-
-  const result = readArrayOperand(tokenizer, openToken);
-
-  assert(!result.ok);
-  assert(result.error.code === "OBJECT_PARSE_UNEXPECTED_TOKEN");
-  expect(result.error.offset).toBe(positionOf("<<"));
-});
-
 test("`[1 >> 2]` の `>>` を検出すると OBJECT_PARSE_UNEXPECTED_TOKEN を返し offset が `>>` の位置と一致する", () => {
   const stream = "[1 >> 2]";
   const { tokenizer, openToken, positionOf } = setupAfterArrayBegin(stream);
