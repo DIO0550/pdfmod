@@ -61,19 +61,19 @@ test.each<{ label: string; stream: string; badToken: string }>([
     stream: "<<BI /W 1 /H 1 /CS /G /BPC 8 ID @ EI /K 2>>",
     badToken: "BI",
   },
-])(
-  "`$stream` の key 位置 $label を検出すると OBJECT_PARSE_UNEXPECTED_TOKEN を返し offset が `$badToken` の位置と一致する",
-  ({ stream, badToken }) => {
-    const { tokenizer, openToken, positionOf } = setupAfterDictBegin(stream);
+])("`$stream` の key 位置 $label を検出すると OBJECT_PARSE_UNEXPECTED_TOKEN を返し offset が `$badToken` の位置と一致する", ({
+  stream,
+  badToken,
+}) => {
+  const { tokenizer, openToken, positionOf } = setupAfterDictBegin(stream);
 
-    const result = readDictOperand(tokenizer, openToken);
+  const result = readDictOperand(tokenizer, openToken);
 
-    assert(!result.ok);
-    assert(result.error.code === "OBJECT_PARSE_UNEXPECTED_TOKEN");
-    expect(result.error.message).toMatch(/^Dictionary key must be a name, /);
-    expect(result.error.offset).toBe(positionOf(badToken));
-  },
-);
+  assert(!result.ok);
+  assert(result.error.code === "OBJECT_PARSE_UNEXPECTED_TOKEN");
+  expect(result.error.message).toMatch(/^Dictionary key must be a name, /);
+  expect(result.error.offset).toBe(positionOf(badToken));
+});
 
 test.each<{ label: string; stream: string; badToken: string }>([
   { label: "Operator (BT)", stream: "<</K BT>>", badToken: "BT" },
@@ -85,19 +85,21 @@ test.each<{ label: string; stream: string; badToken: string }>([
     badToken: "BI",
   },
   { label: "Operator (endobj)", stream: "<</K endobj>>", badToken: "endobj" },
-])(
-  "`$stream` の value 位置 $label を検出すると OBJECT_PARSE_UNEXPECTED_TOKEN を返し offset が `$badToken` の位置と一致する",
-  ({ stream, badToken }) => {
-    const { tokenizer, openToken, positionOf } = setupAfterDictBegin(stream);
+])("`$stream` の value 位置 $label を検出すると OBJECT_PARSE_UNEXPECTED_TOKEN を返し offset が `$badToken` の位置と一致する", ({
+  stream,
+  badToken,
+}) => {
+  const { tokenizer, openToken, positionOf } = setupAfterDictBegin(stream);
 
-    const result = readDictOperand(tokenizer, openToken);
+  const result = readDictOperand(tokenizer, openToken);
 
-    assert(!result.ok);
-    assert(result.error.code === "OBJECT_PARSE_UNEXPECTED_TOKEN");
-    expect(result.error.message).toMatch(/^Unexpected token in dictionary value: /);
-    expect(result.error.offset).toBe(positionOf(badToken));
-  },
-);
+  assert(!result.ok);
+  assert(result.error.code === "OBJECT_PARSE_UNEXPECTED_TOKEN");
+  expect(result.error.message).toMatch(
+    /^Unexpected token in dictionary value: /,
+  );
+  expect(result.error.offset).toBe(positionOf(badToken));
+});
 
 // 純 dict ネストを 101 段組み立てて MAX_NESTING_DEPTH = 100 の境界を検証する。
 // 上限を超えるのは内側 (101 段目) の `<<` であり、最外ではないことを offset で示す。

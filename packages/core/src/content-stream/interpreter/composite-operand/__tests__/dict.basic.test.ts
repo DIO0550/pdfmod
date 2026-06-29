@@ -99,14 +99,14 @@ test.each<{ label: string; stream: string; expected: PdfValue }>([
     stream: "<</K null>>",
     expected: { type: "null" },
   },
-])(
-  "`$stream` を読み取り entries.get(`K`) が $label の PdfValue となる",
-  ({ stream, expected }) => {
-    const { tokenizer, openToken } = setupAfterDictBegin(stream);
+])("`$stream` を読み取り entries.get(`K`) が $label の PdfValue となる", ({
+  stream,
+  expected,
+}) => {
+  const { tokenizer, openToken } = setupAfterDictBegin(stream);
 
-    const result = readDictOperand(tokenizer, openToken);
+  const result = readDictOperand(tokenizer, openToken);
 
-    assert(result.ok);
-    expect(result.value.entries.get("K")).toEqual(expected);
-  },
-);
+  assert(result.ok);
+  expect(result.value.entries.get("K")).toEqual(expected);
+});
