@@ -144,11 +144,13 @@ test.each([
   expect(result.error.message).toContain(message);
 });
 
+// 残る 2 ケースは unbalanced delimiter (`]` / `>>` 単独) で、対応する `[` / `<<` が
+// 先行しないため interpreter ループが直接 UNEXPECTED_TOKEN を返す。dict reader 完走パスは
+// `interpreter.dict-operand.test.ts` 側に分離した。
 test.each([
-  { input: "<< /K /V >> op", code: "NOT_IMPLEMENTED" },
   { input: "] op", code: "OBJECT_PARSE_UNEXPECTED_TOKEN" },
   { input: ">> op", code: "OBJECT_PARSE_UNEXPECTED_TOKEN" },
-])("composite tokenはstackを汚染せずErrで中断する: $input", ({
+])("unbalanced delimiter はstackを汚染せずErrで中断する: $input", ({
   input,
   code,
 }) => {

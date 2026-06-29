@@ -121,6 +121,45 @@ test("`[[]]` を読み取り elements[0] が空 PdfArray となる", () => {
   });
 });
 
+test("`[<</K /V>>]` を読み取り 配列要素として PdfDictionary を受理する (array→dict 経路)", () => {
+  const { tokenizer, openToken } = setupAfterArrayBegin("[<</K /V>>]");
+
+  const result = readArrayOperand(tokenizer, openToken);
+
+  assert(result.ok);
+  expect(result.value).toEqual({
+    type: "array",
+    elements: [
+      {
+        type: "dictionary",
+        entries: new Map([["K", { type: "name", value: "V" }]]),
+      },
+    ],
+  });
+});
+
+test("`[1 <</K (x)>> 2]` を読み取り primitive と PdfDictionary の混在を受理する", () => {
+  const { tokenizer, openToken } = setupAfterArrayBegin("[1 <</K (x)>> 2]");
+
+  const result = readArrayOperand(tokenizer, openToken);
+
+  assert(result.ok);
+  const encoded = new TextEncoder().encode("x");
+  expect(result.value).toEqual({
+    type: "array",
+    elements: [
+      { type: "integer", value: 1 },
+      {
+        type: "dictionary",
+        entries: new Map([
+          ["K", { type: "string", value: encoded, encoding: "literal" }],
+        ]),
+      },
+      { type: "integer", value: 2 },
+    ],
+  });
+});
+
 test("ネスト深さ 100 の配列を読み取り成功する (MAX_NESTING_DEPTH 直下)", () => {
   const opens = "[".repeat(100);
   const closes = "]".repeat(100);
