@@ -230,9 +230,9 @@ impl<'a> Parser<'a> {
     /// malformed を検知して `None` を返した場合は `Err(ParseError::lexer_error_at(...))`
     /// を返す。[`Token::Comment`] は透過スキップする（呼び出し元はコメント腕を持たなくてよい）。
     ///
-    /// エラー位置は lexer 呼び出し直前に保存した `pos_before` を用いる。これは
-    /// 既存の `parse_object` 系の慣習と一貫し、`lexer.position()` の取り回しに
-    /// 依存しないロバストな指定方法である。
+    /// エラー位置は lexer 呼び出し直前に保存した `pos_before` を用いる。lexer が
+    /// malformed を検知して `None` を返した時点の `lexer.position()` は不定な前進量を
+    /// 含み得るため、トークン開始位置を安定して報告できる `pos_before` を採用する。
     fn next_token_with_pos(&mut self) -> Result<Option<(Token, usize)>, ParseError> {
         loop {
             if let Some(buffered) = self.buffer.pop_front() {
