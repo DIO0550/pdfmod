@@ -51,8 +51,11 @@ struct BufferedToken {
 /// `try_parse_indirect_reference` が R 不在を判定したときにのみ
 /// 一時的に格納され、通常パスでは空のままになる。
 ///
-/// `Parser` 自身は新たな割り当てを行わず、[`Primitive`] の所有データを
-/// [`PdfObject`] にそのままムーブする（`Vec<u8>` の clone を行わない）。
+/// [`Primitive`] の所有データは [`PdfObject`] にそのままムーブし、`Vec<u8>`
+/// の clone は行わない。新たな割り当ては `buffer` に最大 2 トークン分の
+/// [`BufferedToken`] が積まれるときに限り発生する（`VecDeque::new()` は
+/// 容量 0 で開始するため、lookahead がバックトラックを起こさない通常パス
+/// では割り当ても発生しない）。
 ///
 /// 任意の入力に対して panic しない契約を持つ（lexer の契約をそのまま継承）。
 #[derive(Debug)]
