@@ -115,12 +115,8 @@ test("allMissing: 複数欠落のとき requiredKeys 順の配列を返す", () 
 // 戻り値型: firstMissing が返す some の中身は string 型であること
 test("firstMissing: some の中身が string 型である", () => {
   const result = StringArrayEx.firstMissing(["Width"], ["Width", "Height"]);
-  expect(result.some).toBe(true);
-  if (result.some) {
-    // value が文字列であることをランタイムで pin down する
-    expect(typeof result.value).toBe("string");
-    expect(result.value).toBe("Height");
-  }
+  // 構造一致で some("Height") を pin down（value の型は TypeScript で string に narrowing 済み）
+  expect(result).toStrictEqual(some("Height"));
 });
 
 // 戻り値型: firstMissing が none を返すときは utils/option の singleton と参照一致すること
