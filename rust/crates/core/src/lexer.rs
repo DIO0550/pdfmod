@@ -102,7 +102,11 @@ impl<'a> Lexer<'a> {
     /// 0-indexed で `n` 番目に取り出されるトークンを参照で覗き見る（Comment 透過込み）。
     ///
     /// `peek_token_at(0) == peek_token()`（0-indexed の最先頭）。
-    /// peek した値は次回 `take_token` / `peek_token` でも同じ値を返す。
+    /// peek したトークンは内部バッファに順序を保ったまま保留されるため、`take_token`
+    /// を先頭から繰り返し呼ぶと同じ順序で取り出せる。具体的には `peek_token_at(n)` で
+    /// 観測した値は、先頭から `n` 回 `take_token` を消費した次（つまり `n+1` 回目）の
+    /// `take_token` で同じ値が返る。`n == 0` の場合のみ直後の `take_token` で同じ値が返る
+    /// （`peek_token` と同義）。
     /// `n` が `usize::MAX` でも panic せず `None` を返す（`n.checked_add(1)` で吸収）。
     pub fn peek_token_at(&mut self, n: usize) -> Option<&Token> {
         let required = n.checked_add(1)?;
