@@ -12,19 +12,29 @@
 //! 辞書のキーは `Primitive::Name` のみ受理、値が `Null` のエントリは ISO §7.3.7 準拠で
 //! `PdfDictionary` に登録しない（重複キーで既存値がある場合は削除する）。
 //!
-//! 間接参照は `Integer(N) Integer(G) Keyword("R")` の 3 トークン列を Parser 内の
-//! lookahead バッファ（最大 2 トークン）で検出する。`N >= 0` かつ `0 <= G <= u16::MAX`
-//! のときのみ発火し、`N` を [`PdfObject::Reference`] に格納する。不成立時は呼び出し元で
-//! `N` を [`PdfObject::Integer`] として発行し、先読み済みの `G` や `Token3` はバッファに
-//! 戻してそのまま後続パスで再解釈される（ISO 32000-1 §7.3.10）。
+//! 間接参照は `Integer(N) Integer(G) Keyword("R")` の 3 トークン列を `Lexer` の
+//! token 単位 peek API（`peek_token_at(0/1)` + `take_token`）で検出する。
+//! `N >= 0` かつ `0 <= G <= u16::MAX` のときのみ発火し、`N` を [`PdfObject::Reference`]
+//! に格納する。不成立時は peek 済みトークンが `Lexer` 内部バッファに保留されたまま
+//! `Ok(None)` を返し、呼び出し元は `N` を [`PdfObject::Integer`] として発行する。
+//! 保留中のトークンは次回 `parse_object` 系で透過的に取り出される（ISO 32000-1 §7.3.10）。
 
 pub mod error;
-
-use std::collections::VecDeque;
 
 use crate::byte_offset::ByteOffset;
 use crate::lexer::token::{Primitive, Token};
 use crate::lexer::Lexer;
+
+/// `try_parse_indirect_reference` 内部で peek 結果を借用切れにしてから分岐するための分類タグ。
+///
+/// `Lexer::peek_token_at` の戻り値が握る `&Token` の借用が、後続の `is_eof()` 等の
+/// 不変借用や `take_token()` の可変借用と衝突するため、まず純粋な分類値に変換する。
+#[derive(Debug)]
+enum PeekClass<T> {
+    Match(T),
+    Mismatch,
+    Unavailable,
+}
 use crate::object::dictionary::PdfDictionary;
 use crate::object::generation_number::GenerationNumber;
 use crate::object::indirect_ref::IndirectRef;
@@ -33,36 +43,16 @@ use crate::object::object_number::ObjectNumber;
 use crate::object::pdf_object::PdfObject;
 use crate::parser::error::ParseError;
 
-/// 先読みしたが消費されなかったトークンと、その読み始めバイト位置を保持する内部用構造体。
-///
-/// `try_parse_indirect_reference` で lookahead を失敗判定したときに使われ、
-/// `pos` はバッファから再取得されたトークンの位置情報として
-/// `parse_object` / `parse_array_body` / `parse_dictionary_body` のエラー位置に利用される。
-#[derive(Debug)]
-struct BufferedToken {
-    token: Token,
-    pos: usize,
-}
-
 /// PDF バイト列から [`PdfObject`] を 1 つずつ取り出すパーサ。
 ///
-/// 内部に [`Lexer`] をムーブで保持し、カーソル位置の管理を委譲する。
-/// 加えて、間接参照（`N G R`）の lookahead 用に最大 2 トークンの FIFO
-/// バッファ `buffer: VecDeque<BufferedToken>` を保持する。バッファは
-/// `try_parse_indirect_reference` が R 不在を判定したときにのみ
-/// 一時的に格納され、通常パスでは空のままになる。
-///
-/// [`Primitive`] の所有データは [`PdfObject`] にそのままムーブし、`Vec<u8>`
-/// の clone は行わない。新たな割り当ては `buffer` に最大 2 トークン分の
-/// [`BufferedToken`] が積まれるときに限り発生する（`VecDeque::new()` は
-/// 容量 0 で開始するため、lookahead がバックトラックを起こさない通常パス
-/// では割り当ても発生しない）。
+/// 内部に [`Lexer`] をムーブで保持し、カーソル位置の管理と lookahead バッファを
+/// 委譲する。[`Primitive`] の所有データは [`PdfObject`] にそのままムーブし、
+/// `Vec<u8>` の clone は行わない。
 ///
 /// 任意の入力に対して panic しない契約を持つ（lexer の契約をそのまま継承）。
 #[derive(Debug)]
 pub struct Parser<'a> {
     lexer: Lexer<'a>,
-    buffer: VecDeque<BufferedToken>,
 }
 
 impl<'a> Parser<'a> {
@@ -70,22 +60,16 @@ impl<'a> Parser<'a> {
     pub fn new(input: &'a [u8]) -> Self {
         Self {
             lexer: Lexer::new(input),
-            buffer: VecDeque::new(),
         }
     }
 
     /// 現在の論理カーソル位置をバイトオフセットで返す。
     ///
-    /// lookahead バッファに保留中のトークンがあればその先頭の読み始め位置を、
-    /// なければ内部 [`Lexer`] の `position()` を [`ByteOffset`] にラップして返す。
-    /// パース処理の副作用は伴わない。
+    /// [`Lexer::position`] が返す論理カーソル位置（lookahead バッファに peek 済みの
+    /// トークンがあればその先頭エントリの開始位置、なければ生のカーソル位置）を
+    /// [`ByteOffset`] にラップして返す。パース処理の副作用は伴わない。
     pub fn position(&self) -> ByteOffset {
-        let pos = self
-            .buffer
-            .front()
-            .map(|b| b.pos)
-            .unwrap_or_else(|| self.lexer.position());
-        ByteOffset::new(pos as u64)
+        ByteOffset::new(self.lexer.position() as u64)
     }
 
     /// 次のオブジェクトを 1 つ読み取る。
@@ -102,14 +86,7 @@ impl<'a> Parser<'a> {
     /// lexer が malformed を検知して `None` を返した場合は
     /// [`ParseErrorKind::LexerError`](error::ParseErrorKind::LexerError) を返す。
     pub fn parse_object(&mut self) -> Result<PdfObject, ParseError> {
-        let (token, pos_before) = match self.next_token_with_pos()? {
-            Some(p) => p,
-            None => {
-                return Err(ParseError::unexpected_eof_at(ByteOffset::new(
-                    self.lexer.position() as u64,
-                )));
-            }
-        };
+        let (token, pos_before) = self.take_token_or_error()?;
 
         match token {
             Token::Primitive(Primitive::Integer(n)) => {
@@ -129,8 +106,8 @@ impl<'a> Parser<'a> {
     }
 
     /// `[` を消費済の状態から配列ボディをパースし [`PdfObject::Array`] を返す
-    /// （ISO 32000-1 §7.3.6）。要素間 [`Token::Comment`] は `next_token_with_pos` の
-    /// 中で透過スキップ、[`Token::Primitive`] は所有ムーブで [`PdfObject`] に変換して
+    /// （ISO 32000-1 §7.3.6）。要素間 [`Token::Comment`] は `Lexer::take_token_with_pos`
+    /// の中で透過スキップ、[`Token::Primitive`] は所有ムーブで [`PdfObject`] に変換して
     /// `items` に push、[`Token::ArrayBegin`] はネストとして自身を再帰呼び出しし、
     /// [`Token::DictBegin`] は辞書要素として [`Self::parse_dictionary_body`] を
     /// 再帰呼び出しする。Integer 要素は `try_parse_indirect_reference` を介して
@@ -145,14 +122,7 @@ impl<'a> Parser<'a> {
     fn parse_array_body(&mut self) -> Result<PdfObject, ParseError> {
         let mut items: Vec<PdfObject> = Vec::new();
         loop {
-            let (token, pos_before) = match self.next_token_with_pos()? {
-                Some(p) => p,
-                None => {
-                    return Err(ParseError::unexpected_eof_at(ByteOffset::new(
-                        self.lexer.position() as u64,
-                    )));
-                }
-            };
+            let (token, pos_before) = self.take_token_or_error()?;
             match token {
                 Token::ArrayEnd => return Ok(PdfObject::Array(items)),
                 Token::Primitive(Primitive::Integer(n)) => {
@@ -176,8 +146,8 @@ impl<'a> Parser<'a> {
     }
 
     /// `<<` を消費済の状態から辞書ボディをパースし [`PdfObject::Dictionary`] を返す
-    /// （ISO 32000-1 §7.3.7）。エントリ間 [`Token::Comment`] は `next_token_with_pos`
-    /// の中で透過スキップ、キーは [`Primitive::Name`] のみ受理して所有ムーブで
+    /// （ISO 32000-1 §7.3.7）。エントリ間 [`Token::Comment`] は
+    /// `Lexer::take_token_with_pos` の中で透過スキップ、キーは [`Primitive::Name`] のみ受理して所有ムーブで
     /// [`PdfName`] として保持し、値は [`Self::parse_object`] の再帰呼び出しで取得する。
     /// 値読みが `parse_object` 経由のため、間接参照（ISO 32000-1 §7.3.10）は値位置で
     /// 自動的に [`PdfObject::Reference`] として認識される。
@@ -196,14 +166,7 @@ impl<'a> Parser<'a> {
     fn parse_dictionary_body(&mut self) -> Result<PdfObject, ParseError> {
         let mut dict = PdfDictionary::new();
         loop {
-            let (token, pos_before) = match self.next_token_with_pos()? {
-                Some(p) => p,
-                None => {
-                    return Err(ParseError::unexpected_eof_at(ByteOffset::new(
-                        self.lexer.position() as u64,
-                    )));
-                }
-            };
+            let (token, pos_before) = self.take_token_or_error()?;
             match token {
                 Token::DictEnd => return Ok(PdfObject::Dictionary(dict)),
                 Token::Primitive(Primitive::Name(key)) => {
@@ -224,32 +187,22 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// バッファが空ならば lexer から次の non-comment トークンと読み始め位置を取得し、
-    /// 非空ならば FIFO で最古のバッファエントリを返す。
-    /// EOF（lexer の `next_token()` が `None` かつ入力末端）は `Ok(None)`、lexer が
-    /// malformed を検知して `None` を返した場合は `Err(ParseError::lexer_error_at(...))`
-    /// を返す。[`Token::Comment`] は透過スキップする（呼び出し元はコメント腕を持たなくてよい）。
+    /// 次のトークンを Comment 透過込みで取り出し、EOF と malformed を区別して
+    /// [`ParseError`] にラップする内部 helper。
     ///
-    /// エラー位置は lexer 呼び出し直前に保存した `pos_before` を用いる。lexer が
-    /// malformed を検知して `None` を返した時点の `lexer.position()` は不定な前進量を
-    /// 含み得るため、トークン開始位置を安定して報告できる `pos_before` を採用する。
-    fn next_token_with_pos(&mut self) -> Result<Option<(Token, usize)>, ParseError> {
-        loop {
-            if let Some(buffered) = self.buffer.pop_front() {
-                return Ok(Some((buffered.token, buffered.pos)));
-            }
-            self.lexer.skip_whitespace();
-            let pos_before = self.lexer.position();
-            match self.lexer.next_token() {
-                Some(Token::Comment(_)) => continue,
-                Some(token) => return Ok(Some((token, pos_before))),
-                None => {
-                    if self.lexer.is_eof() {
-                        return Ok(None);
-                    }
-                    return Err(ParseError::lexer_error_at(ByteOffset::new(
-                        pos_before as u64,
-                    )));
+    /// `Lexer::take_token_with_pos` が `None` を返した時点で、`Lexer` 内部バッファは
+    /// 空であり [`Lexer::cursor_position`] は生のカーソル位置（EOF なら `input.len()`、
+    /// malformed なら巻き戻し済みの不正バイト開始位置）を指す。これをそのまま
+    /// `UnexpectedEof` / `LexerError` のエラー位置として報告する。
+    fn take_token_or_error(&mut self) -> Result<(Token, usize), ParseError> {
+        match self.lexer.take_token_with_pos() {
+            Some(entry) => Ok(entry),
+            None => {
+                let here = ByteOffset::new(self.lexer.cursor_position() as u64);
+                if self.lexer.is_eof() {
+                    Err(ParseError::unexpected_eof_at(here))
+                } else {
+                    Err(ParseError::lexer_error_at(here))
                 }
             }
         }
@@ -263,70 +216,71 @@ impl<'a> Parser<'a> {
     /// - 次トークンが `Integer(G)` かつ `0 <= G <= u16::MAX`
     /// - 次々トークンが `Keyword("R")`
     ///
-    /// 成立時は `Ok(Some(IndirectRef))` を返し、両 lookahead トークンを消費する。
-    /// 不成立時は読んだトークンを `self.buffer` へ FIFO 順で `push_back` し、
-    /// `Ok(None)` を返す（呼び出し元は Integer(N) として処理する）。
+    /// 成立時は `Ok(Some(IndirectRef))` を返し、両 lookahead トークンを `take_token`
+    /// で 2 回消費する。不成立時は peek 済みトークンを [`Lexer`] のバッファに保留した
+    /// まま `Ok(None)` を返す（呼び出し元は Integer(N) として処理し、保留中のトークンは
+    /// 次回 `parse_object` 系で透過的に取り出される）。
     /// `N` は呼び出し元で `Token::Primitive(Primitive::Integer)` として既に成立済み
     /// （i64 範囲外の N は lexer が `Keyword` 化するため、ここには `Integer` のみ届く）。
     ///
     /// lookahead 中に lexer malformed が検出された場合は `Err(LexerError)` を
-    /// fail-fast で伝播する。呼び出し元が握っている `N` の値は捨てられる。
-    /// 「N を一旦返してから次回呼び出しで Err を発火する」逆案は採用しない
-    /// （lookahead を 1 関数で完結させる単純さを優先）。
+    /// fail-fast で伝播する。エラー位置は [`Lexer::cursor_position`]（バッファを無視した
+    /// 生のカーソル位置）を使う。`Lexer::position` だと peek 済みトークンの開始位置が
+    /// 返るため、malformed バイト位置と一致しない。
     fn try_parse_indirect_reference(&mut self, n: i64) -> Result<Option<IndirectRef>, ParseError> {
         if n < 0 {
             return Ok(None);
         }
 
-        let (tok2, pos2) = match self.next_token_with_pos()? {
-            Some(t) => t,
-            None => return Ok(None),
+        let g = match Self::classify_indirect_ref_generation(self.lexer.peek_token_at(0)) {
+            PeekClass::Match(g) => g,
+            PeekClass::Mismatch => return Ok(None),
+            PeekClass::Unavailable => return self.peek_unavailable_to_result(),
         };
-
-        let g = match tok2 {
-            Token::Primitive(Primitive::Integer(g)) => g,
-            other => {
-                self.buffer.push_back(BufferedToken {
-                    token: other,
-                    pos: pos2,
-                });
-                return Ok(None);
-            }
-        };
-
         if !(0..=i64::from(u16::MAX)).contains(&g) {
-            self.buffer.push_back(BufferedToken {
-                token: Token::Primitive(Primitive::Integer(g)),
-                pos: pos2,
-            });
             return Ok(None);
         }
 
-        let (tok3, pos3) = match self.next_token_with_pos()? {
-            Some(t) => t,
-            None => {
-                self.buffer.push_back(BufferedToken {
-                    token: Token::Primitive(Primitive::Integer(g)),
-                    pos: pos2,
-                });
-                return Ok(None);
-            }
-        };
-
-        if matches!(&tok3, Token::Keyword(bytes) if bytes.as_slice() == b"R") {
-            let id = ObjectId::new(ObjectNumber::new(n as u64), GenerationNumber::new(g as u16));
-            return Ok(Some(IndirectRef::new(id)));
+        match Self::classify_indirect_ref_keyword(self.lexer.peek_token_at(1)) {
+            PeekClass::Match(()) => {}
+            PeekClass::Mismatch => return Ok(None),
+            PeekClass::Unavailable => return self.peek_unavailable_to_result(),
         }
 
-        self.buffer.push_back(BufferedToken {
-            token: Token::Primitive(Primitive::Integer(g)),
-            pos: pos2,
-        });
-        self.buffer.push_back(BufferedToken {
-            token: tok3,
-            pos: pos3,
-        });
-        Ok(None)
+        let _ = self.lexer.take_token();
+        let _ = self.lexer.take_token();
+
+        let id = ObjectId::new(ObjectNumber::new(n as u64), GenerationNumber::new(g as u16));
+        Ok(Some(IndirectRef::new(id)))
+    }
+
+    fn classify_indirect_ref_generation(peeked: Option<&Token>) -> PeekClass<i64> {
+        match peeked {
+            Some(Token::Primitive(Primitive::Integer(g))) => PeekClass::Match(*g),
+            Some(_) => PeekClass::Mismatch,
+            None => PeekClass::Unavailable,
+        }
+    }
+
+    fn classify_indirect_ref_keyword(peeked: Option<&Token>) -> PeekClass<()> {
+        match peeked {
+            Some(Token::Keyword(bytes)) if bytes.as_slice() == b"R" => PeekClass::Match(()),
+            Some(_) => PeekClass::Mismatch,
+            None => PeekClass::Unavailable,
+        }
+    }
+
+    /// `peek_token_at` が `None` を返した場合のフォローアップ判定。
+    /// EOF なら `Ok(None)`（呼び出し元は Integer(N) として処理）、malformed なら
+    /// `Err(LexerError)` を `cursor_position` 起点で発火する。
+    fn peek_unavailable_to_result<T>(&self) -> Result<Option<T>, ParseError> {
+        if self.lexer.is_eof() {
+            Ok(None)
+        } else {
+            Err(ParseError::lexer_error_at(ByteOffset::new(
+                self.lexer.cursor_position() as u64,
+            )))
+        }
     }
 
     /// [`Primitive`] を所有ムーブで受け取り、対応する [`PdfObject`] バリアントへ
