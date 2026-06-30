@@ -715,17 +715,23 @@ impl<'a> Lexer<'a> {
         if let Some((tok, _)) = self.buffer.pop_front() {
             return Some(tok);
         }
+        self.skip_whitespace();
         self.next_raw_token()
     }
 
     /// 内部 lookahead バッファを無視して入力バイトから直接 1 トークン読み出す low-level API。
     ///
-    /// 公開 [`Self::next_token`] の本体実装。`token_buffer::ensure_buffered` / `next_non_comment_token`
-    /// から「バッファに積むトークンの素材」として呼ばれる経路はこちらを使う必要がある
-    /// （公開 `next_token` を呼ぶと先に buffer から pop されてしまい ensure_buffered のループ
-    /// 不変条件が壊れるため）。
+    /// 公開 [`Self::next_token`] の本体実装。`token_buffer::ensure_buffered` /
+    /// `next_non_comment_token` から「バッファに積むトークンの素材」として呼ばれる経路は
+    /// こちらを使う必要がある（公開 `next_token` を呼ぶと先に buffer から pop されてしまい
+    /// ensure_buffered のループ不変条件が壊れるため）。
+    ///
+    /// **呼び出し前提**: 本 API は冒頭で `skip_whitespace` を呼ばない low-level 設計。
+    /// 必要なら呼び出し側で事前に `skip_whitespace` を実行すること（`next_token` 側と
+    /// `token_buffer::next_non_comment_token` の双方で実施済み）。これにより
+    /// `next_non_comment_token` の `pos` 採取直前にだけ whitespace を消費する形になり、
+    /// `next_raw_token` 内で再スキャンする冗長性が消える。
     pub(super) fn next_raw_token(&mut self) -> Option<Token> {
-        self.skip_whitespace();
         let b = self.peek()?;
         match b {
             b'%' => {

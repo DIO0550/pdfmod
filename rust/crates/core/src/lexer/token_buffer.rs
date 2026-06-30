@@ -31,6 +31,9 @@ pub(super) fn ensure_buffered(lexer: &mut Lexer<'_>, n: usize) -> Option<()> {
 /// 公開 [`Lexer::next_token`] ではなく [`Lexer::next_raw_token`] を呼ぶことで、
 /// バッファ内の peek 済みトークンを誤って pop しないようにする
 /// （ensure_buffered のループ不変条件「`buffer.len() < n` の間ループ」を保つため）。
+///
+/// `skip_whitespace` は本関数内で 1 度だけ呼ぶ（`next_raw_token` 側は skip 不要前提）。
+/// これによりトークン取得ごとの whitespace スキャンが二重化されない。
 pub(super) fn next_non_comment_token(lexer: &mut Lexer<'_>) -> Option<(Token, usize)> {
     loop {
         lexer.skip_whitespace();
