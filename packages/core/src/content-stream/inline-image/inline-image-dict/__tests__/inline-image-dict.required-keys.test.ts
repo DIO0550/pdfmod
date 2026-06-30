@@ -5,6 +5,7 @@ import {
   type TokenInlineImageDictEntry,
   TokenType,
 } from "../../../../pdf/index";
+import { some } from "../../../../utils/option/index";
 import { InlineImageDict, type InlineImageRequiredKey } from "../index";
 
 const integerToken = (value: number): Token => ({
@@ -62,10 +63,7 @@ test("BitsPerComponent は imageMask=true で optional、imageMask=false で必�
   const normal = InlineImageDict.findMissingRequiredKey(dict, false);
 
   expect(stencil.some).toBe(false);
-  expect(normal.some).toBe(true);
-  if (normal.some) {
-    expect(normal.value).toBe("BitsPerComponent");
-  }
+  expect(normal).toStrictEqual(some("BitsPerComponent"));
 });
 
 test("imageMask=true で ColorSpace が dict に余分に含まれても none を返す（現実装の既存挙動）", () => {
@@ -92,10 +90,7 @@ test.each<[InlineImageRequiredKey]>([
 
   const result = InlineImageDict.findMissingRequiredKey(dict, false);
 
-  expect(result.some).toBe(true);
-  if (result.some) {
-    expect(result.value).toBe(missingKey);
-  }
+  expect(result).toStrictEqual(some(missingKey));
 });
 
 test("imageMask=false で Width と Height が両方欠落のとき some('Width') を返す（先頭優先）", () => {
@@ -107,10 +102,7 @@ test("imageMask=false で Width と Height が両方欠落のとき some('Width'
 
   const result = InlineImageDict.findMissingRequiredKey(dict, false);
 
-  expect(result.some).toBe(true);
-  if (result.some) {
-    expect(result.value).toBe("Width");
-  }
+  expect(result).toStrictEqual(some("Width"));
 });
 
 test("imageMask=false で Height のみ欠落のとき some('Height') を返す", () => {
@@ -123,10 +115,7 @@ test("imageMask=false で Height のみ欠落のとき some('Height') を返す"
 
   const result = InlineImageDict.findMissingRequiredKey(dict, false);
 
-  expect(result.some).toBe(true);
-  if (result.some) {
-    expect(result.value).toBe("Height");
-  }
+  expect(result).toStrictEqual(some("Height"));
 });
 
 test("imageMask=false で BitsPerComponent のみ欠落のとき some('BitsPerComponent') を返す", () => {
@@ -139,10 +128,7 @@ test("imageMask=false で BitsPerComponent のみ欠落のとき some('BitsPerCo
 
   const result = InlineImageDict.findMissingRequiredKey(dict, false);
 
-  expect(result.some).toBe(true);
-  if (result.some) {
-    expect(result.value).toBe("BitsPerComponent");
-  }
+  expect(result).toStrictEqual(some("BitsPerComponent"));
 });
 
 test("imageMask=true で Width が欠落のとき some('Width') を返す", () => {
@@ -151,10 +137,7 @@ test("imageMask=true で Width が欠落のとき some('Width') を返す", () =
 
   const result = InlineImageDict.findMissingRequiredKey(dict, true);
 
-  expect(result.some).toBe(true);
-  if (result.some) {
-    expect(result.value).toBe("Width");
-  }
+  expect(result).toStrictEqual(some("Width"));
 });
 
 test("imageMask=true で Height が欠落のとき some('Height') を返す", () => {
@@ -163,30 +146,21 @@ test("imageMask=true で Height が欠落のとき some('Height') を返す", ()
 
   const result = InlineImageDict.findMissingRequiredKey(dict, true);
 
-  expect(result.some).toBe(true);
-  if (result.some) {
-    expect(result.value).toBe("Height");
-  }
+  expect(result).toStrictEqual(some("Height"));
 });
 
 test("空 dict × imageMask=false で some('Width') を返す（先頭の必須キーから検査）", () => {
   // 空入力でも検査順 1 番目の Width を返す
   const result = InlineImageDict.findMissingRequiredKey([], false);
 
-  expect(result.some).toBe(true);
-  if (result.some) {
-    expect(result.value).toBe("Width");
-  }
+  expect(result).toStrictEqual(some("Width"));
 });
 
 test("空 dict × imageMask=true で some('Width') を返す", () => {
   // stencil 経路でも先頭は Width
   const result = InlineImageDict.findMissingRequiredKey([], true);
 
-  expect(result.some).toBe(true);
-  if (result.some) {
-    expect(result.value).toBe("Width");
-  }
+  expect(result).toStrictEqual(some("Width"));
 });
 
 test("略号のまま入力（normalize 未経由）すると some('Width') を返す（呼び出し前提の pin down）", () => {
@@ -201,10 +175,7 @@ test("略号のまま入力（normalize 未経由）すると some('Width') を�
 
   const result = InlineImageDict.findMissingRequiredKey(dict, false);
 
-  expect(result.some).toBe(true);
-  if (result.some) {
-    expect(result.value).toBe("Width");
-  }
+  expect(result).toStrictEqual(some("Width"));
 });
 
 test("normalize 連鎖: 全略号 dict は完全名展開後に必須キー揃いと判定される", () => {

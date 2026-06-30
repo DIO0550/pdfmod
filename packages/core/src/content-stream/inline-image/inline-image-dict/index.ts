@@ -222,6 +222,7 @@ export const InlineImageDict = {
    * - value 配列が空、value[0] が Boolean 以外、Boolean(false) のときはすべて false。
    *
    * @param dict 既に `normalize` を経由した dict を想定するが、未経由でも安全に false を返す
+   * @returns `/ImageMask` の最初の entry が `TokenBoolean(true)` のときのみ true、それ以外は false
    */
   isImageMaskTrue: (dict: InlineImageDict): boolean => {
     const entry = findFirstEntry(dict, "ImageMask");
@@ -279,6 +280,9 @@ export const InlineImageDict = {
    *   - Name 以外（Integer / Boolean / Array / Dict / Null / Real / String 等）は素通し
    *   - Name token は table に hit すれば新 token で置換（`offset` 継承）、miss すれば素通し
    *   - Array / Dict 系 token に対する **再帰展開はしない**（Table 89 は 1 階層の Name のみが対象）
+   *
+   * @param dict 完全名キーへ `normalize` 済みの inline-image dict
+   * @returns 値側略号を完全名へ展開した新 dict（4 階層参照同一性ルールで非置換部は同一参照）
    */
   expandValueAbbrevs: (dict: InlineImageDict): InlineImageDict => {
     return dict.map((entry) => {
