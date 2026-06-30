@@ -67,7 +67,11 @@ impl<'a> Lexer<'a> {
     /// 論理カーソル位置を返す。バッファに peek 済みトークンがあればその先頭エントリの開始位置を、
     /// バッファ空時は現在のカーソル位置 (`self.pos`) を返す。
     ///
-    /// 「次に `take_token` で取り出されるトークンの開始バイト位置」と等価。
+    /// バッファ非空時のみ「次に `take_token` で取り出されるトークンの開始バイト位置」と等価。
+    /// バッファ空時の `self.pos` は直前のトークン末尾直後を指すため、次のトークン開始位置とは
+    /// 一致しないことがある（`take_token` 内部の `skip_whitespace` で whitespace を消費した
+    /// 後の位置）。次に取り出されるトークンの開始位置が必要な場合は
+    /// [`Self::peek_token_with_pos`] の返す `pos` を使う。
     /// バッファを無視した生のカーソル位置が必要な場合は [`Self::cursor_position`] を使う。
     pub fn position(&self) -> usize {
         self.buffer.front().map(|(_, pos)| *pos).unwrap_or(self.pos)
