@@ -10,6 +10,7 @@ mod comment_transparent;
 mod consecutive_peek_at;
 mod eof_boundary;
 mod malformed_vs_eof;
+mod next_token_drains_buffer;
 mod no_alloc_on_take_only;
 mod peek_then_take_consistency;
 mod position_after_peek;

@@ -694,7 +694,27 @@ impl<'a> Lexer<'a> {
     ///
     /// 注意: `stream` キーワード直後の改行スキップと stream データ本体（`/Length` バイト分）の
     /// 読み出しは本 API のスコープ外。本層は `Token::StreamBegin` を返すまでが責務。
+    ///
+    /// 内部 lookahead バッファとの関係:
+    /// 直前に `peek_token` / `peek_token_at` を呼んで内部バッファにトークンが保留されている場合、
+    /// 本 API はバッファ先頭エントリの `Token` 部分を `pop_front` で返す。これにより
+    /// 「peek した値は次回 `next_token` でも同じ値を返す」契約を満たし、peek 系 API と混在
+    /// しても token が skip/reorder されない。バッファ空時は従来通り入力バイトから lex する。
+    /// 入力バイトから直接 lex したい内部用途には [`Self::next_raw_token`] (private) を使う。
     pub fn next_token(&mut self) -> Option<Token> {
+        if let Some((tok, _)) = self.buffer.pop_front() {
+            return Some(tok);
+        }
+        self.next_raw_token()
+    }
+
+    /// 内部 lookahead バッファを無視して入力バイトから直接 1 トークン読み出す low-level API。
+    ///
+    /// 公開 [`Self::next_token`] の本体実装。`token_buffer::ensure_buffered` / `next_non_comment_token`
+    /// から「バッファに積むトークンの素材」として呼ばれる経路はこちらを使う必要がある
+    /// （公開 `next_token` を呼ぶと先に buffer から pop されてしまい ensure_buffered のループ
+    /// 不変条件が壊れるため）。
+    pub(super) fn next_raw_token(&mut self) -> Option<Token> {
         self.skip_whitespace();
         let b = self.peek()?;
         match b {

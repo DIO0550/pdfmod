@@ -27,11 +27,15 @@ pub(super) fn ensure_buffered(lexer: &mut Lexer<'_>, n: usize) -> Option<()> {
 ///
 /// Comment は破棄して継続。EOF または malformed なら `None`。
 /// `pos` は `skip_whitespace` 後の `lexer.pos` を採用する（トークン本体の開始位置）。
+///
+/// 公開 [`Lexer::next_token`] ではなく [`Lexer::next_raw_token`] を呼ぶことで、
+/// バッファ内の peek 済みトークンを誤って pop しないようにする
+/// （ensure_buffered のループ不変条件「`buffer.len() < n` の間ループ」を保つため）。
 pub(super) fn next_non_comment_token(lexer: &mut Lexer<'_>) -> Option<(Token, usize)> {
     loop {
         lexer.skip_whitespace();
         let pos_before = lexer.pos;
-        match lexer.next_token()? {
+        match lexer.next_raw_token()? {
             Token::Comment(_) => continue,
             tok => return Some((tok, pos_before)),
         }
