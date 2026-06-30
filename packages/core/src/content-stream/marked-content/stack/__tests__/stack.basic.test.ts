@@ -4,7 +4,7 @@ import type {
   PdfName,
 } from "../../../../pdf/types/pdf-types/index";
 import { none, some } from "../../../../utils/option/index";
-import { MarkedContentStack, type MarkedContentEntry } from "../../index";
+import { type MarkedContentEntry, MarkedContentStack } from "../../index";
 
 const spanTag: PdfName = { type: "name", value: "Span" };
 const artifactTag: PdfName = { type: "name", value: "Artifact" };
