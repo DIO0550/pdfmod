@@ -701,6 +701,12 @@ impl<'a> Lexer<'a> {
     /// 「peek した値は次回 `next_token` でも同じ値を返す」契約を満たし、peek 系 API と混在
     /// しても token が skip/reorder されない。バッファ空時は従来通り入力バイトから lex する。
     /// 入力バイトから直接 lex したい内部用途には [`Self::next_raw_token`] (private) を使う。
+    ///
+    /// **Comment 観測上の注意**: `peek_token` / `peek_token_at` は Comment 透過の契約のため、
+    /// peek の過程で読み飛ばされた `Token::Comment` はバッファに保留されず破棄される。
+    /// したがって peek 後に本 API を呼ぶと、peek が透過スキップした Comment はもはや観測
+    /// できない（バッファに残るのは Comment 以外のトークンのみ）。Comment を含む全トークンを
+    /// 順に観測したい場合は、本 API を peek 系と混在させず単独で呼び出すこと。
     pub fn next_token(&mut self) -> Option<Token> {
         if let Some((tok, _)) = self.buffer.pop_front() {
             return Some(tok);
