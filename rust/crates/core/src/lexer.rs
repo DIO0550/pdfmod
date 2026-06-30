@@ -20,6 +20,9 @@ pub mod eol;
 mod hex_string;
 mod literal_string;
 pub mod token;
+mod token_buffer;
+
+use std::collections::VecDeque;
 
 use crate::object::name::PdfName;
 use byte_kind::ByteKind;
@@ -48,17 +51,95 @@ fn hex_value(b: u8) -> u8 {
 pub struct Lexer<'a> {
     input: &'a [u8],
     pos: usize,
+    buffer: VecDeque<(Token, usize)>,
 }
 
 impl<'a> Lexer<'a> {
     /// 入力バイト列を借用して新しい `Lexer` を生成する。`pos` は 0 で初期化される。
     pub fn new(input: &'a [u8]) -> Self {
-        Self { input, pos: 0 }
+        Self {
+            input,
+            pos: 0,
+            buffer: VecDeque::new(),
+        }
     }
 
-    /// 現在の `pos` を返す。
+    /// 論理カーソル位置を返す。バッファに peek 済みトークンがあればその先頭エントリの開始位置を、
+    /// バッファ空時は現在のカーソル位置 (`self.pos`) を返す。
+    ///
+    /// 「次に `take_token` で取り出されるトークンの開始バイト位置」と等価。
+    /// バッファを無視した生のカーソル位置が必要な場合は [`Self::cursor_position`] を使う。
     pub fn position(&self) -> usize {
+        self.buffer.front().map(|(_, pos)| *pos).unwrap_or(self.pos)
+    }
+
+    /// バイト単位のカーソル位置 (`self.pos`) を直接返す。バッファ内のトークンを無視した生の値。
+    ///
+    /// 用途: lookahead 中に lexer が malformed を検知した場合のエラー位置報告など、
+    /// 論理カーソルではなく生バイト位置が必要な場面で使う。
+    /// 通常の論理カーソルが必要な場合は [`Self::position`] を使う。
+    pub fn cursor_position(&self) -> usize {
         self.pos
+    }
+
+    #[cfg(test)]
+    pub(crate) fn buffer_capacity_for_tests(&self) -> usize {
+        self.buffer.capacity()
+    }
+
+    /// 次に消費されるトークンを参照で覗き見る（Comment 透過込み）。
+    ///
+    /// peek した値は次回 `take_token`（および続く `peek_token`）でも同じ値を返す。
+    /// `peek_token_at(0) == peek_token()`（0-indexed の最先頭）。
+    pub fn peek_token(&mut self) -> Option<&Token> {
+        self.peek_token_at(0)
+    }
+
+    /// 0-indexed で `n` 番目に取り出されるトークンを参照で覗き見る（Comment 透過込み）。
+    ///
+    /// `peek_token_at(0) == peek_token()`（0-indexed の最先頭）。
+    /// peek した値は次回 `take_token` / `peek_token` でも同じ値を返す。
+    /// `n` が `usize::MAX` でも panic せず `None` を返す（`n.checked_add(1)` で吸収）。
+    pub fn peek_token_at(&mut self, n: usize) -> Option<&Token> {
+        let required = n.checked_add(1)?;
+        token_buffer::ensure_buffered(self, required)?;
+        self.buffer.get(n).map(|(tok, _)| tok)
+    }
+
+    /// 次のトークンをムーブで取り出す（Comment 透過込み）。
+    ///
+    /// 直前の `peek_token` / `peek_token_at(0)` で得た値（0-indexed の最先頭）と
+    /// 同じトークンを返す。peek した値は次回 `take_token`（および続く `peek_token`）でも
+    /// 同じ値を返す不変条件を保つ。
+    /// バッファ非空ならフロントから、空時は内部で直接 lex を進める（`push_back` を経由しない）。
+    pub fn take_token(&mut self) -> Option<Token> {
+        if let Some((tok, _)) = self.buffer.pop_front() {
+            return Some(tok);
+        }
+        token_buffer::next_non_comment_token(self).map(|(tok, _)| tok)
+    }
+
+    /// 次に消費されるトークンを位置情報付きで覗き見る（Comment 透過込み）。
+    ///
+    /// `peek_token_at(0) == peek_token()` と同じトークンを位置情報 (token 開始バイト位置)
+    /// と共に返す。peek した値は次回 `take_token_with_pos`（および `peek_token`）でも
+    /// 同じ値を返し、`pos` も `take_token_with_pos` が返す値と一致する。
+    pub fn peek_token_with_pos(&mut self) -> Option<(&Token, usize)> {
+        token_buffer::ensure_buffered(self, 1)?;
+        self.buffer.front().map(|(tok, pos)| (tok, *pos))
+    }
+
+    /// 次のトークンを位置情報付きでムーブ取り出す（Comment 透過込み）。
+    ///
+    /// 直前の `peek_token` 系 / `peek_token_with_pos`（`peek_token_at(0) == peek_token()`
+    /// と等価な 0-indexed 最先頭）で得た値があれば、それと同じトークンと `pos` を返す。
+    /// peek した値は次回 `take_token_with_pos` でも同じ値を返す不変条件を保つ。
+    /// バッファ非空ならフロントから、空時は内部で直接 lex を進める（`push_back` を経由しない）。
+    pub fn take_token_with_pos(&mut self) -> Option<(Token, usize)> {
+        if let Some(entry) = self.buffer.pop_front() {
+            return Some(entry);
+        }
+        token_buffer::next_non_comment_token(self)
     }
 
     /// 現在位置のバイトを覗き見る（消費しない）。EOF なら `None`。
@@ -660,3 +741,6 @@ impl<'a> Lexer<'a> {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod peek_token_tests;
