@@ -32,6 +32,7 @@ fn read_hex_string_does_not_panic_when_pos_is_usize_max() {
     let mut lexer = Lexer {
         input: b"<41>",
         pos: usize::MAX,
+        buffer: std::collections::VecDeque::new(),
     };
     let result = lexer.read_hex_string();
     assert!(result.is_none());

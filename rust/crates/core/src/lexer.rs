@@ -20,6 +20,9 @@ pub mod eol;
 mod hex_string;
 mod literal_string;
 pub mod token;
+mod token_buffer;
+
+use std::collections::VecDeque;
 
 use crate::object::name::PdfName;
 use byte_kind::ByteKind;
@@ -48,17 +51,103 @@ fn hex_value(b: u8) -> u8 {
 pub struct Lexer<'a> {
     input: &'a [u8],
     pos: usize,
+    buffer: VecDeque<(Token, usize)>,
 }
 
 impl<'a> Lexer<'a> {
     /// 入力バイト列を借用して新しい `Lexer` を生成する。`pos` は 0 で初期化される。
     pub fn new(input: &'a [u8]) -> Self {
-        Self { input, pos: 0 }
+        Self {
+            input,
+            pos: 0,
+            buffer: VecDeque::new(),
+        }
     }
 
-    /// 現在の `pos` を返す。
+    /// 論理カーソル位置を返す。バッファに peek 済みトークンがあればその先頭エントリの開始位置を、
+    /// バッファ空時は現在のカーソル位置 (`self.pos`) を返す。
+    ///
+    /// バッファ非空時のみ「次に `take_token` で取り出されるトークンの開始バイト位置」と等価。
+    /// バッファ空時の `self.pos` は直前のトークン末尾直後を指すため、次のトークン開始位置とは
+    /// 一致しないことがある（`take_token` 内部の `skip_whitespace` で whitespace を消費した
+    /// 後の位置）。次に取り出されるトークンの開始位置が必要な場合は
+    /// [`Self::peek_token_with_pos`] の返す `pos` を使う。
+    /// バッファを無視した生のカーソル位置が必要な場合は [`Self::cursor_position`] を使う。
     pub fn position(&self) -> usize {
+        self.buffer.front().map(|(_, pos)| *pos).unwrap_or(self.pos)
+    }
+
+    /// バイト単位のカーソル位置 (`self.pos`) を直接返す。バッファ内のトークンを無視した生の値。
+    ///
+    /// 用途: lookahead 中に lexer が malformed を検知した場合のエラー位置報告など、
+    /// 論理カーソルではなく生バイト位置が必要な場面で使う。
+    /// 通常の論理カーソルが必要な場合は [`Self::position`] を使う。
+    pub fn cursor_position(&self) -> usize {
         self.pos
+    }
+
+    #[cfg(test)]
+    pub(crate) fn buffer_capacity_for_tests(&self) -> usize {
+        self.buffer.capacity()
+    }
+
+    /// 次に消費されるトークンを参照で覗き見る（Comment 透過込み）。
+    ///
+    /// peek した値は次回 `take_token`（および続く `peek_token`）でも同じ値を返す。
+    /// `peek_token_at(0) == peek_token()`（0-indexed の最先頭）。
+    pub fn peek_token(&mut self) -> Option<&Token> {
+        self.peek_token_at(0)
+    }
+
+    /// 0-indexed で `n` 番目に取り出されるトークンを参照で覗き見る（Comment 透過込み）。
+    ///
+    /// `peek_token_at(0) == peek_token()`（0-indexed の最先頭）。
+    /// peek したトークンは内部バッファに順序を保ったまま保留されるため、`take_token`
+    /// を先頭から繰り返し呼ぶと同じ順序で取り出せる。具体的には `peek_token_at(n)` で
+    /// 観測した値は、先頭から `n` 回 `take_token` を消費した次（つまり `n+1` 回目）の
+    /// `take_token` で同じ値が返る。`n == 0` の場合のみ直後の `take_token` で同じ値が返る
+    /// （`peek_token` と同義）。
+    /// `n` が `usize::MAX` でも panic せず `None` を返す（`n.checked_add(1)` で吸収）。
+    pub fn peek_token_at(&mut self, n: usize) -> Option<&Token> {
+        let required = n.checked_add(1)?;
+        token_buffer::ensure_buffered(self, required)?;
+        self.buffer.get(n).map(|(tok, _)| tok)
+    }
+
+    /// 次のトークンをムーブで取り出す（Comment 透過込み）。
+    ///
+    /// 直前の `peek_token` / `peek_token_at(0)` で得た値（0-indexed の最先頭）と
+    /// 同じトークンを返す。peek した値は次回 `take_token`（および続く `peek_token`）でも
+    /// 同じ値を返す不変条件を保つ。
+    /// バッファ非空ならフロントから、空時は内部で直接 lex を進める（`push_back` を経由しない）。
+    pub fn take_token(&mut self) -> Option<Token> {
+        if let Some((tok, _)) = self.buffer.pop_front() {
+            return Some(tok);
+        }
+        token_buffer::next_non_comment_token(self).map(|(tok, _)| tok)
+    }
+
+    /// 次に消費されるトークンを位置情報付きで覗き見る（Comment 透過込み）。
+    ///
+    /// `peek_token_at(0) == peek_token()` と同じトークンを位置情報 (token 開始バイト位置)
+    /// と共に返す。peek した値は次回 `take_token_with_pos`（および `peek_token`）でも
+    /// 同じ値を返し、`pos` も `take_token_with_pos` が返す値と一致する。
+    pub fn peek_token_with_pos(&mut self) -> Option<(&Token, usize)> {
+        token_buffer::ensure_buffered(self, 1)?;
+        self.buffer.front().map(|(tok, pos)| (tok, *pos))
+    }
+
+    /// 次のトークンを位置情報付きでムーブ取り出す（Comment 透過込み）。
+    ///
+    /// 直前の `peek_token` 系 / `peek_token_with_pos`（`peek_token_at(0) == peek_token()`
+    /// と等価な 0-indexed 最先頭）で得た値があれば、それと同じトークンと `pos` を返す。
+    /// peek した値は次回 `take_token_with_pos` でも同じ値を返す不変条件を保つ。
+    /// バッファ非空ならフロントから、空時は内部で直接 lex を進める（`push_back` を経由しない）。
+    pub fn take_token_with_pos(&mut self) -> Option<(Token, usize)> {
+        if let Some(entry) = self.buffer.pop_front() {
+            return Some(entry);
+        }
+        token_buffer::next_non_comment_token(self)
     }
 
     /// 現在位置のバイトを覗き見る（消費しない）。EOF なら `None`。
@@ -609,8 +698,40 @@ impl<'a> Lexer<'a> {
     ///
     /// 注意: `stream` キーワード直後の改行スキップと stream データ本体（`/Length` バイト分）の
     /// 読み出しは本 API のスコープ外。本層は `Token::StreamBegin` を返すまでが責務。
+    ///
+    /// 内部 lookahead バッファとの関係:
+    /// 直前に `peek_token` / `peek_token_at` を呼んで内部バッファにトークンが保留されている場合、
+    /// 本 API はバッファ先頭エントリの `Token` 部分を `pop_front` で返す。これにより
+    /// 「peek した値は次回 `next_token` でも同じ値を返す」契約を満たし、peek 系 API と混在
+    /// しても token が skip/reorder されない。バッファ空時は従来通り入力バイトから lex する。
+    /// 入力バイトから直接 lex したい内部用途には [`Self::next_raw_token`] (private) を使う。
+    ///
+    /// **Comment 観測上の注意**: `peek_token` / `peek_token_at` は Comment 透過の契約のため、
+    /// peek の過程で読み飛ばされた `Token::Comment` はバッファに保留されず破棄される。
+    /// したがって peek 後に本 API を呼ぶと、peek が透過スキップした Comment はもはや観測
+    /// できない（バッファに残るのは Comment 以外のトークンのみ）。Comment を含む全トークンを
+    /// 順に観測したい場合は、本 API を peek 系と混在させず単独で呼び出すこと。
     pub fn next_token(&mut self) -> Option<Token> {
+        if let Some((tok, _)) = self.buffer.pop_front() {
+            return Some(tok);
+        }
         self.skip_whitespace();
+        self.next_raw_token()
+    }
+
+    /// 内部 lookahead バッファを無視して入力バイトから直接 1 トークン読み出す low-level API。
+    ///
+    /// 公開 [`Self::next_token`] の本体実装。`token_buffer::ensure_buffered` /
+    /// `next_non_comment_token` から「バッファに積むトークンの素材」として呼ばれる経路は
+    /// こちらを使う必要がある（公開 `next_token` を呼ぶと先に buffer から pop されてしまい
+    /// ensure_buffered のループ不変条件が壊れるため）。
+    ///
+    /// **呼び出し前提**: 本 API は冒頭で `skip_whitespace` を呼ばない low-level 設計。
+    /// 必要なら呼び出し側で事前に `skip_whitespace` を実行すること（`next_token` 側と
+    /// `token_buffer::next_non_comment_token` の双方で実施済み）。これにより
+    /// `next_non_comment_token` の `pos` 採取直前にだけ whitespace を消費する形になり、
+    /// `next_raw_token` 内で再スキャンする冗長性が消える。
+    pub(super) fn next_raw_token(&mut self) -> Option<Token> {
         let b = self.peek()?;
         match b {
             b'%' => {
@@ -660,3 +781,6 @@ impl<'a> Lexer<'a> {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod peek_token_tests;
