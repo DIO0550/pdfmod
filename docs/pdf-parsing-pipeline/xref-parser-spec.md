@@ -57,6 +57,10 @@ interface TrailerDict {
   info?: IndirectRef;
   /** /ID — ファイル識別子 [永続ID, 変更ID] */
   id?: [Uint8Array, Uint8Array];
+  /** /Encrypt — 暗号化辞書（間接参照または直値）。存在する場合、暗号化PDFとして検出する */
+  encrypt?: PdfObject;
+  /** /XRefStm — ハイブリッド参照ファイルにおける相互参照ストリームのバイトオフセット（テキスト形式trailerのみ） */
+  xrefStm?: number;
 }
 ```
 
@@ -132,6 +136,8 @@ interface TrailerDict {
 | TR-002 | /Size必須 | 未検出 | `PdfParseError` をスロー |
 | TR-003 | /Prev | 整数値 | 前のxrefテーブルのオフセットとして記録 |
 | TR-004 | /ID | 2要素の配列 | Uint8Arrayのペアに変換 |
+| TR-005 | /Encrypt | 存在する場合 | `TrailerDict.encrypt` に記録。復号は未対応のため、パイプライン上位（`PdfDocument.load`）が `ENCRYPTED_PDF_UNSUPPORTED` エラーを返す |
+| TR-006 | /XRefStm | 整数値（テキスト形式trailerのみ） | ハイブリッド参照ファイルの相互参照ストリームのオフセットとして記録（XM-005参照） |
 
 ### XRefMerger
 
@@ -150,6 +156,7 @@ interface TrailerDict {
 | XM-002 | 循環防止 | /Prevが同一オフセットを指す | `XREF_PREV_CHAIN_CYCLE` エラーを返す |
 | XM-003 | 深度制限 | /Prevチェーンが深すぎる | 最大100段で `XREF_PREV_CHAIN_TOO_DEEP` エラーを返す |
 | XM-004 | 形式混在 | テキスト形式とストリーム形式の混在 | コールバック提供側が形式を判定し適切なパーサを呼び出す |
+| XM-005 | ハイブリッド参照 | trailerに`/XRefStm`が存在 | 同一更新のテキストxrefより先に相互参照ストリームを読み、エントリはストリーム側を優先。`/Prev`はテキストtrailer側のみ辿る |
 
 > 📄 詳細仕様は [xref-merger-spec.md](./xref-merger-spec.md) を参照。
 
