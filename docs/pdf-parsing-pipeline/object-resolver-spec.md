@@ -121,7 +121,7 @@ PdfObject を返却
 | OR-007 | 型チェック | resolveAs() で期待型と不一致 | `TYPE_MISMATCH` エラーを返す |
 | OR-008 | freeエントリ | XRefEntry.type = 0 | PdfNull `{ type: "null" }` を返却（削除済みオブジェクトへの参照。ISO 32000-1 §7.3.10） |
 | OR-009 | 世代番号不一致 | 参照の世代番号がエントリの世代番号（field3）と不一致（type=0/1） | PdfNullを返却し `GENERATION_MISMATCH` 警告を通知 |
-| OR-010 | 圧縮オブジェクトの世代 | XRefEntry.type = 2 | 格納オブジェクトの世代は常に0。世代番号≠0の参照はOR-009に従いPdfNullを返却 |
+| OR-010 | 圧縮オブジェクトの世代 | XRefEntry.type = 2 かつ 参照の世代番号 ≠ 0 | 格納オブジェクトの世代は常に0のため無効な参照とみなし、PdfNullを返却し `GENERATION_MISMATCH` 警告を通知（type=2 の field3 はストリーム内インデックスであり世代照合には使わない） |
 
 ### freeエントリと世代番号の扱い
 
