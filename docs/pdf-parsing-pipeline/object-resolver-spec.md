@@ -17,30 +17,29 @@ Token列をPdfObjectに変換し（ObjectParser）、xrefテーブルを用い�
 
 ## データ型
 
-### PdfObject（共用体型）
+### PdfObject（直和型）
 
-```typescript
-type PdfObject =
-  | { type: "null" }
-  | { type: "boolean"; value: boolean }
-  | { type: "integer"; value: number }
-  | { type: "real"; value: number }
-  | { type: "string"; value: Uint8Array; encoding: "literal" | "hex" }
-  | { type: "name"; value: string }
-  | { type: "array"; elements: PdfObject[] }
-  | { type: "dictionary"; entries: Map<string, PdfObject> }
-  | { type: "stream"; dictionary: PdfDictionary; data: Uint8Array }
-  | { type: "indirect-ref"; objectNumber: number; generationNumber: number };
-```
+PdfObject は次の10バリアントのいずれかである。
+
+| バリアント | 保持する値 | 説明 |
+|:-----------|:-----------|:-----|
+| `null` | なし | nullオブジェクト |
+| `boolean` | 真偽値 | 真偽値オブジェクト |
+| `integer` | 整数 | 整数オブジェクト |
+| `real` | 実数 | 実数オブジェクト |
+| `string` | バイト列、エンコーディング種別（`literal` または `hex`） | 文字列オブジェクト。元表記がリテラル文字列か16進文字列かを保持する |
+| `name` | 文字列 | 名前オブジェクト |
+| `array` | PdfObject の順序付き列 | 配列オブジェクト。要素は任意のPdfObject |
+| `dictionary` | 名前（文字列）→ PdfObject のマップ | 辞書オブジェクト |
+| `stream` | 辞書 + バイト列（ストリームデータ） | ストリームオブジェクト |
+| `indirect-ref` | オブジェクト番号（整数）、世代番号（整数） | インダイレクト参照（`N G R`） |
 
 ### ObjectId
 
-```typescript
-interface ObjectId {
-  objectNumber: number;
-  generationNumber: number;
-}
-```
+| フィールド | 型 | 説明 |
+|:-----------|:---|:-----|
+| objectNumber | 整数 | オブジェクト番号 |
+| generationNumber | 整数 | 世代番号 |
 
 ## 処理仕様
 
@@ -65,15 +64,13 @@ Token列からPDFのプリミティブ9型 + インダイレクト参照をPdfOb
 
 ### ObjectResolver
 
-**入力**: `XRefTable` + `Uint8Array`（PDFバイナリ）
+**入力**: `XRefTable` + PDFバイナリ全体のバイト列
 **出力**: `PdfObject`（解決済み）
 
-```typescript
-class ObjectResolver {
-  resolve(ref: IndirectRef): PdfObject;
-  resolveAs<T extends PdfObject["type"]>(ref: IndirectRef, expectedType: T): Extract<PdfObject, { type: T }>;
-}
-```
+ObjectResolver は次の2つの解決操作を提供する。
+
+- **resolve** — **入力**: インダイレクト参照。**出力**: 参照先を解決したPdfObject。
+- **resolveAs** — 期待するPdfObjectのバリアント（`dictionary` 等）を指定して解決する。**入力**: インダイレクト参照 + 期待する型。**出力**: 成功時は期待した型に絞り込まれたPdfObject、解決結果の型が期待と不一致なら `TYPE_MISMATCH` エラーを Err で返す（OR-007）。
 
 #### 解決フロー
 

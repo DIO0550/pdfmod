@@ -35,16 +35,12 @@ endstream
 
 ## 実装解説
 
-本 PR では以下の 3 モジュールを追加・変更した。
+本仕様は以下の 3 モジュールを定義する。
 
 ### 1. decompressFlate — FlateDecode 展開
 
-```typescript
-function decompressFlate(
-  data: Uint8Array,
-  maxDecompressedSize?: number,
-): Promise<Result<Uint8Array, PdfParseError>>;
-```
+**入力**: 圧縮データのバイト列、および任意指定の展開後最大サイズ（`maxDecompressedSize`、整数）
+**出力**: 非同期に完了する。成功時は展開後のバイト列を Ok で返し、失敗時は `PdfParseError` を Err で返す
 
 **ファイル:** `packages/core/src/xref/stream/flatedecode.ts`
 
@@ -102,17 +98,10 @@ writePromise 完了待ち
 | writer 側の書き込み/close エラー | `"FlateDecode decompression failed during write"` |
 | その他の展開エラー | `"FlateDecode decompression failed"` |
 
-#### 型の注意点
-
-`WritableStreamDefaultWriter.write()` の TypeScript 型定義では `BufferSource` が `ArrayBufferView<ArrayBuffer>` に限定されており、`Uint8Array<ArrayBufferLike>` と互換性がない。実行時には問題なく動作するため、`data as unknown as BufferSource` でキャストしている。
-
 ### 2. buildXRefStreamTrailerDict — TrailerDict 抽出
 
-```typescript
-function buildXRefStreamTrailerDict(
-  dict: ReadonlyMap<string, PdfValue>,
-): Result<TrailerDict, PdfParseError>;
-```
+**入力**: パース済みの xref ストリーム辞書（名前 → PdfValue の読み取り専用マップ）
+**出力**: 成功時は `TrailerDict` を Ok で返し、失敗時は `PdfParseError` を Err で返す
 
 **ファイル:** `packages/core/src/xref/stream/trailer/index.ts`
 
@@ -131,9 +120,8 @@ dict.get("ID")   → builder.id()
 
 ### 3. trailerDictBuilder — 共通 TrailerDict ビルダー
 
-```typescript
-function trailerDictBuilder(): TrailerDictBuilderChain;
-```
+**入力**: なし
+**出力**: メソッドチェーン可能なビルダーオブジェクト（`root` / `size` / `prev` / `info` / `id` の各設定操作と `build` を持つ）を返す。`build()` は成功時に `TrailerDict` を Ok で、バリデーション失敗時に `PdfParseError` を Err で返す
 
 **ファイル:** `packages/core/src/xref/trailer/dict-builder/index.ts`
 
@@ -171,44 +159,7 @@ function trailerDictBuilder(): TrailerDictBuilderChain;
 
 ### 4. FLATEDECODE_FAILED エラーコード
 
-```typescript
-type PdfParseErrorCode =
-  | "INVALID_HEADER"
-  | "STARTXREF_NOT_FOUND"
-  | "XREF_TABLE_INVALID"
-  | "XREF_STREAM_INVALID"
-  | "ROOT_NOT_FOUND"
-  | "SIZE_NOT_FOUND"
-  | "MEDIABOX_NOT_FOUND"
-  | "NESTING_TOO_DEEP"
-  | "FLATEDECODE_FAILED";  // ← 今回追加
-```
-
-FlateDecode 展開に関するすべてのエラーに使用する汎用コード。
-
-## テスト構成
-
-テストファイルはテスト対象と同じディレクトリに配置（`__tests__/` は使用しない）。
-
-### flatedecode テスト
-
-| ファイル | テスト内容 | テスト数 |
-|:---------|:----------|:---------|
-| `flatedecode.decode.test.ts` | 正常展開（短いデータ、空データ、冪等性、数KB） | 4 |
-| `flatedecode.validation.test.ts` | 不正データ、空入力、maxDecompressedSize 超過 | 3 |
-| `flatedecode.edge.test.ts` | 切り詰めデータ、ヘッダのみ | 2 |
-
-### xref-stream-trailer テスト
-
-| ファイル | テスト内容 | テスト数 |
-|:---------|:----------|:---------|
-| `xref-stream-trailer.validation.test.ts` | /Root, /Size, /Prev, /Info, /ID の各種バリデーション | 14 |
-| `xref-stream-trailer.decode.test.ts` | 正常構築（必須のみ、全フィールド） | 2 |
-| `xref-stream-trailer.edge.test.ts` | 空辞書、余分なキー、オプション全省略 | 3 |
-
-### PdfParseErrorCode 網羅性テスト
-
-`pdf-error.type-export.test.ts` で `as const satisfies` + `Exact` 型を使用し、リテラル配列と Union 型の相互一致をコンパイル時に保証。新しいエラーコードが追加された場合、配列の更新漏れが型エラーとして検出される。
+`FLATEDECODE_FAILED` は FlateDecode 展開に関するすべてのエラーに使用する汎用コード。エラーコードの一覧は [error-handling-spec.md](./error-handling-spec.md) の「エラー/警告コード一覧」で定義する（当該表が唯一の権威）。
 
 ## パイプライン上の位置づけ
 
@@ -235,13 +186,6 @@ scanStartXRef
 
 以下の API が `@pdfmod/core` からエクスポートされている:
 
-```typescript
-// FlateDecode 展開
-export { decompressFlate } from "./xref/stream/flatedecode";
-
-// xref ストリーム TrailerDict 構築
-export { buildXRefStreamTrailerDict } from "./xref/stream/trailer";
-
-// 共通 TrailerDict ビルダー
-export { trailerDictBuilder } from "./xref/trailer/dict-builder";
-```
+- `decompressFlate`（`xref/stream/flatedecode`）— FlateDecode 展開
+- `buildXRefStreamTrailerDict`（`xref/stream/trailer`）— xref ストリーム TrailerDict 構築
+- `trailerDictBuilder`（`xref/trailer/dict-builder`）— 共通 TrailerDict ビルダー
