@@ -46,6 +46,15 @@ type PdfParseErrorCode =
   | "INVALID_HEADER"
   | "STARTXREF_NOT_FOUND"
   | "XREF_TABLE_INVALID"
+  | "XREF_STREAM_INVALID"
+  | "XREF_PREV_CHAIN_CYCLE"
+  | "XREF_PREV_CHAIN_TOO_DEEP"
+  | "FLATEDECODE_FAILED"
+  | "TRAILER_DICT_INVALID"
+  | "OBJECT_PARSE_UNEXPECTED_TOKEN"
+  | "OBJECT_PARSE_UNTERMINATED"
+  | "OBJECT_PARSE_STREAM_LENGTH"
+  | "ENCRYPTED_PDF_UNSUPPORTED"
   | "ROOT_NOT_FOUND"
   | "SIZE_NOT_FOUND"
   | "MEDIABOX_NOT_FOUND"
@@ -150,12 +159,29 @@ if (!result.ok) {
 | `INVALID_HEADER` | PdfParseError | ヘッダが`%PDF-`で始まらない | "Invalid PDF header: expected %PDF-" |
 | `STARTXREF_NOT_FOUND` | PdfParseError | startxrefが検出できない（フォールバック後も） | "startxref not found in file" |
 | `XREF_TABLE_INVALID` | PdfParseError | xrefテーブルの構造が不正（キーワード不在、エントリ不正、trailer未検出など） | "expected 'xref' keyword" |
+| `XREF_STREAM_INVALID` | PdfParseError | xrefストリームの構造が不正（/W不正、エントリ長不整合など） | "invalid /W array in xref stream" |
+| `XREF_PREV_CHAIN_CYCLE` | PdfParseError | `/Prev`チェーンが走査済みオフセットを指す | "xref /Prev chain forms a cycle" |
+| `XREF_PREV_CHAIN_TOO_DEEP` | PdfParseError | `/Prev`チェーンが深度制限（100段）を超過 | "xref /Prev chain exceeds maximum depth" |
+| `FLATEDECODE_FAILED` | PdfParseError | FlateDecode展開の失敗（データ破損、展開後サイズ超過） | "FlateDecode failed" |
+| `TRAILER_DICT_INVALID` | PdfParseError | trailer辞書（xrefストリーム辞書含む）の構造が不正 | "invalid trailer dictionary" |
+| `OBJECT_PARSE_UNEXPECTED_TOKEN` | PdfParseError | オブジェクトパース中に予期しないトークンを検出 | "unexpected token" |
+| `OBJECT_PARSE_UNTERMINATED` | PdfParseError | 配列/辞書/オブジェクト定義が終端されないままEOF | "unterminated object" |
+| `OBJECT_PARSE_STREAM_LENGTH` | PdfParseError | ストリームの`/Length`が取得できない（間接参照未解決、値域不正、データ範囲超過） | "cannot determine stream /Length" |
+| `ENCRYPTED_PDF_UNSUPPORTED` | PdfParseError | trailerに`/Encrypt`が存在する（暗号化PDFは未対応） | "encrypted PDF is not supported" |
 | `ROOT_NOT_FOUND` | PdfParseError | `/Root`がトレイラに存在しない | "Trailer missing required /Root entry" |
 | `SIZE_NOT_FOUND` | PdfParseError | `/Size`がトレイラに存在しない | "Trailer missing required /Size entry" |
 | `MEDIABOX_NOT_FOUND` | PdfParseError | ルートまで辿ってもMediaBox未定義 | "Page {n}: MediaBox not found in page or ancestors" |
 | `CIRCULAR_REFERENCE` | PdfCircularReferenceError | オブジェクト解決で循環検出 | "Circular reference detected: object {id}" |
 | `TYPE_MISMATCH` | PdfTypeMismatchError | resolveAs()で型不一致 | "Expected dictionary but got array" |
 | `NESTING_TOO_DEEP` | PdfParseError | 配列/辞書のネストが100段超 | "Object nesting exceeds maximum depth (100)" |
+
+> **注（startxref 失敗時のコード）**: `STARTXREF_NOT_FOUND` は startxref が検出できず、かつフォールバックスキャナも無効（strict モード）の場合に返す。フォールバックスキャナ経由で trailer / `/Root` の再構成にも失敗した場合は `ROOT_NOT_FOUND` を返す（実装契約は [pdf-document-load-fallback.md](../implementation/pdf-document-load-fallback.md) を参照）。
+
+### エラー型の表現に関する方針
+
+- 本仕様のエラー型（`PdfParseError` / `PdfCircularReferenceError` / `PdfTypeMismatchError`）はすべて **interface であり、`Result` の error として返却される**。クラスとして `throw` しない。
+- 例外的に、プログラマエラー（API の誤用）は組み込みエラーの `throw` を許容する。例: `PdfDocument.getPage()` の範囲外インデックスは `RangeError` を throw する（[document-api-spec.md](./document-api-spec.md) DA-001）。
+- 本ドキュメントのエラーコード一覧が**全モジュール共通の唯一の権威**である。各モジュール仕様書で新しいコードを導入する場合は、必ず本一覧にも追加すること。
 
 ### 警告（寛容処理で回復）
 
@@ -172,6 +198,15 @@ if (!result.ok) {
 | `DUPLICATE_OBJECT` | 同一オブジェクト番号が重複 | 最後に定義されたものを優先 |
 | `UNKNOWN_PAGE_TYPE` | ページノードの`/Type`が不明 | 警告してスキップ |
 | `DATE_PARSE_FAILED` | PDF日時文字列のパース失敗 | undefinedを設定 |
+| `STRING_DECODE_FAILED` | テキスト文字列のデコード失敗（不正なUTF-16BE等） | 元のバイト列を保持しメタデータはundefined |
+| `GENERATION_MISMATCH` | 間接参照の世代番号がxrefエントリと不一致 | PdfNullを返却して続行 |
+
+### 仕様定義済み・実装未対応の回復処理
+
+以下の回復処理は本仕様で定義されているが、現時点の実装では未対応（[object-parser-spec.md](./object-parser-spec.md) の「今回非対応の仕様」を参照）:
+
+- `STREAM_LENGTH_MISMATCH`（SL-001〜SL-003 の endstream 探索による回復）
+- `XREF_OFFSET_MISMATCH`（OR-006 の前後32バイト探索）
 
 ## フォールバックメカニズム
 

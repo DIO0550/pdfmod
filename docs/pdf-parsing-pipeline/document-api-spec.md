@@ -40,12 +40,15 @@ static async load(
 
 **エラー**:
 
+内部パイプラインは `Result` 型でエラーを伝搬し、`load()` はエラー時に `PdfError`（[error-handling-spec.md](./error-handling-spec.md) 参照）を理由として Promise を reject する。
+
 | エラー | 発生条件 |
 |:-------|:---------|
-| `PdfParseError` | ヘッダが`%PDF-`で始まらない |
-| `PdfParseError` | startxrefが検出できない |
-| `PdfParseError` | `/Root`（カタログ）が解決できない |
-| `PdfParseError` | MediaBoxがどのページにも存在しない |
+| `PdfParseError` (`INVALID_HEADER`) | ヘッダが`%PDF-`で始まらない |
+| `PdfParseError` (`STARTXREF_NOT_FOUND`) | startxrefが検出できない |
+| `PdfParseError` (`ENCRYPTED_PDF_UNSUPPORTED`) | trailerに`/Encrypt`が存在する（暗号化PDF未対応） |
+| `PdfParseError` (`ROOT_NOT_FOUND`) | `/Root`（カタログ）が解決できない |
+| `PdfParseError` (`MEDIABOX_NOT_FOUND`) | MediaBoxがどのページにも存在しない |
 
 ### LoadOptions
 
@@ -96,6 +99,8 @@ class PdfDocument {
 |:---|:-------|:-----|:---------|
 | DA-001 | getPage範囲外 | index < 0 または index >= pageCount | `RangeError` をスロー |
 | DA-002 | getPage遅延構築 | 初回アクセス時 | ResolvedPageからPdfPageインスタンスを生成 |
+
+> **注**: DA-001 の `RangeError` はプログラマエラー（APIの誤用）であるため、Result 型ではなく throw で表現する。PDFデータ起因の問題はすべて Result / 警告で扱う（[error-handling-spec.md](./error-handling-spec.md) の「エラー型の表現に関する方針」を参照）。
 
 ### PdfPage
 
@@ -152,11 +157,13 @@ export type {
   XRefTable,
 } from "./types/index.js";
 
-// エラークラス
-export {
+// エラー型（interface — Result の error として返却される。クラスではないため type export）
+export type {
+  PdfError,
   PdfParseError,
-  CircularReferenceError,
-  PdfTypeError,
+  PdfCircularReferenceError,
+  PdfTypeMismatchError,
+  PdfWarning,
 } from "./errors/index.js";
 ```
 
