@@ -14,8 +14,8 @@ ISO 32000-1:2008 (PDF 1.7) / ISO 32000-2:2020 (PDF 2.0) 準拠を目標とする
 
 ## 現在の状態
 
-本 PR は **環境構築のみ**。Cargo ワークスペースの骨格と空の crate root だけを用意し、
-PDF 処理の実装は含まない。各モジュールの実装は後続 PR で追加する。
+字句解析・オブジェクトモデル・パーサ（Phase R1 相当）まで実装済み。xref / フィルタ /
+ドキュメント構造 / コンテンツストリーム相当は未実装で、後続 PR で追加する。
 
 ```
 rust/
@@ -26,7 +26,12 @@ rust/
     └── core/             # pdfmod-core クレート（PDF 処理エンジン）
         ├── Cargo.toml
         └── src/
-            └── lib.rs    # 空の crate root（実装は後続 PR）
+            ├── lib.rs
+            ├── byte_offset.rs   # バイトオフセットのブランド型
+            ├── error/           # PdfError / PdfErrorCode
+            ├── lexer/           # 字句解析（トークン、リテラル/16進文字列、EOL処理）
+            ├── object/          # オブジェクトモデル（PdfObject、辞書、名前、ID、間接参照）
+            └── parser/          # 構文解析（配列、辞書、間接参照）
 ```
 
 ## ビルド・テスト
