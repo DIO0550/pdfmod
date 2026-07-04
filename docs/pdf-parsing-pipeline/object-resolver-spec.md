@@ -46,7 +46,7 @@ PdfObject は次の10バリアントのいずれかである。
 ### ObjectParser
 
 **入力**: `Uint8Array` + オフセット（または Token列）
-**出力**: `PdfObject`
+**出力**: `Result` — 成功時は変換した `PdfObject` を Ok で、失敗時（不正構文・ネスト深度超過等）は `PdfParseError` を Err で返す
 
 Token列からPDFのプリミティブ9型 + インダイレクト参照をPdfObjectに変換する。
 
@@ -144,7 +144,7 @@ PdfObject を返却
 ### ObjectStreamExtractor
 
 **入力**: `ObjectResolver` + ストリームオブジェクト番号 + インデックス
-**出力**: `PdfObject`
+**出力**: `Result` — 成功時は抽出した `PdfObject` を Ok で、失敗時（ObjStm 構造不正・インデックス範囲外等）は `PdfParseError` を Err で返す
 
 | ID | ルール | 条件 | 振る舞い |
 |:---|:-------|:-----|:---------|
