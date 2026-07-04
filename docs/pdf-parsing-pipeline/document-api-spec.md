@@ -141,34 +141,28 @@ class PdfPage {
 ## パッケージエクスポート
 
 ```typescript
-// packages/core/src/index.ts
+// packages/core/src/index.ts（本仕様に関係する部分の抜粋）
 
-// 既存エクスポート
-export { Tokenizer } from "./lexer/index.js";
-export { TokenType } from "./types/index.js";
-export type { Token, IndirectRef } from "./types/index.js";
-
-// Phase 1+2 で追加するエクスポート
-export { PdfDocument } from "./document/index.js";
-export { PdfPage } from "./document/index.js";
+// ドキュメントAPI
+export { PdfDocument, PdfPage } from "./document/index";
 export type {
   LoadOptions,
   DocumentMetadata,
   ResolvedPage,
+  PdfDocumentLoadError,
+} from "./document/index";
+
+// PDF基盤型・エラー型（interface — Result の error として返却される。クラスではないため type export）
+export type {
   PdfObject,
   XRefEntry,
   XRefTable,
-} from "./types/index.js";
-
-// エラー型（interface — Result の error として返却される。クラスではないため type export）
-export type {
   PdfError,
   PdfParseError,
   PdfCircularReferenceError,
   PdfTypeMismatchError,
-  PdfDocumentLoadError,
   PdfWarning,
-} from "./errors/index.js";
+} from "./pdf/index";
 ```
 
 ## 使用例
@@ -208,11 +202,11 @@ for (let i = 0; i < doc.pageCount; i++) {
 
 ```
 packages/core/src/
-├── index.ts                    # パッケージエントリーポイント（エクスポート更新）
+├── index.ts                    # パッケージエントリーポイント
 ├── document/
 │   ├── index.ts                # PdfDocument, PdfPage 再エクスポート
-│   ├── pdf-document.ts         # PdfDocument クラス
-│   └── pdf-page.ts             # PdfPage クラス
+│   ├── pdf-document/index.ts   # PdfDocument クラス
+│   └── pdf-page/index.ts       # PdfPage クラス
 ```
 
 ## 関連仕様
