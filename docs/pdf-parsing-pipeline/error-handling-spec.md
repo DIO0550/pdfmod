@@ -54,8 +54,17 @@ type PdfParseErrorCode =
   | "OBJECT_PARSE_UNEXPECTED_TOKEN"
   | "OBJECT_PARSE_UNTERMINATED"
   | "OBJECT_PARSE_STREAM_LENGTH"
+  | "OBJECT_STREAM_INVALID"
+  | "OBJECT_STREAM_HEADER_INVALID"
+  | "OBJECT_STREAM_INDEX_OUT_OF_RANGE"
+  | "PDF_TYPE_INVALID"
+  | "PDF_FILTER_UNSUPPORTED"
+  | "TOKENIZER_POSITION_OUT_OF_RANGE"
   | "ENCRYPTED_PDF_UNSUPPORTED"
   | "ROOT_NOT_FOUND"
+  | "CATALOG_ROOT_NOT_DICTIONARY"
+  | "CATALOG_TYPE_INVALID"
+  | "PAGES_NOT_FOUND"
   | "SIZE_NOT_FOUND"
   | "MEDIABOX_NOT_FOUND"
   | "NESTING_TOO_DEEP";
@@ -167,8 +176,17 @@ if (!result.ok) {
 | `OBJECT_PARSE_UNEXPECTED_TOKEN` | PdfParseError | オブジェクトパース中に予期しないトークンを検出 | "unexpected token" |
 | `OBJECT_PARSE_UNTERMINATED` | PdfParseError | 配列/辞書/オブジェクト定義が終端されないままEOF | "unterminated object" |
 | `OBJECT_PARSE_STREAM_LENGTH` | PdfParseError | ストリームの`/Length`が取得できない（間接参照未解決、値域不正、データ範囲超過） | "cannot determine stream /Length" |
+| `OBJECT_STREAM_INVALID` | PdfParseError | ObjStm の構造が不正（/First・/N 不正、格納禁止オブジェクト等） | "invalid object stream" |
+| `OBJECT_STREAM_HEADER_INVALID` | PdfParseError | ObjStm オフセットテーブルが不正 | "invalid object stream header" |
+| `OBJECT_STREAM_INDEX_OUT_OF_RANGE` | PdfParseError | ObjStm 内インデックスが `/N` の範囲外 | "object stream index out of range" |
+| `PDF_TYPE_INVALID` | PdfParseError | 期待するPDFオブジェクト型と実際の型が不一致 | "unexpected PDF object type" |
+| `PDF_FILTER_UNSUPPORTED` | PdfParseError | 未対応のストリームフィルタが指定された | "unsupported stream filter" |
+| `TOKENIZER_POSITION_OUT_OF_RANGE` | PdfParseError | トークナイザの開始位置が入力範囲外 | "tokenizer position out of range" |
 | `ENCRYPTED_PDF_UNSUPPORTED` | PdfParseError | trailerに`/Encrypt`が存在する（暗号化PDFは未対応） | "encrypted PDF is not supported" |
 | `ROOT_NOT_FOUND` | PdfParseError | `/Root`がトレイラに存在しない | "Trailer missing required /Root entry" |
+| `CATALOG_ROOT_NOT_DICTIONARY` | PdfParseError | `/Root`の解決結果が辞書でない | "/Root is not a dictionary" |
+| `CATALOG_TYPE_INVALID` | PdfParseError | カタログの`/Type`が`/Catalog`でない | "catalog /Type is not /Catalog" |
+| `PAGES_NOT_FOUND` | PdfParseError | カタログに`/Pages`が存在しない・解決できない | "catalog missing /Pages" |
 | `SIZE_NOT_FOUND` | PdfParseError | `/Size`がトレイラに存在しない | "Trailer missing required /Size entry" |
 | `MEDIABOX_NOT_FOUND` | PdfParseError | ルートまで辿ってもMediaBox未定義 | "Page {n}: MediaBox not found in page or ancestors" |
 | `CIRCULAR_REFERENCE` | PdfCircularReferenceError | オブジェクト解決で循環検出 | "Circular reference detected: object {id}" |
@@ -181,7 +199,7 @@ if (!result.ok) {
 
 - 本仕様のエラー型（`PdfParseError` / `PdfCircularReferenceError` / `PdfTypeMismatchError`）はすべて **interface であり、`Result` の error として返却される**。クラスとして `throw` しない。
 - プログラマエラー（API の誤用）も throw せず `Err` で返す。例: `PdfDocument.load()` の不正な `cacheCapacity` は `Err<RangeError>` を返す（[document-api-spec.md](./document-api-spec.md)）。値の有無だけを表す場合は `Option` を使う（例: `getPage()` の範囲外は `None`）。
-- 本ドキュメントのエラーコード一覧が**全モジュール共通の唯一の権威**である。各モジュール仕様書で新しいコードを導入する場合は、必ず本一覧にも追加すること。
+- 本ドキュメントのエラーコード一覧は**PDF解析パイプライン（本機能）のエラーコードの権威**である。コンテンツストリーム解釈（Phase 3）等の他機能のコード（`CONTENT_STREAM_*` / `OPERATOR_*` / `UNKNOWN_OPERATOR` 等）は各機能の仕様で定義する。本機能内で新しいコードを導入する場合は、必ず本一覧にも追加すること。
 
 ### 警告（寛容処理で回復）
 
@@ -197,6 +215,12 @@ if (!result.ok) {
 | `STREAM_LENGTH_MISMATCH` | `/Length`値とendstream位置が不一致 | endstreamキーワードの位置から逆算 |
 | `DUPLICATE_OBJECT` | 同一オブジェクト番号が重複 | 最後に定義されたものを優先 |
 | `UNKNOWN_PAGE_TYPE` | ページノードの`/Type`が不明 | 警告してスキップ |
+| `MISSING_KIDS` | Pagesノードに`/Kids`がない・配列でない | ノードをスキップ |
+| `PAGE_TREE_TOO_DEEP` | ページツリーの深度が上限（50）超 | 走査を打ち切り |
+| `RESOURCES_RESOLVE_FAILED` | `/Resources`の間接参照解決に失敗 | 空辞書で続行 |
+| `INFO_RESOLVE_FAILED` | `/Info`の間接参照解決に失敗 | メタデータを空で続行 |
+| `INFO_NOT_DICTIONARY` | `/Info`の解決結果が辞書でない | メタデータを空で続行 |
+| `TRAPPED_INVALID` | `/Trapped`が規定外の値 | unknown 扱いで続行 |
 | `DATE_PARSE_FAILED` | PDF日時文字列のパース失敗 | undefinedを設定 |
 | `STRING_DECODE_FAILED` | テキスト文字列のデコード失敗（不正なUTF-16BE等） | 元のバイト列を保持しメタデータはundefined |
 | `GENERATION_MISMATCH` | 間接参照の世代番号がxrefエントリと不一致 | PdfNullを返却して続行 |
