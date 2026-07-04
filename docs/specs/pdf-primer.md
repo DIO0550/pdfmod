@@ -417,7 +417,7 @@ PDFバイナリ (Uint8Array)
 [5] マージ済みXRefTable + TrailerDict が完成
     │
     ▼
-[6] ObjectResolver で /Root を解決
+[6] ObjectResolver（実装上は ObjectStore）で /Root を解決
     │  間接参照 → XRefからオフセット取得 → パース → LRUキャッシュ
     │
     ▼
@@ -448,7 +448,7 @@ pdfmodのモジュールとの対応:
 | 用語 | 説明 |
 |:-----|:-----|
 | **間接オブジェクト** | `N G obj ... endobj` で定義されるオブジェクト。番号で参照可能 |
-| **間接参照** | `N G R` 形式のポインタ。ObjectResolverが実体に解決する |
+| **間接参照** | `N G R` 形式のポインタ。ObjectResolver（実装上は ObjectStore）が実体に解決する |
 | **オブジェクト番号** | オブジェクトの一意な識別番号（正の整数） |
 | **世代番号** | オブジェクトの更新回数（通常0。削除→再利用でインクリメント） |
 | **XRef** | Cross-Reference。オブジェクト番号→ファイル内位置の索引 |
