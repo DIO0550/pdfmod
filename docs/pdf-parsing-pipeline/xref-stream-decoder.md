@@ -232,7 +232,7 @@ const result = decodeXRefStreamEntries({ data, w: [0, 2, 1], size: 1 });
 ### parseXRefStream API との関係
 
 ```
-scanStartXRef  -->  parseXRefTable   -->  TrailerParser  -->  ObjectResolver
+scanStartXRef  -->  parseXRefTable   -->  TrailerParser  -->  ObjectStore
                     parseXRefStream  -->  (trailer は辞書に統合)
                          |
                          v

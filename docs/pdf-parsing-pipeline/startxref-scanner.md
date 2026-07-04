@@ -111,7 +111,7 @@ if (result.ok) {
 ### 他のxrefモジュールとの関係
 
 ```
-scanStartXRef  -->  XRefTableParser  -->  ObjectResolver
+scanStartXRef  -->  XRefTableParser  -->  ObjectStore
                     XRefStreamParser
 ```
 

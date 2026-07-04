@@ -154,7 +154,7 @@ console.log(`trailer starts at: ${trailerOffset}`);
 ## 他の xref モジュールとの関係
 
 ```
-scanStartXRef  -->  parseXRefTable   -->  TrailerParser  -->  ObjectResolver
+scanStartXRef  -->  parseXRefTable   -->  TrailerParser  -->  ObjectStore
                     XRefStreamParser
                           |
                           v

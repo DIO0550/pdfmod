@@ -215,7 +215,7 @@ FlateDecode 展開に関するすべてのエラーに使用する汎用コー�
 ```
 scanStartXRef
   │
-  ├── parseXRefTable ──→ TrailerParser ──→ ObjectResolver
+  ├── parseXRefTable ──→ TrailerParser ──→ ObjectStore
   │                         │
   │                    trailerDictBuilder（共通）
   │                         │
