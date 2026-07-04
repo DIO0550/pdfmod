@@ -175,12 +175,12 @@ if (!result.ok) {
 | `TYPE_MISMATCH` | PdfTypeMismatchError | resolveAs()で型不一致 | "Expected dictionary but got array" |
 | `NESTING_TOO_DEEP` | PdfParseError | 配列/辞書のネストが100段超 | "Object nesting exceeds maximum depth (100)" |
 
-> **注（startxref 失敗時のコード）**: `STARTXREF_NOT_FOUND` は startxref が検出できず、かつフォールバックスキャナも無効（strict モード）の場合に返す。フォールバックスキャナ経由で trailer / `/Root` の再構成にも失敗した場合は `ROOT_NOT_FOUND` を返す（実装契約は [pdf-document-load-fallback.md](../implementation/pdf-document-load-fallback.md) を参照）。
+> **注(startxref 失敗時のコード)**: `STARTXREF_NOT_FOUND` は startxref そのものが検出できない場合に返す。フォールバックスキャナ経由で trailer / `/Root` の再構成にも失敗した場合は `ROOT_NOT_FOUND` を返す。
 
 ### エラー型の表現に関する方針
 
 - 本仕様のエラー型（`PdfParseError` / `PdfCircularReferenceError` / `PdfTypeMismatchError`）はすべて **interface であり、`Result` の error として返却される**。クラスとして `throw` しない。
-- 例外的に、プログラマエラー（API の誤用）は組み込みエラーの `throw` を許容する。例: `PdfDocument.getPage()` の範囲外インデックスは `RangeError` を throw する（[document-api-spec.md](./document-api-spec.md) DA-001）。
+- プログラマエラー（API の誤用）も throw せず `Err` で返す。例: `PdfDocument.load()` の不正な `cacheCapacity` は `Err<RangeError>` を返す（[document-api-spec.md](./document-api-spec.md)）。値の有無だけを表す場合は `Option` を使う（例: `getPage()` の範囲外は `None`）。
 - 本ドキュメントのエラーコード一覧が**全モジュール共通の唯一の権威**である。各モジュール仕様書で新しいコードを導入する場合は、必ず本一覧にも追加すること。
 
 ### 警告（寛容処理で回復）
@@ -200,13 +200,6 @@ if (!result.ok) {
 | `DATE_PARSE_FAILED` | PDF日時文字列のパース失敗 | undefinedを設定 |
 | `STRING_DECODE_FAILED` | テキスト文字列のデコード失敗（不正なUTF-16BE等） | 元のバイト列を保持しメタデータはundefined |
 | `GENERATION_MISMATCH` | 間接参照の世代番号がxrefエントリと不一致 | PdfNullを返却して続行 |
-
-### 仕様定義済み・実装未対応の回復処理
-
-以下の回復処理は本仕様で定義されているが、現時点の実装では未対応（[object-parser-spec.md](./object-parser-spec.md) の「今回非対応の仕様」を参照）:
-
-- `STREAM_LENGTH_MISMATCH`（SL-001〜SL-003 の endstream 探索による回復）
-- `XREF_OFFSET_MISMATCH`（OR-006 の前後32バイト探索）
 
 ## フォールバックメカニズム
 

@@ -24,7 +24,9 @@
 static async load(
   data: Uint8Array,
   options?: LoadOptions
-): Promise<PdfDocument>
+): Promise<Result<PdfDocument, PdfDocumentLoadError>>
+
+type PdfDocumentLoadError = PdfError | RangeError;
 ```
 
 **説明**: PDFバイナリデータを解析し、ドキュメント構造を構築する。
@@ -36,11 +38,11 @@ static async load(
 | `data` | `Uint8Array` | はい | PDFファイルのバイナリデータ |
 | `options` | `LoadOptions` | いいえ | 解析オプション |
 
-**戻り値**: `Promise<PdfDocument>`
+**戻り値**: `Promise<Result<PdfDocument, PdfDocumentLoadError>>`
 
 **エラー**:
 
-内部パイプラインは `Result` 型でエラーを伝搬し、`load()` はエラー時に `PdfError`（[error-handling-spec.md](./error-handling-spec.md) 参照）を理由として Promise を reject する。
+`load()` は Promise を reject せず、失敗を `Err<PdfDocumentLoadError>` として返す（`PdfError` は [error-handling-spec.md](./error-handling-spec.md) 参照）。呼び出し側は `result.ok` で分岐する。
 
 | エラー | 発生条件 |
 |:-------|:---------|
@@ -49,6 +51,7 @@ static async load(
 | `PdfParseError` (`ENCRYPTED_PDF_UNSUPPORTED`) | trailerに`/Encrypt`が存在する（暗号化PDF未対応） |
 | `PdfParseError` (`ROOT_NOT_FOUND`) | `/Root`（カタログ）が解決できない |
 | `PdfParseError` (`MEDIABOX_NOT_FOUND`) | MediaBoxがどのページにも存在しない |
+| `RangeError` | `LoadOptions.cacheCapacity` が不正（0以下・非整数・NaN 等）。プログラマエラーだが throw ではなく `Err` で返す |
 
 ### LoadOptions
 
@@ -80,10 +83,10 @@ class PdfDocument {
   readonly metadata: DocumentMetadata;
 
   /** 指定インデックスのページを取得（0始まり） */
-  getPage(index: number): PdfPage;
+  getPage(index: number): Option<ResolvedPage>;
 
-  /** 内部のObjectResolverへのアクセス（上級者向け） */
-  readonly resolver: ObjectResolver;
+  /** 内部のオブジェクトストアへのアクセス（上級者向け） */
+  readonly resolver: ObjectStore;
 }
 ```
 
@@ -92,15 +95,15 @@ class PdfDocument {
 | `version` | `string` | ヘッダとカタログ`/Version`の大きい方 |
 | `pageCount` | `number` | ページツリー走査で確定したページ数 |
 | `metadata` | `DocumentMetadata` | タイトル、作成者等のメタ情報 |
-| `getPage(index)` | `PdfPage` | 0始まりのインデックスでページ取得 |
-| `resolver` | `ObjectResolver` | 内部リゾルバ（拡張用途） |
+| `getPage(index)` | `Option<ResolvedPage>` | 0始まりのインデックスでページ取得 |
+| `resolver` | `ObjectStore` | 内部のオブジェクトストア（拡張用途） |
 
 | ID | ルール | 条件 | 振る舞い |
 |:---|:-------|:-----|:---------|
-| DA-001 | getPage範囲外 | index < 0 または index >= pageCount | `RangeError` をスロー |
-| DA-002 | getPage遅延構築 | 初回アクセス時 | ResolvedPageからPdfPageインスタンスを生成 |
+| DA-001 | getPage範囲外 | index < 0、index >= pageCount、または非整数 | `None` を返却 |
+| DA-002 | getPage範囲内 | 0 <= index < pageCount の整数 | `Some<ResolvedPage>` を返却 |
 
-> **注**: DA-001 の `RangeError` はプログラマエラー（APIの誤用）であるため、Result 型ではなく throw で表現する。PDFデータ起因の問題はすべて Result / 警告で扱う（[error-handling-spec.md](./error-handling-spec.md) の「エラー型の表現に関する方針」を参照）。
+> **注**: 値の有無だけを表せばよくエラー情報が不要なため、Result ではなく Option で表現する（プロジェクト規約「Result / Option の使い分け」参照）。
 
 ### PdfPage
 
@@ -163,6 +166,7 @@ export type {
   PdfParseError,
   PdfCircularReferenceError,
   PdfTypeMismatchError,
+  PdfDocumentLoadError,
   PdfWarning,
 } from "./errors/index.js";
 ```
@@ -177,9 +181,14 @@ const response = await fetch("/sample.pdf");
 const data = new Uint8Array(await response.arrayBuffer());
 
 // ドキュメント解析
-const doc = await PdfDocument.load(data, {
+const result = await PdfDocument.load(data, {
   onWarning: (w) => console.warn(`PDF warning: ${w.message}`),
 });
+if (!result.ok) {
+  console.error(result.error);
+  return;
+}
+const doc = result.value;
 
 console.log(`Version: ${doc.version}`);
 console.log(`Pages: ${doc.pageCount}`);
@@ -188,7 +197,10 @@ console.log(`Title: ${doc.metadata.title}`);
 // ページ情報
 for (let i = 0; i < doc.pageCount; i++) {
   const page = doc.getPage(i);
-  console.log(`Page ${i + 1}: ${page.width} x ${page.height} pt`);
+  if (page.some) {
+    const [llx, lly, urx, ury] = page.value.mediaBox;
+    console.log(`Page ${i + 1}: ${urx - llx} x ${ury - lly} pt`);
+  }
 }
 ```
 
@@ -208,4 +220,4 @@ packages/core/src/
 - [xref-parser-spec.md](./xref-parser-spec.md) - PdfDocument.load() 内部で使用
 - [object-resolver-spec.md](./object-resolver-spec.md) - PdfDocument.load() 内部で使用
 - [page-tree-spec.md](./page-tree-spec.md) - PdfDocument.load() 内部で使用
-- [error-handling-spec.md](./error-handling-spec.md) - エラークラス定義
+- [error-handling-spec.md](./error-handling-spec.md) - エラー型定義
