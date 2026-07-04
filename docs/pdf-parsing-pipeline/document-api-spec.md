@@ -20,25 +20,18 @@
 
 ### PdfDocument.load()
 
-```typescript
-static async load(
-  data: Uint8Array,
-  options?: LoadOptions
-): Promise<Result<PdfDocument, PdfDocumentLoadError>>
-
-type PdfDocumentLoadError = PdfError | RangeError;
-```
-
 **説明**: PDFバイナリデータを解析し、ドキュメント構造を構築する。
+
+**入力**: PDFバイナリ（バイト列）と省略可能な `LoadOptions`。
+
+**出力**: 非同期に `Result` を返す。成功時は `PdfDocument`、失敗時は `PdfDocumentLoadError`（`PdfError` または `RangeError`）を `Err` で返し、Promise は reject しない。
 
 **パラメータ**:
 
 | パラメータ | 型 | 必須 | 説明 |
 |:----------|:---|:-----|:-----|
-| `data` | `Uint8Array` | はい | PDFファイルのバイナリデータ |
+| `data` | バイト列 | はい | PDFファイルのバイナリデータ |
 | `options` | `LoadOptions` | いいえ | 解析オプション |
-
-**戻り値**: `Promise<Result<PdfDocument, PdfDocumentLoadError>>`
 
 **エラー**:
 
@@ -55,48 +48,24 @@ type PdfDocumentLoadError = PdfError | RangeError;
 
 ### LoadOptions
 
-```typescript
-interface LoadOptions {
-  /** LRUキャッシュのエントリ数上限（デフォルト: 1024） */
-  cacheCapacity?: number;
-  /** パースの警告をコールバックで受け取る */
-  onWarning?: (warning: PdfWarning) => void;
-}
-```
+すべてのフィールドは省略可能。
 
 | フィールド | 型 | デフォルト | 説明 |
 |:----------|:---|:----------|:-----|
-| `cacheCapacity` | `number` | 1024 | オブジェクトキャッシュの最大エントリ数 |
-| `onWarning` | `(warning) => void` | undefined | 寛容処理で回復した際の警告コールバック |
+| `cacheCapacity` | 整数 | 1024 | オブジェクト（LRU）キャッシュの最大エントリ数 |
+| `onWarning` | コールバック（`PdfWarning` を受け取る） | 未設定 | 寛容処理で回復した際の警告コールバック |
 
 ### PdfDocument
 
-```typescript
-class PdfDocument {
-  /** PDFバージョン（例: "1.7", "2.0"） */
-  readonly version: string;
-
-  /** 総ページ数 */
-  readonly pageCount: number;
-
-  /** ドキュメントメタデータ */
-  readonly metadata: DocumentMetadata;
-
-  /** 指定インデックスのページを取得（0始まり） */
-  getPage(index: number): Option<ResolvedPage>;
-
-  /** 内部のオブジェクトストアへのアクセス（上級者向け） */
-  readonly resolver: ObjectStore;
-}
-```
+プロパティはすべて読み取り専用。
 
 | メソッド/プロパティ | 型 | 説明 |
 |:----------|:---|:-----|
-| `version` | `string` | ヘッダとカタログ`/Version`の大きい方 |
-| `pageCount` | `number` | ページツリー走査で確定したページ数 |
+| `version` | 文字列 | PDFバージョン（例: "1.7", "2.0"）。ヘッダとカタログ`/Version`の大きい方 |
+| `pageCount` | 整数 | ページツリー走査で確定した総ページ数 |
 | `metadata` | `DocumentMetadata` | タイトル、作成者等のメタ情報 |
 | `getPage(index)` | `Option<ResolvedPage>` | 0始まりのインデックスでページ取得 |
-| `resolver` | `ObjectStore` | 内部のオブジェクトストア（拡張用途） |
+| `resolver` | `ObjectStore` | 内部のオブジェクトストアへのアクセス（上級者向け・拡張用途） |
 
 | ID | ルール | 条件 | 振る舞い |
 |:---|:-------|:-----|:---------|
@@ -107,96 +76,23 @@ class PdfDocument {
 
 ### PdfPage
 
-```typescript
-class PdfPage {
-  /** ページの物理的寸法 [llx, lly, urx, ury]（ポイント単位） */
-  readonly mediaBox: readonly [number, number, number, number];
+プロパティはすべて読み取り専用。
 
-  /** トリミング領域 */
-  readonly cropBox: readonly [number, number, number, number];
-
-  /** ページ幅（ポイント単位、Rotateを考慮） */
-  readonly width: number;
-
-  /** ページ高さ（ポイント単位、Rotateを考慮） */
-  readonly height: number;
-
-  /** 回転角度 */
-  readonly rotate: 0 | 90 | 180 | 270;
-
-  /** ユーザー空間の単位倍率 */
-  readonly userUnit: number;
-
-  /** このページのオブジェクト参照 */
-  readonly ref: IndirectRef;
-}
-```
+| プロパティ | 型 | 説明 |
+|:----------|:---|:-----|
+| `mediaBox` | 数値4つ組 `[llx, lly, urx, ury]` | ページの物理的寸法（ポイント単位） |
+| `cropBox` | 数値4つ組 `[llx, lly, urx, ury]` | トリミング領域 |
+| `width` | 数値 | ページ幅（ポイント単位、Rotateを考慮） |
+| `height` | 数値 | ページ高さ（ポイント単位、Rotateを考慮） |
+| `rotate` | 0 / 90 / 180 / 270 のいずれか | 回転角度 |
+| `userUnit` | 数値 | ユーザー空間の単位倍率 |
+| `ref` | `IndirectRef` | このページのオブジェクト参照 |
 
 | ID | ルール | 条件 | 振る舞い |
 |:---|:-------|:-----|:---------|
 | PP-001 | width/height算出 | Rotate = 0 or 180 | width = urx - llx, height = ury - lly |
 | PP-002 | width/height算出 | Rotate = 90 or 270 | width = ury - lly, height = urx - llx |
 | PP-003 | userUnit適用 | userUnit != 1.0 | width/heightにuserUnitを乗算 |
-
-## パッケージエクスポート
-
-```typescript
-// packages/core/src/index.ts（本仕様に関係する部分の抜粋）
-
-// ドキュメントAPI
-export { PdfDocument, PdfPage } from "./document/index";
-export type {
-  LoadOptions,
-  DocumentMetadata,
-  ResolvedPage,
-  PdfDocumentLoadError,
-} from "./document/index";
-
-// PDF基盤型・エラー型（interface — Result の error として返却される。クラスではないため type export）
-export type {
-  PdfObject,
-  XRefEntry,
-  XRefTable,
-  PdfError,
-  PdfParseError,
-  PdfCircularReferenceError,
-  PdfTypeMismatchError,
-  PdfWarning,
-} from "./pdf/index";
-```
-
-## 使用例
-
-```typescript
-import { PdfDocument, PdfPage } from "@pdfmod/core";
-
-// ファイル読み込み
-const response = await fetch("/sample.pdf");
-const data = new Uint8Array(await response.arrayBuffer());
-
-// ドキュメント解析
-const result = await PdfDocument.load(data, {
-  onWarning: (w) => console.warn(`PDF warning: ${w.message}`),
-});
-if (!result.ok) {
-  console.error(result.error);
-  return;
-}
-const doc = result.value;
-
-console.log(`Version: ${doc.version}`);
-console.log(`Pages: ${doc.pageCount}`);
-console.log(`Title: ${doc.metadata.title}`);
-
-// ページ情報（Rotate / UserUnit を考慮した寸法は PdfPage 経由で取得する）
-for (let i = 0; i < doc.pageCount; i++) {
-  const page = doc.getPage(i);
-  if (page.some) {
-    const pdfPage = PdfPage.from(page.value);
-    console.log(`Page ${i + 1}: ${pdfPage.width} x ${pdfPage.height} pt`);
-  }
-}
-```
 
 ## ファイル配置
 

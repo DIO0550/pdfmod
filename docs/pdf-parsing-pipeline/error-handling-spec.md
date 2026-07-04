@@ -40,124 +40,30 @@ PDF解析パイプラインのエラー体系を定義する。基本方針はPo
 
 ## エラー型（discriminated union）
 
-```typescript
-/** Parse error codes */
-type PdfParseErrorCode =
-  | "INVALID_HEADER"
-  | "STARTXREF_NOT_FOUND"
-  | "XREF_TABLE_INVALID"
-  | "XREF_STREAM_INVALID"
-  | "XREF_PREV_CHAIN_CYCLE"
-  | "XREF_PREV_CHAIN_TOO_DEEP"
-  | "FLATEDECODE_FAILED"
-  | "TRAILER_DICT_INVALID"
-  | "OBJECT_PARSE_UNEXPECTED_TOKEN"
-  | "OBJECT_PARSE_UNTERMINATED"
-  | "OBJECT_PARSE_STREAM_LENGTH"
-  | "OBJECT_STREAM_INVALID"
-  | "OBJECT_STREAM_HEADER_INVALID"
-  | "OBJECT_STREAM_INDEX_OUT_OF_RANGE"
-  | "PDF_TYPE_INVALID"
-  | "PDF_FILTER_UNSUPPORTED"
-  | "TOKENIZER_POSITION_OUT_OF_RANGE"
-  | "ENCRYPTED_PDF_UNSUPPORTED"
-  | "ROOT_NOT_FOUND"
-  | "CATALOG_ROOT_NOT_DICTIONARY"
-  | "CATALOG_TYPE_INVALID"
-  | "PAGES_NOT_FOUND"
-  | "SIZE_NOT_FOUND"
-  | "MEDIABOX_NOT_FOUND"
-  | "NESTING_TOO_DEEP";
+エラーコードは後述の「エラー/警告コード一覧」表で定義する（重複定義を持たず、当該表が唯一の権威である）。
 
-/** All fatal PDF error codes */
-type PdfErrorCode = PdfParseErrorCode | "CIRCULAR_REFERENCE" | "TYPE_MISMATCH";
+すべてのエラー型は共通フィールドとして `code`（エラーコード）と `message`（人間が読めるメッセージ）を持つ。`PdfError` は以下の3つのエラー型の直和型であり、`code` フィールドで型を判別できる。
 
-/** Parse error — unrecoverable structural/syntactic problem */
-interface PdfParseError {
-  readonly code: PdfParseErrorCode;
-  readonly message: string;
-  readonly offset?: number;
-}
-
-/** Circular reference detected during object resolution */
-interface PdfCircularReferenceError {
-  readonly code: "CIRCULAR_REFERENCE";
-  readonly message: string;
-  readonly objectId: ObjectId;
-}
-
-/** PDF object type does not match expected type */
-interface PdfTypeMismatchError {
-  readonly code: "TYPE_MISMATCH";
-  readonly message: string;
-  readonly expected: string;
-  readonly actual: string;
-}
-
-/** Discriminated union of all fatal PDF errors */
-type PdfError = PdfParseError | PdfCircularReferenceError | PdfTypeMismatchError;
-```
+| エラー型 | 追加フィールド | 説明 |
+|:---------|:---------------|:-----|
+| `PdfParseError` | `offset`（省略可）: 問題発生位置のバイトオフセット | 回復不能な構造的・構文的問題を表すパースエラー |
+| `PdfCircularReferenceError` | `objectId`: 循環を検出したオブジェクトの識別子（オブジェクト番号・世代番号） | オブジェクト解決中に検出された循環参照 |
+| `PdfTypeMismatchError` | `expected`: 期待した型名、`actual`: 実際の型名 | PDFオブジェクトの型が期待した型と一致しない |
 
 ### Result 型
 
-```typescript
-interface Ok<T> { readonly ok: true; readonly value: T }
-interface Err<E> { readonly ok: false; readonly error: E }
-type Result<T, E> = Ok<T> | Err<E>;
-
-// ヘルパー関数
-const ok = <T>(value: T): Ok<T> => ({ ok: true, value });
-const err = <E>(error: E): Err<E> => ({ ok: false, error });
-```
+`Result<T, E>` は、成功（値を持つ `Ok`）か失敗（エラーを持つ `Err`）のいずれかを表す直和型であり、`ok` フラグ（真偽値）で判別できる。呼び出し側は `ok` フラグで分岐し、成功時は値に、失敗時はエラーにアクセスする。エラー側はさらに `code` フィールドで具体的なエラー型に判別でき、その型固有の追加フィールド（`offset`・`objectId`・`expected`/`actual` 等）を参照できる。
 
 ### 警告（回復可能な問題）
 
-```typescript
-interface PdfWarning {
-  /** 警告コード */
-  readonly code: PdfWarningCode;
-  /** 人間が読めるメッセージ */
-  readonly message: string;
-  /** 問題が発生したバイトオフセット */
-  readonly offset?: number;
-  /** 適用されたフォールバック処理 */
-  readonly recovery?: string;
-}
-```
+`PdfWarning` は寛容処理で回復した問題を表す。
 
-## 使用例
-
-```typescript
-// 擬似コード: 実際の型定義・関数は各モジュールで実装される
-
-// エラーの返却
-function parseHeader(bytes: Uint8Array): Result<{ version: string }, PdfError> {
-  if (bytes[0] !== 0x25 /* '%' */) {
-    return err({
-      code: "INVALID_HEADER",
-      message: "Invalid PDF header: expected %PDF-",
-      offset: 0,
-    });
-  }
-  return ok({ version: "1.7" });
-}
-
-// エラーの処理（code で narrowing）
-const result = parseHeader(bytes);
-if (!result.ok) {
-  switch (result.error.code) {
-    case "INVALID_HEADER":
-      console.error(`offset: ${result.error.offset}`); // offset にアクセス可能
-      break;
-    case "CIRCULAR_REFERENCE":
-      console.error(`object: ${result.error.objectId.objectNumber} gen ${result.error.objectId.generationNumber}`); // objectId にアクセス可能
-      break;
-    case "TYPE_MISMATCH":
-      console.error(`expected ${result.error.expected}, got ${result.error.actual}`);
-      break;
-  }
-}
-```
+| フィールド | 型 | 必須 | 説明 |
+|:----------|:---|:-----|:-----|
+| `code` | 警告コード | はい | 警告コード（後述の警告一覧表で定義） |
+| `message` | 文字列 | はい | 人間が読めるメッセージ |
+| `offset` | 整数 | いいえ | 問題が発生したバイトオフセット |
+| `recovery` | 文字列 | いいえ | 適用されたフォールバック処理の説明 |
 
 ## エラー/警告コード一覧
 
@@ -277,20 +183,9 @@ trailer辞書を探索（"trailer" キーワード → 辞書パース）
 
 ## 警告の通知方法
 
-```typescript
-// LoadOptions.onWarning コールバック
-const doc = await PdfDocument.load(data, {
-  onWarning: (warning: PdfWarning) => {
-    console.warn(`[${warning.code}] ${warning.message}`);
-    if (warning.recovery) {
-      console.warn(`  Recovery: ${warning.recovery}`);
-    }
-  },
-});
+警告は `LoadOptions` の `onWarning` コールバック（[document-api-spec.md](./document-api-spec.md) 参照）を通じて、`PdfWarning` を1件ずつ渡して通知される。
 
-// 警告が通知されない場合（onWarning未設定）
-// → 警告は無視され、寛容処理は暗黙的に適用される
-```
+`onWarning` が未設定の場合、警告は黙って破棄されるが、寛容処理（フォールバック）は暗黙的に適用される。
 
 ## ファイル配置
 
