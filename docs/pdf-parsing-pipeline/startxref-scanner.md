@@ -53,14 +53,8 @@ ISO 32000-1 §7.5.5 では「ファイルの最後の1024バイト以内に `%%E
 
 ### scanStartXRef 関数
 
-```typescript
-import type { Result } from "@pdfmod/core";
-import type { PdfParseError } from "@pdfmod/core";
-
-function scanStartXRef(data: Uint8Array): Result<number, PdfParseError>;
-```
-
-`Uint8Array` としてPDFバイナリ全体を受け取り、`startxref` 直後のオフセット値を `Result` 型で返す。
+**入力**: PDFバイナリ全体（バイト列）
+**出力**: 成功時は `startxref` 直後のオフセット値（整数、xrefテーブルのバイトオフセット）、失敗時は `PdfParseError` を Err で返す
 
 ### 処理アルゴリズム
 
@@ -81,22 +75,6 @@ function scanStartXRef(data: Uint8Array): Result<number, PdfParseError>;
 | オフセット値が不正（数字がない） | `"invalid startxref offset value"` |
 
 エラーコードはすべて `"STARTXREF_NOT_FOUND"` を使用。
-
-### コード例
-
-```typescript
-import { scanStartXRef } from "@pdfmod/core";
-
-const pdfData = new Uint8Array(buffer);
-const result = scanStartXRef(pdfData);
-
-if (result.ok) {
-  console.log("xref offset:", result.value);
-  // result.value を使ってxrefテーブルの位置にジャンプ
-} else {
-  console.error(result.error.message);
-}
-```
 
 ## 回復処理
 

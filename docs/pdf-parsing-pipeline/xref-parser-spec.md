@@ -21,48 +21,30 @@ PDFファイル末尾からstartxrefを検出し、xrefテーブル（テキス�
 
 ### XRefEntry
 
-```typescript
-interface XRefEntry {
-  /** エントリタイプ: 0=空き, 1=通常オブジェクト, 2=オブジェクトストリーム内 */
-  type: 0 | 1 | 2;
-  /** type=1: ファイル内バイトオフセット, type=2: 親ストリームのオブジェクト番号 */
-  field2: number;
-  /** type=0,1: 世代番号, type=2: ストリーム内インデックス */
-  field3: number;
-}
-```
+| フィールド | 型 | 説明 |
+|:-----------|:---|:-----|
+| type | 整数（0 / 1 / 2） | エントリタイプ: 0=空き, 1=通常オブジェクト, 2=オブジェクトストリーム内 |
+| field2 | 整数 | type=1: ファイル内バイトオフセット, type=2: 親ストリームのオブジェクト番号 |
+| field3 | 整数 | type=0,1: 世代番号, type=2: ストリーム内インデックス |
 
 ### XRefTable
 
-```typescript
-interface XRefTable {
-  /** オブジェクト番号 → XRefEntry のマップ */
-  entries: Map<number, XRefEntry>;
-  /** テーブル内の最大オブジェクト番号 + 1 */
-  size: number;
-}
-```
+| フィールド | 型 | 説明 |
+|:-----------|:---|:-----|
+| entries | マップ（整数 → XRefEntry） | オブジェクト番号 → XRefEntry のマップ |
+| size | 整数 | テーブル内の最大オブジェクト番号 + 1 |
 
 ### TrailerDict
 
-```typescript
-interface TrailerDict {
-  /** /Root — ドキュメントカタログへの間接参照（必須） */
-  root: IndirectRef;
-  /** /Size — xrefテーブルのエントリ総数（必須） */
-  size: number;
-  /** /Prev — 前のxrefテーブルのバイトオフセット */
-  prev?: ByteOffset;
-  /** /Info — ドキュメント情報辞書への間接参照 */
-  info?: IndirectRef;
-  /** /ID — ファイル識別子 [永続ID, 変更ID] */
-  id?: [Uint8Array, Uint8Array];
-  /** /Encrypt — 暗号化辞書（辞書またはその間接参照）。存在する場合、暗号化PDFとして検出する */
-  encrypt?: PdfDictionary | IndirectRef;
-  /** /XRefStm — ハイブリッド参照ファイルにおける相互参照ストリームのバイトオフセット（テキスト形式trailerのみ） */
-  xrefStm?: ByteOffset;
-}
-```
+| フィールド | 型 | 必須 | 説明 |
+|:-----------|:---|:-----|:-----|
+| root | 間接参照(IndirectRef) | 必須 | /Root — ドキュメントカタログへの間接参照 |
+| size | 整数 | 必須 | /Size — xrefテーブルのエントリ総数 |
+| prev | バイトオフセット(ByteOffset) | 任意 | /Prev — 前のxrefテーブルのバイトオフセット |
+| info | 間接参照(IndirectRef) | 任意 | /Info — ドキュメント情報辞書への間接参照 |
+| id | バイト列 2 要素の組 | 任意 | /ID — ファイル識別子 [永続ID, 変更ID] |
+| encrypt | 辞書 または 間接参照(IndirectRef) | 任意 | /Encrypt — 暗号化辞書（辞書またはその間接参照）。存在する場合、暗号化PDFとして検出する |
+| xrefStm | バイトオフセット(ByteOffset) | 任意 | /XRefStm — ハイブリッド参照ファイルにおける相互参照ストリームのバイトオフセット（テキスト形式trailerのみ） |
 
 ## 処理仕様
 

@@ -131,19 +131,11 @@ startxref
 
 ### 循環検出
 
-`visited: Set<number>` で走査済みオフセットを記録する。次の `/Prev` オフセットが既に `visited` に含まれている場合、循環と判定してエラーを返す。
+走査済みオフセットの集合（visited）を記録し、次の手順で判定する:
 
-```typescript
-const visited = new Set<number>();
-
-while (prevOffset !== undefined) {
-  if (visited.has(prevOffset)) {
-    return Err({ code: "XREF_PREV_CHAIN_CYCLE", ... });
-  }
-  visited.add(prevOffset);
-  // xref セクションを解析...
-}
-```
+1. `/Prev` オフセットが存在する間、走査を繰り返す
+2. 各反復で、次に走査するオフセットが既に visited に含まれていれば、循環と判定して `XREF_PREV_CHAIN_CYCLE` エラーを返す
+3. 含まれていなければ、そのオフセットを visited に追加したうえで xref セクションを解析し、次の `/Prev` へ進む
 
 ### 深度制限
 
@@ -153,56 +145,17 @@ while (prevOffset !== undefined) {
 
 ### `/Prev = 0` の取り扱い
 
-`/Prev` の値が `0` の場合、これは PDF ファイルのバイトオフセット 0 を指す有効な値である（通常ありえないが仕様上は合法）。`/Prev` の存在判定は `undefined` チェックで行い、truthy チェックは使用しない:
-
-```typescript
-// 正しい判定
-if (prevOffset !== undefined) {
-  // /Prev が存在する → チェーン走査を継続
-}
-
-// 誤った判定（/Prev = 0 を見逃す）
-if (prevOffset) {
-  // /Prev = 0 の場合にスキップされてしまう
-}
-```
+`/Prev` の値が `0` の場合、これは PDF ファイルのバイトオフセット 0 を指す有効な値である（通常ありえないが仕様上は合法）。したがって `/Prev` の存在判定は「trailer に `/Prev` エントリが存在するかどうか（値が未定義かどうか）」のチェックで行わなければならず、0 を偽値として扱う truthy チェックを使用してはならない。truthy チェックでは `/Prev = 0` が「存在しない」と誤判定され、チェーン走査が誤って打ち切られてしまう。`/Prev` が存在する場合は値が 0 であってもチェーン走査を継続する。
 
 ## マージアルゴリズム
 
 ### 処理フロー
 
-1. **収集フェーズ**: `/Prev` チェーンを辿り、xref セクションを newest-first で配列に収集する
-2. **反転**: 配列を reverse して oldest-first の順にする
-3. **マージフェーズ**: oldest-first の順で `Map.set` を呼び、新しいエントリが古いエントリを上書きする
-4. **size 決定**: 全セクションの `/Size` 値の最大値を `mergedXRef.size` とする
-5. **trailer 正規化**: 最新の trailer 辞書の `/Size` を `mergedXRef.size` に正規化する
-
-```typescript
-// Step 1: 収集（newest-first）
-const sections: Array<{ xref: XRefTable; trailer: TrailerDict }> = [];
-// startxref → セクション C → /Prev → セクション B → /Prev → セクション A
-// sections = [C, B, A]
-
-// Step 2: 反転（oldest-first）
-sections.reverse();
-// sections = [A, B, C]
-
-// Step 3: マージ
-const mergedEntries = new Map<ObjectNumber, XRefEntry>();
-let maxSize = 0;
-
-for (const section of sections) {
-  for (const [objNum, entry] of section.xref.entries) {
-    mergedEntries.set(objNum, entry); // 後勝ち（newer overwrites older）
-  }
-  maxSize = Math.max(maxSize, section.xref.size);
-}
-
-// Step 4-5: 結果構築
-const mergedXRef: XRefTable = { entries: mergedEntries, size: maxSize };
-const latestTrailer = sections[sections.length - 1].trailer;
-// latestTrailer.size を mergedXRef.size に正規化
-```
+1. **収集フェーズ**: `/Prev` チェーンを辿り、各 xref セクション（xref テーブルと trailer の組）を newest-first で列に収集する（startxref → セクション C → `/Prev` → セクション B → `/Prev` → セクション A のとき、収集結果は [C, B, A]）
+2. **反転**: 収集した列を反転して oldest-first の順にする（[A, B, C]）
+3. **マージフェーズ**: oldest-first の順で各セクションの全エントリをマージ先マップに登録する。同一オブジェクト番号のエントリは後から登録される新しいセクションのエントリで上書きされる（後勝ち）
+4. **size 決定**: 全セクションの xref テーブルの size 値の最大値をマージ結果の size とする
+5. **trailer 正規化**: 最新のセクション（収集順の先頭）の trailer 辞書を採用し、その `/Size` をマージ結果の size に正規化する
 
 ### size の決定根拠
 
@@ -218,11 +171,10 @@ ISO 32000-1 では `/Size` は「相互参照テーブル内のオブジェク�
 | E-002 | `XREF_PREV_CHAIN_TOO_DEEP` | `/Prev` チェーンの走査段数が深度制限（デフォルト 100）を超過 | 異常な深さのチェーンを防止 |
 | E-003 | パーサーエラーのパススルー | 各 xref セクションの解析中にエラーが発生 | `parseXRefTable` や `decodeXRefStreamEntries` が返すエラーをそのまま伝搬 |
 
-```typescript
-// エラーオブジェクトの例（message 文言は一例であり、実装と完全一致することを保証しない）
-{ code: "XREF_PREV_CHAIN_CYCLE", message: "/Prev chain cycle detected at offset 1000" }
-{ code: "XREF_PREV_CHAIN_TOO_DEEP", message: "/Prev chain depth exceeded limit of 100" }
-```
+エラーオブジェクトはエラーコード（code）とメッセージ（message）を保持する。message 文言の例（一例であり、実装と完全一致することを保証しない）:
+
+- `XREF_PREV_CHAIN_CYCLE` — `/Prev chain cycle detected at offset 1000`
+- `XREF_PREV_CHAIN_TOO_DEEP` — `/Prev chain depth exceeded limit of 100`
 
 ## 形式混在（XM-004）
 
