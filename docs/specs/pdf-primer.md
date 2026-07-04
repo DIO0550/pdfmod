@@ -203,7 +203,7 @@ PDFのオブジェクトは**間接オブジェクト**として定義され、�
 { objectNumber: 2, generationNumber: 0 }
 ```
 
-ObjectResolver（後続Issueで実装）が間接参照を実体のPdfObjectに解決します。
+ObjectResolver（実装上は `ObjectStore`）が間接参照を実体のPdfObjectに解決します。
 
 ---
 
@@ -429,15 +429,17 @@ PdfDocument / PdfPage
 
 pdfmodのモジュールとの対応:
 
-| ステップ | pdfmodモジュール | 状態 |
-|:---------|:----------------|:-----|
-| [1]-[2] | `StartXRefScanner` | 未実装 |
-| [3] | `XRefTableParser` / `XRefStreamParser` | 未実装 |
-| [4] | `TrailerParser` / `XRefMerger` | 未実装 |
-| [5] | 型定義: `XRefTable`, `TrailerDict` | **Issue #7（本Issue）** |
-| [6] | `ObjectResolver` + `LRUCache` | LRUCache は **Issue #7**、Resolver は未実装 |
-| [6] | `ObjectParser`（Token → PdfObject） | 型定義は **Issue #7**、Parser は未実装 |
-| [7] | `PageTreeWalker` | 未実装 |
+| ステップ | pdfmodモジュール |
+|:---------|:----------------|
+| [1]-[2] | `StartXRefScanner`（`xref/startxref/`） |
+| [3] | `XRefTableParser`（`xref/table/`）/ xrefストリームデコーダ（`xref/stream/`） |
+| [4] | `TrailerParser`（`xref/trailer/`）/ `XRefMerger`（`xref/merger/`） |
+| [5] | 型定義: `XRefTable`, `TrailerDict`（`pdf/types/`） |
+| [6] | `ObjectStore` + `LRUCache`（`objects/`） |
+| [6] | `ObjectParser`（Token → PdfObject、`objects/object-parser/`） |
+| [7] | ページツリー走査（`document/page-tree/`） |
+
+> 各モジュールの実装状況・既知制約は `docs/implementation/` および `docs/pdf-parsing-pipeline/` の各仕様書を参照。
 
 ---
 
@@ -462,7 +464,7 @@ pdfmodのモジュールとの対応:
 
 ## 参考資料
 
-- `docs/specs/` — ISO 32000仕様に基づくpdfmod内部仕様書（10章構成）
+- `docs/specs/` — ISO 32000仕様に基づくpdfmod内部仕様書（00〜09章 + 02a）
 - `docs/pdf-parsing-pipeline/` — 解析パイプラインの機能仕様書
 - `docs/research/PDFフォーマット仕様調査とライブラリ開発.md` — 包括的な調査ドキュメント
 - [PDF Reference 1.7 (Adobe)](https://opensource.adobe.com/dc-acrobat-sdk-docs/pdfstandards/PDF32000_2008.pdf) — ISO 32000-1 の無償公開版
