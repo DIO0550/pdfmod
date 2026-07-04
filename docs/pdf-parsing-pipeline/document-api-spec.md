@@ -24,7 +24,7 @@
 
 **入力**: PDFバイナリ（バイト列）と省略可能な `LoadOptions`。
 
-**出力**: 非同期に `Result` を返す。成功時は `PdfDocument`、失敗時は `PdfDocumentLoadError`（`PdfError` または `RangeError`）を `Err` で返し、Promise は reject しない。
+**出力**: 非同期に `Result` を返す。成功時は `PdfDocument`、失敗時は `PdfDocumentLoadError`（`PdfError` または `RangeError`）を `Err` で返す。**PDFデータ起因の失敗で Promise を reject することはない**。ただし利用者が提供した `onWarning` コールバック自身が例外を送出した場合、その例外は変換されずに伝播する（Promise が reject し得る）。
 
 **パラメータ**:
 
@@ -35,14 +35,16 @@
 
 **エラー**:
 
-`load()` は Promise を reject せず、失敗を `Err<PdfDocumentLoadError>` として返す（`PdfError` は [error-handling-spec.md](./error-handling-spec.md) 参照）。呼び出し側は `result.ok` で分岐する。
+`load()` は PDFデータ起因の失敗で Promise を reject せず、`Err<PdfDocumentLoadError>` として返す（`PdfError` は [error-handling-spec.md](./error-handling-spec.md) 参照）。呼び出し側は `result.ok` で分岐する。
+
+代表的なエラー（全コードの権威は error-handling-spec の一覧）:
 
 | エラー | 発生条件 |
 |:-------|:---------|
 | `PdfParseError` (`INVALID_HEADER`) | ヘッダが`%PDF-`で始まらない |
 | `PdfParseError` (`STARTXREF_NOT_FOUND`) | startxrefが検出できない |
 | `PdfParseError` (`ENCRYPTED_PDF_UNSUPPORTED`) | trailerに`/Encrypt`が存在する（暗号化PDF未対応） |
-| `PdfParseError` (`ROOT_NOT_FOUND`) | `/Root`（カタログ）が解決できない |
+| `PdfParseError` (`ROOT_NOT_FOUND`) | `/Root`がトレイラに存在しない（フォールバック再構成でも得られない）。`/Root` が存在するが解決・検証に失敗する場合は `CATALOG_ROOT_NOT_DICTIONARY` / `CATALOG_TYPE_INVALID` / `TYPE_MISMATCH` / `CIRCULAR_REFERENCE` 等の該当コードを返す |
 | `PdfParseError` (`MEDIABOX_NOT_FOUND`) | MediaBoxがどのページにも存在しない |
 | `RangeError` | `LoadOptions.cacheCapacity` が不正（0以下・非整数・NaN 等）。プログラマエラーだが throw ではなく `Err` で返す |
 
