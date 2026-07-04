@@ -151,9 +151,7 @@ console.log(`entries: ${xref.entries.size}, size: ${xref.size}`);
 console.log(`trailer starts at: ${trailerOffset}`);
 ```
 
-## 今後の拡張
-
-### 他の xref モジュールとの関係
+## 他の xref モジュールとの関係
 
 ```
 scanStartXRef  -->  parseXRefTable   -->  TrailerParser  -->  ObjectResolver

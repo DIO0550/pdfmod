@@ -85,7 +85,7 @@ xref ストリームは PDF 1.5 で導入された相互参照テーブルのバ
 function decodeXRefStreamEntries(params: XRefStreamParams): Result<XRefTable, PdfParseError>;
 ```
 
-現時点では内部 API であり、`@pdfmod/core` からは直接 import できない。公開 import パスは上位 `parseXRefStream` API 実装時に確定する。解凍済みバイト列のデコードのみを担当し、辞書解析・`/Type /XRef` 検証・ストリーム展開・trailer 抽出は上位の `parseXRefStream`（別 Issue）が担当する。
+内部 API であり、`@pdfmod/core` からは直接 import しない。解凍済みバイト列のデコードのみを担当し、辞書解析・`/Type /XRef` 検証・ストリーム展開・trailer 抽出は上位の `parseXRefStream` が担当する。
 
 ### XRefStreamParams 入力型
 
@@ -227,9 +227,9 @@ const result = decodeXRefStreamEntries({ data, w: [0, 2, 1], size: 1 });
 // → Type=1, offset=9, gen=0
 ```
 
-## 今後の拡張
+## 上位モジュールとの関係
 
-### 上位 parseXRefStream API との関係
+### parseXRefStream API との関係
 
 ```
 scanStartXRef  -->  parseXRefTable   -->  TrailerParser  -->  ObjectResolver
@@ -239,10 +239,10 @@ scanStartXRef  -->  parseXRefTable   -->  TrailerParser  -->  ObjectResolver
                     decodeXRefStreamEntries  ← 本モジュール
 ```
 
-- `parseXRefStream` は未実装（別 Issue）。ストリームオブジェクト全体のパース（辞書解析・`/Type /XRef` 検証・ストリーム展開）を行い、内部で `decodeXRefStreamEntries` を呼ぶ
+- `parseXRefStream` はストリームオブジェクト全体のパース（辞書解析・`/Type /XRef` 検証・ストリーム展開）を行い、内部で `decodeXRefStreamEntries` を呼ぶ
 - `decodeXRefStreamEntries` は解凍済みデータのデコードに特化した低レベル関数であり、単体テストしやすい設計
 
 ### XRefMerger との統合
 
 - xref ストリームは `/Prev` キーで前の xref セクションを参照でき、インクリメンタルアップデートに対応
-- `XRefMerger`（別 Issue）が複数の xref テーブル/ストリームを `/Prev` チェーンで辿り統合する
+- `XRefMerger` が複数の xref テーブル/ストリームを `/Prev` チェーンで辿り統合する（[xref-merger-spec.md](./xref-merger-spec.md)）

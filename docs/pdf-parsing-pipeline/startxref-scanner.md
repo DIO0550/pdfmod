@@ -98,15 +98,15 @@ if (result.ok) {
 }
 ```
 
-## 今後の拡張
+## 回復処理
 
-### XR-003: スキャン範囲拡大（Issue #27）
+### XR-003: スキャン範囲拡大
 
-実世界のPDFでは %%EOF が末尾1024バイトを超える位置にある場合がある。XR-003 では最大4096バイトまでスキャン範囲を拡大し、`PdfWarning`（`EOF_NOT_FOUND`）を発行しつつ回復的に処理する。`scanStartXRef` の第2引数としてオプション（`{ maxScanBytes?: number }`）を追加する設計を想定。
+実世界のPDFでは %%EOF が末尾1024バイトを超える位置にある場合がある。XR-003 では最大4096バイトまでスキャン範囲を拡大し、`PdfWarning`（`EOF_NOT_FOUND`）を発行しつつ回復的に処理する。`scanStartXRef` の第2引数のオプション（`{ maxScanBytes?: number }`）で範囲を指定する。
 
-### XR-004: フォールバックスキャナ（別Issue）
+### XR-004: フォールバックスキャナ
 
-%%EOF や startxref が破損している場合のフォールバック戦略。ファイル全体を走査して xref テーブルの開始位置を直接検出する。
+%%EOF や startxref が破損している場合のフォールバック戦略。ファイル全体を走査して xref テーブルの開始位置を直接検出する（[error-handling-spec.md](./error-handling-spec.md) のフォールバックXRefスキャナを参照）。
 
 ### 他のxrefモジュールとの関係
 

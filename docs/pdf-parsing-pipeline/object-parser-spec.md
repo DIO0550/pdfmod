@@ -91,7 +91,7 @@ Tokenizer は keyword 後の改行を消費しないため、生バイトを直�
 
 ### endstream の検証
 
-`streamStart + length` の位置にはストリームデータ終端の改行（LF または CRLF）があることを期待し、その改行を消費した直後に `endstream` キーワードが続くことを raw byte で検証する（strict モード、Tokenizer は使わずコメントや追加空白は許容しない）。
+`streamStart + length` の位置にはストリームデータ終端の改行（LF または CRLF）があることを期待し、その改行を消費した直後に `endstream` キーワードが続くことを raw byte で厳密に検証する（Tokenizer は使わず、コメントや追加空白は許容しない）。
 
 ## obj/endobj 構文（間接オブジェクト定義）
 
@@ -119,9 +119,3 @@ Tokenizer は keyword 後の改行を消費しないため、生バイトを直�
 
 - 入力検証: `offset < 0 || offset >= data.length` の場合は `OBJECT_PARSE_UNEXPECTED_TOKEN` エラー
 - エラー位置: `PdfParseError.offset` は呼び出し元の `data` 基準で返す（内部トークン offset + 開始 offset を加算）
-
-## 今回非対応の仕様
-
-- **SL-001〜SL-003**: `/Length` ずれ時の `endstream` 探索による回復処理
-- **OR-006**: xref オフセットずれ時の前後探索による補正
-- **STREAM_LENGTH_MISMATCH 警告**: `/Length` と実データ長の不一致警告

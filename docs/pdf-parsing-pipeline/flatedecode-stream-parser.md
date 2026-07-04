@@ -1,6 +1,6 @@
 # FlateDecode ストリームパーサ
 
-FlateDecode（zlib）展開と xref ストリーム TrailerDict 抽出を実装するモジュール群。Issue #35 で追加。
+FlateDecode（zlib）展開と xref ストリーム TrailerDict 抽出を担うモジュール群。
 
 ## PDF仕様解説
 
@@ -221,15 +221,15 @@ scanStartXRef
   │                         │
   └── parseXRefStream ─→ buildXRefStreamTrailerDict
            │
-           ├── decompressFlate ← 今回実装（XS-005）
+           ├── decompressFlate（XS-005）
            │
-           └── decodeXRefStreamEntries（実装済み）
+           └── decodeXRefStreamEntries
 ```
 
 - `decompressFlate` は xref ストリームの圧縮データを展開するために使用される
 - `buildXRefStreamTrailerDict` は xref ストリーム辞書から trailer 情報を抽出する
 - `trailerDictBuilder` はテキスト形式 trailer パーサと xref ストリーム trailer の両方から共通利用される
-- 上位の `parseXRefStream`（別 Issue）がこれらを組み合わせて xref ストリーム全体のパースを行う
+- 上位の `parseXRefStream` がこれらを組み合わせて xref ストリーム全体のパースを行う
 
 ## エクスポート
 
