@@ -52,7 +52,7 @@ interface TrailerDict {
   /** /Size — xrefテーブルのエントリ総数（必須） */
   size: number;
   /** /Prev — 前のxrefテーブルのバイトオフセット */
-  prev?: number;
+  prev?: ByteOffset;
   /** /Info — ドキュメント情報辞書への間接参照 */
   info?: IndirectRef;
   /** /ID — ファイル識別子 [永続ID, 変更ID] */
@@ -60,7 +60,7 @@ interface TrailerDict {
   /** /Encrypt — 暗号化辞書（間接参照または直値）。存在する場合、暗号化PDFとして検出する */
   encrypt?: PdfObject;
   /** /XRefStm — ハイブリッド参照ファイルにおける相互参照ストリームのバイトオフセット（テキスト形式trailerのみ） */
-  xrefStm?: number;
+  xrefStm?: ByteOffset;
 }
 ```
 
