@@ -27,11 +27,11 @@ rust/
         ├── Cargo.toml
         └── src/
             ├── lib.rs
-            ├── byte_offset.rs   # バイトオフセットのブランド型
-            ├── error/           # PdfError / PdfErrorCode
-            ├── lexer/           # 字句解析（トークン、リテラル/16進文字列、EOL処理）
-            ├── object/          # オブジェクトモデル（PdfObject、辞書、名前、ID、間接参照）
-            └── parser/          # 構文解析（配列、辞書、間接参照）
+            ├── byte_offset.rs        # バイトオフセットのブランド型
+            ├── error.rs,  error/     # PdfError / PdfErrorCode
+            ├── lexer.rs,  lexer/     # 字句解析（トークン、リテラル/16進文字列、EOL処理）
+            ├── object.rs, object/    # オブジェクトモデル（PdfObject、辞書、名前、ID、間接参照）
+            └── parser.rs, parser/    # 構文解析（配列、辞書、間接参照）
 ```
 
 ## ビルド・テスト

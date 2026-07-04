@@ -73,5 +73,5 @@ PDFは、JSONやXMLのような単純なシリアライズデータや、HTMLの
 | カラーマネジメント（ICC プロファイル、`/OutputIntents`） | §8.6.5, §14.11.5 | 名前のみ |
 | 透明性の詳細（透明グループ、isolated / knockout、SMask サブタイプ） | §11 | ExtGState のエントリ列挙のみ |
 | 電子署名の検証（PKCS#7、DocMDP / FieldMDP、LTV、複数署名） | §12.8 | 署名辞書と ByteRange の概要のみ（08章 §5） |
-| テキスト文字列のエンコーディング（PDFDocEncoding / UTF-16BE / PDF 2.0 の UTF-8） | §7.9.2 | 未記載（実装ドキュメント側に PDFDocEncoding のみあり） |
+| テキスト文字列のエンコーディング（PDFDocEncoding / UTF-16BE / PDF 2.0 の UTF-8） | §7.9.2 | 未記載 |
 | ドキュメント書き出し（Writer: シリアライズ、xref 生成、オブジェクト番号割り当て） | — | プリミティブの表記形式（01章）と増分保存の概要（08章）のみ |
