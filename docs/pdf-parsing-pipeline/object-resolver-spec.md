@@ -122,6 +122,15 @@ PdfObject を返却
 | OR-005 | オブジェクトストリーム | XRefEntry.type = 2 | ObjectStreamExtractorで抽出 |
 | OR-006 | xrefオフセットずれ | 指定オフセットに`obj`キーワードがない | 前後32バイト範囲で `N G obj` パターンを探索（寛容処理） |
 | OR-007 | 型チェック | resolveAs() で期待型と不一致 | `PdfTypeError` をスロー |
+| OR-008 | freeエントリ | XRefEntry.type = 0 | PdfNull `{ type: "null" }` を返却（削除済みオブジェクトへの参照。ISO 32000-1 §7.3.10） |
+| OR-009 | 世代番号不一致 | 参照の世代番号がエントリの世代番号（field3）と不一致（type=0/1） | PdfNullを返却し `GENERATION_MISMATCH` 警告を通知 |
+| OR-010 | 圧縮オブジェクトの世代 | XRefEntry.type = 2 | 格納オブジェクトの世代は常に0。世代番号≠0の参照はOR-009に従いPdfNullを返却 |
+
+### freeエントリと世代番号の扱い
+
+- xref に**未登録**の参照（OR-003）と **free エントリ**への参照（OR-008）は、いずれも「未定義オブジェクトへの参照」として PdfNull を返す（`docs/specs/02a_object_resolution.md` §2.1・§4.2 と整合）。
+- 世代番号の照合は type=0/1 エントリで行う。type=2（ObjStm 内）は世代が常に 0 のため、参照側の世代が 0 でなければ無効な参照とみなす。
+- LRU キャッシュのキーは `ObjectId`（objectNumber + generationNumber）であり、type=2 のオブジェクトは常に generationNumber=0 で格納・照会する。
 
 ### LRUキャッシュ
 
@@ -132,6 +141,8 @@ PdfObject を返却
 | キー | `ObjectId` (objectNumber + generationNumber) |
 | スレッドセーフ | 不要（シングルスレッド前提） |
 | 容量設定 | `LoadOptions.cacheCapacity` で変更可能 |
+
+> **既知の制約**: 上限は**エントリ数**でありバイト量ではない。大きなストリームオブジェクトを多数キャッシュすると、エントリ数上限内でもメモリを大量消費しうる（index.md の非機能要件「入力サイズの2倍以内」はこの経路では保証されない）。バイト量ベースの上限は将来課題。
 
 ### ObjectStreamExtractor
 
