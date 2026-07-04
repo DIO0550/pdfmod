@@ -11,7 +11,7 @@
 
 ## 背景
 
-現在、Lexer/Tokenizer（バイト列→トークン列変換）は実装済みだが、トークン列からPDFのドキュメント構造を構築するモジュールが存在しない。xref解析・オブジェクト解決・ページツリー走査を実装することで、任意のPDFファイルからページ情報を取得可能にする。
+Lexer/Tokenizer（バイト列→トークン列変換）の上に、トークン列からPDFのドキュメント構造を構築する層を定義する。xref解析・オブジェクト解決・ページツリー走査により、任意のPDFファイルからページ情報を取得可能にする。
 
 ## スコープ
 
@@ -28,12 +28,14 @@
 - `PdfDocument` / `PdfPage` パブリックAPI
 - 循環参照検出
 - 壊れたPDFへの寛容処理（フォールバックxrefスキャナ）
+- ハイブリッド参照ファイル（`/XRefStm`）の解決
+- 暗号化PDF（`/Encrypt`）の**検出と明示エラー返却**（`ENCRYPTED_PDF_UNSUPPORTED`）
 
 **対象外**:
 - コンテンツストリーム解釈（Phase 3）
 - フォント処理（Phase 4）
 - ドキュメント書き出し（Phase 5）
-- 暗号化/復号化
+- 暗号化PDFの**復号**（検出は対象。上記参照）
 - ストリームフィルタ展開（FlateDecode等 — Phase 1ではxrefストリームの展開のみ）
 
 ## ユーザーストーリー
@@ -95,18 +97,18 @@ PdfDocument (ページ一覧 + メタデータ)
 
 | 仕様書 | 説明 |
 |:-------|:-----|
-| [xref-parser-spec.md](./xref-parser-spec.md) | xrefテーブル/ストリーム解析、トレイラ辞書解析、xrefマージ |
+| [xref-parser-spec.md](./xref-parser-spec.md) | xrefテーブル/ストリーム解析、トレイラ辞書解析、xrefマージ（統括仕様） |
+| [startxref-scanner.md](./startxref-scanner.md) | ファイル末尾からの %%EOF / startxref 検出 |
+| [xref-table-parser.md](./xref-table-parser.md) | テキスト形式xrefテーブルの解析 |
+| [xref-stream-decoder.md](./xref-stream-decoder.md) | 解凍済みxrefストリームのエントリデコード |
+| [flatedecode-stream-parser.md](./flatedecode-stream-parser.md) | FlateDecode展開とxrefストリームからのトレイラ抽出 |
+| [xref-merger-spec.md](./xref-merger-spec.md) | /Prevチェーン走査・マージ、ハイブリッド参照（/XRefStm） |
+| [object-parser-spec.md](./object-parser-spec.md) | Token列→PdfObject変換、間接オブジェクト定義・ストリーム構文 |
 | [object-resolver-spec.md](./object-resolver-spec.md) | インダイレクト参照のオブジェクト解決、LRUキャッシュ、ObjectParser |
 | [page-tree-spec.md](./page-tree-spec.md) | ページツリー走査、属性継承解決、ドキュメント構造構築 |
 | [document-api-spec.md](./document-api-spec.md) | PdfDocument / PdfPage パブリックAPI |
 | [object-stream-spec.md](./object-stream-spec.md) | オブジェクトストリーム（ObjStm）のPDF仕様、内部構造、制約事項 |
-| [error-handling-spec.md](./error-handling-spec.md) | エラー体系、寛容処理、フォールバックメカニズム |
-
-## 実装ドキュメント
-
-実装側の動作・契約を記すドキュメントは [docs/implementation/](../implementation/) を参照:
-
-- [pdf-document-load-fallback.md](../implementation/pdf-document-load-fallback.md) — `PdfDocument.load` の fallback recovery 経路 (`XREF_REBUILD` warning 契約 / `resolveXRefStructure` / `emitWarnings`)
+| [error-handling-spec.md](./error-handling-spec.md) | エラー体系、寛容処理、フォールバックメカニズム（エラーコードの唯一の権威） |
 
 ## 非機能要件
 
