@@ -195,15 +195,16 @@ PDFのオブジェクトは**間接オブジェクト**として定義され、�
 
 ### 3.3 pdfmodでの表現
 
-```typescript
-// 間接参照: PdfObject の "indirect-ref" バリアント
-{ type: "indirect-ref", objectNumber: 2, generationNumber: 0 }
+pdfmodでは間接参照（IndirectRef）を、PdfObject の1バリアントとして次の2フィールドの組で表現します。
 
-// オブジェクト識別子: ObjectId（IndirectRef のエイリアス）
-{ objectNumber: 2, generationNumber: 0 }
-```
+| フィールド | 型 | 説明 |
+|:-----------|:---|:-----|
+| objectNumber | 整数 | オブジェクト番号（`N G R` の N） |
+| generationNumber | 整数 | 世代番号（`N G R` の G、通常は0） |
 
-ObjectResolver（後続Issueで実装）が間接参照を実体のPdfObjectに解決します。
+オブジェクト識別子（ObjectId）は IndirectRef の別名であり、同じ2フィールドの組を指します。
+
+ObjectResolver（実装上は `ObjectStore`）が間接参照を実体のPdfObjectに解決します。
 
 ---
 
@@ -267,15 +268,13 @@ endobj
 | **1** | 通常のオブジェクト | ファイル内バイトオフセット | 世代番号 |
 | **2** | オブジェクトストリーム内 | 親ストリームのオブジェクト番号 | ストリーム内インデックス |
 
-pdfmodではテキスト形式もこの3フィールド形式に正規化して `XRefEntry` 型で統一管理します:
+pdfmodではテキスト形式もこの3フィールド形式に正規化して `XRefEntry` 型で統一管理します。
 
-```typescript
-interface XRefEntry {
-  type: 0 | 1 | 2;
-  field2: number;
-  field3: number;
-}
-```
+| フィールド | 型 | 説明 |
+|:-----------|:---|:-----|
+| type | 0・1・2 のいずれか | エントリのタイプ（意味は上表を参照） |
+| field2 | 整数 | タイプにより意味が変わる（上表を参照） |
+| field3 | 整数 | タイプにより意味が変わる（上表を参照） |
 
 ### 4.5 オブジェクトストリーム（type=2）
 
@@ -298,12 +297,12 @@ XRefEntry の `type=2` はこの形式を指します。`field2` が親ストリ
 
 ### 4.6 XRefTable
 
-```typescript
-interface XRefTable {
-  entries: Map<number, XRefEntry>;  // オブジェクト番号 → エントリ
-  size: number;                      // 最大オブジェクト番号 + 1
-}
-```
+マージ済みのXRefテーブル全体を表す型です。
+
+| フィールド | 型 | 説明 |
+|:-----------|:---|:-----|
+| entries | オブジェクト番号 → XRefEntry のマップ | 各オブジェクトのエントリ |
+| size | 整数 | 最大オブジェクト番号 + 1 |
 
 ---
 
@@ -339,15 +338,17 @@ startxref
 
 ### 5.4 pdfmodでの表現
 
-```typescript
-interface TrailerDict {
-  root: IndirectRef;              // /Root（必須）
-  size: number;                   // /Size（必須）
-  prev?: number;                  // /Prev
-  info?: IndirectRef;             // /Info
-  id?: [Uint8Array, Uint8Array];  // /ID [永続ID, 変更ID]
-}
-```
+トレイラ辞書は `TrailerDict` 型で表現します。root と size は必須、それ以外は省略可能です。
+
+| フィールド | 型 | 説明 |
+|:-----------|:---|:-----|
+| root | 間接参照 | `/Root`（必須） |
+| size | 整数 | `/Size`（必須） |
+| prev | バイトオフセット | `/Prev` — 前のXRefテーブルのバイトオフセット（省略可能） |
+| info | 間接参照 | `/Info`（省略可能） |
+| id | バイト列2要素の組 [永続ID, 変更ID] | `/ID`（省略可能） |
+| encrypt | 辞書またはその間接参照 | `/Encrypt` — 暗号化辞書。存在する場合は暗号化PDFとして検出される（省略可能） |
+| xrefStm | バイトオフセット | `/XRefStm` — ハイブリッド参照ファイルの相互参照ストリームの位置。テキスト形式トレイラのみ（省略可能） |
 
 ---
 
@@ -417,7 +418,7 @@ PDFバイナリ (Uint8Array)
 [5] マージ済みXRefTable + TrailerDict が完成
     │
     ▼
-[6] ObjectResolver で /Root を解決
+[6] ObjectResolver（実装上は ObjectStore）で /Root を解決
     │  間接参照 → XRefからオフセット取得 → パース → LRUキャッシュ
     │
     ▼
@@ -429,15 +430,17 @@ PdfDocument / PdfPage
 
 pdfmodのモジュールとの対応:
 
-| ステップ | pdfmodモジュール | 状態 |
-|:---------|:----------------|:-----|
-| [1]-[2] | `StartXRefScanner` | 未実装 |
-| [3] | `XRefTableParser` / `XRefStreamParser` | 未実装 |
-| [4] | `TrailerParser` / `XRefMerger` | 未実装 |
-| [5] | 型定義: `XRefTable`, `TrailerDict` | **Issue #7（本Issue）** |
-| [6] | `ObjectResolver` + `LRUCache` | LRUCache は **Issue #7**、Resolver は未実装 |
-| [6] | `ObjectParser`（Token → PdfObject） | 型定義は **Issue #7**、Parser は未実装 |
-| [7] | `PageTreeWalker` | 未実装 |
+| ステップ | pdfmodモジュール |
+|:---------|:----------------|
+| [1]-[2] | `StartXRefScanner`（`xref/startxref/`） |
+| [3] | `XRefTableParser`（`xref/table/`）/ xrefストリームデコーダ（`xref/stream/`） |
+| [4] | `TrailerParser`（`xref/trailer/`）/ `XRefMerger`（`xref/merger/`） |
+| [5] | 型定義: `XRefTable`, `TrailerDict`（`pdf/types/`） |
+| [6] | `ObjectStore` + `LRUCache`（`objects/`） |
+| [6] | `ObjectParser`（Token → PdfObject、`objects/object-parser/`） |
+| [7] | ページツリー走査（`document/page-tree/`） |
+
+> 各モジュールの詳細仕様は `docs/pdf-parsing-pipeline/` の各仕様書を参照。
 
 ---
 
@@ -446,7 +449,7 @@ pdfmodのモジュールとの対応:
 | 用語 | 説明 |
 |:-----|:-----|
 | **間接オブジェクト** | `N G obj ... endobj` で定義されるオブジェクト。番号で参照可能 |
-| **間接参照** | `N G R` 形式のポインタ。ObjectResolverが実体に解決する |
+| **間接参照** | `N G R` 形式のポインタ。ObjectResolver（実装上は ObjectStore）が実体に解決する |
 | **オブジェクト番号** | オブジェクトの一意な識別番号（正の整数） |
 | **世代番号** | オブジェクトの更新回数（通常0。削除→再利用でインクリメント） |
 | **XRef** | Cross-Reference。オブジェクト番号→ファイル内位置の索引 |
@@ -462,7 +465,7 @@ pdfmodのモジュールとの対応:
 
 ## 参考資料
 
-- `docs/specs/` — ISO 32000仕様に基づくpdfmod内部仕様書（10章構成）
+- `docs/specs/` — ISO 32000仕様に基づくpdfmod内部仕様書（00〜09章 + 02a）
 - `docs/pdf-parsing-pipeline/` — 解析パイプラインの機能仕様書
 - `docs/research/PDFフォーマット仕様調査とライブラリ開発.md` — 包括的な調査ドキュメント
 - [PDF Reference 1.7 (Adobe)](https://opensource.adobe.com/dc-acrobat-sdk-docs/pdfstandards/PDF32000_2008.pdf) — ISO 32000-1 の無償公開版

@@ -53,14 +53,8 @@ ISO 32000-1 §7.5.5 では「ファイルの最後の1024バイト以内に `%%E
 
 ### scanStartXRef 関数
 
-```typescript
-import type { Result } from "@pdfmod/core";
-import type { PdfParseError } from "@pdfmod/core";
-
-function scanStartXRef(data: Uint8Array): Result<number, PdfParseError>;
-```
-
-`Uint8Array` としてPDFバイナリ全体を受け取り、`startxref` 直後のオフセット値を `Result` 型で返す。
+**入力**: PDFバイナリ全体（バイト列）
+**出力**: 成功時は `startxref` 直後のオフセット値（整数、xrefテーブルのバイトオフセット）、失敗時は `PdfParseError` を Err で返す
 
 ### 処理アルゴリズム
 
@@ -82,36 +76,24 @@ function scanStartXRef(data: Uint8Array): Result<number, PdfParseError>;
 
 エラーコードはすべて `"STARTXREF_NOT_FOUND"` を使用。
 
-### コード例
+## 回復処理
 
-```typescript
-import { scanStartXRef } from "@pdfmod/core";
+### XR-003: スキャン範囲拡大
 
-const pdfData = new Uint8Array(buffer);
-const result = scanStartXRef(pdfData);
+実世界のPDFでは %%EOF が末尾1024バイトを超える位置にある場合がある。XR-003 の回復処理は次のとおり:
 
-if (result.ok) {
-  console.log("xref offset:", result.value);
-  // result.value を使ってxrefテーブルの位置にジャンプ
-} else {
-  console.error(result.error.message);
-}
-```
+1. 範囲拡大は **`scanStartXRef` 自身**が行う。1024バイト以内に `%%EOF` が見つからない場合、最大4096バイトまでスキャン範囲を拡大する
+2. 拡大によって `%%EOF` を検出できた場合、`scanStartXRef` は成功（オフセット値の Ok）を返しつつ `EOF_NOT_FOUND` 警告を発行する（警告はパイプラインの警告収集を通じて `LoadOptions.onWarning` に伝わる）
+3. 4096バイトまで拡大しても `%%EOF` が見つからない場合は `STARTXREF_NOT_FOUND` を Err で返す（上位でフォールバックスキャナへ委譲。XR-004）
 
-## 今後の拡張
+### XR-004: フォールバックスキャナ
 
-### XR-003: スキャン範囲拡大（Issue #27）
-
-実世界のPDFでは %%EOF が末尾1024バイトを超える位置にある場合がある。XR-003 では最大4096バイトまでスキャン範囲を拡大し、`PdfWarning`（`EOF_NOT_FOUND`）を発行しつつ回復的に処理する。`scanStartXRef` の第2引数としてオプション（`{ maxScanBytes?: number }`）を追加する設計を想定。
-
-### XR-004: フォールバックスキャナ（別Issue）
-
-%%EOF や startxref が破損している場合のフォールバック戦略。ファイル全体を走査して xref テーブルの開始位置を直接検出する。
+%%EOF や startxref が破損している場合のフォールバック戦略。ファイル全体を走査して xref テーブルの開始位置を直接検出する（[error-handling-spec.md](./error-handling-spec.md) のフォールバックXRefスキャナを参照）。
 
 ### 他のxrefモジュールとの関係
 
 ```
-scanStartXRef  -->  XRefTableParser  -->  ObjectResolver
+scanStartXRef  -->  XRefTableParser  -->  ObjectStore
                     XRefStreamParser
 ```
 

@@ -20,55 +20,36 @@
 
 ### ResolvedPage
 
-```typescript
-interface ResolvedPage {
-  /** ページの物理的寸法 [llx, lly, urx, ury]（ポイント単位） */
-  mediaBox: [number, number, number, number];
-  /** 描画リソース辞書 */
-  resources: PdfDictionary;
-  /** トリミング領域（未指定時はmediaBoxと同一） */
-  cropBox: [number, number, number, number];
-  /** 表示時の回転角度 */
-  rotate: 0 | 90 | 180 | 270;
-  /** コンテンツストリームへの参照 */
-  contents: IndirectRef | IndirectRef[] | null;
-  /** アノテーション配列 */
-  annots: PdfObject[] | null;
-  /** ユーザー空間の単位倍率（デフォルト1.0） */
-  userUnit: number;
-  /** 元のページオブジェクトの参照 */
-  objectRef: IndirectRef;
-}
-```
+継承解決済みのページ1枚分の属性セット。
+
+| フィールド | 型 | 説明 |
+|:-----------|:---|:-----|
+| mediaBox | 矩形 [llx, lly, urx, ury] | ページの物理的寸法（ポイント単位） |
+| resources | 辞書 | 描画リソース辞書 |
+| cropBox | 矩形 [llx, lly, urx, ury] | トリミング領域（未指定時はmediaBoxと同一） |
+| rotate | 0・90・180・270 のいずれか | 表示時の回転角度 |
+| contents | 間接参照、間接参照の配列、または無し | コンテンツストリームへの参照 |
+| annots | PDFオブジェクトの配列、または無し | アノテーション配列 |
+| userUnit | 実数 | ユーザー空間の単位倍率（デフォルト1.0） |
+| objectRef | 間接参照 | 元のページオブジェクトの参照 |
 
 ### DocumentMetadata
 
-```typescript
-interface DocumentMetadata {
-  /** PDFバージョン（ヘッダとカタログの/Versionを比較し大きい方） */
-  version: string;
-  /** ドキュメントタイトル */
-  title?: string;
-  /** 作成者 */
-  author?: string;
-  /** 主題 */
-  subject?: string;
-  /** キーワード */
-  keywords?: string;
-  /** 作成アプリケーション名 */
-  creator?: string;
-  /** PDF変換アプリケーション名 */
-  producer?: string;
-  /** 作成日時 */
-  creationDate?: Date;
-  /** 最終更新日時 */
-  modDate?: Date;
-  /** ページレイアウトモード */
-  pageLayout?: string;
-  /** 表示モード */
-  pageMode?: string;
-}
-```
+ドキュメントのメタデータ。`version` 以外のフィールドはすべて省略可能（対応するエントリが存在しない場合は値を持たない）。
+
+| フィールド | 型 | 説明 |
+|:-----------|:---|:-----|
+| version | 文字列 | PDFバージョン（ヘッダとカタログの/Versionを比較し大きい方） |
+| title | 文字列 | ドキュメントタイトル |
+| author | 文字列 | 作成者 |
+| subject | 文字列 | 主題 |
+| keywords | 文字列 | キーワード |
+| creator | 文字列 | 作成アプリケーション名 |
+| producer | 文字列 | PDF変換アプリケーション名 |
+| creationDate | 日時 | 作成日時 |
+| modDate | 日時 | 最終更新日時 |
+| pageLayout | 文字列 | ページレイアウトモード |
+| pageMode | 文字列 | 表示モード |
 
 ## 処理仕様
 
@@ -135,7 +116,7 @@ walkPageTree(node, inheritedAttrs, visited)
 |:---|:-------|:-----|:---------|
 | IH-001 | ページ直接定義優先 | ページに属性が直接定義 | 継承値ではなくページの値を使用 |
 | IH-002 | 親から継承 | ページに未定義、親に存在 | 親の値を使用（再帰的に辿る） |
-| IH-003 | MediaBox必須 | ルートまで辿ってもMediaBox未定義 | `PdfParseError` をスロー |
+| IH-003 | MediaBox必須 | ルートまで辿ってもMediaBox未定義 | `MEDIABOX_NOT_FOUND` エラーを返す |
 | IH-004 | Rotate正規化 | 0, 90, 180, 270 以外の値 | 90の倍数に丸め（寛容処理） |
 | IH-005 | CropBoxデフォルト | CropBox未定義 | MediaBoxと同一値を設定 |
 
@@ -165,6 +146,8 @@ D:YYYYMMDDHHmmSSOHH'mm'
   │    └───────────────── 日
   └────────────────────── 年月
 ```
+
+年（`D:YYYY`）以降のフィールドはすべて省略可能であり（ISO 32000-1 §7.9.4）、`D:2026` や `D:20260703` のような切り詰め形式も有効な日時として受理する。省略されたフィールドは各デフォルト値（月・日=01、時・分・秒=00、タイムゾーン=無指定）で補完する。ISO 32000-2 では末尾アポストロフィなしのタイムゾーン表記も許容される。
 
 ## ファイル配置
 

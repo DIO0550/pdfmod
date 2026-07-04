@@ -81,23 +81,20 @@ xref ストリームは PDF 1.5 で導入された相互参照テーブルのバ
 
 ### decodeXRefStreamEntries 関数
 
-```typescript
-function decodeXRefStreamEntries(params: XRefStreamParams): Result<XRefTable, PdfParseError>;
-```
+**入力**: `XRefStreamParams`（下記の入力型を参照）
+**出力**: 成功時は `XRefTable`、失敗時は `PdfParseError` を Err で返す
 
-現時点では内部 API であり、`@pdfmod/core` からは直接 import できない。公開 import パスは上位 `parseXRefStream` API 実装時に確定する。解凍済みバイト列のデコードのみを担当し、辞書解析・`/Type /XRef` 検証・ストリーム展開・trailer 抽出は上位の `parseXRefStream`（別 Issue）が担当する。
+内部 API であり、`@pdfmod/core` からは直接 import しない。解凍済みバイト列のデコードのみを担当し、辞書解析・`/Type /XRef` 検証・ストリーム展開・trailer 抽出は上位の `XRefStreamParser`（xref ストリーム全体のパーサ。[xref-parser-spec.md](./xref-parser-spec.md) のモジュール構成を参照）が担当する。
 
 ### XRefStreamParams 入力型
 
-```typescript
-interface XRefStreamParams {
-  readonly data: Uint8Array;    // 解凍済みストリームバイト列
-  readonly w: readonly [number, number, number]; // /W 配列
-  readonly size: number;         // /Size 値
-  readonly index?: readonly number[]; // /Index 配列（省略可）
-  readonly baseOffset?: ByteOffset;  // ストリームのPDFファイル内開始オフセット（エラー報告用、省略時は0）
-}
-```
+| フィールド | 型 | 必須 | 説明 |
+|:-----------|:---|:-----|:-----|
+| data | バイト列 | 必須 | 解凍済みストリームバイト列 |
+| w | 整数 3 要素の配列 | 必須 | `/W` 配列（各フィールドのバイト幅） |
+| size | 整数 | 必須 | `/Size` 値 |
+| index | 整数の配列 | 任意 | `/Index` 配列（省略可） |
+| baseOffset | バイトオフセット(ByteOffset) | 任意 | ストリームのPDFファイル内開始オフセット（エラー報告用、省略時は0） |
 
 ### 処理アルゴリズム
 
@@ -157,92 +154,22 @@ function decodeIntBE(data, offset, width):
 | decodeIntBE オーバーフロー | `"decoded integer exceeds safe integer range"` | エントリデコード |
 | ブランド型バリデーション失敗 | `"invalid ObjectNumber/ByteOffset/GenerationNumber: ..."` | エントリデコード |
 
-## コード例
+## 上位モジュールとの関係
 
-### 基本使用例（Type 1 のみ、/Index 省略）
-
-```typescript
-// NOTE: decodeXRefStreamEntries は現在内部APIです。
-// 公開 import パスは上位 parseXRefStream API 実装時に確定します。
-import { decodeXRefStreamEntries } from "@pdfmod/core";
-
-// /W [1 2 1], /Size 3, /Index省略（デフォルト [0, 3]）
-// Type 1 エントリ3件: offset=9(gen=0), offset=74(gen=0), offset=120(gen=0)
-const data = new Uint8Array([
-  0x01, 0x00, 0x09, 0x00,  // Type=1, offset=9, gen=0
-  0x01, 0x00, 0x4a, 0x00,  // Type=1, offset=74, gen=0
-  0x01, 0x00, 0x78, 0x00,  // Type=1, offset=120, gen=0
-]);
-
-const result = decodeXRefStreamEntries({
-  data,
-  w: [1, 2, 1],
-  size: 3,
-});
-
-if (result.ok) {
-  const { entries, size } = result.value;
-  // entries: Map(3) { 0 => {type:1,...}, 1 => {type:1,...}, 2 => {type:1,...} }
-  // size: 3
-}
-```
-
-### Type 0/1/2 混在例
-
-```typescript
-const data = new Uint8Array([
-  0x00, 0x00, 0x03, 0x00,  // obj 0: Type=0, nextFree=3, gen=0
-  0x01, 0x00, 0x09, 0x00,  // obj 1: Type=1, offset=9, gen=0
-  0x02, 0x00, 0x05, 0x02,  // obj 2: Type=2, streamObj=5, indexInStream=2
-]);
-
-const result = decodeXRefStreamEntries({ data, w: [1, 2, 1], size: 3 });
-```
-
-### /Index 指定による複数サブセクション例
-
-```typescript
-const data = new Uint8Array([
-  0x01, 0x00, 0x0a, 0x00,  // obj 10
-  0x01, 0x00, 0x14, 0x00,  // obj 11
-  0x01, 0x00, 0x1e, 0x00,  // obj 12
-  0x01, 0x00, 0x28, 0x00,  // obj 20
-  0x01, 0x00, 0x32, 0x00,  // obj 21
-]);
-
-const result = decodeXRefStreamEntries({
-  data,
-  w: [1, 2, 1],
-  size: 22,
-  index: [10, 3, 20, 2],
-});
-```
-
-### デフォルト値適用例（W[0]=0）
-
-```typescript
-// W=[0, 2, 1]: Typeフィールド省略 → デフォルト Type=1
-const data = new Uint8Array([0x00, 0x09, 0x00]);
-const result = decodeXRefStreamEntries({ data, w: [0, 2, 1], size: 1 });
-// → Type=1, offset=9, gen=0
-```
-
-## 今後の拡張
-
-### 上位 parseXRefStream API との関係
+### XRefStreamParser との関係
 
 ```
-scanStartXRef  -->  parseXRefTable   -->  TrailerParser  -->  ObjectResolver
-                    parseXRefStream  -->  (trailer は辞書に統合)
+scanStartXRef  -->  parseXRefTable   -->  TrailerParser  -->  ObjectStore
+                    XRefStreamParser -->  (trailer は辞書に統合)
                          |
                          v
                     decodeXRefStreamEntries  ← 本モジュール
 ```
 
-- `parseXRefStream` は未実装（別 Issue）。ストリームオブジェクト全体のパース（辞書解析・`/Type /XRef` 検証・ストリーム展開）を行い、内部で `decodeXRefStreamEntries` を呼ぶ
+- `XRefStreamParser` はストリームオブジェクト全体のパース（辞書解析・`/Type /XRef` 検証・ストリーム展開）を行い、内部で `decodeXRefStreamEntries` を呼ぶ（[xref-parser-spec.md](./xref-parser-spec.md) のモジュール構成を参照）
 - `decodeXRefStreamEntries` は解凍済みデータのデコードに特化した低レベル関数であり、単体テストしやすい設計
 
 ### XRefMerger との統合
 
 - xref ストリームは `/Prev` キーで前の xref セクションを参照でき、インクリメンタルアップデートに対応
-- `XRefMerger`（別 Issue）が複数の xref テーブル/ストリームを `/Prev` チェーンで辿り統合する
+- `XRefMerger` が複数の xref テーブル/ストリームを `/Prev` チェーンで辿り統合する（[xref-merger-spec.md](./xref-merger-spec.md)）

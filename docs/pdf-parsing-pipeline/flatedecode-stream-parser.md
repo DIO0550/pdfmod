@@ -1,6 +1,6 @@
 # FlateDecode ストリームパーサ
 
-FlateDecode（zlib）展開と xref ストリーム TrailerDict 抽出を実装するモジュール群。Issue #35 で追加。
+FlateDecode（zlib）展開と xref ストリーム TrailerDict 抽出を担うモジュール群。
 
 ## PDF仕様解説
 
@@ -35,18 +35,14 @@ endstream
 
 ## 実装解説
 
-本 PR では以下の 3 モジュールを追加・変更した。
+本仕様は以下の 3 モジュールを定義する。
 
 ### 1. decompressFlate — FlateDecode 展開
 
-```typescript
-function decompressFlate(
-  data: Uint8Array,
-  maxDecompressedSize?: number,
-): Promise<Result<Uint8Array, PdfParseError>>;
-```
+**入力**: 圧縮データのバイト列、および任意指定の展開後最大サイズ（`maxDecompressedSize`、整数）
+**出力**: 非同期に完了する。成功時は展開後のバイト列を Ok で返し、失敗時は `PdfParseError` を Err で返す
 
-**ファイル:** `packages/core/src/xref/stream/flatedecode.ts`
+**ファイル:** `packages/core/src/xref/stream/flatedecode/index.ts`
 
 Web Streams API の `DecompressionStream('deflate')` を使用した非同期 zlib 展開。外部ライブラリに依存せず、ブラウザ・Node.js 双方で動作する。
 
@@ -102,17 +98,10 @@ writePromise 完了待ち
 | writer 側の書き込み/close エラー | `"FlateDecode decompression failed during write"` |
 | その他の展開エラー | `"FlateDecode decompression failed"` |
 
-#### 型の注意点
-
-`WritableStreamDefaultWriter.write()` の TypeScript 型定義では `BufferSource` が `ArrayBufferView<ArrayBuffer>` に限定されており、`Uint8Array<ArrayBufferLike>` と互換性がない。実行時には問題なく動作するため、`data as unknown as BufferSource` でキャストしている。
-
 ### 2. buildXRefStreamTrailerDict — TrailerDict 抽出
 
-```typescript
-function buildXRefStreamTrailerDict(
-  dict: ReadonlyMap<string, PdfValue>,
-): Result<TrailerDict, PdfParseError>;
-```
+**入力**: パース済みの xref ストリーム辞書（名前 → PdfValue の読み取り専用マップ）
+**出力**: 成功時は `TrailerDict` を Ok で返し、失敗時は `PdfParseError` を Err で返す
 
 **ファイル:** `packages/core/src/xref/stream/trailer/index.ts`
 
@@ -121,19 +110,21 @@ function buildXRefStreamTrailerDict(
 #### 処理フロー
 
 ```
-dict.get("Root") → builder.root()
-dict.get("Size") → builder.size()
-dict.get("Prev") → builder.prev()
-dict.get("Info") → builder.info()
-dict.get("ID")   → builder.id()
-                  → builder.build()
+dict.get("Root")    → builder.root()
+dict.get("Size")    → builder.size()
+dict.get("Prev")    → builder.prev()
+dict.get("Info")    → builder.info()
+dict.get("ID")      → builder.id()
+dict.get("Encrypt") → builder.encrypt()
+                     → builder.build()
 ```
+
+> `/XRefStm` はテキスト形式トレイラ専用のエントリ（TR-006）であり、xref ストリーム辞書からは抽出しない。
 
 ### 3. trailerDictBuilder — 共通 TrailerDict ビルダー
 
-```typescript
-function trailerDictBuilder(): TrailerDictBuilderChain;
-```
+**入力**: なし
+**出力**: メソッドチェーン可能なビルダーオブジェクト（`root` / `size` / `prev` / `info` / `id` / `encrypt` / `xrefStm` の各設定操作と `build` を持つ）を返す。`build()` は成功時に `TrailerDict` を Ok で、バリデーション失敗時に `PdfParseError` を Err で返す
 
 **ファイル:** `packages/core/src/xref/trailer/dict-builder/index.ts`
 
@@ -163,85 +154,45 @@ function trailerDictBuilder(): TrailerDictBuilderChain;
 | 欠落 | `"/Size entry is missing in trailer dictionary"` |
 | 非負整数でない | `"/Size entry is not a non-negative integer"` |
 
-**`/Prev`（オプション）:**  非負安全整数であること。
+**`/Prev`（オプション）:**  非負安全整数（バイトオフセット）であること。
 
 **`/Info`（オプション）:** `/Root` と同様に型チェック・objectNumber・generationNumber を個別検証。
 
 **`/ID`（オプション）:** 2 要素の文字列配列であること。
 
+**`/Encrypt`（オプション）:** 辞書またはその間接参照であること（TR-005。値は検証せず保持し、暗号化PDFの検出は上位の責務）。
+
+**`/XRefStm`（オプション）:** 非負安全整数（バイトオフセット）であること（TR-006。テキスト形式トレイラのみで使用）。
+
 ### 4. FLATEDECODE_FAILED エラーコード
 
-```typescript
-type PdfParseErrorCode =
-  | "INVALID_HEADER"
-  | "STARTXREF_NOT_FOUND"
-  | "XREF_TABLE_INVALID"
-  | "XREF_STREAM_INVALID"
-  | "ROOT_NOT_FOUND"
-  | "SIZE_NOT_FOUND"
-  | "MEDIABOX_NOT_FOUND"
-  | "NESTING_TOO_DEEP"
-  | "FLATEDECODE_FAILED";  // ← 今回追加
-```
-
-FlateDecode 展開に関するすべてのエラーに使用する汎用コード。
-
-## テスト構成
-
-テストファイルはテスト対象と同じディレクトリに配置（`__tests__/` は使用しない）。
-
-### flatedecode テスト
-
-| ファイル | テスト内容 | テスト数 |
-|:---------|:----------|:---------|
-| `flatedecode.decode.test.ts` | 正常展開（短いデータ、空データ、冪等性、数KB） | 4 |
-| `flatedecode.validation.test.ts` | 不正データ、空入力、maxDecompressedSize 超過 | 3 |
-| `flatedecode.edge.test.ts` | 切り詰めデータ、ヘッダのみ | 2 |
-
-### xref-stream-trailer テスト
-
-| ファイル | テスト内容 | テスト数 |
-|:---------|:----------|:---------|
-| `xref-stream-trailer.validation.test.ts` | /Root, /Size, /Prev, /Info, /ID の各種バリデーション | 14 |
-| `xref-stream-trailer.decode.test.ts` | 正常構築（必須のみ、全フィールド） | 2 |
-| `xref-stream-trailer.edge.test.ts` | 空辞書、余分なキー、オプション全省略 | 3 |
-
-### PdfParseErrorCode 網羅性テスト
-
-`pdf-error.type-export.test.ts` で `as const satisfies` + `Exact` 型を使用し、リテラル配列と Union 型の相互一致をコンパイル時に保証。新しいエラーコードが追加された場合、配列の更新漏れが型エラーとして検出される。
+`FLATEDECODE_FAILED` は FlateDecode 展開に関するすべてのエラーに使用する汎用コード。エラーコードの一覧は [error-handling-spec.md](./error-handling-spec.md) の「エラー/警告コード一覧」で定義する（当該表が唯一の権威）。
 
 ## パイプライン上の位置づけ
 
 ```
 scanStartXRef
   │
-  ├── parseXRefTable ──→ TrailerParser ──→ ObjectResolver
+  ├── parseXRefTable ──→ TrailerParser ──→ ObjectStore
   │                         │
   │                    trailerDictBuilder（共通）
   │                         │
-  └── parseXRefStream ─→ buildXRefStreamTrailerDict
+  └── XRefStreamParser ─→ buildXRefStreamTrailerDict
            │
-           ├── decompressFlate ← 今回実装（XS-005）
+           ├── decompressFlate（XS-005）
            │
-           └── decodeXRefStreamEntries（実装済み）
+           └── decodeXRefStreamEntries
 ```
 
 - `decompressFlate` は xref ストリームの圧縮データを展開するために使用される
 - `buildXRefStreamTrailerDict` は xref ストリーム辞書から trailer 情報を抽出する
 - `trailerDictBuilder` はテキスト形式 trailer パーサと xref ストリーム trailer の両方から共通利用される
-- 上位の `parseXRefStream`（別 Issue）がこれらを組み合わせて xref ストリーム全体のパースを行う
+- 上位の `XRefStreamParser`（xref ストリーム全体のパーサ。[xref-parser-spec.md](./xref-parser-spec.md) のモジュール構成を参照）がこれらを組み合わせて xref ストリーム全体のパースを行う
 
-## エクスポート
+## 提供 API
 
-以下の API が `@pdfmod/core` からエクスポートされている:
+以下の API を xref サブモジュール内で提供する（パッケージの root export ではなく、各モジュールから import する内部 API）:
 
-```typescript
-// FlateDecode 展開
-export { decompressFlate } from "./xref/stream/flatedecode";
-
-// xref ストリーム TrailerDict 構築
-export { buildXRefStreamTrailerDict } from "./xref/stream/trailer";
-
-// 共通 TrailerDict ビルダー
-export { trailerDictBuilder } from "./xref/trailer/dict-builder";
-```
+- `decompressFlate`（`xref/stream/flatedecode`）— FlateDecode 展開
+- `buildXRefStreamTrailerDict`（`xref/stream/trailer`）— xref ストリーム TrailerDict 構築
+- `trailerDictBuilder`（`xref/trailer/dict-builder`）— 共通 TrailerDict ビルダー

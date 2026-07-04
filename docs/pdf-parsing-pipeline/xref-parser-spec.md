@@ -21,44 +21,30 @@ PDFファイル末尾からstartxrefを検出し、xrefテーブル（テキス�
 
 ### XRefEntry
 
-```typescript
-interface XRefEntry {
-  /** エントリタイプ: 0=空き, 1=通常オブジェクト, 2=オブジェクトストリーム内 */
-  type: 0 | 1 | 2;
-  /** type=1: ファイル内バイトオフセット, type=2: 親ストリームのオブジェクト番号 */
-  field2: number;
-  /** type=0,1: 世代番号, type=2: ストリーム内インデックス */
-  field3: number;
-}
-```
+| フィールド | 型 | 説明 |
+|:-----------|:---|:-----|
+| type | 整数（0 / 1 / 2） | エントリタイプ: 0=空き, 1=通常オブジェクト, 2=オブジェクトストリーム内 |
+| field2 | 整数 | type=1: ファイル内バイトオフセット, type=2: 親ストリームのオブジェクト番号 |
+| field3 | 整数 | type=0,1: 世代番号, type=2: ストリーム内インデックス |
 
 ### XRefTable
 
-```typescript
-interface XRefTable {
-  /** オブジェクト番号 → XRefEntry のマップ */
-  entries: Map<number, XRefEntry>;
-  /** テーブル内の最大オブジェクト番号 + 1 */
-  size: number;
-}
-```
+| フィールド | 型 | 説明 |
+|:-----------|:---|:-----|
+| entries | マップ（整数 → XRefEntry） | オブジェクト番号 → XRefEntry のマップ |
+| size | 整数 | テーブル内の最大オブジェクト番号 + 1 |
 
 ### TrailerDict
 
-```typescript
-interface TrailerDict {
-  /** /Root — ドキュメントカタログへの間接参照（必須） */
-  root: IndirectRef;
-  /** /Size — xrefテーブルのエントリ総数（必須） */
-  size: number;
-  /** /Prev — 前のxrefテーブルのバイトオフセット */
-  prev?: number;
-  /** /Info — ドキュメント情報辞書への間接参照 */
-  info?: IndirectRef;
-  /** /ID — ファイル識別子 [永続ID, 変更ID] */
-  id?: [Uint8Array, Uint8Array];
-}
-```
+| フィールド | 型 | 必須 | 説明 |
+|:-----------|:---|:-----|:-----|
+| root | 間接参照(IndirectRef) | 必須 | /Root — ドキュメントカタログへの間接参照 |
+| size | 整数 | 必須 | /Size — xrefテーブルのエントリ総数 |
+| prev | バイトオフセット(ByteOffset) | 任意 | /Prev — 前のxrefテーブルのバイトオフセット |
+| info | 間接参照(IndirectRef) | 任意 | /Info — ドキュメント情報辞書への間接参照 |
+| id | バイト列 2 要素の組 | 任意 | /ID — ファイル識別子 [永続ID, 変更ID] |
+| encrypt | 辞書 または 間接参照(IndirectRef) | 任意 | /Encrypt — 暗号化辞書（辞書またはその間接参照）。存在する場合、暗号化PDFとして検出する |
+| xrefStm | バイトオフセット(ByteOffset) | 任意 | /XRefStm — ハイブリッド参照ファイルにおける相互参照ストリームのバイトオフセット（テキスト形式trailerのみ） |
 
 ## 処理仕様
 
@@ -72,7 +58,7 @@ interface TrailerDict {
 | XR-001 | %%EOF検出 | ファイル末尾1024バイトを逆方向スキャン | `%%EOF` 文字列を後方検索 |
 | XR-002 | startxref検出 | %%EOF の上方向をスキャン | `startxref` キーワードの後の数値を取得 |
 | XR-003 | %%EOF未検出 | 1024バイト以内に見つからない | スキャン範囲を拡大（最大4096バイト） |
-| XR-004 | startxref未検出 | %%EOF付近に見つからない | `PdfParseError` をスロー（寛容モードではフォールバックスキャナへ） |
+| XR-004 | startxref未検出 | %%EOF付近に見つからない | `STARTXREF_NOT_FOUND` エラーを返す（上位でフォールバックスキャナへ委譲） |
 
 ### XRefTableParser（テキスト形式）
 
@@ -124,14 +110,16 @@ interface TrailerDict {
 処理フロー:
 1. `trailer` キーワードの後の辞書をパース
 2. 必須エントリ（`/Root`, `/Size`）の存在を検証
-3. オプションエントリ（`/Prev`, `/Info`, `/ID`）を抽出
+3. オプションエントリ（`/Prev`, `/Info`, `/ID`, `/Encrypt`, `/XRefStm`）を抽出（TR-005 / TR-006）
 
 | ID | ルール | 条件 | 振る舞い |
 |:---|:-------|:-----|:---------|
-| TR-001 | /Root必須 | 未検出 | `PdfParseError` をスロー |
-| TR-002 | /Size必須 | 未検出 | `PdfParseError` をスロー |
+| TR-001 | /Root必須 | 未検出 | `ROOT_NOT_FOUND` エラーを返す |
+| TR-002 | /Size必須 | 未検出 | `SIZE_NOT_FOUND` エラーを返す |
 | TR-003 | /Prev | 整数値 | 前のxrefテーブルのオフセットとして記録 |
 | TR-004 | /ID | 2要素の配列 | Uint8Arrayのペアに変換 |
+| TR-005 | /Encrypt | 存在する場合 | `TrailerDict.encrypt` に記録。復号は未対応のため、パイプライン上位（`PdfDocument.load`）が `ENCRYPTED_PDF_UNSUPPORTED` エラーを返す |
+| TR-006 | /XRefStm | 整数値（テキスト形式trailerのみ） | ハイブリッド参照ファイルの相互参照ストリームのオフセットとして記録（XM-005参照） |
 
 ### XRefMerger
 
@@ -150,6 +138,7 @@ interface TrailerDict {
 | XM-002 | 循環防止 | /Prevが同一オフセットを指す | `XREF_PREV_CHAIN_CYCLE` エラーを返す |
 | XM-003 | 深度制限 | /Prevチェーンが深すぎる | 最大100段で `XREF_PREV_CHAIN_TOO_DEEP` エラーを返す |
 | XM-004 | 形式混在 | テキスト形式とストリーム形式の混在 | コールバック提供側が形式を判定し適切なパーサを呼び出す |
+| XM-005 | ハイブリッド参照 | trailerに`/XRefStm`が存在 | 同一更新のテキストxrefより先に相互参照ストリームを読み、エントリはストリーム側を優先。`/Prev`はテキストtrailer側のみ辿る |
 
 > 📄 詳細仕様は [xref-merger-spec.md](./xref-merger-spec.md) を参照。
 

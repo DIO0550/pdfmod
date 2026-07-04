@@ -82,16 +82,8 @@ xref テーブルの終端は `trailer` キーワードで示される。パー�
 
 ### parseXRefTable 関数
 
-```typescript
-import type { Result, PdfParseError, ByteOffset, XRefTable } from "@pdfmod/core";
-
-function parseXRefTable(
-  data: Uint8Array,
-  offset: ByteOffset,
-): Result.Result<{ xref: XRefTable; trailerOffset: ByteOffset }, PdfParseError>;
-```
-
-`Uint8Array` として PDF バイナリ全体と、`startxref` から取得した xref テーブルの開始オフセットを受け取る。
+**入力**: PDF バイナリ全体（バイト列）と、`startxref` から取得した xref テーブルの開始オフセット（バイトオフセット(ByteOffset)）
+**出力**: 成功時は `XRefTable` と `trailerOffset`（`trailer` キーワードのバイトオフセット）の組、失敗時は `PdfParseError` を Err で返す
 
 ### 処理アルゴリズム
 
@@ -121,42 +113,10 @@ function parseXRefTable(
 | 未知の EOL パターン | `"xref entry: unknown EOL pattern"` |
 | trailer キーワード未検出 | `"trailer keyword not found"` |
 
-### コード例
-
-```typescript
-import { scanStartXRef, parseXRefTable } from "@pdfmod/core";
-import type { ByteOffset } from "@pdfmod/core";
-
-const pdfData = new Uint8Array(buffer);
-
-// Step 1: startxref オフセットを取得
-const startxrefResult = scanStartXRef(pdfData);
-if (!startxrefResult.ok) {
-  console.error(startxrefResult.error.message);
-  return;
-}
-
-// Step 2: xref テーブルをパース
-const xrefResult = parseXRefTable(
-  pdfData,
-  startxrefResult.value as ByteOffset,
-);
-if (!xrefResult.ok) {
-  console.error(xrefResult.error.message);
-  return;
-}
-
-const { xref, trailerOffset } = xrefResult.value;
-console.log(`entries: ${xref.entries.size}, size: ${xref.size}`);
-console.log(`trailer starts at: ${trailerOffset}`);
-```
-
-## 今後の拡張
-
-### 他の xref モジュールとの関係
+## 他の xref モジュールとの関係
 
 ```
-scanStartXRef  -->  parseXRefTable   -->  TrailerParser  -->  ObjectResolver
+scanStartXRef  -->  parseXRefTable   -->  TrailerParser  -->  ObjectStore
                     XRefStreamParser
                           |
                           v
