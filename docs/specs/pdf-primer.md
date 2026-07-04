@@ -195,13 +195,14 @@ PDFのオブジェクトは**間接オブジェクト**として定義され、�
 
 ### 3.3 pdfmodでの表現
 
-```typescript
-// 間接参照: PdfObject の "indirect-ref" バリアント
-{ type: "indirect-ref", objectNumber: 2, generationNumber: 0 }
+pdfmodでは間接参照（IndirectRef）を、PdfObject の1バリアントとして次の2フィールドの組で表現します。
 
-// オブジェクト識別子: ObjectId（IndirectRef のエイリアス）
-{ objectNumber: 2, generationNumber: 0 }
-```
+| フィールド | 型 | 説明 |
+|:-----------|:---|:-----|
+| objectNumber | 整数 | オブジェクト番号（`N G R` の N） |
+| generationNumber | 整数 | 世代番号（`N G R` の G、通常は0） |
+
+オブジェクト識別子（ObjectId）は IndirectRef の別名であり、同じ2フィールドの組を指します。
 
 ObjectResolver（実装上は `ObjectStore`）が間接参照を実体のPdfObjectに解決します。
 
@@ -267,15 +268,13 @@ endobj
 | **1** | 通常のオブジェクト | ファイル内バイトオフセット | 世代番号 |
 | **2** | オブジェクトストリーム内 | 親ストリームのオブジェクト番号 | ストリーム内インデックス |
 
-pdfmodではテキスト形式もこの3フィールド形式に正規化して `XRefEntry` 型で統一管理します:
+pdfmodではテキスト形式もこの3フィールド形式に正規化して `XRefEntry` 型で統一管理します。
 
-```typescript
-interface XRefEntry {
-  type: 0 | 1 | 2;
-  field2: number;
-  field3: number;
-}
-```
+| フィールド | 型 | 説明 |
+|:-----------|:---|:-----|
+| type | 0・1・2 のいずれか | エントリのタイプ（意味は上表を参照） |
+| field2 | 整数 | タイプにより意味が変わる（上表を参照） |
+| field3 | 整数 | タイプにより意味が変わる（上表を参照） |
 
 ### 4.5 オブジェクトストリーム（type=2）
 
@@ -298,12 +297,12 @@ XRefEntry の `type=2` はこの形式を指します。`field2` が親ストリ
 
 ### 4.6 XRefTable
 
-```typescript
-interface XRefTable {
-  entries: Map<number, XRefEntry>;  // オブジェクト番号 → エントリ
-  size: number;                      // 最大オブジェクト番号 + 1
-}
-```
+マージ済みのXRefテーブル全体を表す型です。
+
+| フィールド | 型 | 説明 |
+|:-----------|:---|:-----|
+| entries | オブジェクト番号 → XRefEntry のマップ | 各オブジェクトのエントリ |
+| size | 整数 | 最大オブジェクト番号 + 1 |
 
 ---
 
@@ -339,15 +338,15 @@ startxref
 
 ### 5.4 pdfmodでの表現
 
-```typescript
-interface TrailerDict {
-  root: IndirectRef;              // /Root（必須）
-  size: number;                   // /Size（必須）
-  prev?: number;                  // /Prev
-  info?: IndirectRef;             // /Info
-  id?: [Uint8Array, Uint8Array];  // /ID [永続ID, 変更ID]
-}
-```
+トレイラ辞書は `TrailerDict` 型で表現します。root と size は必須、それ以外は省略可能です。
+
+| フィールド | 型 | 説明 |
+|:-----------|:---|:-----|
+| root | 間接参照 | `/Root`（必須） |
+| size | 整数 | `/Size`（必須） |
+| prev | 整数 | `/Prev`（省略可能） |
+| info | 間接参照 | `/Info`（省略可能） |
+| id | バイト列2要素の組 [永続ID, 変更ID] | `/ID`（省略可能） |
 
 ---
 
