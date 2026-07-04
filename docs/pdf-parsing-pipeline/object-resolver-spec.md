@@ -65,12 +65,12 @@ Token列からPDFのプリミティブ9型 + インダイレクト参照をPdfOb
 ### ObjectResolver
 
 **入力**: `XRefTable` + PDFバイナリ全体のバイト列
-**出力**: `PdfObject`（解決済み）
+**出力**: `Result` — 成功時は解決済みの `PdfObject` を Ok で、失敗時は `PdfError` を Err で返す
 
-ObjectResolver は次の2つの解決操作を提供する。
+ObjectResolver は次の2つの解決操作を提供する。いずれも `Result` を返す。
 
-- **resolve** — **入力**: インダイレクト参照。**出力**: 参照先を解決したPdfObject。
-- **resolveAs** — 期待するPdfObjectのバリアント（`dictionary` 等）を指定して解決する。**入力**: インダイレクト参照 + 期待する型。**出力**: 成功時は期待した型に絞り込まれたPdfObject、解決結果の型が期待と不一致なら `TYPE_MISMATCH` エラーを Err で返す（OR-007）。
+- **resolve** — **入力**: インダイレクト参照。**出力**: 成功時は参照先を解決した PdfObject を Ok で返す。循環参照検出時は `CIRCULAR_REFERENCE` エラーを Err で返す（OR-002）。
+- **resolveAs** — 期待するPdfObjectのバリアント（`dictionary` 等）を指定して解決する。**入力**: インダイレクト参照 + 期待する型。**出力**: 成功時は期待した型に絞り込まれた PdfObject を Ok で、解決結果の型が期待と不一致なら `TYPE_MISMATCH` エラーを Err で返す（OR-007）。
 
 #### 解決フロー
 
@@ -161,16 +161,15 @@ PdfObject を返却
 packages/core/src/
 ├── objects/
 │   ├── index.ts                  # 再エクスポート
-│   ├── types.ts                  # PdfObject, ObjectId
-│   ├── object-parser.ts          # ObjectParser
-│   ├── object-resolver.ts        # ObjectResolver
-│   ├── object-stream-extractor.ts # ObjectStreamExtractor
-│   └── lru-cache.ts              # LRUCache<K, V>
+│   ├── object-parser/            # ObjectParser（Token列 → PdfObject 変換）
+│   ├── object-store/             # ObjectStore（ObjectResolver の実装。解決・キャッシュ）
+│   ├── object-stream-extractor/  # ObjectStreamExtractor（ObjStm 抽出）
+│   └── lru-cache/                # LRUCache
 ```
 
 ## 関連仕様
 
-- [xref-parser-spec.md](./xref-parser-spec.md) - ObjectResolverが使用するxrefテーブルを提供
-- [page-tree-spec.md](./page-tree-spec.md) - ObjectResolverを使ってページツリーを走査
+- [xref-parser-spec.md](./xref-parser-spec.md) - ObjectResolver（実装上は ObjectStore）が使用するxrefテーブルを提供
+- [page-tree-spec.md](./page-tree-spec.md) - ObjectResolver（実装上は ObjectStore）を使ってページツリーを走査
 - [error-handling-spec.md](./error-handling-spec.md) - PdfCircularReferenceError, PdfTypeMismatchError
 - `docs/specs/01_lexical_conventions.md` - 9つのプリミティブ型の仕様
