@@ -76,7 +76,7 @@ interface TrailerDict {
 | XR-001 | %%EOF検出 | ファイル末尾1024バイトを逆方向スキャン | `%%EOF` 文字列を後方検索 |
 | XR-002 | startxref検出 | %%EOF の上方向をスキャン | `startxref` キーワードの後の数値を取得 |
 | XR-003 | %%EOF未検出 | 1024バイト以内に見つからない | スキャン範囲を拡大（最大4096バイト） |
-| XR-004 | startxref未検出 | %%EOF付近に見つからない | `PdfParseError` をスロー（寛容モードではフォールバックスキャナへ） |
+| XR-004 | startxref未検出 | %%EOF付近に見つからない | `STARTXREF_NOT_FOUND` エラーを返す（上位でフォールバックスキャナへ委譲） |
 
 ### XRefTableParser（テキスト形式）
 
@@ -132,8 +132,8 @@ interface TrailerDict {
 
 | ID | ルール | 条件 | 振る舞い |
 |:---|:-------|:-----|:---------|
-| TR-001 | /Root必須 | 未検出 | `PdfParseError` をスロー |
-| TR-002 | /Size必須 | 未検出 | `PdfParseError` をスロー |
+| TR-001 | /Root必須 | 未検出 | `ROOT_NOT_FOUND` エラーを返す |
+| TR-002 | /Size必須 | 未検出 | `SIZE_NOT_FOUND` エラーを返す |
 | TR-003 | /Prev | 整数値 | 前のxrefテーブルのオフセットとして記録 |
 | TR-004 | /ID | 2要素の配列 | Uint8Arrayのペアに変換 |
 | TR-005 | /Encrypt | 存在する場合 | `TrailerDict.encrypt` に記録。復号は未対応のため、パイプライン上位（`PdfDocument.load`）が `ENCRYPTED_PDF_UNSUPPORTED` エラーを返す |

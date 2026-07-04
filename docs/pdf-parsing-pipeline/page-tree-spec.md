@@ -135,7 +135,7 @@ walkPageTree(node, inheritedAttrs, visited)
 |:---|:-------|:-----|:---------|
 | IH-001 | ページ直接定義優先 | ページに属性が直接定義 | 継承値ではなくページの値を使用 |
 | IH-002 | 親から継承 | ページに未定義、親に存在 | 親の値を使用（再帰的に辿る） |
-| IH-003 | MediaBox必須 | ルートまで辿ってもMediaBox未定義 | `PdfParseError` をスロー |
+| IH-003 | MediaBox必須 | ルートまで辿ってもMediaBox未定義 | `MEDIABOX_NOT_FOUND` エラーを返す |
 | IH-004 | Rotate正規化 | 0, 90, 180, 270 以外の値 | 90の倍数に丸め（寛容処理） |
 | IH-005 | CropBoxデフォルト | CropBox未定義 | MediaBoxと同一値を設定 |
 
