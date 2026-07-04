@@ -168,7 +168,7 @@ export type {
 ## 使用例
 
 ```typescript
-import { PdfDocument } from "@pdfmod/core";
+import { PdfDocument, PdfPage } from "@pdfmod/core";
 
 // ファイル読み込み
 const response = await fetch("/sample.pdf");
@@ -188,12 +188,12 @@ console.log(`Version: ${doc.version}`);
 console.log(`Pages: ${doc.pageCount}`);
 console.log(`Title: ${doc.metadata.title}`);
 
-// ページ情報
+// ページ情報（Rotate / UserUnit を考慮した寸法は PdfPage 経由で取得する）
 for (let i = 0; i < doc.pageCount; i++) {
   const page = doc.getPage(i);
   if (page.some) {
-    const [llx, lly, urx, ury] = page.value.mediaBox;
-    console.log(`Page ${i + 1}: ${urx - llx} x ${ury - lly} pt`);
+    const pdfPage = PdfPage.from(page.value);
+    console.log(`Page ${i + 1}: ${pdfPage.width} x ${pdfPage.height} pt`);
   }
 }
 ```
