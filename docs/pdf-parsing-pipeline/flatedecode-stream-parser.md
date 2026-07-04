@@ -110,18 +110,21 @@ writePromise 完了待ち
 #### 処理フロー
 
 ```
-dict.get("Root") → builder.root()
-dict.get("Size") → builder.size()
-dict.get("Prev") → builder.prev()
-dict.get("Info") → builder.info()
-dict.get("ID")   → builder.id()
-                  → builder.build()
+dict.get("Root")    → builder.root()
+dict.get("Size")    → builder.size()
+dict.get("Prev")    → builder.prev()
+dict.get("Info")    → builder.info()
+dict.get("ID")      → builder.id()
+dict.get("Encrypt") → builder.encrypt()
+                     → builder.build()
 ```
+
+> `/XRefStm` はテキスト形式トレイラ専用のエントリ（TR-006）であり、xref ストリーム辞書からは抽出しない。
 
 ### 3. trailerDictBuilder — 共通 TrailerDict ビルダー
 
 **入力**: なし
-**出力**: メソッドチェーン可能なビルダーオブジェクト（`root` / `size` / `prev` / `info` / `id` の各設定操作と `build` を持つ）を返す。`build()` は成功時に `TrailerDict` を Ok で、バリデーション失敗時に `PdfParseError` を Err で返す
+**出力**: メソッドチェーン可能なビルダーオブジェクト（`root` / `size` / `prev` / `info` / `id` / `encrypt` / `xrefStm` の各設定操作と `build` を持つ）を返す。`build()` は成功時に `TrailerDict` を Ok で、バリデーション失敗時に `PdfParseError` を Err で返す
 
 **ファイル:** `packages/core/src/xref/trailer/dict-builder/index.ts`
 
@@ -151,11 +154,15 @@ dict.get("ID")   → builder.id()
 | 欠落 | `"/Size entry is missing in trailer dictionary"` |
 | 非負整数でない | `"/Size entry is not a non-negative integer"` |
 
-**`/Prev`（オプション）:**  非負安全整数であること。
+**`/Prev`（オプション）:**  非負安全整数（バイトオフセット）であること。
 
 **`/Info`（オプション）:** `/Root` と同様に型チェック・objectNumber・generationNumber を個別検証。
 
 **`/ID`（オプション）:** 2 要素の文字列配列であること。
+
+**`/Encrypt`（オプション）:** 辞書またはその間接参照であること（TR-005。値は検証せず保持し、暗号化PDFの検出は上位の責務）。
+
+**`/XRefStm`（オプション）:** 非負安全整数（バイトオフセット）であること（TR-006。テキスト形式トレイラのみで使用）。
 
 ### 4. FLATEDECODE_FAILED エラーコード
 
