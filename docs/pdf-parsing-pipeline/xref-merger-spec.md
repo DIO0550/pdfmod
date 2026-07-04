@@ -190,7 +190,7 @@ PDF ファイルでは、増分更新ごとにテキスト形式の xref テー�
 ```
 offset の先頭バイト列を検査:
   "xref" → parseXRefTable を使用
-  "N N obj" パターン → parseXRefStream を使用（ストリームオブジェクト）
+  "N N obj" パターン → XRefStreamParser を使用（ストリームオブジェクト）
 ```
 
 判定ロジック（コールバック実装側で行う）:
@@ -198,7 +198,7 @@ offset の先頭バイト列を検査:
 | 先頭パターン | 形式 | 呼び出すパーサー |
 |:------------|:-----|:----------------|
 | `xref` キーワード | テキスト形式 | `parseXRefTable` + `parseTrailer` |
-| 間接オブジェクト定義（`N N obj`） | xref ストリーム | `parseXRefStream`（辞書に trailer 統合） |
+| 間接オブジェクト定義（`N N obj`） | xref ストリーム | `XRefStreamParser`（辞書に trailer 統合） |
 
 これにより、`/Prev` チェーン内でテキスト形式とストリーム形式が交互に出現する PDF でも正しくマージできる。
 

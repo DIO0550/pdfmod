@@ -42,7 +42,7 @@ endstream
 **入力**: 圧縮データのバイト列、および任意指定の展開後最大サイズ（`maxDecompressedSize`、整数）
 **出力**: 非同期に完了する。成功時は展開後のバイト列を Ok で返し、失敗時は `PdfParseError` を Err で返す
 
-**ファイル:** `packages/core/src/xref/stream/flatedecode.ts`
+**ファイル:** `packages/core/src/xref/stream/flatedecode/index.ts`
 
 Web Streams API の `DecompressionStream('deflate')` を使用した非同期 zlib 展開。外部ライブラリに依存せず、ブラウザ・Node.js 双方で動作する。
 
@@ -177,7 +177,7 @@ scanStartXRef
   │                         │
   │                    trailerDictBuilder（共通）
   │                         │
-  └── parseXRefStream ─→ buildXRefStreamTrailerDict
+  └── XRefStreamParser ─→ buildXRefStreamTrailerDict
            │
            ├── decompressFlate（XS-005）
            │
@@ -187,11 +187,11 @@ scanStartXRef
 - `decompressFlate` は xref ストリームの圧縮データを展開するために使用される
 - `buildXRefStreamTrailerDict` は xref ストリーム辞書から trailer 情報を抽出する
 - `trailerDictBuilder` はテキスト形式 trailer パーサと xref ストリーム trailer の両方から共通利用される
-- 上位の `parseXRefStream` がこれらを組み合わせて xref ストリーム全体のパースを行う
+- 上位の `XRefStreamParser`（xref ストリーム全体のパーサ。[xref-parser-spec.md](./xref-parser-spec.md) のモジュール構成を参照）がこれらを組み合わせて xref ストリーム全体のパースを行う
 
-## エクスポート
+## 提供 API
 
-以下の API が `@pdfmod/core` からエクスポートされている:
+以下の API を xref サブモジュール内で提供する（パッケージの root export ではなく、各モジュールから import する内部 API）:
 
 - `decompressFlate`（`xref/stream/flatedecode`）— FlateDecode 展開
 - `buildXRefStreamTrailerDict`（`xref/stream/trailer`）— xref ストリーム TrailerDict 構築
