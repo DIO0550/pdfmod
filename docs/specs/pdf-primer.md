@@ -439,7 +439,7 @@ pdfmodのモジュールとの対応:
 | [6] | `ObjectParser`（Token → PdfObject、`objects/object-parser/`） |
 | [7] | ページツリー走査（`document/page-tree/`） |
 
-> 各モジュールの実装状況・既知制約は `docs/implementation/` および `docs/pdf-parsing-pipeline/` の各仕様書を参照。
+> 各モジュールの詳細仕様は `docs/pdf-parsing-pipeline/` の各仕様書を参照。
 
 ---
 

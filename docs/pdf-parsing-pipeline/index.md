@@ -11,7 +11,7 @@
 
 ## 背景
 
-現在、Lexer/Tokenizer（バイト列→トークン列変換）は実装済みだが、トークン列からPDFのドキュメント構造を構築するモジュールが存在しない。xref解析・オブジェクト解決・ページツリー走査を実装することで、任意のPDFファイルからページ情報を取得可能にする。
+Lexer/Tokenizer（バイト列→トークン列変換）の上に、トークン列からPDFのドキュメント構造を構築する層を定義する。xref解析・オブジェクト解決・ページツリー走査により、任意のPDFファイルからページ情報を取得可能にする。
 
 ## スコープ
 
@@ -109,12 +109,6 @@ PdfDocument (ページ一覧 + メタデータ)
 | [document-api-spec.md](./document-api-spec.md) | PdfDocument / PdfPage パブリックAPI |
 | [object-stream-spec.md](./object-stream-spec.md) | オブジェクトストリーム（ObjStm）のPDF仕様、内部構造、制約事項 |
 | [error-handling-spec.md](./error-handling-spec.md) | エラー体系、寛容処理、フォールバックメカニズム（エラーコードの唯一の権威） |
-
-## 実装ドキュメント
-
-実装側の動作・契約を記すドキュメントは [docs/implementation/](../implementation/) を参照:
-
-- [pdf-document-load-fallback.md](../implementation/pdf-document-load-fallback.md) — `PdfDocument.load` の fallback recovery 経路 (`XREF_REBUILD` warning 契約 / `resolveXRefStructure` / `emitWarnings`)
 
 ## 非機能要件
 
