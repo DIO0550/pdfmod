@@ -5,6 +5,7 @@ import {
   Matrix,
   TextObject,
 } from "../../../../graphics-state/index";
+import { MarkedContentStack } from "../../../../marked-content/stack";
 import { OperandStack } from "../../../../operand-stack/index";
 import type { OperatorHandlerContext } from "../../../../operator-registry/index";
 import { etHandler } from "../index";
@@ -19,7 +20,11 @@ const buildActiveContext = (): OperatorHandlerContext => {
     GraphicsStateStack.create(),
     activeState,
   );
-  return { operandStack, graphicsStateStack };
+  return {
+    operandStack,
+    graphicsStateStack,
+    markedContentStack: MarkedContentStack.create(),
+  };
 };
 
 test("active な state で ET を実行すると textObject.active が false へ遷移する", () => {

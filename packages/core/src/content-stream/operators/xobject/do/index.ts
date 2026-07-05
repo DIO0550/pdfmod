@@ -59,5 +59,6 @@ export const doHandler: OperatorHandler = (context: OperatorHandlerContext) => {
   return ok({
     operandStack: context.operandStack,
     graphicsStateStack: context.graphicsStateStack,
+    markedContentStack: context.markedContentStack,
   });
 };

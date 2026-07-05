@@ -11,6 +11,7 @@ import type {
 import { TokenType } from "../../../../pdf/index";
 import { ByteOffset } from "../../../../pdf/types/byte-offset/index";
 import { GraphicsStateStack } from "../../../graphics-state/index";
+import { MarkedContentStack } from "../../../marked-content/stack";
 import { OperandStack } from "../../../operand-stack/index";
 import type { OperatorHandlerContext } from "../../../operator-registry/index";
 import type { InlineImageDict } from "../../inline-image-dict/index";
@@ -48,6 +49,7 @@ const buildToken = (entries: InlineImageDict): TokenInlineImage => ({
 const buildContext = (): OperatorHandlerContext => ({
   operandStack: OperandStack.create(),
   graphicsStateStack: GraphicsStateStack.create(),
+  markedContentStack: MarkedContentStack.create(),
 });
 
 test("Width 欠落で err.code/missingKey/offset/message を載せる（err 生成と offset 伝搬の統合）", () => {

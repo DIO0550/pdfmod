@@ -6,6 +6,7 @@ import {
   GraphicsStateStack,
 } from "../../../../graphics-state/index";
 import { PathSegment } from "../../../../graphics-state/path-segment";
+import { MarkedContentStack } from "../../../../marked-content/stack";
 import { OperandStack } from "../../../../operand-stack/index";
 import type { OperatorHandlerContext } from "../../../../operator-registry/index";
 import { hHandler } from "../index";
@@ -18,7 +19,11 @@ const buildContext = (operands: PdfObject[]): OperatorHandlerContext => {
     OperandStack.push(operandStack, operand);
   }
   const graphicsStateStack = GraphicsStateStack.create();
-  return { operandStack, graphicsStateStack };
+  return {
+    operandStack,
+    graphicsStateStack,
+    markedContentStack: MarkedContentStack.create(),
+  };
 };
 
 const buildContextWithSegments = (
@@ -39,7 +44,11 @@ const buildContextWithSegments = (
     GraphicsStateStack.create(),
     seededState,
   );
-  return { operandStack, graphicsStateStack };
+  return {
+    operandStack,
+    graphicsStateStack,
+    markedContentStack: MarkedContentStack.create(),
+  };
 };
 
 test("空 path に対して `h` は no-op で segments が空のまま保たれる", () => {

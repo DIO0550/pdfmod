@@ -60,5 +60,6 @@ export const inlineImageHandler = (
   return ok({
     operandStack: context.operandStack,
     graphicsStateStack: context.graphicsStateStack,
+    markedContentStack: context.markedContentStack,
   });
 };

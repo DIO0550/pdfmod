@@ -5,6 +5,7 @@ import {
   GraphicsStateStack,
   TextObject,
 } from "../../../../graphics-state/index";
+import { MarkedContentStack } from "../../../../marked-content/stack";
 import { OperandStack } from "../../../../operand-stack/index";
 import type { OperatorHandlerContext } from "../../../../operator-registry/index";
 import { tjHandler } from "../index";
@@ -19,7 +20,11 @@ const buildInactiveContext = (
     OperandStack.push(operandStack, operand);
   }
   const graphicsStateStack = GraphicsStateStack.create();
-  return { operandStack, graphicsStateStack };
+  return {
+    operandStack,
+    graphicsStateStack,
+    markedContentStack: MarkedContentStack.create(),
+  };
 };
 
 // active な text object を持つ最小コンテキストを組むビルダ（pop / 型検査用）。
@@ -35,7 +40,11 @@ const buildActiveContext = (operands: PdfObject[]): OperatorHandlerContext => {
     GraphicsStateStack.create(),
     activeState,
   );
-  return { operandStack, graphicsStateStack };
+  return {
+    operandStack,
+    graphicsStateStack,
+    markedContentStack: MarkedContentStack.create(),
+  };
 };
 
 const literalString = (bytes: number[]): PdfObject => ({

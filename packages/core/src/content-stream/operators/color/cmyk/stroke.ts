@@ -80,5 +80,6 @@ export const KHandler: OperatorHandler = (context: OperatorHandlerContext) => {
   return ok({
     operandStack: context.operandStack,
     graphicsStateStack,
+    markedContentStack: context.markedContentStack,
   });
 };
