@@ -7,6 +7,7 @@ import type {
 import { TokenType } from "../../../../pdf/index";
 import { ByteOffset } from "../../../../pdf/types/byte-offset/index";
 import { GraphicsStateStack } from "../../../graphics-state/index";
+import { MarkedContentStack } from "../../../marked-content/stack";
 import { OperandStack } from "../../../operand-stack/index";
 import type { OperatorHandlerContext } from "../../../operator-registry/index";
 import type { InlineImageDict } from "../../inline-image-dict/index";
@@ -45,6 +46,7 @@ const buildInlineImageToken = (
 const buildContext = (): OperatorHandlerContext => ({
   operandStack: OperandStack.create(),
   graphicsStateStack: GraphicsStateStack.create(),
+  markedContentStack: MarkedContentStack.create(),
 });
 
 test("完全名のみで揃った dict を受理する", () => {

@@ -5,6 +5,7 @@ import {
   GraphicsStateStack,
   TextState,
 } from "../../../../graphics-state/index";
+import { MarkedContentStack } from "../../../../marked-content/stack";
 import { OperandStack } from "../../../../operand-stack/index";
 import type { OperatorHandlerContext } from "../../../../operator-registry/index";
 import { twHandler } from "../index";
@@ -15,7 +16,11 @@ const buildContext = (operands: PdfObject[]): OperatorHandlerContext => {
     OperandStack.push(operandStack, operand);
   }
   const graphicsStateStack = GraphicsStateStack.create();
-  return { operandStack, graphicsStateStack };
+  return {
+    operandStack,
+    graphicsStateStack,
+    markedContentStack: MarkedContentStack.create(),
+  };
 };
 
 test("'5 Tw' で wordSpace が 5 に更新される", () => {
@@ -34,6 +39,7 @@ test("非0 の wordSpace に '0 Tw' を適用すると 0 にリセットされ�
   const reset = twHandler({
     operandStack: buildContext([{ type: "integer", value: 0 }]).operandStack,
     graphicsStateStack: first.value.graphicsStateStack,
+    markedContentStack: MarkedContentStack.create(),
   });
 
   assert(reset.ok);
@@ -73,6 +79,7 @@ test("wordSpace 更新時、非デフォルト値の他フィールドは保持�
   const result = twHandler({
     operandStack: buildContext([{ type: "integer", value: 5 }]).operandStack,
     graphicsStateStack,
+    markedContentStack: MarkedContentStack.create(),
   });
 
   assert(result.ok);

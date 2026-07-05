@@ -11,6 +11,7 @@ import {
   Matrix,
 } from "../../../../graphics-state/index";
 import { PathSegment } from "../../../../graphics-state/path-segment/index";
+import { MarkedContentStack } from "../../../../marked-content/stack";
 import { OperandStack } from "../../../../operand-stack/index";
 import type { OperatorHandlerContext } from "../../../../operator-registry/index";
 import { kHandler } from "../fill";
@@ -23,7 +24,11 @@ const buildContext = (operands: PdfObject[]): OperatorHandlerContext => {
     OperandStack.push(operandStack, operand);
   }
   const graphicsStateStack = GraphicsStateStack.create();
-  return { operandStack, graphicsStateStack };
+  return {
+    operandStack,
+    graphicsStateStack,
+    markedContentStack: MarkedContentStack.create(),
+  };
 };
 
 const real = (value: number): PdfObject => ({ type: "real", value });
@@ -82,7 +87,11 @@ test("初期 strokeColor=rgb(0.7, 0.8, 0.9) を seed しても k 実行後 strok
     seeded,
   );
 
-  const result = kHandler({ operandStack, graphicsStateStack });
+  const result = kHandler({
+    operandStack,
+    graphicsStateStack,
+    markedContentStack: MarkedContentStack.create(),
+  });
 
   assert(result.ok);
   const current = GraphicsStateStack.current(result.value.graphicsStateStack);
@@ -163,7 +172,11 @@ test("成功時 非デフォルトの ctm / lineWidth / lineCap / lineJoin / mit
     seeded,
   );
 
-  const result = kHandler({ operandStack, graphicsStateStack });
+  const result = kHandler({
+    operandStack,
+    graphicsStateStack,
+    markedContentStack: MarkedContentStack.create(),
+  });
 
   assert(result.ok);
   const after = GraphicsStateStack.current(result.value.graphicsStateStack);

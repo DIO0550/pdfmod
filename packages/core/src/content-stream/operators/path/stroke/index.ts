@@ -40,6 +40,7 @@ export const strokeHandler: OperatorHandler = (
     return ok({
       operandStack: context.operandStack,
       graphicsStateStack: context.graphicsStateStack,
+      markedContentStack: context.markedContentStack,
     });
   }
   const next = GraphicsState.update(current, {
@@ -52,5 +53,6 @@ export const strokeHandler: OperatorHandler = (
   return ok({
     operandStack: context.operandStack,
     graphicsStateStack,
+    markedContentStack: context.markedContentStack,
   });
 };

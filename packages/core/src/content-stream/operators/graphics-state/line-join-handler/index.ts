@@ -79,5 +79,6 @@ export const lineJoinHandler: OperatorHandler = (
   return ok({
     operandStack: context.operandStack,
     graphicsStateStack,
+    markedContentStack: context.markedContentStack,
   });
 };

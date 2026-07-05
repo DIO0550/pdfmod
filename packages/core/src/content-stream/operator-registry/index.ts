@@ -5,6 +5,7 @@ import { none, some } from "../../utils/option/index";
 import type { Result } from "../../utils/result/index";
 import { err, ok } from "../../utils/result/index";
 import type { GraphicsStateStack } from "../graphics-state/stack";
+import type { MarkedContentStack } from "../marked-content/stack";
 import type { OperandStack } from "../operand-stack/index";
 
 declare const OperatorRegistryBrand: unique symbol;
@@ -17,6 +18,8 @@ export type OperatorHandlerContext = {
   readonly operandStack: OperandStack;
   /** 現在の graphics state stack */
   readonly graphicsStateStack: GraphicsStateStack;
+  /** BMC/BDC/EMC 由来の marked content stack (ISO 32000-2:2020 §14.6) */
+  readonly markedContentStack: MarkedContentStack;
 };
 
 /**

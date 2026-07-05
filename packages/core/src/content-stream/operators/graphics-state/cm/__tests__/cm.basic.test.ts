@@ -1,6 +1,7 @@
 import { assert, expect, test } from "vitest";
 import type { PdfObject } from "../../../../../pdf/types/pdf-types/index";
 import { GraphicsStateStack, Matrix } from "../../../../graphics-state/index";
+import { MarkedContentStack } from "../../../../marked-content/stack";
 import { OperandStack } from "../../../../operand-stack/index";
 import type { OperatorHandlerContext } from "../../../../operator-registry/index";
 import { cmHandler } from "../../cm";
@@ -11,7 +12,11 @@ const buildContext = (operands: PdfObject[]): OperatorHandlerContext => {
     OperandStack.push(operandStack, operand);
   }
   const graphicsStateStack = GraphicsStateStack.create();
-  return { operandStack, graphicsStateStack };
+  return {
+    operandStack,
+    graphicsStateStack,
+    markedContentStack: MarkedContentStack.create(),
+  };
 };
 
 const real = (value: number): PdfObject => ({ type: "real", value });
@@ -115,6 +120,7 @@ test("左乗算検証 (非可換): CTM が S(2,3) の状態で T(5,7) を cm 適
   const result = cmHandler({
     operandStack,
     graphicsStateStack: stackWithS,
+    markedContentStack: MarkedContentStack.create(),
   });
 
   assert(result.ok);
@@ -151,6 +157,7 @@ test("平行移動の合成: CTM が T(10,20) の状態で T(5,7) を cm 適用�
   const result = cmHandler({
     operandStack,
     graphicsStateStack: stackWithT1,
+    markedContentStack: MarkedContentStack.create(),
   });
 
   assert(result.ok);

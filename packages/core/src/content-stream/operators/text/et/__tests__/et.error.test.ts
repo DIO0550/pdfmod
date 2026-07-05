@@ -5,6 +5,7 @@ import {
   Matrix,
   TextObject,
 } from "../../../../graphics-state/index";
+import { MarkedContentStack } from "../../../../marked-content/stack";
 import { OperandStack } from "../../../../operand-stack/index";
 import type { OperatorHandlerContext } from "../../../../operator-registry/index";
 import { etHandler } from "../index";
@@ -13,7 +14,11 @@ import { etHandler } from "../index";
 const buildContext = (): OperatorHandlerContext => {
   const operandStack = OperandStack.create();
   const graphicsStateStack = GraphicsStateStack.create();
-  return { operandStack, graphicsStateStack };
+  return {
+    operandStack,
+    graphicsStateStack,
+    markedContentStack: MarkedContentStack.create(),
+  };
 };
 
 // inactive (active=false) かつ matrix が非 identity の textObject を持つ context。
@@ -33,7 +38,11 @@ const buildInactiveNonIdentityContext = (): OperatorHandlerContext => {
     GraphicsStateStack.create(),
     state,
   );
-  return { operandStack, graphicsStateStack };
+  return {
+    operandStack,
+    graphicsStateStack,
+    markedContentStack: MarkedContentStack.create(),
+  };
 };
 
 test("inactive な state で ET を実行すると OPERATOR_ILLEGAL_STATE を返す", () => {

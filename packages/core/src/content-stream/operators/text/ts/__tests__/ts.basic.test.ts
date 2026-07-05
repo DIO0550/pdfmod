@@ -5,6 +5,7 @@ import {
   GraphicsStateStack,
   TextState,
 } from "../../../../graphics-state/index";
+import { MarkedContentStack } from "../../../../marked-content/stack";
 import { OperandStack } from "../../../../operand-stack/index";
 import type { OperatorHandlerContext } from "../../../../operator-registry/index";
 import { tsHandler } from "../index";
@@ -15,7 +16,11 @@ const buildContext = (operands: PdfObject[]): OperatorHandlerContext => {
     OperandStack.push(operandStack, operand);
   }
   const graphicsStateStack = GraphicsStateStack.create();
-  return { operandStack, graphicsStateStack };
+  return {
+    operandStack,
+    graphicsStateStack,
+    markedContentStack: MarkedContentStack.create(),
+  };
 };
 
 test("正値 '3 Ts' で rise が 3 に更新される", () => {
@@ -43,6 +48,7 @@ test("非0 の rise に '0 Ts' を適用すると 0 にリセットされる", (
   const reset = tsHandler({
     operandStack: buildContext([{ type: "integer", value: 0 }]).operandStack,
     graphicsStateStack: first.value.graphicsStateStack,
+    markedContentStack: MarkedContentStack.create(),
   });
 
   assert(reset.ok);
@@ -90,6 +96,7 @@ test("rise 更新時、非デフォルト値の他フィールドは保持され
   const result = tsHandler({
     operandStack: buildContext([{ type: "integer", value: 3 }]).operandStack,
     graphicsStateStack,
+    markedContentStack: MarkedContentStack.create(),
   });
 
   assert(result.ok);

@@ -9,6 +9,7 @@ import {
   TextObject,
   TextState,
 } from "../../../../graphics-state/index";
+import { MarkedContentStack } from "../../../../marked-content/stack";
 import { OperandStack } from "../../../../operand-stack/index";
 import type { OperatorHandlerContext } from "../../../../operator-registry/index";
 import { tjArrayHandler } from "../index";
@@ -40,7 +41,11 @@ const buildActiveContext = (
     GraphicsStateStack.create(),
     activeState,
   );
-  return { operandStack, graphicsStateStack };
+  return {
+    operandStack,
+    graphicsStateStack,
+    markedContentStack: MarkedContentStack.create(),
+  };
 };
 
 const buildInactiveContext = (
@@ -51,7 +56,11 @@ const buildInactiveContext = (
     OperandStack.push(operandStack, operand);
   }
   // textObject は initial（active === false）のまま。
-  return { operandStack, graphicsStateStack: GraphicsStateStack.create() };
+  return {
+    operandStack,
+    graphicsStateStack: GraphicsStateStack.create(),
+    markedContentStack: MarkedContentStack.create(),
+  };
 };
 
 // inactive 状態では OPERATOR_ILLEGAL_STATE を返し、stack は両方 (operand / graphics state) 不変。

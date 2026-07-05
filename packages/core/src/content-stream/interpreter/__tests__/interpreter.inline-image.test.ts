@@ -2,6 +2,7 @@ import { assert, expect, test } from "vitest";
 import type { PdfObject } from "../../../pdf/types/pdf-types/index";
 import { ok } from "../../../utils/result/index";
 import { GraphicsStateStack } from "../../graphics-state/index";
+import { MarkedContentStack } from "../../marked-content/stack";
 import { OperandStack } from "../../operand-stack/index";
 import {
   type OperatorHandler,
@@ -38,6 +39,7 @@ test("inline image の前後で operand stack / graphics state stack は同一�
   const initialContext = {
     operandStack: OperandStack.create(),
     graphicsStateStack: GraphicsStateStack.create(),
+    markedContentStack: MarkedContentStack.create(),
   };
   const before = GraphicsStateStack.current(initialContext.graphicsStateStack);
 

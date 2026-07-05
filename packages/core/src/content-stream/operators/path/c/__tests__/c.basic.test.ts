@@ -6,6 +6,7 @@ import {
   GraphicsStateStack,
 } from "../../../../graphics-state/index";
 import { PathSegment } from "../../../../graphics-state/path-segment";
+import { MarkedContentStack } from "../../../../marked-content/stack";
 import { OperandStack } from "../../../../operand-stack/index";
 import type { OperatorHandlerContext } from "../../../../operator-registry/index";
 import { mHandler } from "../../m/index";
@@ -17,7 +18,11 @@ const buildContext = (operands: PdfObject[]): OperatorHandlerContext => {
     OperandStack.push(operandStack, operand);
   }
   const graphicsStateStack = GraphicsStateStack.create();
-  return { operandStack, graphicsStateStack };
+  return {
+    operandStack,
+    graphicsStateStack,
+    markedContentStack: MarkedContentStack.create(),
+  };
 };
 
 const buildContextWithCurrentPoint = (
@@ -39,7 +44,11 @@ const buildContextWithCurrentPoint = (
     GraphicsStateStack.create(),
     seededState,
   );
-  return { operandStack, graphicsStateStack };
+  return {
+    operandStack,
+    graphicsStateStack,
+    markedContentStack: MarkedContentStack.create(),
+  };
 };
 
 const real = (value: number): PdfObject => ({ type: "real", value });
@@ -96,6 +105,7 @@ test("既存 currentPath を持つ state から開始した場合、元 segment 
   const result = cHandler({
     operandStack,
     graphicsStateStack: stackWithSeed,
+    markedContentStack: MarkedContentStack.create(),
   });
 
   assert(result.ok);
@@ -130,6 +140,7 @@ test("`mHandler(10,20)` 実行後 `cHandler(30,40,50,60,70,80)` を実行する�
   const result = cHandler({
     operandStack,
     graphicsStateStack: mResult.value.graphicsStateStack,
+    markedContentStack: MarkedContentStack.create(),
   });
 
   assert(result.ok);
@@ -166,6 +177,7 @@ test("連続 `c → c` で 2 つの CurveTo が append され、前 CurveTo は�
   const secondResult = cHandler({
     operandStack,
     graphicsStateStack: firstResult.value.graphicsStateStack,
+    markedContentStack: MarkedContentStack.create(),
   });
 
   assert(secondResult.ok);

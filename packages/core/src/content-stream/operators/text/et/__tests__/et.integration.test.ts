@@ -4,6 +4,7 @@ import {
   Matrix,
   TextObject,
 } from "../../../../graphics-state/index";
+import { MarkedContentStack } from "../../../../marked-content/stack";
 import { OperandStack } from "../../../../operand-stack/index";
 import type { OperatorHandlerContext } from "../../../../operator-registry/index";
 import { btHandler } from "../../bt/index";
@@ -13,7 +14,11 @@ import { etHandler } from "../index";
 const buildContext = (): OperatorHandlerContext => {
   const operandStack = OperandStack.create();
   const graphicsStateStack = GraphicsStateStack.create();
-  return { operandStack, graphicsStateStack };
+  return {
+    operandStack,
+    graphicsStateStack,
+    markedContentStack: MarkedContentStack.create(),
+  };
 };
 
 test("BT → ET を連続適用すると textObject.active が false へ復帰する", () => {

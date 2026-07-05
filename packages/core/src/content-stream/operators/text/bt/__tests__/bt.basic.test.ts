@@ -5,6 +5,7 @@ import {
   Matrix,
   TextObject,
 } from "../../../../graphics-state/index";
+import { MarkedContentStack } from "../../../../marked-content/stack";
 import { OperandStack } from "../../../../operand-stack/index";
 import type { OperatorHandlerContext } from "../../../../operator-registry/index";
 import { btHandler } from "../index";
@@ -18,7 +19,11 @@ const buildContext = (operands: PdfObject[] = []): OperatorHandlerContext => {
     OperandStack.push(operandStack, operand);
   }
   const graphicsStateStack = GraphicsStateStack.create();
-  return { operandStack, graphicsStateStack };
+  return {
+    operandStack,
+    graphicsStateStack,
+    markedContentStack: MarkedContentStack.create(),
+  };
 };
 
 test("初期 inactive 状態で BT を実行すると textObject.active が true へ遷移する", () => {

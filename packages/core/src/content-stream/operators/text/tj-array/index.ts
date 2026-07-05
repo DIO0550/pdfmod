@@ -113,6 +113,7 @@ export const tjArrayHandler: OperatorHandler = (
     return ok({
       operandStack: context.operandStack,
       graphicsStateStack: context.graphicsStateStack,
+      markedContentStack: context.markedContentStack,
     });
   }
 
@@ -124,5 +125,6 @@ export const tjArrayHandler: OperatorHandler = (
   return ok({
     operandStack: context.operandStack,
     graphicsStateStack,
+    markedContentStack: context.markedContentStack,
   });
 };
