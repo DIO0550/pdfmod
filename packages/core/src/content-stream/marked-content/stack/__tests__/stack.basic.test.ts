@@ -1,4 +1,4 @@
-import { expect, test } from "vitest";
+import { assert, expect, test } from "vitest";
 import type {
   PdfDictionary,
   PdfName,
@@ -57,9 +57,7 @@ test("LIFO順でpopが直近pushしたentryを返す", () => {
     some: true,
     value: { stack: expect.any(Object), popped: bmcArtifact },
   });
-  if (!first.some) {
-    throw new Error("expected some");
-  }
+  assert(first.some);
   const second = MarkedContentStack.pop(first.value.stack);
   expect(second).toEqual({
     some: true,
@@ -71,9 +69,7 @@ test("popは元stackをmutateせず別参照のstackを返す", () => {
   // pop 後も元 stack の depth が変わらず、別参照の stack を返す
   const prev = MarkedContentStack.push(MarkedContentStack.create(), bmcSpan);
   const result = MarkedContentStack.pop(prev);
-  if (!result.some) {
-    throw new Error("expected some");
-  }
+  assert(result.some);
   expect(result.value.stack).not.toBe(prev);
   expect(MarkedContentStack.depth(prev)).toBe(1);
 });
@@ -83,8 +79,6 @@ test("BDC entry(propertiesがsome)もpushしてpopで同じ参照が返る", () 
   // pop で同じ entry 参照が返ること
   const stack = MarkedContentStack.push(MarkedContentStack.create(), bdcSpan);
   const result = MarkedContentStack.pop(stack);
-  if (!result.some) {
-    throw new Error("expected some");
-  }
+  assert(result.some);
   expect(result.value.popped).toBe(bdcSpan);
 });
