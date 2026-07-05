@@ -22,6 +22,15 @@ test("createは深さ0の空stackを返す", () => {
   expect(MarkedContentStack.depth(stack)).toBe(0);
 });
 
+test("createは呼び出しごとに別インスタンスの空stackを返す", () => {
+  // create() は共有定数ではなく呼び出しごとに独立した stack を返す factory 契約
+  const a = MarkedContentStack.create();
+  const b = MarkedContentStack.create();
+  expect(a).not.toBe(b);
+  expect(MarkedContentStack.depth(a)).toBe(0);
+  expect(MarkedContentStack.depth(b)).toBe(0);
+});
+
 test("pushは深さを1増やした新stackを返す", () => {
   // BMC entry を 1 つ push したら depth が 0 → 1 に増加する
   const stack = MarkedContentStack.push(MarkedContentStack.create(), bmcSpan);
