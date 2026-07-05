@@ -6,7 +6,6 @@ import {
   Matrix,
 } from "../../../../graphics-state/index";
 import { ContentStreamInterpreter } from "../../../../interpreter/index";
-import { MarkedContentStack } from "../../../../marked-content/stack";
 import {
   type OperatorHandler,
   OperatorRegistry,
@@ -19,14 +18,12 @@ const qHandler: OperatorHandler = (context) =>
   ok({
     ...context,
     graphicsStateStack: GraphicsStateStack.save(context.graphicsStateStack),
-    markedContentStack: MarkedContentStack.create(),
   });
 
 const qRestoreHandler: OperatorHandler = (context) =>
   ok({
     ...context,
     graphicsStateStack: GraphicsStateStack.restore(context.graphicsStateStack),
-    markedContentStack: MarkedContentStack.create(),
   });
 
 test("barrel 経由で `1 0 0 1 100 200 cm 2 w` を実行すると CTM と lineWidth が更新される", () => {

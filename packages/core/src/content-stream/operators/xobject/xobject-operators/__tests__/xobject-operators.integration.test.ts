@@ -3,7 +3,6 @@ import { flatMap, ok } from "../../../../../utils/result/index";
 import { GraphicsStateStack } from "../../../../graphics-state/index";
 import type { ContentStreamInterpreterResult } from "../../../../interpreter/index";
 import { ContentStreamInterpreter } from "../../../../interpreter/index";
-import { MarkedContentStack } from "../../../../marked-content/stack";
 import { OperandStack } from "../../../../operand-stack/index";
 import type {
   OperatorHandler,
@@ -23,14 +22,12 @@ const qHandler: OperatorHandler = (context) =>
   ok({
     ...context,
     graphicsStateStack: GraphicsStateStack.save(context.graphicsStateStack),
-    markedContentStack: MarkedContentStack.create(),
   });
 
 const qRestoreHandler: OperatorHandler = (context) =>
   ok({
     ...context,
     graphicsStateStack: GraphicsStateStack.restore(context.graphicsStateStack),
-    markedContentStack: MarkedContentStack.create(),
   });
 
 // XObject + text-state + graphics-state (cm/w/J/j/M) + inline q/Q を併用登録した registry を作るヘルパ。
