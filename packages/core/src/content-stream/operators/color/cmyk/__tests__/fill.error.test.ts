@@ -1,6 +1,7 @@
 import { assert, expect, test } from "vitest";
 import type { PdfObject } from "../../../../../pdf/types/pdf-types/index";
 import { GraphicsStateStack } from "../../../../graphics-state/index";
+import { MarkedContentStack } from "../../../../marked-content/stack";
 import { OperandStack } from "../../../../operand-stack/index";
 import type { OperatorHandlerContext } from "../../../../operator-registry/index";
 import { kHandler } from "../fill";
@@ -13,7 +14,11 @@ const buildContext = (operands: PdfObject[]): OperatorHandlerContext => {
     OperandStack.push(operandStack, operand);
   }
   const graphicsStateStack = GraphicsStateStack.create();
-  return { operandStack, graphicsStateStack };
+  return {
+    operandStack,
+    graphicsStateStack,
+    markedContentStack: MarkedContentStack.create(),
+  };
 };
 
 const real = (value: number): PdfObject => ({ type: "real", value });

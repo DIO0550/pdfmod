@@ -6,6 +6,7 @@ import {
   GraphicsState,
   GraphicsStateStack,
 } from "../../../../graphics-state/index";
+import { MarkedContentStack } from "../../../../marked-content/stack";
 import { OperandStack } from "../../../../operand-stack/index";
 import type { OperatorHandlerContext } from "../../../../operator-registry/index";
 import { gHandler } from "../fill";
@@ -16,7 +17,11 @@ const buildContext = (operands: PdfObject[]): OperatorHandlerContext => {
     OperandStack.push(operandStack, operand);
   }
   const graphicsStateStack = GraphicsStateStack.create();
-  return { operandStack, graphicsStateStack };
+  return {
+    operandStack,
+    graphicsStateStack,
+    markedContentStack: MarkedContentStack.create(),
+  };
 };
 
 const real = (value: number): PdfObject => ({ type: "real", value });
@@ -46,7 +51,11 @@ test("初期 fillColorSpace=deviceRGB/fillColor=rgb の状態から `0.5 g` で 
     rgbState,
   );
 
-  const result = gHandler({ operandStack, graphicsStateStack });
+  const result = gHandler({
+    operandStack,
+    graphicsStateStack,
+    markedContentStack: MarkedContentStack.create(),
+  });
 
   assert(result.ok);
   const current = GraphicsStateStack.current(result.value.graphicsStateStack);

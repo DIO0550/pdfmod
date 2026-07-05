@@ -79,5 +79,6 @@ export const lineCapHandler: OperatorHandler = (
   return ok({
     operandStack: context.operandStack,
     graphicsStateStack,
+    markedContentStack: context.markedContentStack,
   });
 };

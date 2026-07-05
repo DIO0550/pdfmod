@@ -5,6 +5,7 @@ import {
   GraphicsStateStack,
   TextObject,
 } from "../../../../graphics-state/index";
+import { MarkedContentStack } from "../../../../marked-content/stack";
 import { OperandStack } from "../../../../operand-stack/index";
 import type { OperatorHandlerContext } from "../../../../operator-registry/index";
 import { tmHandler } from "../index";
@@ -23,7 +24,11 @@ const buildActiveContext = (operands: PdfObject[]): OperatorHandlerContext => {
     GraphicsStateStack.create(),
     activeState,
   );
-  return { operandStack, graphicsStateStack };
+  return {
+    operandStack,
+    graphicsStateStack,
+    markedContentStack: MarkedContentStack.create(),
+  };
 };
 
 // inactive な context（active=false ガードテスト用。GraphicsStateStack.create() 既定）。
@@ -34,7 +39,11 @@ const buildInactiveContext = (
   for (const operand of operands) {
     OperandStack.push(operandStack, operand);
   }
-  return { operandStack, graphicsStateStack: GraphicsStateStack.create() };
+  return {
+    operandStack,
+    graphicsStateStack: GraphicsStateStack.create(),
+    markedContentStack: MarkedContentStack.create(),
+  };
 };
 
 const int = (value: number): PdfObject => ({ type: "integer", value });

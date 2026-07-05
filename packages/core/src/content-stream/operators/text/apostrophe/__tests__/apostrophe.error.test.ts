@@ -7,6 +7,7 @@ import {
   TextObject,
   TextState,
 } from "../../../../graphics-state/index";
+import { MarkedContentStack } from "../../../../marked-content/stack";
 import { OperandStack } from "../../../../operand-stack/index";
 import type { OperatorHandlerContext } from "../../../../operator-registry/index";
 import { apostropheHandler } from "../index";
@@ -28,7 +29,11 @@ const buildActiveContext = (
     GraphicsStateStack.create(),
     activeState,
   );
-  return { operandStack, graphicsStateStack };
+  return {
+    operandStack,
+    graphicsStateStack,
+    markedContentStack: MarkedContentStack.create(),
+  };
 };
 
 // active=false (BT 未発行) の context を組み立てる。
@@ -40,7 +45,11 @@ const buildInactiveContext = (
     OperandStack.push(operandStack, operand);
   }
   const graphicsStateStack = GraphicsStateStack.create();
-  return { operandStack, graphicsStateStack };
+  return {
+    operandStack,
+    graphicsStateStack,
+    markedContentStack: MarkedContentStack.create(),
+  };
 };
 
 // inactive かつ非 identity の matrix / 非 default の leading を持つ context。
@@ -61,7 +70,11 @@ const buildInactiveNonIdentityContext = (): OperatorHandlerContext => {
     GraphicsStateStack.create(),
     state,
   );
-  return { operandStack, graphicsStateStack };
+  return {
+    operandStack,
+    graphicsStateStack,
+    markedContentStack: MarkedContentStack.create(),
+  };
 };
 
 const literalString = (bytes: number[]): PdfObject => ({

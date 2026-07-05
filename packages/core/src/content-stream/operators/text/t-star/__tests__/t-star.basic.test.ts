@@ -7,6 +7,7 @@ import {
   TextObject,
   TextState,
 } from "../../../../graphics-state/index";
+import { MarkedContentStack } from "../../../../marked-content/stack";
 import { OperandStack } from "../../../../operand-stack/index";
 import type { OperatorHandlerContext } from "../../../../operator-registry/index";
 import { tStarHandler } from "../index";
@@ -30,7 +31,11 @@ const buildActiveContext = (
     GraphicsStateStack.create(),
     activeState,
   );
-  return { operandStack, graphicsStateStack };
+  return {
+    operandStack,
+    graphicsStateStack,
+    markedContentStack: MarkedContentStack.create(),
+  };
 };
 
 // active かつ任意の Tm / Tlm を持つ TextObject を生で組むヘルパ（dirty state 構築用）。

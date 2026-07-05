@@ -35,6 +35,7 @@ export const hHandler: OperatorHandler = (context: OperatorHandlerContext) => {
     return ok({
       operandStack: context.operandStack,
       graphicsStateStack: context.graphicsStateStack,
+      markedContentStack: context.markedContentStack,
     });
   }
   const nextPath = CurrentPath.append(current.currentPath, PathSegment.close());
@@ -46,5 +47,6 @@ export const hHandler: OperatorHandler = (context: OperatorHandlerContext) => {
   return ok({
     operandStack: context.operandStack,
     graphicsStateStack,
+    markedContentStack: context.markedContentStack,
   });
 };

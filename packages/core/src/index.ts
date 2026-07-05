@@ -14,6 +14,8 @@ export type {
   ContentStreamInterpreterResult,
 } from "./content-stream/interpreter/index";
 export { ContentStreamInterpreter } from "./content-stream/interpreter/index";
+export type { MarkedContentEntry } from "./content-stream/marked-content/index";
+export { MarkedContentStack } from "./content-stream/marked-content/index";
 export { OperandStack } from "./content-stream/operand-stack/index";
 export type {
   OperatorHandler,

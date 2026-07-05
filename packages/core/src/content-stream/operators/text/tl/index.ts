@@ -66,5 +66,6 @@ export const tlHandler: OperatorHandler = (context: OperatorHandlerContext) => {
   return ok({
     operandStack: context.operandStack,
     graphicsStateStack,
+    markedContentStack: context.markedContentStack,
   });
 };

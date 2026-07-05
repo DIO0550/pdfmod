@@ -9,6 +9,7 @@ import type { Result } from "../../utils/result/index";
 import { err, ok } from "../../utils/result/index";
 import { GraphicsStateStack } from "../graphics-state/index";
 import { inlineImageHandler } from "../inline-image/handler/index";
+import { MarkedContentStack } from "../marked-content/stack";
 import { OperandStack } from "../operand-stack/index";
 import {
   type OperatorHandlerContext,
@@ -277,5 +278,6 @@ function createInitialContext(
   return {
     operandStack: OperandStack.create(),
     graphicsStateStack: GraphicsStateStack.create(),
+    markedContentStack: MarkedContentStack.create(),
   };
 }

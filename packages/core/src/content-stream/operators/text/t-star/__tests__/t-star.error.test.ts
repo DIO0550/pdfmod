@@ -7,6 +7,7 @@ import {
   TextObject,
   TextState,
 } from "../../../../graphics-state/index";
+import { MarkedContentStack } from "../../../../marked-content/stack";
 import { OperandStack } from "../../../../operand-stack/index";
 import type { OperatorHandlerContext } from "../../../../operator-registry/index";
 import { tStarHandler } from "../index";
@@ -21,7 +22,11 @@ const buildInactiveContext = (
     OperandStack.push(operandStack, operand);
   }
   const graphicsStateStack = GraphicsStateStack.create();
-  return { operandStack, graphicsStateStack };
+  return {
+    operandStack,
+    graphicsStateStack,
+    markedContentStack: MarkedContentStack.create(),
+  };
 };
 
 const int = (value: number): PdfObject => ({ type: "integer", value });
@@ -45,7 +50,11 @@ const buildInactiveNonIdentityContext = (): OperatorHandlerContext => {
     GraphicsStateStack.create(),
     state,
   );
-  return { operandStack, graphicsStateStack };
+  return {
+    operandStack,
+    graphicsStateStack,
+    markedContentStack: MarkedContentStack.create(),
+  };
 };
 
 test("inactive な state で T* を実行すると OPERATOR_ILLEGAL_STATE を返す", () => {

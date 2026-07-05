@@ -59,5 +59,6 @@ export const tStarHandler: OperatorHandler = (
   return ok({
     operandStack: context.operandStack,
     graphicsStateStack,
+    markedContentStack: context.markedContentStack,
   });
 };

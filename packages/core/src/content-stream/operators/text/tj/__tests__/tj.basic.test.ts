@@ -5,6 +5,7 @@ import {
   GraphicsStateStack,
   TextObject,
 } from "../../../../graphics-state/index";
+import { MarkedContentStack } from "../../../../marked-content/stack";
 import { OperandStack } from "../../../../operand-stack/index";
 import type { OperatorHandlerContext } from "../../../../operator-registry/index";
 import { tjHandler } from "../index";
@@ -24,7 +25,11 @@ const buildActiveContext = (operands: PdfObject[]): OperatorHandlerContext => {
     GraphicsStateStack.create(),
     activeState,
   );
-  return { operandStack, graphicsStateStack };
+  return {
+    operandStack,
+    graphicsStateStack,
+    markedContentStack: MarkedContentStack.create(),
+  };
 };
 
 const literalString = (bytes: number[]): PdfObject => ({

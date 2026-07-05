@@ -5,6 +5,7 @@ import {
   GraphicsStateStack,
   TextState,
 } from "../../../../graphics-state/index";
+import { MarkedContentStack } from "../../../../marked-content/stack";
 import { OperandStack } from "../../../../operand-stack/index";
 import type { OperatorHandlerContext } from "../../../../operator-registry/index";
 import { tlHandler } from "../index";
@@ -15,7 +16,11 @@ const buildContext = (operands: PdfObject[]): OperatorHandlerContext => {
     OperandStack.push(operandStack, operand);
   }
   const graphicsStateStack = GraphicsStateStack.create();
-  return { operandStack, graphicsStateStack };
+  return {
+    operandStack,
+    graphicsStateStack,
+    markedContentStack: MarkedContentStack.create(),
+  };
 };
 
 test("'14 TL' で leading が 14 に更新される", () => {
@@ -34,6 +39,7 @@ test("非0 の leading に '0 TL' を適用すると 0 にリセットされる"
   const reset = tlHandler({
     operandStack: buildContext([{ type: "integer", value: 0 }]).operandStack,
     graphicsStateStack: first.value.graphicsStateStack,
+    markedContentStack: MarkedContentStack.create(),
   });
 
   assert(reset.ok);
@@ -73,6 +79,7 @@ test("leading 更新時、非デフォルト値の他フィールドは保持さ
   const result = tlHandler({
     operandStack: buildContext([{ type: "integer", value: 3 }]).operandStack,
     graphicsStateStack,
+    markedContentStack: MarkedContentStack.create(),
   });
 
   assert(result.ok);

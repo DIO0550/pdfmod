@@ -5,6 +5,7 @@ import {
   GraphicsStateStack,
   TextObject,
 } from "../../../../graphics-state/index";
+import { MarkedContentStack } from "../../../../marked-content/stack";
 import { OperandStack } from "../../../../operand-stack/index";
 import type { OperatorHandlerContext } from "../../../../operator-registry/index";
 import { btHandler } from "../index";
@@ -27,7 +28,11 @@ const buildActiveContext = (
     GraphicsStateStack.create(),
     activeState,
   );
-  return { operandStack, graphicsStateStack };
+  return {
+    operandStack,
+    graphicsStateStack,
+    markedContentStack: MarkedContentStack.create(),
+  };
 };
 
 test("active=true の状態で BT を実行すると OPERATOR_ILLEGAL_STATE を返す", () => {

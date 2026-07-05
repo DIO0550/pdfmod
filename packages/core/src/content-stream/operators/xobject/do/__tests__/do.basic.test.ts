@@ -5,6 +5,7 @@ import {
   GraphicsStateStack,
   TextObject,
 } from "../../../../graphics-state/index";
+import { MarkedContentStack } from "../../../../marked-content/stack";
 import { OperandStack } from "../../../../operand-stack/index";
 import type { OperatorHandlerContext } from "../../../../operator-registry/index";
 import { doHandler } from "../index";
@@ -16,7 +17,11 @@ const buildContext = (operands: PdfObject[]): OperatorHandlerContext => {
     OperandStack.push(operandStack, operand);
   }
   const graphicsStateStack = GraphicsStateStack.create();
-  return { operandStack, graphicsStateStack };
+  return {
+    operandStack,
+    graphicsStateStack,
+    markedContentStack: MarkedContentStack.create(),
+  };
 };
 
 // active な textObject（BT 後相当）に差し替えてビルド
@@ -32,7 +37,11 @@ const buildActiveContext = (operands: PdfObject[]): OperatorHandlerContext => {
     GraphicsStateStack.create(),
     activeState,
   );
-  return { operandStack, graphicsStateStack };
+  return {
+    operandStack,
+    graphicsStateStack,
+    markedContentStack: MarkedContentStack.create(),
+  };
 };
 
 test("name { type: 'name', value: 'Im1' } を受理し ok を返す", () => {

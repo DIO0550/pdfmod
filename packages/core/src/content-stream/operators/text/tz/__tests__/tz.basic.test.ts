@@ -5,6 +5,7 @@ import {
   GraphicsStateStack,
   TextState,
 } from "../../../../graphics-state/index";
+import { MarkedContentStack } from "../../../../marked-content/stack";
 import { OperandStack } from "../../../../operand-stack/index";
 import type { OperatorHandlerContext } from "../../../../operator-registry/index";
 import { tzHandler } from "../index";
@@ -15,7 +16,11 @@ const buildContext = (operands: PdfObject[]): OperatorHandlerContext => {
     OperandStack.push(operandStack, operand);
   }
   const graphicsStateStack = GraphicsStateStack.create();
-  return { operandStack, graphicsStateStack };
+  return {
+    operandStack,
+    graphicsStateStack,
+    markedContentStack: MarkedContentStack.create(),
+  };
 };
 
 test("'150 Tz' で horizontalScaling が 150 に更新される", () => {
@@ -76,6 +81,7 @@ test("horizontalScaling 更新時、非デフォルト値の他フィールド�
   const result = tzHandler({
     operandStack: buildContext([{ type: "integer", value: 150 }]).operandStack,
     graphicsStateStack,
+    markedContentStack: MarkedContentStack.create(),
   });
 
   assert(result.ok);

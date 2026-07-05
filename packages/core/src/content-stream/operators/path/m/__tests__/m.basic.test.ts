@@ -6,6 +6,7 @@ import {
   GraphicsStateStack,
 } from "../../../../graphics-state/index";
 import { PathSegment } from "../../../../graphics-state/path-segment";
+import { MarkedContentStack } from "../../../../marked-content/stack";
 import { OperandStack } from "../../../../operand-stack/index";
 import type { OperatorHandlerContext } from "../../../../operator-registry/index";
 import { mHandler } from "../index";
@@ -16,7 +17,11 @@ const buildContext = (operands: PdfObject[]): OperatorHandlerContext => {
     OperandStack.push(operandStack, operand);
   }
   const graphicsStateStack = GraphicsStateStack.create();
-  return { operandStack, graphicsStateStack };
+  return {
+    operandStack,
+    graphicsStateStack,
+    markedContentStack: MarkedContentStack.create(),
+  };
 };
 
 const real = (value: number): PdfObject => ({ type: "real", value });
@@ -56,6 +61,7 @@ test("既存 currentPath を持つ state から開始した場合、元 segment 
   const result = mHandler({
     operandStack,
     graphicsStateStack: stackWithSeed,
+    markedContentStack: MarkedContentStack.create(),
   });
 
   assert(result.ok);
@@ -83,6 +89,7 @@ test("連続した `m` で前の MoveTo が上書きされる (ISO 32000-1:2008 
   const secondResult = mHandler({
     operandStack,
     graphicsStateStack: firstResult.value.graphicsStateStack,
+    markedContentStack: MarkedContentStack.create(),
   });
 
   assert(secondResult.ok);
@@ -110,7 +117,11 @@ test("`m → l → m` のとき直前 lineTo があるため 2 番目の m は�
     OperandStack.push(operandStack, operand);
   }
 
-  const result = mHandler({ operandStack, graphicsStateStack: stack });
+  const result = mHandler({
+    operandStack,
+    graphicsStateStack: stack,
+    markedContentStack: MarkedContentStack.create(),
+  });
 
   assert(result.ok);
   const current = GraphicsStateStack.current(result.value.graphicsStateStack);

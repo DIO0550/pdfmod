@@ -124,5 +124,6 @@ export const tdLeadingHandler: OperatorHandler = (
   return ok({
     operandStack: context.operandStack,
     graphicsStateStack,
+    markedContentStack: context.markedContentStack,
   });
 };

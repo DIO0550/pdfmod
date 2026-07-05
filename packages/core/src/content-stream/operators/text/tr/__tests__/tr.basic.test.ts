@@ -6,6 +6,7 @@ import {
   TextRenderingMode,
   TextState,
 } from "../../../../graphics-state/index";
+import { MarkedContentStack } from "../../../../marked-content/stack";
 import { OperandStack } from "../../../../operand-stack/index";
 import type { OperatorHandlerContext } from "../../../../operator-registry/index";
 import { trHandler } from "../index";
@@ -16,7 +17,11 @@ const buildContext = (operands: PdfObject[]): OperatorHandlerContext => {
     OperandStack.push(operandStack, operand);
   }
   const graphicsStateStack = GraphicsStateStack.create();
-  return { operandStack, graphicsStateStack };
+  return {
+    operandStack,
+    graphicsStateStack,
+    markedContentStack: MarkedContentStack.create(),
+  };
 };
 
 test.each([
@@ -49,6 +54,7 @@ test("renderingMode 更新時、非デフォルト値の他フィールドは保
   const result = trHandler({
     operandStack: buildContext([{ type: "integer", value: 2 }]).operandStack,
     graphicsStateStack,
+    markedContentStack: MarkedContentStack.create(),
   });
 
   assert(result.ok);
