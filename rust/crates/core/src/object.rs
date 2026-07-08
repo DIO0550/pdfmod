@@ -9,6 +9,7 @@
 
 pub mod dictionary;
 pub mod generation_number;
+pub mod indirect_object;
 pub mod indirect_ref;
 pub mod name;
 pub mod object_id;

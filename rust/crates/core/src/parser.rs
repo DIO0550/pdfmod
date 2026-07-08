@@ -37,6 +37,7 @@ enum PeekClass<T> {
 }
 use crate::object::dictionary::PdfDictionary;
 use crate::object::generation_number::GenerationNumber;
+use crate::object::indirect_object::IndirectObject;
 use crate::object::indirect_ref::IndirectRef;
 use crate::object::object_id::ObjectId;
 use crate::object::object_number::ObjectNumber;
@@ -102,6 +103,91 @@ impl<'a> Parser<'a> {
                 ByteOffset::new(pos_before as u64),
                 Self::token_kind_label(&other),
             )),
+        }
+    }
+
+    /// 間接オブジェクト定義 `N G obj <content> endobj` を 1 つ読み取り
+    /// [`IndirectObject`] を返す（ISO 32000-1 §7.3.10）。
+    ///
+    /// 消費型の専用エントリ。ヘッダ `Integer(N) Integer(G) ObjBegin` を順に消費し
+    /// （`N >= 0` / `0 <= G <= u16::MAX` を範囲検証）、content を [`Self::parse_object`]
+    /// で 1 回読み、最後に `endobj`（[`Token::ObjEnd`]）を要求する。ヘッダ/`endobj`
+    /// 位置が期待形でなければ
+    /// [`ParseErrorKind::UnexpectedToken`](error::ParseErrorKind::UnexpectedToken)、
+    /// 入力が尽きれば
+    /// [`ParseErrorKind::UnexpectedEof`](error::ParseErrorKind::UnexpectedEof)、
+    /// lexer が malformed を検知した場合は
+    /// [`ParseErrorKind::LexerError`](error::ParseErrorKind::LexerError) を返す。
+    /// 番号の妥当性検証（`N >= 1` 等）は xref レイヤに委譲する。
+    pub fn parse_indirect_object(&mut self) -> Result<IndirectObject, ParseError> {
+        let object_number = self.take_object_number()?;
+        let generation = self.take_generation_number()?;
+        self.expect_token(&Token::ObjBegin)?;
+        let object = self.parse_object()?;
+        self.expect_token(&Token::ObjEnd)?;
+        let id = ObjectId::new(
+            ObjectNumber::new(object_number),
+            GenerationNumber::new(generation),
+        );
+        Ok(IndirectObject::new(id, object))
+    }
+
+    /// ヘッダ先頭の N を消費する。`Integer(N)` かつ `N >= 0` のみ受理し `u64` へ変換する。
+    ///
+    /// 非 Integer / 範囲外（`N < 0`）は
+    /// [`ParseErrorKind::UnexpectedToken`](error::ParseErrorKind::UnexpectedToken)
+    /// （範囲外でも token 自体は有効な `Primitive` のため `actual_kind` は "Primitive"）、
+    /// EOF / malformed は [`Self::take_token_or_error`] 経由で区別して返す。範囲検証後にのみ
+    /// `n as u64` を行うため panic しない（`N >= 0` により非負 i64 → u64 は常に安全）。
+    fn take_object_number(&mut self) -> Result<u64, ParseError> {
+        let (token, pos_before) = self.take_token_or_error()?;
+        match token {
+            Token::Primitive(Primitive::Integer(n)) if n >= 0 => Ok(n as u64),
+            other => Err(ParseError::unexpected_token_at(
+                ByteOffset::new(pos_before as u64),
+                Self::token_kind_label(&other),
+            )),
+        }
+    }
+
+    /// ヘッダ 2 番目の G を消費する。`Integer(G)` かつ `0 <= G <= u16::MAX` のみ受理し `u16` へ変換する。
+    ///
+    /// 非 Integer / 範囲外は
+    /// [`ParseErrorKind::UnexpectedToken`](error::ParseErrorKind::UnexpectedToken)
+    /// （範囲外でも token 自体は有効な `Primitive` のため `actual_kind` は "Primitive"）、
+    /// EOF / malformed は [`Self::take_token_or_error`] 経由で区別して返す。範囲検証後にのみ
+    /// `g as u16` を行うため panic しない。
+    fn take_generation_number(&mut self) -> Result<u16, ParseError> {
+        let (token, pos_before) = self.take_token_or_error()?;
+        match token {
+            Token::Primitive(Primitive::Integer(g)) if (0..=i64::from(u16::MAX)).contains(&g) => {
+                Ok(g as u16)
+            }
+            other => Err(ParseError::unexpected_token_at(
+                ByteOffset::new(pos_before as u64),
+                Self::token_kind_label(&other),
+            )),
+        }
+    }
+
+    /// 取得済みトークンが `expected` と等価であることを要求して消費する。
+    ///
+    /// `obj`（[`Token::ObjBegin`]）/ `endobj`（[`Token::ObjEnd`]）要求を 1 本化した
+    /// 汎用 helper。両ステップは骨格が同一（`take_token_or_error` → unit トークン判定 →
+    /// 不一致で `token_kind_label` + `unexpected_token_at`）のため DRY 化する。`expected` は
+    /// unit variant を想定し、取得済みトークンとの `==`（`Token: PartialEq`）で等価判定する。
+    /// 不一致は
+    /// [`ParseErrorKind::UnexpectedToken`](error::ParseErrorKind::UnexpectedToken)、
+    /// EOF / malformed は [`Self::take_token_or_error`] 経由で区別して返す。
+    fn expect_token(&mut self, expected: &Token) -> Result<(), ParseError> {
+        let (token, pos_before) = self.take_token_or_error()?;
+        if &token == expected {
+            Ok(())
+        } else {
+            Err(ParseError::unexpected_token_at(
+                ByteOffset::new(pos_before as u64),
+                Self::token_kind_label(&token),
+            ))
         }
     }
 
@@ -322,6 +408,9 @@ mod array_tests;
 
 #[cfg(test)]
 mod dictionary_tests;
+
+#[cfg(test)]
+mod indirect_object_tests;
 
 #[cfg(test)]
 mod indirect_reference_tests;
