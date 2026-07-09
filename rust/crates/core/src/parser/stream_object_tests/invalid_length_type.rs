@@ -96,3 +96,23 @@ fn parse_stream_object_returns_invalid_length_type_when_length_is_boolean() {
         }
     );
 }
+
+#[cfg(target_pointer_width = "32")]
+#[test]
+fn parse_stream_object_returns_invalid_length_type_when_length_exceeds_usize_on_32bit() {
+    // 32bit ターゲット限定: /Length が i64 → usize::try_from で失敗する値の場合
+    // InvalidLengthType { actual_kind: "IntegerTooLarge" } を返すことを確認する。
+    // 2^32 = 4294967296 は 32bit の usize(u32::MAX = 4294967295) に収まらないため
+    // 32bit ターゲットでのみ try_from が失敗する（64bit では成功して別の経路に流れるため cfg でガード）。
+    let input = b"<< /Length 4294967296 >>\nstream\ndata\nendstream";
+    let err = parse_stream_err(input);
+    assert_eq!(
+        err,
+        ParseError {
+            kind: ParseErrorKind::InvalidLengthType {
+                actual_kind: "IntegerTooLarge"
+            },
+            position: byte_offset(0),
+        }
+    );
+}
