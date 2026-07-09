@@ -24,7 +24,9 @@ pub enum ParseErrorKind {
     MissingLength,
     /// `/Length` が間接参照 `N G R` になっている（Epic R2 で解決される予定）。
     IndirectLengthNotSupported,
-    /// `/Length` が Integer 以外の型（Real / String / Name / Array / Dictionary / Boolean / Null など）。
+    /// `/Length` が Integer 以外の型（Real / String / Name / Array / Dictionary / Boolean / Null など）、
+    /// または Integer だが `usize` に収まらない値（32bit ターゲットで `usize::try_from` が失敗する場合、
+    /// `actual_kind = "IntegerTooLarge"`）。
     InvalidLengthType {
         /// 実際に受け取った型を表す短い識別子。
         actual_kind: &'static str,
