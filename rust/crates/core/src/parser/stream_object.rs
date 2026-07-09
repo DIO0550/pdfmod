@@ -1,0 +1,160 @@
+//! ストリームオブジェクト（`<< /Length N >> stream ... endstream`）のパースを担う層。
+//!
+//! ISO 32000-1 §7.3.8 に従い、辞書パース完了直後の StreamBegin 検出、
+//! `/Length` バイトの生バイト切り出し、CRLF/LF 検証、`endstream` 検証を行う。
+//! 本モジュールは間接オブジェクト経由でのみ発火する（トップレベル
+//! [`Parser::parse_object`](super::Parser::parse_object) は従来通り `UnexpectedToken`）。
+//!
+//! `/Filter` によるデコードや間接参照 `/Length` の解決はスコープ外。仕様違反は
+//! 寛容フォールバックせず、専用の `ParseErrorKind` バリアントで即座に失敗する。
+
+use crate::byte_offset::ByteOffset;
+use crate::lexer::eol::EolKind;
+use crate::lexer::token::Token;
+use crate::object::dictionary::PdfDictionary;
+use crate::object::name::PdfName;
+use crate::object::pdf_object::PdfObject;
+use crate::object::stream::PdfStream;
+use crate::parser::error::ParseError;
+
+use super::Parser;
+
+impl<'a> Parser<'a> {
+    /// 辞書パース完了直後に呼ばれるストリーム昇格エントリ。
+    ///
+    /// 次トークンが [`Token::StreamBegin`] であれば `Length` バイトを切り出して
+    /// [`PdfObject::Stream`] を返す。`StreamBegin` でなければ受け取った辞書を
+    /// そのまま [`PdfObject::Dictionary`] として返す（副作用なし）。
+    ///
+    /// # 契約
+    /// - `peek_token` により内部バッファに保留されたトークンがあってもよいが、
+    ///   本メソッドは `take_token` で StreamBegin を消費してから生バイトを触るため、
+    ///   `take_bytes` の契約は本メソッド内で自然に満たされる。
+    ///
+    /// # 引数
+    /// - `dictionary`: 直前で `parse_object` が返した [`PdfDictionary`]（ムーブ）
+    /// - `dict_start`: 辞書 `<<` の開始位置。stream 系エラーの `position` として使う
+    pub(super) fn parse_stream_object(
+        &mut self,
+        dictionary: PdfDictionary,
+        dict_start: ByteOffset,
+    ) -> Result<PdfObject, ParseError> {
+        if !matches!(self.lexer.peek_token_at(0), Some(Token::StreamBegin)) {
+            return Ok(PdfObject::Dictionary(dictionary));
+        }
+        let _ = self.lexer.take_token();
+        let after_stream_pos = ByteOffset::new(self.lexer.cursor_position() as u64);
+
+        let length = Self::resolve_stream_length(&dictionary, dict_start)?;
+        self.consume_stream_eol(after_stream_pos)?;
+        let data_start = ByteOffset::new(self.lexer.cursor_position() as u64);
+        let data = self.take_stream_data(length, data_start)?;
+        self.expect_endstream()?;
+
+        Ok(PdfObject::Stream(PdfStream::new(dictionary, data)))
+    }
+
+    /// `/Length` を辞書から取り出し、非負 `usize` として返す。
+    ///
+    /// エラー位置はすべて `dict_start`（DC-5）。
+    /// `i64 → usize` は `usize::try_from` で行い、32bit ターゲットで
+    /// `usize` に収まらない場合は `InvalidLengthType { actual_kind: "IntegerTooLarge" }`
+    /// として返す（panic 不在契約）。
+    fn resolve_stream_length(
+        dictionary: &PdfDictionary,
+        dict_start: ByteOffset,
+    ) -> Result<usize, ParseError> {
+        let key = PdfName::new(b"Length".to_vec());
+        let value = dictionary
+            .get(&key)
+            .ok_or_else(|| ParseError::missing_length_at(dict_start))?;
+
+        match value {
+            PdfObject::Integer(n) if *n < 0 => Err(ParseError::negative_length_at(dict_start)),
+            PdfObject::Integer(n) => usize::try_from(*n)
+                .map_err(|_| ParseError::invalid_length_type_at(dict_start, "IntegerTooLarge")),
+            PdfObject::Reference(_) => {
+                Err(ParseError::indirect_length_not_supported_at(dict_start))
+            }
+            other => Err(ParseError::invalid_length_type_at(
+                dict_start,
+                Self::pdf_object_kind_label(other),
+            )),
+        }
+    }
+
+    /// `stream` キーワード直後の EOL を CRLF/LF のみ許容して消費する。
+    ///
+    /// [`EolKind::at`] を直接呼ぶことで `skip_whitespace` を経由せず、SP/TAB を
+    /// EOL として食わない（DC-4）。CR 単独 / SP / TAB / EOF はいずれも
+    /// [`ParseErrorKind::InvalidStreamEol`](super::error::ParseErrorKind::InvalidStreamEol)
+    /// として `after_stream_pos`（stream キーワード消費直後の位置）を返す。
+    fn consume_stream_eol(&mut self, after_stream_pos: ByteOffset) -> Result<(), ParseError> {
+        let pos = self.lexer.cursor_position();
+        let input = self.lexer.input();
+        match EolKind::at(input, pos) {
+            Some(EolKind::Lf) => {
+                let _ = self.lexer.skip_bytes(1);
+                Ok(())
+            }
+            Some(EolKind::CrLf) => {
+                let _ = self.lexer.skip_bytes(2);
+                Ok(())
+            }
+            Some(EolKind::Cr) | None => Err(ParseError::invalid_stream_eol_at(after_stream_pos)),
+        }
+    }
+
+    /// `Length` バイトを [`Vec<u8>`] にコピーする。範囲外なら `UnexpectedEof`。
+    fn take_stream_data(
+        &mut self,
+        length: usize,
+        data_start: ByteOffset,
+    ) -> Result<Vec<u8>, ParseError> {
+        self.lexer
+            .take_bytes(length)
+            .map(|slice| slice.to_vec())
+            .ok_or_else(|| ParseError::unexpected_eof_at(data_start))
+    }
+
+    /// 直後のトークンが [`Token::StreamEnd`] であることを検証する。
+    ///
+    /// 別トークン / EOF はいずれも
+    /// [`ParseErrorKind::MissingEndstream`](super::error::ParseErrorKind::MissingEndstream)
+    /// として返す。EOF 時の位置は現在の生カーソル位置（入力末尾）。lexer が malformed を
+    /// 検知した場合のみ [`ParseErrorKind::LexerError`](super::error::ParseErrorKind::LexerError)
+    /// を返す（既存 helper の EOF / malformed 区別方針と整合）。
+    fn expect_endstream(&mut self) -> Result<(), ParseError> {
+        match self.lexer.take_token_with_pos() {
+            Some((Token::StreamEnd, _)) => Ok(()),
+            Some((_, pos_before)) => Err(ParseError::missing_endstream_at(ByteOffset::new(
+                pos_before as u64,
+            ))),
+            None => {
+                let here = ByteOffset::new(self.lexer.cursor_position() as u64);
+                if self.lexer.is_eof() {
+                    Err(ParseError::missing_endstream_at(here))
+                } else {
+                    Err(ParseError::lexer_error_at(here))
+                }
+            }
+        }
+    }
+
+    /// [`PdfObject`] のバリアント名を [`ParseErrorKind::InvalidLengthType`](super::error::ParseErrorKind::InvalidLengthType) の
+    /// `actual_kind` フィールドに載せるための短い `'static` 識別子にマップする。
+    fn pdf_object_kind_label(object: &PdfObject) -> &'static str {
+        match object {
+            PdfObject::Null => "Null",
+            PdfObject::Boolean(_) => "Boolean",
+            PdfObject::Integer(_) => "Integer",
+            PdfObject::Real(_) => "Real",
+            PdfObject::String(_) => "String",
+            PdfObject::Name(_) => "Name",
+            PdfObject::Array(_) => "Array",
+            PdfObject::Dictionary(_) => "Dictionary",
+            PdfObject::Stream(_) => "Stream",
+            PdfObject::Reference(_) => "Reference",
+        }
+    }
+}
