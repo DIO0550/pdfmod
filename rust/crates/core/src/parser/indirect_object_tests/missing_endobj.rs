@@ -1,4 +1,6 @@
 use super::super::super::byte_offset::ByteOffset;
+use super::super::super::object::name::PdfName;
+use super::super::super::object::pdf_object::PdfObject;
 use super::super::error::{ParseError, ParseErrorKind};
 use super::parser;
 
@@ -39,16 +41,39 @@ fn parse_indirect_object_empty_content_returns_unexpected_obj_end() {
 }
 
 #[test]
-fn parse_indirect_object_stream_content_fails_stably_at_stream_begin() {
-    // stream は対象外(安定失敗): 辞書を content 読取後 endobj 位置に stream(スコープ外)が来て UnexpectedToken{"StreamBegin"} を返す
+fn parse_indirect_object_stream_content_returns_stream_object_for_empty_data() {
+    // 以前は stream 昇格未サポートで UnexpectedToken{"StreamBegin"} を返すテストだったが、
+    // 本 Issue で parse_indirect_object 内の stream 昇格を実装したため、成功パスに書き換えている。
+    // 期待: /Length 0 の空データストリームが PdfObject::Stream として復元される
     let mut p = parser(b"1 0 obj << /Length 0 >> stream\nendstream endobj");
+    let indirect = p
+        .parse_indirect_object()
+        .expect("stream content indirect object must parse");
+    let stream = match indirect.object() {
+        PdfObject::Stream(stream) => stream,
+        other => panic!("expected Stream, got {other:?}"),
+    };
+    assert!(stream.data().is_empty());
+    let length = stream
+        .dictionary()
+        .get(&PdfName::new(b"Length".to_vec()))
+        .expect("dictionary must retain /Length after stream promotion");
+    assert_eq!(length, &PdfObject::Integer(0));
+}
+
+#[test]
+fn parse_indirect_object_returns_missing_endobj_error_for_non_endobj_token_after_stream() {
+    // stream 昇格後に endobj ではなく別トークン (Name) が来た場合、
+    // expect_token(ObjEnd) が UnexpectedToken を返すことを確認する（既存の missing_endobj 系統との整合）
+    let mut p = parser(b"1 0 obj << /Length 0 >> stream\nendstream /Extra endobj");
+    let err = p
+        .parse_indirect_object()
+        .expect_err("non-endobj token after stream must error");
     assert!(matches!(
-        p.parse_indirect_object(),
-        Err(ParseError {
-            kind: ParseErrorKind::UnexpectedToken {
-                actual_kind: "StreamBegin"
-            },
+        err,
+        ParseError {
+            kind: ParseErrorKind::UnexpectedToken { .. },
             ..
-        })
+        }
     ));
 }
