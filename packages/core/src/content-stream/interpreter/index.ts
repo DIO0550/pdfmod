@@ -101,6 +101,20 @@ function executeToken(options: {
   readonly warnings: PdfWarning[];
 }): Result<InterpreterStep, PdfError> {
   if (options.token.type === TokenType.EOF) {
+    const unterminated = MarkedContentStack.pop(
+      options.context.markedContentStack,
+    );
+    if (unterminated.some) {
+      const depth = MarkedContentStack.depth(
+        options.context.markedContentStack,
+      );
+      const lastTag = unterminated.value.popped.tag.value;
+      return err({
+        code: "OBJECT_PARSE_UNTERMINATED",
+        message: `Unterminated marked-content sequence(s): depth=${depth}, last tag=/${lastTag}`,
+        offset: options.token.offset,
+      });
+    }
     return ok({ type: "done", result: { context: options.context } });
   }
 
