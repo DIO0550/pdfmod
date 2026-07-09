@@ -48,6 +48,10 @@ impl<'a> Lexer<'a> {
     /// # panic
     /// panic しない契約（`checked_add` / `slice::get` の `Option` 経由でオーバーフロー吸収）。
     pub(crate) fn take_bytes(&mut self, len: usize) -> Option<&'a [u8]> {
+        debug_assert!(
+            self.buffer.is_empty(),
+            "take_bytes called with non-empty lookahead buffer; flush via take_token first"
+        );
         let end = self.pos.checked_add(len)?;
         let slice = self.input.get(self.pos..end)?;
         self.pos = end;
@@ -73,6 +77,10 @@ impl<'a> Lexer<'a> {
     /// - [`Self::take_bytes`] と同様、lookahead バッファが空の状態で呼ぶこと。
     /// - `pos + n` が入力範囲を超える場合は `None` を返し、`pos` は進めない。
     pub(crate) fn skip_bytes(&mut self, n: usize) -> Option<()> {
+        debug_assert!(
+            self.buffer.is_empty(),
+            "skip_bytes called with non-empty lookahead buffer; flush via take_token first"
+        );
         let end = self.pos.checked_add(n)?;
         if end > self.input.len() {
             return None;
