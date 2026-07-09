@@ -3,7 +3,7 @@ use super::parse_stream_err;
 
 #[test]
 fn parse_stream_object_returns_invalid_stream_eol_when_only_cr_follows_stream_keyword() {
-    // stream キーワード直後が CR 単体（LF が続かない）の場合、InvalidStreamEol を stream キーワード位置で返すことを確認する（DC-11）
+    // stream キーワード直後が CR 単体（LF が続かない）の場合、InvalidStreamEol を返すことを確認する（DC-11）
     let input = b"<< /Length 4 >>\nstream\rdata\rendstream";
     let err = parse_stream_err(input);
     assert!(

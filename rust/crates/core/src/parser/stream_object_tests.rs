@@ -61,7 +61,6 @@ fn parse_stream_err(input: &[u8]) -> ParseError {
 ///
 /// 各エラーテストで `dict_start` の位置検証（DC-5）を透過的に行うため、
 /// テスト側で `ByteOffset::new(...)` を毎回書かずに済むようにする。
-#[allow(dead_code)]
 fn byte_offset(pos: u64) -> ByteOffset {
     ByteOffset::new(pos)
 }
