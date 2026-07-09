@@ -1,12 +1,15 @@
 //! ストリームオブジェクト（`<< /Length N >> stream ... endstream`）のパースを担う層。
 //!
 //! ISO 32000-1 §7.3.8 に従い、辞書パース完了直後の StreamBegin 検出、
-//! `/Length` バイトの生バイト切り出し、CRLF/LF 検証、`endstream` 検証を行う。
+//! `/Length` バイトの生バイト切り出し、`stream` 直後の CRLF/LF 検証、
+//! および `endstream` 直前の必須 EOL とキーワード境界の厳格検証を行う。
 //! 本モジュールは間接オブジェクト経由でのみ発火する（トップレベル
 //! [`Parser::parse_object`](super::Parser::parse_object) は従来通り `UnexpectedToken`）。
 //!
 //! `/Filter` によるデコードや間接参照 `/Length` の解決はスコープ外。仕様違反は
 //! 寛容フォールバックせず、専用の `ParseErrorKind` バリアントで即座に失敗する。
+//! `endstream` 直前の空白 / コメントは `skip_whitespace` 経由での寛容化を行わず、
+//! LF / CRLF のみ許容する（[`expect_endstream`] を参照）。
 
 use crate::byte_offset::ByteOffset;
 use crate::lexer::eol::EolKind;
@@ -117,14 +120,49 @@ impl<'a> Parser<'a> {
             .ok_or_else(|| ParseError::unexpected_eof_at(data_start))
     }
 
-    /// 直後のトークンが [`Token::StreamEnd`] であることを検証する。
+    /// `Length` バイト消費直後の位置から、必須の EOL と `endstream` キーワードを厳格に検証する。
     ///
-    /// 別トークン / EOF はいずれも
+    /// ISO 32000-1 §7.3.8 は「`endstream` の直前に EOL がある」と規定するため、以下のパターンのみ受理:
+    /// - `\n` + `endstream`（LF）
+    /// - `\r\n` + `endstream`（CRLF）
+    ///
+    /// `dataendstream`（EOL 無し）、`data\rendstream`（CR 単体）、`data \nendstream`
+    /// （末尾空白 + EOL）、`data\n endstream`（EOL + 空白）はいずれも
     /// [`ParseErrorKind::MissingEndstream`](super::error::ParseErrorKind::MissingEndstream)
-    /// として返す。EOF 時の位置は現在の生カーソル位置（入力末尾）。lexer が malformed を
-    /// 検知した場合のみ [`ParseErrorKind::LexerError`](super::error::ParseErrorKind::LexerError)
-    /// を返す（既存 helper の EOF / malformed 区別方針と整合）。
+    /// として拒否する。`skip_whitespace` を経由せず raw byte 比較で判定するため、
+    /// `endstream` 直前のトレーリング空白 / コメント / SP / TAB は許容しない。
+    ///
+    /// キーワード境界（`endstreamXY` のような regular byte 連結）は
+    /// [`Lexer::take_token_with_pos`] に委ねる（`endstreamXY` は `Keyword` として返り、
+    /// 本関数は `MissingEndstream` として拒否する）。EOF は
+    /// `MissingEndstream at cursor`、lexer malformed は
+    /// [`ParseErrorKind::LexerError`](super::error::ParseErrorKind::LexerError) に集約する。
     fn expect_endstream(&mut self) -> Result<(), ParseError> {
+        let pos_after_data = self.lexer.cursor_position();
+        let input = self.lexer.input();
+
+        match EolKind::at(input, pos_after_data) {
+            Some(EolKind::Lf) => {
+                let _ = self.lexer.skip_bytes(1);
+            }
+            Some(EolKind::CrLf) => {
+                let _ = self.lexer.skip_bytes(2);
+            }
+            Some(EolKind::Cr) | None => {
+                return Err(ParseError::missing_endstream_at(ByteOffset::new(
+                    pos_after_data as u64,
+                )));
+            }
+        }
+
+        let cursor = self.lexer.cursor_position();
+        let remaining = self.lexer.input().get(cursor..).unwrap_or(&[]);
+        if !remaining.starts_with(b"endstream") {
+            return Err(ParseError::missing_endstream_at(ByteOffset::new(
+                cursor as u64,
+            )));
+        }
+
         match self.lexer.take_token_with_pos() {
             Some((Token::StreamEnd, _)) => Ok(()),
             Some((_, pos_before)) => Err(ParseError::missing_endstream_at(ByteOffset::new(
