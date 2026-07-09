@@ -124,7 +124,7 @@ fn read_integer_returns_none_for_plus_then_whitespace() {
 #[test]
 fn read_integer_returns_none_for_sign_then_every_delimiter_byte() {
     // 符号 ∈ {+, -} × delimiter 10 種の全 20 組で None・pos 0 に巻き戻されることを確認する
-    let signs = [b'+', b'-'];
+    let signs = *b"+-";
     let delimiter_bytes = [0x28, 0x29, 0x3C, 0x3E, 0x5B, 0x5D, 0x7B, 0x7D, 0x2F, 0x25];
     for s in signs {
         for d in delimiter_bytes {
@@ -147,7 +147,7 @@ fn read_integer_returns_none_for_sign_then_every_delimiter_byte() {
 #[test]
 fn read_integer_returns_none_for_sign_then_every_whitespace_byte() {
     // 符号 ∈ {+, -} × whitespace 6 種の全 12 組で None・pos 0 に巻き戻されることを確認する
-    let signs = [b'+', b'-'];
+    let signs = *b"+-";
     let whitespace_bytes = [0x00, 0x09, 0x0A, 0x0C, 0x0D, 0x20];
     for s in signs {
         for w in whitespace_bytes {
