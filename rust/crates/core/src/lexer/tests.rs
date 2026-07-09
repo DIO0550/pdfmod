@@ -14,3 +14,4 @@ mod lexer_read_real_edge;
 mod lexer_skip_comment;
 mod lexer_skip_whitespace;
 mod lexer_skip_ws_and_comments;
+mod lexer_take_bytes;
