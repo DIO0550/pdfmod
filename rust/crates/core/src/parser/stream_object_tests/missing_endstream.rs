@@ -89,3 +89,18 @@ fn parse_stream_object_returns_missing_endstream_when_endstream_is_followed_by_r
         err.kind
     );
 }
+
+#[test]
+fn parse_stream_object_returns_missing_endstream_when_length_includes_trailing_eol_byte() {
+    // ISO 32000-1 §7.3.8 違反: /Length が data 末尾の LF バイトを "データとして" 数え込んでいるケース。
+    // 例: /Length 4 で "abc\n" を data として指定し、直後に endstream が続く。cursor は 'e' を指し、
+    // pos_after_data 位置に EOL が無いため MissingEndstream として拒否されることを確認する。
+    // （Copilot 指摘対応: pos_after_data の EOL 必須化）
+    let input = b"<< /Length 4 >>\nstream\nabc\nendstream";
+    let err = parse_stream_err(input);
+    assert!(
+        matches!(err.kind, ParseErrorKind::MissingEndstream),
+        "expected MissingEndstream, got {:?}",
+        err.kind
+    );
+}

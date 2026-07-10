@@ -52,7 +52,7 @@ impl<'a> Parser<'a> {
         self.consume_stream_eol(after_stream_pos)?;
         let data_start = ByteOffset::new(self.lexer.cursor_position() as u64);
         let data = self.take_stream_data(length, data_start)?;
-        self.expect_endstream()?;
+        self.expect_endstream(length)?;
 
         Ok(PdfObject::Stream(PdfStream::new(dictionary, data)))
     }
@@ -127,27 +127,37 @@ impl<'a> Parser<'a> {
     /// トレーリング空白 / コメント / SP / TAB は許容しない。
     ///
     /// # アルゴリズム
-    /// 1. カーソル位置に EOL (LF/CR/CRLF) があれば消費する。無ければ消費しない。
-    /// 2. カーソル位置から `endstream` バイト列が始まることを確認する。
-    /// 3. `endstream` の直前バイト（`cursor - 1`）が LF (0x0A) または CR (0x0D) であることを確認する。
-    ///
-    /// これにより `Length = 0` で `stream\nendstream` のように `stream` 直後の EOL が
-    /// そのまま `endstream` 直前の EOL を兼ねるケースも受理する（Copilot 指摘対応）。
-    /// 一方 `dataendstream`（EOL 無し）は前バイトが data 末尾になるため拒否される。
+    /// 1. `data_len > 0` の場合、`pos_after_data` に EOL (LF/CR/CRLF) が必須。無ければ拒否
+    ///    （`/Length` が data 末尾の EOL バイトを "データとして" 数え込んでいる spec 違反を
+    ///    catchする — Copilot 指摘対応）。`data_len = 0` の場合は post-stream EOL が
+    ///    pre-endstream EOL を兼ねる形も許容するため EOL 消費は任意
+    /// 2. カーソル位置から `endstream` バイト列が始まることを確認する
+    /// 3. `endstream` の直前バイト（`cursor - 1`）が LF (0x0A) または CR (0x0D) であることを確認する
+    ///    （Length=0 かつ pos_after_data で EOL が無かった場合の post-stream EOL 保証）
     ///
     /// # 受理 / 拒否パターン
     /// - `data\nendstream` / `data\r\nendstream` / `data\rendstream` → 受理
-    /// - `stream\nendstream`（Length=0）→ 受理（post-stream EOL が兼ねる）
+    /// - `stream\nendstream`（Length=0、post-stream EOL 兼用）→ 受理
+    /// - `stream\n\nendstream`（Length=0、余分な EOL）→ 受理
+    /// - `<< /Length 4 >>\nstream\nabc\nendstream`（Length が末尾 LF を含む spec 違反）→ 拒否
+    ///   （pos_after_data が 'e' で EOL 無しのため）
     /// - `dataendstream`（Length>0、EOL 無し）→ `MissingEndstream`
-    /// - `data \nendstream`（末尾 SP + EOL）→ `MissingEndstream`（cursor 位置が空白）
-    /// - `data\n endstream`（EOL + SP）→ `MissingEndstream`（rest が endstream で始まらない）
-    /// - `data\nendstream42`（キーワード境界違反）→ lexer の take_token が Keyword として返し `MissingEndstream`
-    fn expect_endstream(&mut self) -> Result<(), ParseError> {
+    /// - `data \nendstream` / `data\n endstream` → `MissingEndstream`
+    /// - `data\nendstream42`（キーワード境界違反）→ lexer が Keyword として返し `MissingEndstream`
+    fn expect_endstream(&mut self, data_len: usize) -> Result<(), ParseError> {
         let pos_after_data = self.lexer.cursor_position();
         let input = self.lexer.input();
 
-        if let Some(eol) = EolKind::at(input, pos_after_data) {
-            let _ = self.lexer.skip_bytes(eol.byte_len());
+        match EolKind::at(input, pos_after_data) {
+            Some(eol) => {
+                let _ = self.lexer.skip_bytes(eol.byte_len());
+            }
+            None if data_len > 0 => {
+                return Err(ParseError::missing_endstream_at(ByteOffset::new(
+                    pos_after_data as u64,
+                )));
+            }
+            None => {}
         }
 
         let cursor = self.lexer.cursor_position();
