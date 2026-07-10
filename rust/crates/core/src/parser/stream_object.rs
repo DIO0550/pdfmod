@@ -120,44 +120,48 @@ impl<'a> Parser<'a> {
             .ok_or_else(|| ParseError::unexpected_eof_at(data_start))
     }
 
-    /// `Length` バイト消費直後の位置から、必須の EOL と `endstream` キーワードを厳格に検証する。
+    /// `Length` バイト消費直後の位置から、`endstream` キーワードとその直前 EOL を厳格に検証する。
     ///
-    /// ISO 32000-1 §7.3.8 は「`endstream` の直前に EOL がある」と規定するため、以下のパターンのみ受理:
-    /// - `\n` + `endstream`（LF）
-    /// - `\r\n` + `endstream`（CRLF）
+    /// ISO 32000-1 §7.3.8 は「`endstream` の直前に EOL マーカーがある」と規定する（EOL = LF / CR / CRLF）。
+    /// 本関数は `skip_whitespace` を経由せず raw byte で判定するため、`endstream` 直前の
+    /// トレーリング空白 / コメント / SP / TAB は許容しない。
     ///
-    /// `dataendstream`（EOL 無し）、`data\rendstream`（CR 単体）、`data \nendstream`
-    /// （末尾空白 + EOL）、`data\n endstream`（EOL + 空白）はいずれも
-    /// [`ParseErrorKind::MissingEndstream`](super::error::ParseErrorKind::MissingEndstream)
-    /// として拒否する。`skip_whitespace` を経由せず raw byte 比較で判定するため、
-    /// `endstream` 直前のトレーリング空白 / コメント / SP / TAB は許容しない。
+    /// # アルゴリズム
+    /// 1. カーソル位置に EOL (LF/CR/CRLF) があれば消費する。無ければ消費しない。
+    /// 2. カーソル位置から `endstream` バイト列が始まることを確認する。
+    /// 3. `endstream` の直前バイト（`cursor - 1`）が LF (0x0A) または CR (0x0D) であることを確認する。
     ///
-    /// キーワード境界（`endstreamXY` のような regular byte 連結）は
-    /// [`Lexer::take_token_with_pos`] に委ねる（`endstreamXY` は `Keyword` として返り、
-    /// 本関数は `MissingEndstream` として拒否する）。EOF は
-    /// `MissingEndstream at cursor`、lexer malformed は
-    /// [`ParseErrorKind::LexerError`](super::error::ParseErrorKind::LexerError) に集約する。
+    /// これにより `Length = 0` で `stream\nendstream` のように `stream` 直後の EOL が
+    /// そのまま `endstream` 直前の EOL を兼ねるケースも受理する（Copilot 指摘対応）。
+    /// 一方 `dataendstream`（EOL 無し）は前バイトが data 末尾になるため拒否される。
+    ///
+    /// # 受理 / 拒否パターン
+    /// - `data\nendstream` / `data\r\nendstream` / `data\rendstream` → 受理
+    /// - `stream\nendstream`（Length=0）→ 受理（post-stream EOL が兼ねる）
+    /// - `dataendstream`（Length>0、EOL 無し）→ `MissingEndstream`
+    /// - `data \nendstream`（末尾 SP + EOL）→ `MissingEndstream`（cursor 位置が空白）
+    /// - `data\n endstream`（EOL + SP）→ `MissingEndstream`（rest が endstream で始まらない）
+    /// - `data\nendstream42`（キーワード境界違反）→ lexer の take_token が Keyword として返し `MissingEndstream`
     fn expect_endstream(&mut self) -> Result<(), ParseError> {
         let pos_after_data = self.lexer.cursor_position();
         let input = self.lexer.input();
 
-        match EolKind::at(input, pos_after_data) {
-            Some(EolKind::Lf) => {
-                let _ = self.lexer.skip_bytes(1);
-            }
-            Some(EolKind::CrLf) => {
-                let _ = self.lexer.skip_bytes(2);
-            }
-            Some(EolKind::Cr) | None => {
-                return Err(ParseError::missing_endstream_at(ByteOffset::new(
-                    pos_after_data as u64,
-                )));
-            }
+        if let Some(eol) = EolKind::at(input, pos_after_data) {
+            let _ = self.lexer.skip_bytes(eol.byte_len());
         }
 
         let cursor = self.lexer.cursor_position();
         let remaining = self.lexer.input().get(cursor..).unwrap_or(&[]);
         if !remaining.starts_with(b"endstream") {
+            return Err(ParseError::missing_endstream_at(ByteOffset::new(
+                cursor as u64,
+            )));
+        }
+
+        let preceding_byte = cursor
+            .checked_sub(1)
+            .and_then(|p| self.lexer.input().get(p).copied());
+        if !matches!(preceding_byte, Some(0x0A) | Some(0x0D)) {
             return Err(ParseError::missing_endstream_at(ByteOffset::new(
                 cursor as u64,
             )));
