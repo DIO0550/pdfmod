@@ -20,6 +20,7 @@
 //! 保留中のトークンは次回 `parse_object` 系で透過的に取り出される（ISO 32000-1 §7.3.10）。
 
 pub mod error;
+mod stream_object;
 
 use crate::byte_offset::ByteOffset;
 use crate::lexer::token::{Primitive, Token};
@@ -123,13 +124,32 @@ impl<'a> Parser<'a> {
         let object_number = self.take_object_number()?;
         let generation = self.take_generation_number()?;
         self.expect_token(&Token::ObjBegin)?;
-        let object = self.parse_object()?;
+        let object = self.parse_object_or_stream()?;
         self.expect_token(&Token::ObjEnd)?;
         let id = ObjectId::new(
             ObjectNumber::new(object_number),
             GenerationNumber::new(generation),
         );
         Ok(IndirectObject::new(id, object))
+    }
+
+    /// `parse_object` の結果が [`PdfObject::Dictionary`] の場合のみ、直後に stream が
+    /// 続くかを試して昇格する。間接オブジェクト内でのみ呼ぶ（DC-7 でトップレベル
+    /// [`Self::parse_object`] は既存挙動を維持）。
+    ///
+    /// `peek_token_with_pos` で次トークンをバッファへ載せてから `position()` を取ることで、
+    /// content 直前の whitespace / comment を飛ばしたあとの実トークン開始位置（辞書なら `<<` の pos）
+    /// を `dict_start` として `parse_stream_object` に渡す（DC-5）。
+    fn parse_object_or_stream(&mut self) -> Result<PdfObject, ParseError> {
+        let dict_start = match self.lexer.peek_token_with_pos() {
+            Some((_, pos)) => ByteOffset::new(pos as u64),
+            None => ByteOffset::new(self.lexer.cursor_position() as u64),
+        };
+        let obj = self.parse_object()?;
+        match obj {
+            PdfObject::Dictionary(dict) => self.parse_stream_object(dict, dict_start),
+            other => Ok(other),
+        }
     }
 
     /// ヘッダ先頭の N を消費する。`Integer(N)` かつ `N >= 0` のみ受理し `u64` へ変換する。
@@ -414,6 +434,9 @@ mod indirect_object_tests;
 
 #[cfg(test)]
 mod indirect_reference_tests;
+
+#[cfg(test)]
+mod stream_object_tests;
 
 #[cfg(test)]
 mod tests {

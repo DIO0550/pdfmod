@@ -39,7 +39,7 @@ fn read_literal_string_returns_none_for_every_leading_whitespace_byte() {
 #[test]
 fn read_literal_string_returns_none_for_every_non_open_paren_delimiter_byte() {
     // delimiter 10 種から '(' を除いた 9 種で None・pos == 0 を確認する
-    for d in [b')', b'<', b'>', b'[', b']', b'{', b'}', b'/', b'%'] {
+    for d in *b")<>[]{}/%" {
         let input = [d];
         let mut lexer = Lexer::new(&input);
         assert_eq!(
