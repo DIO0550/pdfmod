@@ -20,6 +20,26 @@ pub enum ParseErrorKind {
     },
     /// lexer が `None` を返した（malformed input）。入力末端ではない場合に発生する。
     LexerError,
+    /// ストリーム辞書に `/Length` エントリが存在しない。
+    MissingLength,
+    /// `/Length` が間接参照 `N G R` になっている（Epic R2 で解決される予定）。
+    IndirectLengthNotSupported,
+    /// `/Length` が Integer 以外の型（Real / String / Name / Array / Dictionary / Boolean など）、
+    /// または Integer だが `usize` に収まらない値（32bit ターゲットで `usize::try_from` が失敗する場合、
+    /// `actual_kind = "IntegerTooLarge"`）。
+    ///
+    /// 値が `Null` の場合は辞書パース時に ISO §7.3.7 に従いエントリ自体が削除されるため、
+    /// `/Length null` は本バリアントではなく [`Self::MissingLength`] として現れる。
+    InvalidLengthType {
+        /// 実際に受け取った型を表す短い識別子。
+        actual_kind: &'static str,
+    },
+    /// `/Length` が Integer だが負の値。
+    NegativeLength,
+    /// `stream` キーワード直後が CRLF/LF 以外（CR 単体・SP・TAB・EOF など）。
+    InvalidStreamEol,
+    /// `Length` バイト消費後に `endstream` トークンが無い。
+    MissingEndstream,
 }
 
 /// パースエラー。位置情報を必須で保持する。
@@ -57,6 +77,54 @@ impl ParseError {
     pub fn lexer_error_at(position: ByteOffset) -> ParseError {
         ParseError {
             kind: ParseErrorKind::LexerError,
+            position,
+        }
+    }
+
+    /// [`ParseErrorKind::MissingLength`] を指定位置で構築する便利コンストラクタ。
+    pub fn missing_length_at(position: ByteOffset) -> ParseError {
+        ParseError {
+            kind: ParseErrorKind::MissingLength,
+            position,
+        }
+    }
+
+    /// [`ParseErrorKind::IndirectLengthNotSupported`] を指定位置で構築する便利コンストラクタ。
+    pub fn indirect_length_not_supported_at(position: ByteOffset) -> ParseError {
+        ParseError {
+            kind: ParseErrorKind::IndirectLengthNotSupported,
+            position,
+        }
+    }
+
+    /// [`ParseErrorKind::InvalidLengthType`] を指定位置・型識別子で構築する便利コンストラクタ。
+    pub fn invalid_length_type_at(position: ByteOffset, actual_kind: &'static str) -> ParseError {
+        ParseError {
+            kind: ParseErrorKind::InvalidLengthType { actual_kind },
+            position,
+        }
+    }
+
+    /// [`ParseErrorKind::NegativeLength`] を指定位置で構築する便利コンストラクタ。
+    pub fn negative_length_at(position: ByteOffset) -> ParseError {
+        ParseError {
+            kind: ParseErrorKind::NegativeLength,
+            position,
+        }
+    }
+
+    /// [`ParseErrorKind::InvalidStreamEol`] を指定位置で構築する便利コンストラクタ。
+    pub fn invalid_stream_eol_at(position: ByteOffset) -> ParseError {
+        ParseError {
+            kind: ParseErrorKind::InvalidStreamEol,
+            position,
+        }
+    }
+
+    /// [`ParseErrorKind::MissingEndstream`] を指定位置で構築する便利コンストラクタ。
+    pub fn missing_endstream_at(position: ByteOffset) -> ParseError {
+        ParseError {
+            kind: ParseErrorKind::MissingEndstream,
             position,
         }
     }
@@ -138,6 +206,67 @@ mod tests {
         // UnexpectedToken の actual_kind が異なる 2 つが != と判定されることを確認する
         let a = ParseError::unexpected_token_at(ByteOffset::new(0), "ArrayBegin");
         let b = ParseError::unexpected_token_at(ByteOffset::new(0), "DictBegin");
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn missing_length_at_constructs_missing_length_kind() {
+        // missing_length_at が MissingLength バリアントを kind に持ち、position も透過することを確認する
+        let err = ParseError::missing_length_at(ByteOffset::new(11));
+        assert_eq!(err.kind, ParseErrorKind::MissingLength);
+        assert_eq!(err.position, ByteOffset::new(11));
+    }
+
+    #[test]
+    fn indirect_length_not_supported_at_constructs_indirect_length_kind() {
+        // indirect_length_not_supported_at が IndirectLengthNotSupported バリアントを持ち、position も透過することを確認する
+        let err = ParseError::indirect_length_not_supported_at(ByteOffset::new(21));
+        assert_eq!(err.kind, ParseErrorKind::IndirectLengthNotSupported);
+        assert_eq!(err.position, ByteOffset::new(21));
+    }
+
+    #[test]
+    fn invalid_length_type_at_constructs_with_actual_kind() {
+        // invalid_length_type_at が InvalidLengthType { actual_kind } を保持し、position も透過することを確認する
+        let err = ParseError::invalid_length_type_at(ByteOffset::new(31), "Real");
+        assert_eq!(
+            err.kind,
+            ParseErrorKind::InvalidLengthType {
+                actual_kind: "Real"
+            }
+        );
+        assert_eq!(err.position, ByteOffset::new(31));
+    }
+
+    #[test]
+    fn negative_length_at_constructs_negative_length_kind() {
+        // negative_length_at が NegativeLength バリアントを kind に持ち、position も透過することを確認する
+        let err = ParseError::negative_length_at(ByteOffset::new(41));
+        assert_eq!(err.kind, ParseErrorKind::NegativeLength);
+        assert_eq!(err.position, ByteOffset::new(41));
+    }
+
+    #[test]
+    fn invalid_stream_eol_at_constructs_invalid_stream_eol_kind() {
+        // invalid_stream_eol_at が InvalidStreamEol バリアントを kind に持ち、position も透過することを確認する
+        let err = ParseError::invalid_stream_eol_at(ByteOffset::new(51));
+        assert_eq!(err.kind, ParseErrorKind::InvalidStreamEol);
+        assert_eq!(err.position, ByteOffset::new(51));
+    }
+
+    #[test]
+    fn missing_endstream_at_constructs_missing_endstream_kind() {
+        // missing_endstream_at が MissingEndstream バリアントを kind に持ち、position も透過することを確認する
+        let err = ParseError::missing_endstream_at(ByteOffset::new(61));
+        assert_eq!(err.kind, ParseErrorKind::MissingEndstream);
+        assert_eq!(err.position, ByteOffset::new(61));
+    }
+
+    #[test]
+    fn invalid_length_type_different_actual_kind_are_not_equal() {
+        // InvalidLengthType の actual_kind が異なる 2 つが != と判定されることを確認する
+        let a = ParseError::invalid_length_type_at(ByteOffset::new(0), "Real");
+        let b = ParseError::invalid_length_type_at(ByteOffset::new(0), "Name");
         assert_ne!(a, b);
     }
 }
