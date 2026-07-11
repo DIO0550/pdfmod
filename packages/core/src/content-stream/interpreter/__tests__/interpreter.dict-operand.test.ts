@@ -1,11 +1,13 @@
 import { assert, expect, test } from "vitest";
 import type { PdfObject } from "../../../pdf/index";
 import { ok } from "../../../utils/result/index";
+import { MarkedContentStack } from "../../marked-content/stack/index";
 import { OperandStack } from "../../operand-stack/index";
 import {
   type OperatorHandler,
   OperatorRegistry,
 } from "../../operator-registry/index";
+import { registerMarkedContentOperators } from "../../operators/marked-content/marked-content-operators/index";
 import { ContentStreamInterpreter } from "../index";
 
 const encode = (value: string): Uint8Array => new TextEncoder().encode(value);
@@ -55,19 +57,24 @@ test("`<</K /V>> op` operand を含む handler が PdfDictionary を pop でき�
   ]);
 });
 
-// 未登録 operator は operand stack を clear するため、本テストでは「dict が積まれた後に
-// BDC が dict を pop する」までは検証しない。全体完走と UNKNOWN_OPERATOR warning の
-// 発火のみを smoke test として確認する。dict pop の検証は他のテストが担う。
-test("`<</ActualText (x)>> BDC` は未登録 BDC で UNKNOWN_OPERATOR warning を出すが result.ok のまま完走する", () => {
+// BDC は registerMarkedContentOperators 経由で登録済みのため、dict operand を
+// pop して MarkedContentStack へ push する end-to-end のふるまいをここで pin down する。
+// interpreter は末尾で markedContentStack 非空を OBJECT_PARSE_UNTERMINATED として弾く
+// 仕様なので、BDC EMC のペアで 1 段開閉する形にする。
+test("`/T <</ActualText (x)>> BDC EMC` は登録済み BDC/EMC が warning なしで 1 段開閉する", () => {
+  const registered = registerMarkedContentOperators(OperatorRegistry.create());
+  assert(registered.ok);
+
   const result = ContentStreamInterpreter.execute({
-    data: encode("<</ActualText (x)>> BDC"),
-    registry: OperatorRegistry.create(),
+    data: encode("/T <</ActualText (x)>> BDC EMC"),
+    registry: registered.value,
   });
 
   assert(result.ok);
-  expect(result.value.warnings).toHaveLength(1);
-  expect(result.value.warnings[0]?.code).toBe("UNKNOWN_OPERATOR");
-  expect(result.value.warnings[0]?.message).toBe("Unknown operator: BDC");
+  expect(result.value.warnings).toHaveLength(0);
+  expect(
+    MarkedContentStack.depth(result.value.context.markedContentStack),
+  ).toBe(0);
 });
 
 // 辞書→配列の相互再帰経路を入口テストで pin down する。

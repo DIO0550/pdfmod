@@ -12,7 +12,7 @@ import { ContentStreamInterpreter } from "../index";
 const encode = (value: string): Uint8Array => new TextEncoder().encode(value);
 
 /**
- * BMC/EMC を登録した registry を生成する。
+ * marked-content operator を registerMarkedContentOperators で登録した registry を生成する。
  */
 const buildRegistry = (): OperatorRegistry => {
   const registered = registerMarkedContentOperators(OperatorRegistry.create());
@@ -82,6 +82,58 @@ test("ネスト未閉じ `/Span BMC /Foo BMC` で depth=2・last tag=/Foo の OB
   expect(result.error.message).toBe(
     "Unterminated marked-content sequence(s): depth=2, last tag=/Foo",
   );
+});
+
+test("`/T <</MCID 0>> BDC EMC` で 1 段開閉が完了する（dict properties）", () => {
+  const result = ContentStreamInterpreter.execute({
+    data: encode("/T <</MCID 0>> BDC EMC"),
+    registry: buildRegistry(),
+  });
+
+  assert(result.ok);
+  expect(result.value.warnings).toHaveLength(0);
+  expect(
+    MarkedContentStack.depth(result.value.context.markedContentStack),
+  ).toBe(0);
+});
+
+test("`/T /MC0 BDC EMC` で 1 段開閉が完了する（name properties、resource 解決しない）", () => {
+  const result = ContentStreamInterpreter.execute({
+    data: encode("/T /MC0 BDC EMC"),
+    registry: buildRegistry(),
+  });
+
+  assert(result.ok);
+  expect(result.value.warnings).toHaveLength(0);
+  expect(
+    MarkedContentStack.depth(result.value.context.markedContentStack),
+  ).toBe(0);
+});
+
+test("`/A BMC /B <<>> BDC EMC EMC` で BMC → BDC → EMC → EMC が LIFO で閉じる", () => {
+  const result = ContentStreamInterpreter.execute({
+    data: encode("/A BMC /B <<>> BDC EMC EMC"),
+    registry: buildRegistry(),
+  });
+
+  assert(result.ok);
+  expect(result.value.warnings).toHaveLength(0);
+  expect(
+    MarkedContentStack.depth(result.value.context.markedContentStack),
+  ).toBe(0);
+});
+
+test("`/A <<>> BDC /B BMC EMC EMC` で BDC → BMC → EMC → EMC が LIFO で閉じる", () => {
+  const result = ContentStreamInterpreter.execute({
+    data: encode("/A <<>> BDC /B BMC EMC EMC"),
+    registry: buildRegistry(),
+  });
+
+  assert(result.ok);
+  expect(result.value.warnings).toHaveLength(0);
+  expect(
+    MarkedContentStack.depth(result.value.context.markedContentStack),
+  ).toBe(0);
 });
 
 test('`data: ""` + 非空 initialContext（depth=1, tag /Span）で OBJECT_PARSE_UNTERMINATED', () => {
