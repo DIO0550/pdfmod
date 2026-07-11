@@ -102,7 +102,7 @@ impl PdfObject {
     /// `String` のとき内部のバイト列を `&[u8]` として `Some` で取り出す（他は `None`）。
     ///
     /// ヒープ保持のため参照返し（`PdfName::as_bytes` と同方針）。
-    pub fn as_string(&self) -> Option<&[u8]> {
+    pub fn as_string_bytes(&self) -> Option<&[u8]> {
         match self {
             Self::String(bytes) => Some(bytes.as_slice()),
             _ => None,
@@ -121,7 +121,7 @@ impl PdfObject {
 
     /// `Array` のとき内部の要素列を `&[PdfObject]` として `Some` で取り出す（他は `None`）。
     ///
-    /// ヒープ保持のため参照返し（`as_string` の `as_slice()` と同方針）。
+    /// ヒープ保持のため参照返し（`as_string_bytes` の `as_slice()` と同方針）。
     pub fn as_array(&self) -> Option<&[PdfObject]> {
         match self {
             Self::Array(items) => Some(items.as_slice()),

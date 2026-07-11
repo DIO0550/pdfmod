@@ -93,7 +93,7 @@ impl Primitive {
 
     /// `LiteralString` のとき内部のバイト列を `&[u8]` として `Some` で取り出す（他は `None`）。
     ///
-    /// ヒープ保持のため参照返し（`PdfObject::as_string` と同方針）。
+    /// ヒープ保持のため参照返し（`PdfObject::as_string_bytes` と同方針）。
     pub fn as_literal_string(&self) -> Option<&[u8]> {
         match self {
             Self::LiteralString(bytes) => Some(bytes.as_slice()),
