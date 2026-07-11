@@ -118,18 +118,12 @@ mod tests {
     #[test]
     fn display_invalid_number() {
         // InvalidNumber の Display 出力が "invalid number" になることを確認する
-        assert_eq!(
-            format!("{}", PdfErrorCode::InvalidNumber),
-            "invalid number"
-        );
+        assert_eq!(format!("{}", PdfErrorCode::InvalidNumber), "invalid number");
     }
 
     #[test]
     fn display_invalid_syntax() {
         // InvalidSyntax の Display 出力が "invalid syntax" になることを確認する
-        assert_eq!(
-            format!("{}", PdfErrorCode::InvalidSyntax),
-            "invalid syntax"
-        );
+        assert_eq!(format!("{}", PdfErrorCode::InvalidSyntax), "invalid syntax");
     }
 }
