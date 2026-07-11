@@ -9,10 +9,10 @@ fn string_constructs_and_matches_string_arm() {
 }
 
 #[test]
-fn as_string_returns_some_for_string() {
-    // String(b"abc") に as_string() を呼ぶと Some(b"abc") を返すことを確認する
+fn as_string_bytes_returns_some_for_string() {
+    // String(b"abc") に as_string_bytes() を呼ぶと Some(b"abc") を返すことを確認する
     assert_eq!(
-        PdfObject::String(b"abc".to_vec()).as_string(),
+        PdfObject::String(b"abc".to_vec()).as_string_bytes(),
         Some(b"abc".as_slice())
     );
 }
@@ -35,8 +35,8 @@ fn as_name_returns_some_for_name() {
 }
 
 #[test]
-fn as_string_returns_none_for_non_string_variants() {
-    // String 以外（Null/Boolean/Integer/Real/Name/Stream/Reference）では as_string() が None を返すことを確認する
+fn as_string_bytes_returns_none_for_non_string_variants() {
+    // String 以外（Null/Boolean/Integer/Real/Name/Stream/Reference）では as_string_bytes() が None を返すことを確認する
     let variants = [
         PdfObject::Null,
         PdfObject::Boolean(true),
@@ -47,7 +47,7 @@ fn as_string_returns_none_for_non_string_variants() {
         PdfObject::Reference(make_ref(1, 0)),
     ];
     for obj in &variants {
-        assert_eq!(obj.as_string(), None);
+        assert_eq!(obj.as_string_bytes(), None);
     }
 }
 
@@ -69,19 +69,19 @@ fn as_name_returns_none_for_non_name_variants() {
 }
 
 #[test]
-fn as_string_returns_empty_slice_for_empty_string() {
-    // 空バイト列の String(b"") は as_string() で Some(空スライス) を返すことを確認する
+fn as_string_bytes_returns_empty_slice_for_empty_string() {
+    // 空バイト列の String(b"") は as_string_bytes() で Some(空スライス) を返すことを確認する
     assert_eq!(
-        PdfObject::String(b"".to_vec()).as_string(),
+        PdfObject::String(b"".to_vec()).as_string_bytes(),
         Some(b"".as_slice())
     );
 }
 
 #[test]
-fn as_string_preserves_nul_non_utf8_and_high_bytes() {
-    // String(vec![0x00, 0x80, 0xFF]) を as_string() で取り出すと同一バイト列がテキスト解釈されず忠実に返ることを確認する
+fn as_string_bytes_preserves_nul_non_utf8_and_high_bytes() {
+    // String(vec![0x00, 0x80, 0xFF]) を as_string_bytes() で取り出すと同一バイト列がテキスト解釈されず忠実に返ることを確認する
     let obj = PdfObject::String(vec![0x00, 0x80, 0xFF]);
-    assert_eq!(obj.as_string(), Some([0x00, 0x80, 0xFF].as_slice()));
+    assert_eq!(obj.as_string_bytes(), Some([0x00, 0x80, 0xFF].as_slice()));
 }
 
 #[test]
@@ -132,8 +132,8 @@ fn clone_preserves_string_and_name_and_keeps_original_usable() {
     // String/Name を clone() すると複製の中身が元と一致し、元も引き続き使用可能なことを確認する
     let original_string = PdfObject::String(b"abc".to_vec());
     let cloned_string = original_string.clone();
-    assert_eq!(cloned_string.as_string(), Some(b"abc".as_slice()));
-    assert_eq!(original_string.as_string(), Some(b"abc".as_slice()));
+    assert_eq!(cloned_string.as_string_bytes(), Some(b"abc".as_slice()));
+    assert_eq!(original_string.as_string_bytes(), Some(b"abc".as_slice()));
 
     let original_name = PdfObject::Name(PdfName::from("Type"));
     let cloned_name = original_name.clone();
@@ -142,12 +142,12 @@ fn clone_preserves_string_and_name_and_keeps_original_usable() {
 }
 
 #[test]
-fn as_string_preserves_long_multibyte_bytes() {
-    // 長い+多バイトUTF-8（"名前"）混在のバイト列が as_string() で往復一致することを確認する（任意・優先度低）
+fn as_string_bytes_preserves_long_multibyte_bytes() {
+    // 長い+多バイトUTF-8（"名前"）混在のバイト列が as_string_bytes() で往復一致することを確認する（任意・優先度低）
     let mut bytes = "名前".as_bytes().to_vec();
     bytes.resize(bytes.len() + 300, b'a');
     let obj = PdfObject::String(bytes.clone());
-    assert_eq!(obj.as_string(), Some(bytes.as_slice()));
+    assert_eq!(obj.as_string_bytes(), Some(bytes.as_slice()));
 }
 
 #[test]
