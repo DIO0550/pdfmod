@@ -5,6 +5,8 @@
 //! 詳細情報は後続の `PdfError`(#260) 側が保持する。本タスクでは R0／R1
 //! （レクサー・パーサ段階）の最小バリアント集合のみを定義する（Issue #259）。
 
+use std::fmt;
+
 /// PDF 解析エラーの分類タグ。
 ///
 /// 各バリアントはエラーの「種類」のみを表し、付随情報は持たない（unit variant）。
@@ -22,6 +24,23 @@ pub enum PdfErrorCode {
     InvalidNumber,
     /// PDF の構文規則に違反する入力を検出した。
     InvalidSyntax,
+}
+
+/// バリアントごとに人間可読な英語短文を返す。文言は `std::io::ErrorKind` の
+/// 慣習に倣い、小文字始まり・句点なし。`#[non_exhaustive]` を付けないため、
+/// 将来バリアントを追加した際は `match` の非網羅性がコンパイル時エラーとなり、
+/// Display 文言の追加漏れが自動検出される。Debug は導出のまま（バリアント
+/// 識別子）で、開発者向けダンプ用途との役割分離を保つ。
+impl fmt::Display for PdfErrorCode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let text = match self {
+            PdfErrorCode::UnexpectedEof => "unexpected end of file",
+            PdfErrorCode::UnexpectedToken => "unexpected token",
+            PdfErrorCode::InvalidNumber => "invalid number",
+            PdfErrorCode::InvalidSyntax => "invalid syntax",
+        };
+        f.write_str(text)
+    }
 }
 
 #[cfg(test)]
@@ -76,5 +95,35 @@ mod tests {
         assert!(format!("{:?}", PdfErrorCode::UnexpectedToken).contains("UnexpectedToken"));
         assert!(format!("{:?}", PdfErrorCode::InvalidNumber).contains("InvalidNumber"));
         assert!(format!("{:?}", PdfErrorCode::InvalidSyntax).contains("InvalidSyntax"));
+    }
+
+    #[test]
+    fn display_unexpected_eof() {
+        // UnexpectedEof の Display 出力が "unexpected end of file" になることを確認する
+        assert_eq!(
+            format!("{}", PdfErrorCode::UnexpectedEof),
+            "unexpected end of file"
+        );
+    }
+
+    #[test]
+    fn display_unexpected_token() {
+        // UnexpectedToken の Display 出力が "unexpected token" になることを確認する
+        assert_eq!(
+            format!("{}", PdfErrorCode::UnexpectedToken),
+            "unexpected token"
+        );
+    }
+
+    #[test]
+    fn display_invalid_number() {
+        // InvalidNumber の Display 出力が "invalid number" になることを確認する
+        assert_eq!(format!("{}", PdfErrorCode::InvalidNumber), "invalid number");
+    }
+
+    #[test]
+    fn display_invalid_syntax() {
+        // InvalidSyntax の Display 出力が "invalid syntax" になることを確認する
+        assert_eq!(format!("{}", PdfErrorCode::InvalidSyntax), "invalid syntax");
     }
 }
