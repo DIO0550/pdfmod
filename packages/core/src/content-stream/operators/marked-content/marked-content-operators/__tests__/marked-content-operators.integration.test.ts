@@ -22,11 +22,11 @@ test("EMC が登録される", () => {
   expect(OperatorRegistry.has(registered.value, "EMC")).toBe(true);
 });
 
-test("BDC は登録されない（未登録の保証）", () => {
+test("BDC が登録される", () => {
   const registered = registerMarkedContentOperators(OperatorRegistry.create());
 
   assert(registered.ok);
-  expect(OperatorRegistry.has(registered.value, "BDC")).toBe(false);
+  expect(OperatorRegistry.has(registered.value, "BDC")).toBe(true);
 });
 
 test("MP は登録されない", () => {
