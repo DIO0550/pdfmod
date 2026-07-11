@@ -9,9 +9,9 @@
 //! - `message` は所有 `String`（`format!` で動的に値・期待トークン等を埋め込める。std のみで完結）。
 //! - 構築はビルダー風: `new(code)` を基点に `with_position` / `with_message` を任意で重ねる。
 //! - `Copy` は付与しない（`String` を保持するため不可）。`Debug, Clone, PartialEq, Eq` のみ derive。
-//! - `Display` を手実装し、`{code:?}` を流用して種別を表示する（`PdfErrorCode` への
-//!   `Display` 追加は #259 スコープのため行わない）。位置・メッセージは Some のときだけ
-//!   連結し、None の要素は記号ごと省略する。
+//! - `Display` を手実装し、種別部分は `PdfErrorCode` の `Display` に委譲する
+//!   （人間可読な英語短文を出力）。位置・メッセージは Some のときだけ連結し、
+//!   None の要素は記号ごと省略する。
 //! - `std::error::Error` を実装する（`Box<dyn Error>` と相互運用可能）。`source()` は当面
 //!   下位エラーを保持しないためデフォルト実装（`None`）のままとする。
 //! - 外部 crate 依存ゼロ（`thiserror` 等は使わず std のみで実装）。
@@ -79,10 +79,11 @@ impl PdfError {
 }
 
 impl fmt::Display for PdfError {
-    /// "{code:?}" を基点に、position があれば " at byte N"、message があれば ": <message>"
-    /// を連結する。None の要素は記号ごと省略し、余分な記号を出さない。
+    /// `PdfErrorCode` の `Display` 出力（人間可読な英語短文）を基点に、
+    /// position があれば " at byte N"、message があれば ": <message>" を連結する。
+    /// None の要素は記号ごと省略し、余分な記号を出さない。
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self.code)?;
+        write!(f, "{}", self.code)?;
         if let Some(position) = self.position {
             write!(f, " at byte {}", position.value())?;
         }
@@ -166,30 +167,30 @@ mod tests {
     #[test]
     fn display_with_code_only() {
         let err = PdfError::new(PdfErrorCode::UnexpectedEof);
-        assert_eq!(format!("{}", err), "UnexpectedEof");
+        assert_eq!(format!("{}", err), "unexpected end of file");
     }
 
     // 正常系（Display）: position ありのときは " at byte N" を連結する。
     #[test]
     fn display_with_position() {
         let err = PdfError::new(PdfErrorCode::UnexpectedEof).with_position(ByteOffset::new(12));
-        assert_eq!(format!("{}", err), "UnexpectedEof at byte 12");
+        assert_eq!(format!("{}", err), "unexpected end of file at byte 12");
     }
 
     // 正常系（Display）: message のみのときは ": <message>" を連結し、" at byte" は出さない。
     #[test]
     fn display_with_message_only() {
         let err = PdfError::new(PdfErrorCode::UnexpectedToken).with_message("unexpected");
-        assert_eq!(format!("{}", err), "UnexpectedToken: unexpected");
+        assert_eq!(format!("{}", err), "unexpected token: unexpected");
     }
 
-    // 正常系（Display）: 全要素ありのときは "{code:?} at byte N: <message>" 形式になる。
+    // 正常系（Display）: 全要素ありのときは "{code} at byte N: <message>" 形式になる。
     #[test]
     fn display_with_all_fields() {
         let err = PdfError::new(PdfErrorCode::UnexpectedEof)
             .with_position(ByteOffset::new(12))
             .with_message("eof");
-        assert_eq!(format!("{}", err), "UnexpectedEof at byte 12: eof");
+        assert_eq!(format!("{}", err), "unexpected end of file at byte 12: eof");
     }
 
     // 境界値（Display）: 空文字列メッセージ Some("") を無検証で受理し ":" の後が空になる。
@@ -197,7 +198,7 @@ mod tests {
     fn display_with_empty_message() {
         let err = PdfError::new(PdfErrorCode::UnexpectedEof).with_message("");
         assert_eq!(err.message(), Some(""));
-        assert_eq!(format!("{}", err), "UnexpectedEof: ");
+        assert_eq!(format!("{}", err), "unexpected end of file: ");
     }
 
     // 正常系（等価）: 同一の code/position/message を持つ 2 値は == で等価になる。
