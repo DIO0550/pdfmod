@@ -1,9 +1,6 @@
 import type { PdfError } from "../../../../pdf/errors/index";
-import type {
-  PdfDictionary,
-  PdfName,
-} from "../../../../pdf/types/pdf-types/index";
-import { PdfName as PdfNameCompanion } from "../../../../pdf/types/pdf-types/index";
+import type { PdfDictionary } from "../../../../pdf/types/pdf-types/index";
+import { PdfName } from "../../../../pdf/types/pdf-types/index";
 import { some } from "../../../../utils/option/index";
 import { err, ok } from "../../../../utils/result/index";
 import type { MarkedContentEntry } from "../../../marked-content/stack/index";
@@ -61,7 +58,7 @@ export const bdcHandler: OperatorHandler = (
   }
   const properties = poppedProperties.value;
 
-  if (properties.type !== "dictionary" && !PdfNameCompanion.is(properties)) {
+  if (properties.type !== "dictionary" && !PdfName.is(properties)) {
     const error: PdfError = {
       code: "OPERATOR_OPERAND_TYPE_MISMATCH",
       message: `Operator '${OPERATOR_NAME}' expected name or dictionary operand, got ${properties.type}`,
@@ -86,7 +83,7 @@ export const bdcHandler: OperatorHandler = (
   }
   const tag = poppedTag.value;
 
-  if (!PdfNameCompanion.is(tag)) {
+  if (!PdfName.is(tag)) {
     const error: PdfError = {
       code: "OPERATOR_OPERAND_TYPE_MISMATCH",
       message: `Operator '${OPERATOR_NAME}' expected name operand, got ${tag.type}`,
