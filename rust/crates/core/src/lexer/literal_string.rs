@@ -61,11 +61,13 @@ pub(super) fn decode_escape(input: &[u8], pos: usize) -> Option<(Option<u8>, usi
 /// - 呼び出し側は `digits_start ≦ input.len()` を保証する
 ///   （現状の唯一の呼び出し元 `decode_escape` は `next_pos = pos.checked_add(1)?` と
 ///   `input.get(next_pos).is_some()` を通過した位置のみ渡す）。
-/// - 内部の加算 `digits_start + digits` / `ESCAPE_PREFIX_BYTES + digits` は
-///   ループ不変条件 `digits < MAX_OCTAL_DIGITS` および上記契約により overflow しない。
-/// - もし呼び出し側契約が破られて overflow に近い値が渡っても、
-///   最終的な検出は上位 `Lexer::read_literal_string` の
-///   `self.pos.checked_add(consumed)?` に一任される（巻き戻し保証）。
+/// - この契約下では Rust の `input.len() ≤ isize::MAX` により
+///   `digits_start ≦ isize::MAX < usize::MAX`。ループ不変条件 `digits < MAX_OCTAL_DIGITS`
+///   と合わせて、内部の加算 `digits_start + digits` / `ESCAPE_PREFIX_BYTES + digits`
+///   は overflow しない。
+/// - **契約違反時の安全性は保証しない**（呼び出し側で守るべき前提であり、
+///   本関数はそれを検出しない。契約が破られた場合、debug build では
+///   `digits_start + digits` が panic し得る）。
 ///
 /// # 戻り値
 /// - `consumed` は `\\` の 1 バイトを含む（`ESCAPE_PREFIX_BYTES + digits`、最大 4）。
@@ -79,7 +81,7 @@ fn decode_octal(input: &[u8], digits_start: usize) -> Option<(Option<u8>, usize)
     let mut acc: u16 = 0;
     let mut digits: usize = 0;
     while digits < MAX_OCTAL_DIGITS {
-        let pos = digits_start + digits; // 契約により overflow 到達不能
+        let pos = digits_start + digits; // 呼び出し側で digits_start ≤ input.len() を保証済み
         let Some(&b) = input.get(pos) else { break };
         if !(b'0'..=b'7').contains(&b) {
             break;
