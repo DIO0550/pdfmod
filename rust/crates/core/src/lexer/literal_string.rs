@@ -58,16 +58,23 @@ pub(super) fn decode_escape(input: &[u8], pos: usize) -> Option<(Option<u8>, usi
 /// 8 進エスケープ `\\ddd` の数字部分をデコードする内部ヘルパ（純関数）。
 ///
 /// # 契約
-/// - 呼び出し側は `digits_start ≦ input.len()` を保証する
-///   （現状の唯一の呼び出し元 `decode_escape` は `next_pos = pos.checked_add(1)?` と
-///   `input.get(next_pos).is_some()` を通過した位置のみ渡す）。
-/// - この契約下では Rust の `input.len() ≤ isize::MAX` により
-///   `digits_start ≦ isize::MAX < usize::MAX`。ループ不変条件 `digits < MAX_OCTAL_DIGITS`
-///   と合わせて、内部の加算 `digits_start + digits` / `ESCAPE_PREFIX_BYTES + digits`
-///   は overflow しない。
-/// - **契約違反時の安全性は保証しない**（呼び出し側で守るべき前提であり、
-///   本関数はそれを検出しない。契約が破られた場合、debug build では
-///   `digits_start + digits` が panic し得る）。
+///
+/// 呼び出し側は次を保証する（本関数はいずれも検出しない）:
+///
+/// - `digits_start ≦ input.len()`（範囲内アクセスの前提）
+/// - `digits_start + MAX_OCTAL_DIGITS ≦ usize::MAX`
+///   （内部の unchecked 加算 `digits_start + digits` /
+///   `ESCAPE_PREFIX_BYTES + digits` が overflow しない前提）
+///
+/// 現状の唯一の呼び出し元 `decode_escape` は `pos.checked_add(1)?` と
+/// `input.get(next_pos).is_some()` を通過した位置のみを渡すため、両者は
+/// 呼び出し元側で担保されている（`[u8]` スライスの標準的な長さ制約により
+/// `input.len()` は `usize::MAX - MAX_OCTAL_DIGITS` を大きく下回る）。
+/// この契約下で、ループ不変条件 `digits < MAX_OCTAL_DIGITS` と合わせて
+/// 内部加算は overflow しない。
+///
+/// **契約違反時の挙動は未定義**（debug build では `digits_start + digits` が
+/// panic し得る。本関数は契約違反を検出しない）。
 ///
 /// # 戻り値
 /// - `consumed` は `\\` の 1 バイトを含む（`ESCAPE_PREFIX_BYTES + digits`、最大 4）。
@@ -81,7 +88,7 @@ fn decode_octal(input: &[u8], digits_start: usize) -> Option<(Option<u8>, usize)
     let mut acc: u16 = 0;
     let mut digits: usize = 0;
     while digits < MAX_OCTAL_DIGITS {
-        let pos = digits_start + digits; // 呼び出し側で digits_start ≤ input.len() を保証済み
+        let pos = digits_start + digits; // 契約 2: digits_start + MAX_OCTAL_DIGITS ≤ usize::MAX
         let Some(&b) = input.get(pos) else { break };
         if !(b'0'..=b'7').contains(&b) {
             break;
