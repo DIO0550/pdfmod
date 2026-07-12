@@ -8,6 +8,12 @@
 use super::eol::EolKind;
 use super::Lexer;
 
+// 8 進エスケープ `\ddd` の仕様定数（ISO 32000-1 §7.3.4.2）。
+const MAX_OCTAL_DIGITS: usize = 3; // greedy 最大桁数
+const OCTAL_RADIX: u16 = 8; // 8 進基数
+const BYTE_MASK: u16 = 0xFF; // 下位 8 ビット採用マスク（`\777` = 511 のクランプ用）
+const ESCAPE_PREFIX_BYTES: usize = 1; // `consumed` に含む `\` の 1 バイト
+
 /// `\\` 起点のエスケープシーケンスをデコードする純関数。
 /// `input[pos] == b'\\'` を想定。
 ///
@@ -49,24 +55,51 @@ pub(super) fn decode_escape(input: &[u8], pos: usize) -> Option<(Option<u8>, usi
     }
 }
 
-/// 8 進エスケープ `\\ddd` の数字部分をデコードする内部ヘルパ。
-/// `digits_start` は最初の 8 進数字（`\\` の直後）の位置。
-/// 戻り値の `consumed` は `\\` の 1 バイトを含む。
+/// 8 進エスケープ `\\ddd` の数字部分をデコードする内部ヘルパ（純関数）。
+///
+/// # 契約
+///
+/// 呼び出し側は次を保証する（本関数はいずれも検出しない）:
+///
+/// - `digits_start ≦ input.len()`（範囲内アクセスの前提）
+/// - `digits_start + MAX_OCTAL_DIGITS ≦ usize::MAX`
+///   （内部の unchecked 加算 `digits_start + digits` /
+///   `ESCAPE_PREFIX_BYTES + digits` が overflow しない前提）
+///
+/// 現状の唯一の呼び出し元 `decode_escape` は `pos.checked_add(1)?` と
+/// `input.get(next_pos).is_some()` を通過した位置のみを渡すため、両者は
+/// 呼び出し元側で担保されている（`[u8]` スライスの標準的な長さ制約により
+/// `input.len()` は `usize::MAX - MAX_OCTAL_DIGITS` を大きく下回る）。
+/// この契約下で、ループ不変条件 `digits < MAX_OCTAL_DIGITS` と合わせて
+/// 内部加算は overflow しない。
+///
+/// **本関数は契約違反を検出しない**。契約が破られた場合、
+/// `digits_start + digits` は debug build で integer overflow panic を起こし、
+/// release build では two's complement wrap により不正確な位置を参照して
+/// 誤ったバイトを返す可能性がある。
+///
+/// # 戻り値
+/// - `consumed` は `\\` の 1 バイトを含む（`ESCAPE_PREFIX_BYTES + digits`、最大 4）。
+/// - 累積 `acc` は `u16` で最大 `\\777 = 511`、`(acc & BYTE_MASK) as u8` で下位 8 ビット採用。
+/// - 外側 `Option<...>`: 本経路で `None` を返す分岐は存在しない
+///   （`input.get` が `None` の場合は `break` して
+///   `Some((Some((acc & BYTE_MASK) as u8), ESCAPE_PREFIX_BYTES + digits))` を返す）。
+///   将来の EOL 分岐追加や別呼び出し元追加を想定した拡張余地として型上のみ保持している。
 fn decode_octal(input: &[u8], digits_start: usize) -> Option<(Option<u8>, usize)> {
-    // acc は u16 で累積（最大値 \\777 = 511 < u16::MAX）。最後に `& 0xFF` で下位 8 ビット採用。
+    // acc は u16 で累積（最大値 \\777 = 511 < u16::MAX）。最後に BYTE_MASK で下位 8 ビット採用。
     let mut acc: u16 = 0;
     let mut digits: usize = 0;
-    while digits < 3 {
-        let pos = digits_start.checked_add(digits)?;
+    while digits < MAX_OCTAL_DIGITS {
+        let pos = digits_start + digits; // 契約 2: digits_start + MAX_OCTAL_DIGITS ≤ usize::MAX
         let Some(&b) = input.get(pos) else { break };
         if !(b'0'..=b'7').contains(&b) {
             break;
         }
-        acc = acc * 8 + (b - b'0') as u16;
+        acc = acc * OCTAL_RADIX + (b - b'0') as u16;
         digits += 1;
     }
-    let consumed = 1usize.checked_add(digits)?;
-    Some((Some((acc & 0xFF) as u8), consumed))
+    let consumed = ESCAPE_PREFIX_BYTES + digits; // digits ≦ MAX_OCTAL_DIGITS により最大 4
+    Some((Some((acc & BYTE_MASK) as u8), consumed))
 }
 
 impl<'a> Lexer<'a> {
