@@ -11,7 +11,7 @@ const OPERATOR_NAME = "MP";
 const OPERAND_COUNT = 1;
 
 /**
- * ISO 32000-1:2008 §14.6 `MP` operator (marked-content point) のハンドラ。
+ * ISO 32000-2:2020 §14.6 `MP` operator (marked-content point) のハンドラ。
  *
  * operand stack から tag (name) を 1 個 pop し、name 型であれば
  * marked content stack を変化させずに現在のコンテキストを返す。
