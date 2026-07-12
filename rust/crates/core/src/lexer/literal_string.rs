@@ -73,8 +73,10 @@ pub(super) fn decode_escape(input: &[u8], pos: usize) -> Option<(Option<u8>, usi
 /// この契約下で、ループ不変条件 `digits < MAX_OCTAL_DIGITS` と合わせて
 /// 内部加算は overflow しない。
 ///
-/// **契約違反時の挙動は未定義**（debug build では `digits_start + digits` が
-/// panic し得る。本関数は契約違反を検出しない）。
+/// **本関数は契約違反を検出しない**。契約が破られた場合、
+/// `digits_start + digits` は debug build で integer overflow panic を起こし、
+/// release build では two's complement wrap により不正確な位置を参照して
+/// 誤ったバイトを返す可能性がある。
 ///
 /// # 戻り値
 /// - `consumed` は `\\` の 1 バイトを含む（`ESCAPE_PREFIX_BYTES + digits`、最大 4）。
