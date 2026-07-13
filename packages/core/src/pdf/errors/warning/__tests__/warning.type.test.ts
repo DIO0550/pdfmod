@@ -45,3 +45,8 @@ test("PdfWarningCode に CATALOG_VERSION_INVALID が含まれる", () => {
   const code: PdfWarningCode = "CATALOG_VERSION_INVALID";
   expect(code).toBe("CATALOG_VERSION_INVALID");
 });
+
+test("PdfWarningCode に UNBALANCED_RESTORE が含まれる", () => {
+  const code: PdfWarningCode = "UNBALANCED_RESTORE";
+  expect(code).toBe("UNBALANCED_RESTORE");
+});

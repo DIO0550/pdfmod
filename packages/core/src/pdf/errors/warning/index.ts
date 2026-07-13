@@ -27,7 +27,8 @@ export type PdfWarningCode =
   | "STRING_DECODE_FAILED"
   | "TRAPPED_INVALID"
   | "UNKNOWN_OPERATOR"
-  | "CATALOG_VERSION_INVALID";
+  | "CATALOG_VERSION_INVALID"
+  | "UNBALANCED_RESTORE";
 
 /**
  * 回復可能なPDF問題の警告。
