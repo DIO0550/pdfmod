@@ -1,5 +1,6 @@
 import { NumberEx } from "../../../ext/number/index";
 import type { PdfError, PdfParseError } from "../../../pdf/errors/error/index";
+import type { PdfWarning } from "../../../pdf/errors/warning/index";
 import { GenerationNumber } from "../../../pdf/types/generation-number/index";
 import { ObjectNumber } from "../../../pdf/types/object-number/index";
 import { PdfType } from "../../../pdf/types/pdf-type/index";
@@ -33,6 +34,11 @@ export interface ParsedCatalog {
   pagesRef: IndirectRef;
   /** 採用 PDF バージョン（ヘッダ / カタログのうち新しい方） */
   version: PdfVersion;
+  /**
+   * カタログ解析中に検出された回復可能な警告。
+   * 呼び出し元からは読み取り専用として扱う（内部生成のみ mutable）。
+   */
+  warnings: readonly PdfWarning[];
 }
 
 /**
@@ -105,14 +111,19 @@ const extractPagesRef = (
 
 /**
  * カタログ辞書の `/Version` とヘッダバージョンを比較し、採用するバージョンを決める。
+ * `/Version` が name で存在するが `PdfVersion.create` に失敗した場合、
+ * `CATALOG_VERSION_INVALID` 警告を warnings buffer に push してヘッダ版へフォールバックする。
+ * `/Version` 不在または `type !== "name"` の場合は警告を発行しない。
  *
  * @param entries - カタログ辞書のエントリ
  * @param headerVersion - PDF ヘッダ由来のバージョン
+ * @param warnings - 警告を push する buffer（呼び出し元で mutable 配列を渡す）
  * @returns ヘッダ / カタログのうち大きい方（不正・同値時はヘッダ）
  */
 const pickNewerVersion = (
   entries: Map<string, PdfValue>,
   headerVersion: PdfVersion,
+  warnings: PdfWarning[],
 ): PdfVersion => {
   const versionEntry = entries.get("Version");
 
@@ -123,6 +134,12 @@ const pickNewerVersion = (
   const catalogVersionResult = PdfVersion.create(versionEntry.value);
 
   if (!catalogVersionResult.ok) {
+    warnings.push({
+      code: "CATALOG_VERSION_INVALID",
+      message:
+        `Catalog /Version '${versionEntry.value}' is not a valid PDF version ` +
+        `(${catalogVersionResult.error}); using header version`,
+    });
     return headerVersion;
   }
 
@@ -180,12 +197,14 @@ export const CatalogParser = {
       return pagesRefResult;
     }
 
-    const version = pickNewerVersion(catalog.entries, headerVersion);
+    const warnings: PdfWarning[] = [];
+    const version = pickNewerVersion(catalog.entries, headerVersion, warnings);
 
     return ok({
       catalog,
       pagesRef: pagesRefResult.value,
       version,
+      warnings,
     });
   },
 } as const;

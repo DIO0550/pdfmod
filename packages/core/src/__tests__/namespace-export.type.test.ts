@@ -107,6 +107,7 @@ test("ParsedCatalog型とResolveRef型が参照できる", () => {
       generationNumber: 0 as ParsedCatalog["pagesRef"]["generationNumber"],
     },
     version,
+    warnings: [],
   };
   const resolver: ResolveRef = async () => Result.ok({ type: "null" as const });
   expect(parsed.version).toBe(version);
