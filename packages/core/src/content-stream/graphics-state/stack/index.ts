@@ -1,3 +1,4 @@
+import type { PdfWarning } from "../../../pdf/errors/warning/index";
 import type { Brand } from "../../../utils/brand/index";
 import type { GraphicsState } from "../graphics-state";
 import { GraphicsState as GraphicsStateFactory } from "../graphics-state";
@@ -80,14 +81,27 @@ export const GraphicsStateStack = {
 
   /**
    * 直近に保存したグラフィックスステートを復元する。
-   * 保存状態がない場合は PDF 仕様メモの実装例に合わせて no-op とする。
+   * 保存状態がない場合は no-op で新しい stack（current 維持、saved:[]）を返す。
+   * `warnings` を渡した場合、unbalanced restore 検出時に `UNBALANCED_RESTORE`
+   * を push する。省略時は従来通り無警告 no-op（後方互換）。
    *
    * @param stack - 復元元スタック
+   * @param warnings - unbalanced 時に警告を push する buffer（省略時は無警告）
    * @returns 復元後の新しい `GraphicsStateStack`
    */
-  restore(stack: GraphicsStateStack): GraphicsStateStack {
+  restore(
+    stack: GraphicsStateStack,
+    warnings?: PdfWarning[],
+  ): GraphicsStateStack {
     const lastIndex = stack.saved.length - 1;
     if (lastIndex < 0) {
+      if (warnings !== undefined) {
+        warnings.push({
+          code: "UNBALANCED_RESTORE",
+          message:
+            "Q operator called with empty graphics state stack (no matching q)",
+        });
+      }
       return {
         current: stack.current,
         saved: [],
