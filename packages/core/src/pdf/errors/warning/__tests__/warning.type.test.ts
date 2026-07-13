@@ -40,3 +40,8 @@ test("PdfWarningCode に TRAPPED_INVALID が含まれる", () => {
   const code: PdfWarningCode = "TRAPPED_INVALID";
   expect(code).toBe("TRAPPED_INVALID");
 });
+
+test("PdfWarningCode に CATALOG_VERSION_INVALID が含まれる", () => {
+  const code: PdfWarningCode = "CATALOG_VERSION_INVALID";
+  expect(code).toBe("CATALOG_VERSION_INVALID");
+});
