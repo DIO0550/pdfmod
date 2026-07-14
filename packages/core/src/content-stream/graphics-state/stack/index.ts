@@ -109,7 +109,7 @@ export const GraphicsStateStack = {
         warning: {
           code: "UNBALANCED_RESTORE",
           message:
-            "Q operator called with empty graphics state stack (no matching q)",
+            "Cannot restore graphics state: no saved state on stack (unbalanced restore)",
         },
       };
     }
