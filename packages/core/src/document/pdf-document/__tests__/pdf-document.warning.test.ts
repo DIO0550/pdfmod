@@ -4,6 +4,7 @@ import { PdfDocument } from "../../pdf-document";
 import {
   buildMinimalSinglePagePdf,
   buildPdfWithCorruptStartXRef,
+  buildPdfWithInvalidCatalogVersion,
   buildPdfWithInvalidInfoRef,
 } from "./pdf-document.test.helpers";
 
@@ -47,4 +48,23 @@ test("/Info の参照が不正な PDF を load すると INFO_RESOLVE_FAILED war
   assert(result.ok);
   expect(Object.keys(result.value.metadata)).toHaveLength(0);
   expect(seen.map((w) => w.code)).toEqual(["INFO_RESOLVE_FAILED"]);
+});
+
+test("Catalog /Version が invalid name の PDF を onWarning 指定で load すると CATALOG_VERSION_INVALID が観測される", async () => {
+  // CatalogParser.parse が返す warnings が pdf-document/index.ts:293 の
+  // emitWarnings 経由で onWarning に伝わる e2e smoke。
+  const seen: PdfWarning[] = [];
+  const result = await PdfDocument.load(buildPdfWithInvalidCatalogVersion(), {
+    onWarning: (w) => seen.push(w),
+  });
+
+  assert(result.ok);
+  expect(seen.map((w) => w.code)).toContain("CATALOG_VERSION_INVALID");
+});
+
+test("Catalog /Version が invalid name でも onWarning 未指定なら load は Ok を返す", async () => {
+  // warning はエラーにならない後方互換の smoke
+  const result = await PdfDocument.load(buildPdfWithInvalidCatalogVersion());
+
+  assert(result.ok);
 });

@@ -1,3 +1,4 @@
+import type { PdfWarning } from "../../../pdf/errors/warning/index";
 import type { Brand } from "../../../utils/brand/index";
 import type { GraphicsState } from "../graphics-state";
 import { GraphicsState as GraphicsStateFactory } from "../graphics-state";
@@ -24,6 +25,16 @@ export type GraphicsStateStack = Brand<
   GraphicsStateStackFields,
   typeof GraphicsStateStackBrand
 >;
+
+/**
+ * `GraphicsStateStack.restore` の返却型。
+ * `stack` は復元後の新しいスタック、`warning` は unbalanced restore を
+ * 検出したときに `UNBALANCED_RESTORE` を含む。それ以外は `undefined`。
+ */
+export interface RestoreResult {
+  stack: GraphicsStateStack;
+  warning?: PdfWarning;
+}
 
 export const GraphicsStateStack = {
   /**
@@ -80,24 +91,35 @@ export const GraphicsStateStack = {
 
   /**
    * 直近に保存したグラフィックスステートを復元する。
-   * 保存状態がない場合は PDF 仕様メモの実装例に合わせて no-op とする。
+   * 保存状態がない場合は no-op で新しい stack（current 維持、saved:[]）を返し、
+   * `warning: UNBALANCED_RESTORE` を含む結果を返す。呼び出し元は `warning`
+   * 未使用時はそのまま無視できる。
    *
    * @param stack - 復元元スタック
-   * @returns 復元後の新しい `GraphicsStateStack`
+   * @returns 復元後の `GraphicsStateStack` と、unbalanced 検出時の警告（あれば）
    */
-  restore(stack: GraphicsStateStack): GraphicsStateStack {
+  restore(stack: GraphicsStateStack): RestoreResult {
     const lastIndex = stack.saved.length - 1;
     if (lastIndex < 0) {
       return {
-        current: stack.current,
-        saved: [],
-      } as unknown as GraphicsStateStack;
+        stack: {
+          current: stack.current,
+          saved: [],
+        } as unknown as GraphicsStateStack,
+        warning: {
+          code: "UNBALANCED_RESTORE",
+          message:
+            "Cannot restore graphics state: no saved state on stack (unbalanced restore)",
+        },
+      };
     }
 
     const state = stack.saved[lastIndex] as GraphicsState;
     return {
-      current: state,
-      saved: stack.saved.slice(0, lastIndex),
-    } as unknown as GraphicsStateStack;
+      stack: {
+        current: state,
+        saved: stack.saved.slice(0, lastIndex),
+      } as unknown as GraphicsStateStack,
+    };
   },
 } as const;

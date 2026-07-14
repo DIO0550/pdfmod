@@ -297,6 +297,7 @@ export class PdfDocument {
     if (!catalogResult.ok) {
       return catalogResult;
     }
+    emitWarnings(catalogResult.value.warnings);
 
     const walkResult = await PageTreeWalker.walk(
       catalogResult.value.pagesRef,

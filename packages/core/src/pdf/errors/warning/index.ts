@@ -4,7 +4,7 @@
  *
  * @example
  * ```ts
- * const code: PdfWarningCode = "EOF_NOT_FOUND";
+ * const code: PdfWarningCode = "CATALOG_VERSION_INVALID";
  * ```
  */
 export type PdfWarningCode =
@@ -26,7 +26,9 @@ export type PdfWarningCode =
   | "INFO_NOT_DICTIONARY"
   | "STRING_DECODE_FAILED"
   | "TRAPPED_INVALID"
-  | "UNKNOWN_OPERATOR";
+  | "UNKNOWN_OPERATOR"
+  | "CATALOG_VERSION_INVALID"
+  | "UNBALANCED_RESTORE";
 
 /**
  * 回復可能なPDF問題の警告。

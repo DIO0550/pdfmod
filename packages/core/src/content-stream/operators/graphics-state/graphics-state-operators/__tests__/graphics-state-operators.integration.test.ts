@@ -23,7 +23,8 @@ const qHandler: OperatorHandler = (context) =>
 const qRestoreHandler: OperatorHandler = (context) =>
   ok({
     ...context,
-    graphicsStateStack: GraphicsStateStack.restore(context.graphicsStateStack),
+    graphicsStateStack: GraphicsStateStack.restore(context.graphicsStateStack)
+      .stack,
   });
 
 test("barrel 経由で `1 0 0 1 100 200 cm 2 w` を実行すると CTM と lineWidth が更新される", () => {

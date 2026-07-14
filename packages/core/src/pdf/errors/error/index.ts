@@ -3,11 +3,12 @@ import type { ObjectId } from "../../types/index";
 
 /**
  * PDFパースエラーのエラーコード。
- * 構造的・構文的な問題、および未実装機能など実装側都合の致命的エラーを分類する。
+ * 構造的・構文的な問題、未実装機能、および
+ * ライブラリ API への不正な入力（呼び出し元の契約違反）による致命的エラーを分類する。
  *
  * @example
  * ```ts
- * const code: PdfParseErrorCode = "STARTXREF_NOT_FOUND";
+ * const code: PdfParseErrorCode = "XREF_MAX_DEPTH_INVALID";
  * ```
  */
 export type PdfParseErrorCode =
@@ -36,7 +37,8 @@ export type PdfParseErrorCode =
   | "CATALOG_TYPE_INVALID"
   | "PAGES_NOT_FOUND"
   | "CATALOG_ROOT_NOT_DICTIONARY"
-  | "NOT_IMPLEMENTED";
+  | "NOT_IMPLEMENTED"
+  | "XREF_MAX_DEPTH_INVALID";
 
 /**
  * 全致命的PDFエラーコードの共用体型。
