@@ -1,5 +1,6 @@
 import { NumberEx } from "../../../ext/number/index";
 import type { PdfError, PdfParseError } from "../../../pdf/errors/error/index";
+import type { PdfWarning } from "../../../pdf/errors/warning/index";
 import { GenerationNumber } from "../../../pdf/types/generation-number/index";
 import { ObjectNumber } from "../../../pdf/types/object-number/index";
 import { PdfType } from "../../../pdf/types/pdf-type/index";
@@ -33,6 +34,11 @@ export interface ParsedCatalog {
   pagesRef: IndirectRef;
   /** 採用 PDF バージョン（ヘッダ / カタログのうち新しい方） */
   version: PdfVersion;
+  /**
+   * カタログ解析中に検出された回復可能な警告。
+   * 呼び出し元からは読み取り専用として扱う（内部生成のみ mutable）。
+   */
+  warnings: readonly PdfWarning[];
 }
 
 /**
@@ -104,35 +110,58 @@ const extractPagesRef = (
 };
 
 /**
+ * `pickNewerVersion` の返却型。
+ * 採用バージョンと、発行された警告（あれば）を含む。
+ */
+interface PickNewerVersionResult {
+  version: PdfVersion;
+  warnings: readonly PdfWarning[];
+}
+
+/**
  * カタログ辞書の `/Version` とヘッダバージョンを比較し、採用するバージョンを決める。
+ * `/Version` が name で存在するが `PdfVersion.create` に失敗した場合、
+ * `CATALOG_VERSION_INVALID` 警告を含めてヘッダ版へフォールバックする。
+ * `/Version` 不在または `type !== "name"` の場合は警告を発行しない。
  *
  * @param entries - カタログ辞書のエントリ
  * @param headerVersion - PDF ヘッダ由来のバージョン
- * @returns ヘッダ / カタログのうち大きい方（不正・同値時はヘッダ）
+ * @returns 採用バージョンと警告配列。不正な `/Version` name の場合のみ
+ *   `warnings` に `CATALOG_VERSION_INVALID` を含む
  */
 const pickNewerVersion = (
   entries: Map<string, PdfValue>,
   headerVersion: PdfVersion,
-): PdfVersion => {
+): PickNewerVersionResult => {
   const versionEntry = entries.get("Version");
 
   if (versionEntry === undefined || versionEntry.type !== "name") {
-    return headerVersion;
+    return { version: headerVersion, warnings: [] };
   }
 
   const catalogVersionResult = PdfVersion.create(versionEntry.value);
 
   if (!catalogVersionResult.ok) {
-    return headerVersion;
+    return {
+      version: headerVersion,
+      warnings: [
+        {
+          code: "CATALOG_VERSION_INVALID",
+          message:
+            `Catalog /Version '${versionEntry.value}' is not a valid PDF version ` +
+            `(${catalogVersionResult.error}); using header version`,
+        },
+      ],
+    };
   }
 
   const catalogVersion = catalogVersionResult.value;
 
   if (PdfVersion.compare(catalogVersion, headerVersion) > 0) {
-    return catalogVersion;
+    return { version: catalogVersion, warnings: [] };
   }
 
-  return headerVersion;
+  return { version: headerVersion, warnings: [] };
 };
 
 /**
@@ -180,12 +209,16 @@ export const CatalogParser = {
       return pagesRefResult;
     }
 
-    const version = pickNewerVersion(catalog.entries, headerVersion);
+    const { version, warnings } = pickNewerVersion(
+      catalog.entries,
+      headerVersion,
+    );
 
     return ok({
       catalog,
       pagesRef: pagesRefResult.value,
       version,
+      warnings,
     });
   },
 } as const;

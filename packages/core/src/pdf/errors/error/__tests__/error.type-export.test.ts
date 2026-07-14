@@ -50,6 +50,7 @@ const allPdfParseErrorCodes = [
   "PAGES_NOT_FOUND",
   "CATALOG_ROOT_NOT_DICTIONARY",
   "NOT_IMPLEMENTED",
+  "XREF_MAX_DEPTH_INVALID",
 ] as const satisfies readonly PdfParseErrorCode[];
 
 // 配列の要素型がPdfParseErrorCodeと完全一致することを型レベルで保証
@@ -61,7 +62,7 @@ const _exhaustive: Exact<
 
 test("PdfParseErrorCodeは網羅的に列挙されている", () => {
   expect(_exhaustive).toBe(true);
-  expect(allPdfParseErrorCodes).toHaveLength(26);
+  expect(allPdfParseErrorCodes).toHaveLength(27);
 });
 
 test("型エクスポートが利用可能", () => {

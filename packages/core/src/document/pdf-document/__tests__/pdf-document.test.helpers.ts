@@ -295,6 +295,24 @@ export const buildPdfWithCorruptXRefAndNoTrailer = (): Uint8Array => {
 };
 
 /**
+ * `/Version` に不正な name を持つ Catalog + 1 ページの PDF を生成する。
+ *
+ * Catalog (1 0 obj) の body に `/Version /BogusName` を追加し、
+ * `PdfVersion.create("BogusName")` を失敗させる。`CatalogParser.parse` は
+ * `CATALOG_VERSION_INVALID` warning を `ParsedCatalog.warnings` に push し、
+ * `pdf-document/index.ts` の `emitWarnings` が `onWarning` へ配線する。
+ * `PdfDocument.load` の e2e smoke テストで使用する。
+ *
+ * @returns 不正 `/Version` name を持つ 1 ページ PDF のバイト列
+ */
+export const buildPdfWithInvalidCatalogVersion = (): Uint8Array =>
+  assembleTextPdf([
+    "<< /Type /Catalog /Pages 2 0 R /Version /BogusName >>",
+    PAGES_BODY_SINGLE,
+    PAGE_BODY,
+  ]);
+
+/**
  * ヘッダのみで本体を持たない PDF を生成する。
  *
  * `%PDF-1.7\n%%EOF\n` のみを返す。`startxref` キーワードが存在しないため、

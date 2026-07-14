@@ -451,9 +451,8 @@ test("qとQはregistry handler経由でgraphics state stackを更新する", () 
   const registry = registerOperator(changeRegistry, "Q", (context) =>
     ok({
       ...context,
-      graphicsStateStack: GraphicsStateStack.restore(
-        context.graphicsStateStack,
-      ),
+      graphicsStateStack: GraphicsStateStack.restore(context.graphicsStateStack)
+        .stack,
     }),
   );
 

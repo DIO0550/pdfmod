@@ -1,5 +1,6 @@
 import { expect, test } from "vitest";
 import type { PdfError } from "../../../../pdf/errors/error/index";
+import type { PdfWarning } from "../../../../pdf/errors/warning/index";
 import type {
   PdfObject,
   PdfValue,
@@ -196,7 +197,7 @@ test("/Type /Catalog + /Pages 間接参照が揃う場合 Ok を返す", async (
   expect(parsed.version as string).toBe("1.7");
 });
 
-test("/Version が欠損ならヘッダバージョンを採用", async () => {
+test("/Version が欠損ならヘッダバージョンを採用し warnings は空", async () => {
   const entries = makeCatalogEntries({
     type: validCatalogName,
     pages: validPagesRef,
@@ -207,13 +208,17 @@ test("/Version が欠損ならヘッダバージョンを採用", async () => {
     resolveToDict(entries),
   );
   expect(result.ok).toBe(true);
-  expect(
-    (result as { ok: true; value: { version: string } }).value
-      .version as string,
-  ).toBe("1.7");
+  const parsed = (
+    result as {
+      ok: true;
+      value: { version: string; warnings: readonly PdfWarning[] };
+    }
+  ).value;
+  expect(parsed.version as string).toBe("1.7");
+  expect(parsed.warnings).toHaveLength(0);
 });
 
-test("/Version が name でなければヘッダを採用", async () => {
+test("/Version が name でなければヘッダを採用し warnings は空", async () => {
   const entries = makeCatalogEntries({
     type: validCatalogName,
     pages: validPagesRef,
@@ -225,17 +230,27 @@ test("/Version が name でなければヘッダを採用", async () => {
     resolveToDict(entries),
   );
   expect(result.ok).toBe(true);
-  expect(
-    (result as { ok: true; value: { version: string } }).value
-      .version as string,
-  ).toBe("1.7");
+  const parsed = (
+    result as {
+      ok: true;
+      value: { version: string; warnings: readonly PdfWarning[] };
+    }
+  ).value;
+  expect(parsed.version as string).toBe("1.7");
+  expect(parsed.warnings).toHaveLength(0);
 });
 
-test("/Version が major.minor 形式でなければヘッダを採用", async () => {
+test.each([
+  "1.x",
+  "BogusName",
+  "1.2.3",
+  "",
+])("/Version が不正 name '%s' の場合 CATALOG_VERSION_INVALID を warnings に push しヘッダを採用", async (invalidName) => {
+  // pickNewerVersion は PdfVersion.create 失敗時に 1 件 warning を push、ヘッダ版へ fallback
   const entries = makeCatalogEntries({
     type: validCatalogName,
     pages: validPagesRef,
-    version: { type: "name", value: "1.x" },
+    version: { type: "name", value: invalidName },
   });
   const result = await CatalogParser.parse(
     makeTrailerDict(makeRef(1)),
@@ -243,10 +258,37 @@ test("/Version が major.minor 形式でなければヘッダを採用", async (
     resolveToDict(entries),
   );
   expect(result.ok).toBe(true);
-  expect(
-    (result as { ok: true; value: { version: string } }).value
-      .version as string,
-  ).toBe("1.7");
+  const parsed = (
+    result as {
+      ok: true;
+      value: { version: string; warnings: readonly PdfWarning[] };
+    }
+  ).value;
+  expect(parsed.version as string).toBe("1.7");
+  expect(parsed.warnings).toHaveLength(1);
+  expect(parsed.warnings[0]?.code).toBe("CATALOG_VERSION_INVALID");
+});
+
+test("CATALOG_VERSION_INVALID の message に invalid name が含まれる", () => {
+  // 検証補助: message から何が invalid だったか特定できる
+  const invalidName = "BogusName";
+  return CatalogParser.parse(
+    makeTrailerDict(makeRef(1)),
+    pdfVersion("1.7"),
+    resolveToDict(
+      makeCatalogEntries({
+        type: validCatalogName,
+        pages: validPagesRef,
+        version: { type: "name", value: invalidName },
+      }),
+    ),
+  ).then((result) => {
+    expect(result.ok).toBe(true);
+    const parsed = (
+      result as { ok: true; value: { warnings: readonly PdfWarning[] } }
+    ).value;
+    expect(parsed.warnings[0]?.message).toContain(invalidName);
+  });
 });
 
 test("/Version がヘッダと同値ならヘッダを採用", async () => {

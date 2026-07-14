@@ -301,7 +301,7 @@ test("`q` 済み (saved state あり) 状態で `B` を実行しても saved sta
 
   assert(result.ok);
 
-  const restoredAfter = GraphicsStateStack.restore(
+  const { stack: restoredAfter } = GraphicsStateStack.restore(
     result.value.graphicsStateStack,
   );
   const restoredAfterCurrent = GraphicsStateStack.current(restoredAfter);
@@ -311,7 +311,9 @@ test("`q` 済み (saved state あり) 状態で `B` を実行しても saved sta
     PathSegment.moveTo(0, 0),
   ]);
 
-  const restoredInput = GraphicsStateStack.restore(ctx.graphicsStateStack);
+  const { stack: restoredInput } = GraphicsStateStack.restore(
+    ctx.graphicsStateStack,
+  );
   const restoredInputCurrent = GraphicsStateStack.current(restoredInput);
   expect(restoredInputCurrent.lineWidth).toBe(5);
   expect(restoredInputCurrent.ctm).toBe(savedCtm);

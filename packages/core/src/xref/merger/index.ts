@@ -1,12 +1,10 @@
-import { NumberEx } from "../../ext/number/index";
 import type { PdfParseError } from "../../pdf/errors/index";
 import type { ByteOffset } from "../../pdf/types/byte-offset/index";
 import type { TrailerDict, XRefEntry, XRefTable } from "../../pdf/types/index";
 import type { ObjectNumber } from "../../pdf/types/object-number/index";
 import type { Err, Result } from "../../utils/result/index";
 import { err, ok } from "../../utils/result/index";
-
-const DEFAULT_MAX_PREV_CHAIN_DEPTH = 100;
+import { MaxDepth } from "./max-depth/index";
 
 /**
  * /Prevチェーン走査エラーを生成する。
@@ -22,18 +20,6 @@ function failPrevChain(
   offset?: ByteOffset,
 ): Err<PdfParseError> {
   return err({ code, message, offset });
-}
-
-/**
- * maxDepth オプションを検証し、有効な値またはデフォルト値を返す。
- *
- * @param maxDepth - ユーザー指定の最大深さ（未定義または無効値の場合デフォルト適用）
- * @returns 有効な最大深さ
- */
-function resolveMaxDepth(maxDepth: number | undefined): number {
-  return maxDepth !== undefined && NumberEx.isPositiveSafeInteger(maxDepth)
-    ? maxDepth
-    : DEFAULT_MAX_PREV_CHAIN_DEPTH;
 }
 
 /**
@@ -75,8 +61,12 @@ type XRefParseCallback = (
  *
  * @param startOffset - 最初のxrefセクションのバイトオフセット（startxrefの値）
  * @param parseCallback - オフセットからxref+trailerをパースするコールバック
- * @param options - オプション（maxDepth: /Prevチェーンの最大走査深さ、デフォルト100）
- * @returns マージ済みXRefTableと最新TrailerDict、またはPdfParseError
+ * @param options - オプション（maxDepth: /Prevチェーンの最大走査深さ。
+ *   `undefined` は既定値 100 を採用、正の safe integer 以外は
+ *   `XREF_MAX_DEPTH_INVALID` を含む Err）
+ * @returns マージ済みXRefTableと最新TrailerDict、
+ *   maxDepth 不正時は `XREF_MAX_DEPTH_INVALID`、
+ *   その他の失敗時は該当する `PdfParseError`
  */
 export function mergeXRefChain(
   startOffset: ByteOffset,
@@ -86,7 +76,11 @@ export function mergeXRefChain(
   { mergedXRef: XRefTable; latestTrailer: TrailerDict },
   PdfParseError
 > {
-  const maxDepth = resolveMaxDepth(options?.maxDepth);
+  const maxDepthResult = MaxDepth.create(options?.maxDepth);
+  if (!maxDepthResult.ok) {
+    return maxDepthResult;
+  }
+  const maxDepth = maxDepthResult.value;
   const traversedOffsets = new Set<ByteOffset>();
   const chain: Array<{ xref: XRefTable; trailer: TrailerDict }> = [];
 
@@ -102,10 +96,10 @@ export function mergeXRefChain(
       );
     }
 
-    if (depth >= maxDepth) {
+    if (depth >= (maxDepth as number)) {
       return failPrevChain(
         "XREF_PREV_CHAIN_TOO_DEEP",
-        `/Prev chain exceeds maximum depth of ${maxDepth}`,
+        `/Prev chain exceeds maximum depth of ${String(maxDepth as number)}`,
         currentOffset,
       );
     }
