@@ -5,19 +5,28 @@ import type { OperatorHandler } from "../../../operator-registry/index";
 import { OperatorRegistry } from "../../../operator-registry/index";
 import { bdcHandler } from "../bdc/index";
 import { bmcHandler } from "../bmc/index";
+import { dpHandler } from "../dp/index";
 import { emcHandler } from "../emc/index";
+import { mpHandler } from "../mp/index";
 
 export { bdcHandler } from "../bdc/index";
 export { bmcHandler } from "../bmc/index";
+export { dpHandler } from "../dp/index";
 export { emcHandler } from "../emc/index";
+export { mpHandler } from "../mp/index";
 
-// BMC / BDC / EMC を登録。MP / DP は後続 issue で登録する（本 issue では未登録のまま）。
+// BMC / EMC / BDC / MP / DP を登録。
+// 登録順は既存 fail-fast テスト（marked-content-operators.error.test.ts）が
+// ["BMC"] / ["BMC","EMC"] / ["BMC","EMC","BDC"] を pin down しているため、
+// この順序を維持する（末尾追加のみ）。
 const MARKED_CONTENT_OPERATORS: ReadonlyArray<
   readonly [string, OperatorHandler]
 > = [
   ["BMC", bmcHandler],
   ["EMC", emcHandler],
   ["BDC", bdcHandler],
+  ["MP", mpHandler],
+  ["DP", dpHandler],
 ];
 
 /**
