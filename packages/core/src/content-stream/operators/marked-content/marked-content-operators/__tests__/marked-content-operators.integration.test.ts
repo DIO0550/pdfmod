@@ -29,16 +29,16 @@ test("BDC が登録される", () => {
   expect(OperatorRegistry.has(registered.value, "BDC")).toBe(true);
 });
 
-test("MP は登録されない", () => {
+test("MP が登録される", () => {
   const registered = registerMarkedContentOperators(OperatorRegistry.create());
 
   assert(registered.ok);
-  expect(OperatorRegistry.has(registered.value, "MP")).toBe(false);
+  expect(OperatorRegistry.has(registered.value, "MP")).toBe(true);
 });
 
-test("DP は登録されない", () => {
+test("DP が登録される", () => {
   const registered = registerMarkedContentOperators(OperatorRegistry.create());
 
   assert(registered.ok);
-  expect(OperatorRegistry.has(registered.value, "DP")).toBe(false);
+  expect(OperatorRegistry.has(registered.value, "DP")).toBe(true);
 });
