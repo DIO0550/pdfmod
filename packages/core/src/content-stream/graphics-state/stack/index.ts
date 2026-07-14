@@ -26,6 +26,16 @@ export type GraphicsStateStack = Brand<
   typeof GraphicsStateStackBrand
 >;
 
+/**
+ * `GraphicsStateStack.restore` の返却型。
+ * `stack` は復元後の新しいスタック、`warning` は unbalanced restore を
+ * 検出したときに `UNBALANCED_RESTORE` を含む。それ以外は `undefined`。
+ */
+export interface RestoreResult {
+  stack: GraphicsStateStack;
+  warning?: PdfWarning;
+}
+
 export const GraphicsStateStack = {
   /**
    * デフォルトグラフィックスステートを current に持つスタックを生成する。
@@ -81,37 +91,35 @@ export const GraphicsStateStack = {
 
   /**
    * 直近に保存したグラフィックスステートを復元する。
-   * 保存状態がない場合は no-op で新しい stack（current 維持、saved:[]）を返す。
-   * `warnings` を渡した場合、unbalanced restore 検出時に `UNBALANCED_RESTORE`
-   * を push する。省略時は従来通り無警告 no-op（後方互換）。
+   * 保存状態がない場合は no-op で新しい stack（current 維持、saved:[]）を返し、
+   * `warning: UNBALANCED_RESTORE` を含む結果を返す。呼び出し元は `warning`
+   * 未使用時はそのまま無視できる。
    *
    * @param stack - 復元元スタック
-   * @param warnings - unbalanced 時に警告を push する buffer（省略時は無警告）
-   * @returns 復元後の新しい `GraphicsStateStack`
+   * @returns 復元後の `GraphicsStateStack` と、unbalanced 検出時の警告（あれば）
    */
-  restore(
-    stack: GraphicsStateStack,
-    warnings?: PdfWarning[],
-  ): GraphicsStateStack {
+  restore(stack: GraphicsStateStack): RestoreResult {
     const lastIndex = stack.saved.length - 1;
     if (lastIndex < 0) {
-      if (warnings !== undefined) {
-        warnings.push({
+      return {
+        stack: {
+          current: stack.current,
+          saved: [],
+        } as unknown as GraphicsStateStack,
+        warning: {
           code: "UNBALANCED_RESTORE",
           message:
             "Q operator called with empty graphics state stack (no matching q)",
-        });
-      }
-      return {
-        current: stack.current,
-        saved: [],
-      } as unknown as GraphicsStateStack;
+        },
+      };
     }
 
     const state = stack.saved[lastIndex] as GraphicsState;
     return {
-      current: state,
-      saved: stack.saved.slice(0, lastIndex),
-    } as unknown as GraphicsStateStack;
+      stack: {
+        current: state,
+        saved: stack.saved.slice(0, lastIndex),
+      } as unknown as GraphicsStateStack,
+    };
   },
 } as const;

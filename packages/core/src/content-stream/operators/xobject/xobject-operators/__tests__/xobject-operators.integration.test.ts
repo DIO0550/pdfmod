@@ -27,7 +27,8 @@ const qHandler: OperatorHandler = (context) =>
 const qRestoreHandler: OperatorHandler = (context) =>
   ok({
     ...context,
-    graphicsStateStack: GraphicsStateStack.restore(context.graphicsStateStack),
+    graphicsStateStack: GraphicsStateStack.restore(context.graphicsStateStack)
+      .stack,
   });
 
 // XObject + text-state + graphics-state (cm/w/J/j/M) + inline q/Q を併用登録した registry を作るヘルパ。

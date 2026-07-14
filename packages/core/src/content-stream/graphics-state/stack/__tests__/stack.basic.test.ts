@@ -1,5 +1,4 @@
 import { expect, test } from "vitest";
-import type { PdfWarning } from "../../../../pdf/errors/warning/index";
 import { GraphicsState, LineCap } from "../../index";
 import { GraphicsStateStack } from "../../stack";
 
@@ -20,12 +19,13 @@ test("save後restoreは保存時のcurrentへ戻す", () => {
     }),
   );
 
-  const restored = GraphicsStateStack.restore(changed);
+  const { stack: restored, warning } = GraphicsStateStack.restore(changed);
 
   expect(saved).not.toBe(stack);
   expect(changed).not.toBe(saved);
   expect(restored).not.toBe(changed);
   expect(GraphicsStateStack.current(restored)).toEqual(GraphicsState.create());
+  expect(warning).toBeUndefined();
 });
 
 test("restoreはLIFO順に保存状態へ戻す", () => {
@@ -43,21 +43,23 @@ test("restoreはLIFO順に保存状態へ戻す", () => {
     secondSaved,
     GraphicsState.update(second, { lineWidth: 8.0 }),
   );
-  const firstRestore = GraphicsStateStack.restore(changed);
-  const secondRestore = GraphicsStateStack.restore(firstRestore);
+  const { stack: firstRestore } = GraphicsStateStack.restore(changed);
+  const { stack: secondRestore } = GraphicsStateStack.restore(firstRestore);
 
   expect(GraphicsStateStack.current(firstRestore)).toEqual(second);
   expect(GraphicsStateStack.current(secondRestore)).toEqual(first);
 });
 
-test("空スタックのrestoreはcurrentを変更しない", () => {
+test("空スタックの restore は current 不変で UNBALANCED_RESTORE warning を返す", () => {
+  // unbalanced Q operator の検出: 戻り値 warning に警告が乗る
   const stack = GraphicsStateStack.create();
   const current = GraphicsStateStack.current(stack);
 
-  const restored = GraphicsStateStack.restore(stack);
+  const { stack: restored, warning } = GraphicsStateStack.restore(stack);
 
   expect(restored).not.toBe(stack);
   expect(GraphicsStateStack.current(restored)).toBe(current);
+  expect(warning?.code).toBe("UNBALANCED_RESTORE");
 });
 
 test("replaceCurrentは元stackを変更しない", () => {
@@ -73,52 +75,25 @@ test("replaceCurrentは元stackを変更しない", () => {
   expect(GraphicsStateStack.current(updated)).toEqual(next);
 });
 
-test("空スタック restore で warnings 引数を渡すと UNBALANCED_RESTORE が push される", () => {
-  // unbalanced Q operator の検出: warnings buffer に警告が積まれる
-  const stack = GraphicsStateStack.create();
-  const current = GraphicsStateStack.current(stack);
-  const warnings: PdfWarning[] = [];
-
-  const restored = GraphicsStateStack.restore(stack, warnings);
-
-  expect(warnings).toHaveLength(1);
-  expect(warnings[0]?.code).toBe("UNBALANCED_RESTORE");
-  // 返り値の shape は現状維持: 新しい stack で current 不変・saved 空
-  expect(restored).not.toBe(stack);
-  expect(GraphicsStateStack.current(restored)).toBe(current);
-});
-
-test("空スタック restore で warnings 引数省略時は警告なし（後方互換）", () => {
-  // warnings 未指定の既存呼び出しは変更なし・警告なしで no-op
-  const stack = GraphicsStateStack.create();
-  const current = GraphicsStateStack.current(stack);
-
-  const restored = GraphicsStateStack.restore(stack);
-
-  expect(restored).not.toBe(stack);
-  expect(GraphicsStateStack.current(restored)).toBe(current);
-});
-
-test("warnings 引数付きで saved が非空時に警告は push されない", () => {
+test("saved が非空の restore は warning: undefined を返す", () => {
   // 正常な q/Q 対応時は warning 発行なし
   const stack = GraphicsStateStack.create();
   const saved = GraphicsStateStack.save(stack);
-  const warnings: PdfWarning[] = [];
 
-  GraphicsStateStack.restore(saved, warnings);
+  const { warning } = GraphicsStateStack.restore(saved);
 
-  expect(warnings).toHaveLength(0);
+  expect(warning).toBeUndefined();
 });
 
-test("連続 unbalanced restore で警告が複数 push される", () => {
-  // 呼び出しごとに 1 件ずつ積まれる（3 回で 3 件）
+test("連続 unbalanced restore はそれぞれ独立に warning を返す", () => {
+  // 呼び出しごとに個別 warning が返る（3 回で 3 件）
   const stack = GraphicsStateStack.create();
-  const warnings: PdfWarning[] = [];
 
-  const r1 = GraphicsStateStack.restore(stack, warnings);
-  const r2 = GraphicsStateStack.restore(r1, warnings);
-  GraphicsStateStack.restore(r2, warnings);
+  const r1 = GraphicsStateStack.restore(stack);
+  const r2 = GraphicsStateStack.restore(r1.stack);
+  const r3 = GraphicsStateStack.restore(r2.stack);
 
-  expect(warnings).toHaveLength(3);
-  expect(warnings.every((w) => w.code === "UNBALANCED_RESTORE")).toBe(true);
+  expect(r1.warning?.code).toBe("UNBALANCED_RESTORE");
+  expect(r2.warning?.code).toBe("UNBALANCED_RESTORE");
+  expect(r3.warning?.code).toBe("UNBALANCED_RESTORE");
 });

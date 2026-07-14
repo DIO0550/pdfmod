@@ -110,46 +110,58 @@ const extractPagesRef = (
 };
 
 /**
+ * `pickNewerVersion` の返却型。
+ * 採用バージョンと、発行された警告（あれば）を含む。
+ */
+interface PickNewerVersionResult {
+  version: PdfVersion;
+  warnings: readonly PdfWarning[];
+}
+
+/**
  * カタログ辞書の `/Version` とヘッダバージョンを比較し、採用するバージョンを決める。
  * `/Version` が name で存在するが `PdfVersion.create` に失敗した場合、
- * `CATALOG_VERSION_INVALID` 警告を warnings buffer に push してヘッダ版へフォールバックする。
+ * `CATALOG_VERSION_INVALID` 警告を含めてヘッダ版へフォールバックする。
  * `/Version` 不在または `type !== "name"` の場合は警告を発行しない。
  *
  * @param entries - カタログ辞書のエントリ
  * @param headerVersion - PDF ヘッダ由来のバージョン
- * @param warnings - 警告を push する buffer（呼び出し元で mutable 配列を渡す）
- * @returns ヘッダ / カタログのうち大きい方（不正・同値時はヘッダ）
+ * @returns 採用バージョンと警告配列。不正な `/Version` name の場合のみ
+ *   `warnings` に `CATALOG_VERSION_INVALID` を含む
  */
 const pickNewerVersion = (
   entries: Map<string, PdfValue>,
   headerVersion: PdfVersion,
-  warnings: PdfWarning[],
-): PdfVersion => {
+): PickNewerVersionResult => {
   const versionEntry = entries.get("Version");
 
   if (versionEntry === undefined || versionEntry.type !== "name") {
-    return headerVersion;
+    return { version: headerVersion, warnings: [] };
   }
 
   const catalogVersionResult = PdfVersion.create(versionEntry.value);
 
   if (!catalogVersionResult.ok) {
-    warnings.push({
-      code: "CATALOG_VERSION_INVALID",
-      message:
-        `Catalog /Version '${versionEntry.value}' is not a valid PDF version ` +
-        `(${catalogVersionResult.error}); using header version`,
-    });
-    return headerVersion;
+    return {
+      version: headerVersion,
+      warnings: [
+        {
+          code: "CATALOG_VERSION_INVALID",
+          message:
+            `Catalog /Version '${versionEntry.value}' is not a valid PDF version ` +
+            `(${catalogVersionResult.error}); using header version`,
+        },
+      ],
+    };
   }
 
   const catalogVersion = catalogVersionResult.value;
 
   if (PdfVersion.compare(catalogVersion, headerVersion) > 0) {
-    return catalogVersion;
+    return { version: catalogVersion, warnings: [] };
   }
 
-  return headerVersion;
+  return { version: headerVersion, warnings: [] };
 };
 
 /**
@@ -197,8 +209,10 @@ export const CatalogParser = {
       return pagesRefResult;
     }
 
-    const warnings: PdfWarning[] = [];
-    const version = pickNewerVersion(catalog.entries, headerVersion, warnings);
+    const { version, warnings } = pickNewerVersion(
+      catalog.entries,
+      headerVersion,
+    );
 
     return ok({
       catalog,
