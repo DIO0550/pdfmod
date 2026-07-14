@@ -136,6 +136,71 @@ test("`/A <<>> BDC /B BMC EMC EMC` で BDC → BMC → EMC → EMC が LIFO で�
   ).toBe(0);
 });
 
+test("`/Tag MP` が ok で完走し warnings 空・末尾 depth 0", () => {
+  const result = ContentStreamInterpreter.execute({
+    data: encode("/Tag MP"),
+    registry: buildRegistry(),
+  });
+
+  assert(result.ok);
+  expect(result.value.warnings).toHaveLength(0);
+  expect(
+    MarkedContentStack.depth(result.value.context.markedContentStack),
+  ).toBe(0);
+});
+
+test("`/Tag /PropName DP` が ok で完走し warnings 空・末尾 depth 0（name properties）", () => {
+  const result = ContentStreamInterpreter.execute({
+    data: encode("/Tag /PropName DP"),
+    registry: buildRegistry(),
+  });
+
+  assert(result.ok);
+  expect(result.value.warnings).toHaveLength(0);
+  expect(
+    MarkedContentStack.depth(result.value.context.markedContentStack),
+  ).toBe(0);
+});
+
+test("`/Tag <</K (v)>> DP` が ok で完走し warnings 空・末尾 depth 0（dict properties）", () => {
+  const result = ContentStreamInterpreter.execute({
+    data: encode("/Tag <</K (v)>> DP"),
+    registry: buildRegistry(),
+  });
+
+  assert(result.ok);
+  expect(result.value.warnings).toHaveLength(0);
+  expect(
+    MarkedContentStack.depth(result.value.context.markedContentStack),
+  ).toBe(0);
+});
+
+test("`/Span BMC /Point MP EMC` で MP を挟んでも depth 不変・末尾 0（MP は push しない）", () => {
+  const result = ContentStreamInterpreter.execute({
+    data: encode("/Span BMC /Point MP EMC"),
+    registry: buildRegistry(),
+  });
+
+  assert(result.ok);
+  expect(result.value.warnings).toHaveLength(0);
+  expect(
+    MarkedContentStack.depth(result.value.context.markedContentStack),
+  ).toBe(0);
+});
+
+test("`/Span BMC /Point <<>> DP EMC` で DP を挟んでも depth 不変・末尾 0（DP は push しない）", () => {
+  const result = ContentStreamInterpreter.execute({
+    data: encode("/Span BMC /Point <<>> DP EMC"),
+    registry: buildRegistry(),
+  });
+
+  assert(result.ok);
+  expect(result.value.warnings).toHaveLength(0);
+  expect(
+    MarkedContentStack.depth(result.value.context.markedContentStack),
+  ).toBe(0);
+});
+
 test('`data: ""` + 非空 initialContext（depth=1, tag /Span）で OBJECT_PARSE_UNTERMINATED', () => {
   const seededEntry: MarkedContentEntry = {
     tag: { type: "name", value: "Span" },
