@@ -40,7 +40,7 @@ export const MaxDepth = {
    */
   create(n: number | undefined): Result<MaxDepth, PdfParseError> {
     if (n === undefined) {
-      return ok(DEFAULT_MAX_PREV_CHAIN_DEPTH as MaxDepth);
+      return ok(MaxDepth.DEFAULT);
     }
     if (!NumberEx.isPositiveSafeInteger(n)) {
       return err({
