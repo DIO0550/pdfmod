@@ -5,7 +5,7 @@
 use crate::object::name::PdfName;
 
 use super::byte_kind::ByteKind;
-use super::hex_value;
+use super::byte_ops::hex_value;
 use super::Lexer;
 
 impl<'a> Lexer<'a> {

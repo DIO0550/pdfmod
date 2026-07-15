@@ -6,8 +6,7 @@
 //! `super::byte_ops::combine_pair` に切り出しており、本モジュールはトークン化の責務に集中する。
 
 use super::byte_kind::ByteKind;
-use super::byte_ops::combine_pair;
-use super::hex_value;
+use super::byte_ops::{combine_pair, hex_value};
 use super::Lexer;
 
 impl<'a> Lexer<'a> {
