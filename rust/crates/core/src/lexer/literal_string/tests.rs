@@ -1,6 +1,7 @@
 mod basic;
 mod byte_preservation;
 mod decode_escape;
+mod decode_literal_string;
 mod decode_octal;
 mod eol_normalize;
 mod error;
