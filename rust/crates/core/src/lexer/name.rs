@@ -5,7 +5,7 @@
 use crate::object::name::PdfName;
 
 use super::byte_kind::ByteKind;
-use super::hex_value;
+use super::byte_ops::hex_value;
 use super::Lexer;
 
 impl<'a> Lexer<'a> {
@@ -66,11 +66,12 @@ impl<'a> Lexer<'a> {
                 self.pos = start;
                 return None;
             };
-            if !high_bits.is_ascii_hexdigit() || !low_bits.is_ascii_hexdigit() {
+            let (Some(high_nibble), Some(low_nibble)) = (hex_value(high_bits), hex_value(low_bits))
+            else {
                 self.pos = start;
                 return None;
-            }
-            let decoded = hex_value(high_bits) * 16 + hex_value(low_bits);
+            };
+            let decoded = high_nibble * 16 + low_nibble;
             bytes.push(decoded);
             let Some(next) = self.pos.checked_add(3) else {
                 self.pos = start;
