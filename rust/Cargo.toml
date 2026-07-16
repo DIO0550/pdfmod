@@ -4,3 +4,12 @@ members = ["crates/core"]
 
 # pdfmod の Rust 実装。外部 crate には一切依存しない（std のみ）方針。
 # 依存を追加しないこと自体が設計制約のため、[workspace.dependencies] は空のままにする。
+
+# const fn は const 文脈（定数定義・配列長など）で実際に必要になった時点で個別に付与する。
+# 予防的な一括 const 化はしない方針のため、この lint は明示的に allow する。
+# 将来 lint グループ（例: nursery / pedantic）を有効化する場合は、グループ側に
+# priority = -1 を指定し、この個別 allow が優先される状態を維持すること。
+# 新規メンバー crate を追加する際は、その crate の Cargo.toml に
+# [lints] workspace = true を指定すること（指定しないとこの設定が適用されない）。
+[workspace.lints.clippy]
+missing_const_for_fn = "allow"
