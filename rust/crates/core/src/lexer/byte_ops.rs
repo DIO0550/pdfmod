@@ -7,15 +7,14 @@
 /// 16 進数字 1 バイト（`'0'-'9'` / `'a'-'f'` / `'A'-'F'`）を 0-15 のニブル値に変換する純関数。
 ///
 /// # 契約
-/// - 呼び出し側で `is_ascii_hexdigit` を確認済みであることを前提とする。
-/// - 前提を満たす入力に対して panic しない（lexer 層の panic 不在契約に影響しない）。
-/// - 契約違反の入力（非 16 進数字）では結果は未定義相当であり、
-///   debug ビルドでは減算 overflow により panic しうる。
-pub(super) fn hex_value(b: u8) -> u8 {
+/// - 16 進数字なら `Some(0-15)`、それ以外のバイトでは `None` を返す全域関数。
+/// - 任意の入力に対して panic しない（lexer 層の panic 不在契約）。
+pub(super) fn hex_value(b: u8) -> Option<u8> {
     match b {
-        b'0'..=b'9' => b - b'0',
-        b'a'..=b'f' => b - b'a' + 10,
-        _ => b - b'A' + 10,
+        b'0'..=b'9' => Some(b - b'0'),
+        b'a'..=b'f' => Some(b - b'a' + 10),
+        b'A'..=b'F' => Some(b - b'A' + 10),
+        _ => None,
     }
 }
 
@@ -38,6 +37,71 @@ pub(super) fn combine_pair(high_nibble: u8, low_nibble: u8) -> u8 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn hex_value_converts_hex_digit_bytes_to_nibble_values() {
+        // '0'-'9' / 'a'-'f' / 'A'-'F' の全 22 バイトが Some(0-15) の期待値に変換されることを確認する
+        let cases: [(u8, u8); 22] = [
+            (b'0', 0x0),
+            (b'1', 0x1),
+            (b'2', 0x2),
+            (b'3', 0x3),
+            (b'4', 0x4),
+            (b'5', 0x5),
+            (b'6', 0x6),
+            (b'7', 0x7),
+            (b'8', 0x8),
+            (b'9', 0x9),
+            (b'a', 0xA),
+            (b'b', 0xB),
+            (b'c', 0xC),
+            (b'd', 0xD),
+            (b'e', 0xE),
+            (b'f', 0xF),
+            (b'A', 0xA),
+            (b'B', 0xB),
+            (b'C', 0xC),
+            (b'D', 0xD),
+            (b'E', 0xE),
+            (b'F', 0xF),
+        ];
+        for (byte, expected) in cases {
+            assert_eq!(
+                hex_value(byte),
+                Some(expected),
+                "hex_value(0x{byte:02X}) should be Some(0x{expected:X})"
+            );
+        }
+    }
+
+    #[test]
+    fn hex_value_agrees_with_is_ascii_hexdigit_for_all_256_bytes() {
+        // 全 256 バイトを総当たりし、Some を返すのが is_ascii_hexdigit な 22 バイトのみで、
+        // その値がすべて 0-15 に収まることを確認する（全域関数・panic 不在の回帰テスト）
+        let mut some_count = 0;
+        for byte in 0x00..=0xFFu8 {
+            match hex_value(byte) {
+                Some(nibble) => {
+                    assert!(
+                        byte.is_ascii_hexdigit(),
+                        "hex_value(0x{byte:02X}) is Some but not an ASCII hex digit"
+                    );
+                    assert!(
+                        nibble <= 0xF,
+                        "hex_value(0x{byte:02X}) nibble 0x{nibble:X} should be 0-15"
+                    );
+                    some_count += 1;
+                }
+                None => {
+                    assert!(
+                        !byte.is_ascii_hexdigit(),
+                        "hex_value(0x{byte:02X}) is None but is an ASCII hex digit"
+                    );
+                }
+            }
+        }
+        assert_eq!(some_count, 22, "hex digits should be exactly 22 bytes");
+    }
 
     #[test]
     fn combine_pair_combines_high_and_low_nibbles_into_byte() {

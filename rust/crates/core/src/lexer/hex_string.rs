@@ -87,8 +87,7 @@ impl<'a> Lexer<'a> {
             }
 
             // 16 進数字 — high/low の状態でペア合成
-            if b.is_ascii_hexdigit() {
-                let nibble = hex_value(b);
+            if let Some(nibble) = hex_value(b) {
                 match high {
                     None => high = Some(nibble),
                     Some(h) => {
