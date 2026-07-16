@@ -6,8 +6,7 @@
 //! `super::byte_ops::combine_pair` に切り出しており、本モジュールはトークン化の責務に集中する。
 
 use super::byte_kind::ByteKind;
-use super::byte_ops::combine_pair;
-use super::hex_value;
+use super::byte_ops::{combine_pair, hex_value};
 use super::Lexer;
 
 impl<'a> Lexer<'a> {
@@ -88,8 +87,7 @@ impl<'a> Lexer<'a> {
             }
 
             // 16 進数字 — high/low の状態でペア合成
-            if b.is_ascii_hexdigit() {
-                let nibble = hex_value(b);
+            if let Some(nibble) = hex_value(b) {
                 match high {
                     None => high = Some(nibble),
                     Some(h) => {
