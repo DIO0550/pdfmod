@@ -8,3 +8,7 @@ repository = "https://github.com/DIO0550/pdfmod"
 
 # 外部依存ゼロが本クレートの設計制約。ここには何も追加しないこと。
 [dependencies]
+
+# lint 設定は workspace（rust/Cargo.toml の [workspace.lints]）で一元管理する。
+[lints]
+workspace = true
