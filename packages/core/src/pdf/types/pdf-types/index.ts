@@ -183,7 +183,7 @@ export type PdfValue =
 
 /**
  * PDF object 全体型 (ISO 32000 7.3)。
- * PDF 仕様の "PDF object" 概念に対応。9つの基本型 + 間接参照 + stream をすべて含む。
+ * PDF 仕様の "PDF object" 概念に対応。`PdfValue`（間接参照を含む9種）+ stream の10バリアントをすべて含む。
  * `parseIndirectObject` の body（間接オブジェクトの中身）として使われる。
  */
 export type PdfObject = PdfValue | PdfStream;
