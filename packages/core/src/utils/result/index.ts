@@ -167,5 +167,3 @@ export const flatMap = <T, U, E>(
  */
 export const unwrapOr = <T, E>(result: Result<T, E>, defaultValue: T): T =>
   result.ok ? result.value : defaultValue;
-
-export { toOption } from "./to-option/index";
