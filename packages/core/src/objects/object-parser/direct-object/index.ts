@@ -15,6 +15,7 @@ import { err, ok } from "../../../utils/result/index";
 import type { BufferedTokenizer } from "../buffered-tokenizer/index";
 import { decodeHexString, decodeLiteralString } from "../string-decoder/index";
 
+// PDF仕様上の明示的な上限はなく、再帰的な配列/辞書ネストによるスタックオーバーフロー防止のための防御的な上限値。
 const MAX_NESTING_DEPTH = 100;
 
 /**

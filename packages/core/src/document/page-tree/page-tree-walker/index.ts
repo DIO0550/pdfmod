@@ -23,6 +23,7 @@ export interface WalkPageTreeResult {
   warnings: PdfWarning[];
 }
 
+// PDF仕様上の明示的な上限はなく、ページツリーの循環参照検出のための防御的な上限値。
 const MAX_TREE_DEPTH = 50;
 
 const DISPATCH_PAGES = "Pages";
