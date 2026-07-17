@@ -8,7 +8,8 @@
 //! - **外部 crate 依存ゼロ**。Rust 標準ライブラリ (`std`) のみを使う。
 //! - **`Result` / `Option` は std のものをそのまま使う**（自作しない）。
 //!
-//! 各モジュールの実装は後続 PR で追加する。
+//! byte_offset / error / lexer / object / parser の各モジュールは実装済み。
+//! xref / trailer など、PDF ファイル構造を扱う後続モジュールは今後の PR で追加する。
 
 pub mod byte_offset;
 pub mod error;
