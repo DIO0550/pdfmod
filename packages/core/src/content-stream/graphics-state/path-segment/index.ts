@@ -1,5 +1,5 @@
 /**
- * PDF spec §4.1 path construction operator が生成する 1 segment。
+ * ISO 32000-1:2008 §8.5.2 path construction operator が生成する 1 segment。
  * discriminated union + companion object (factory + is*).
  */
 export type MoveToSegment = {

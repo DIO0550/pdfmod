@@ -61,7 +61,7 @@ export const Color = {
     return { kind: "cmyk", c, m, y, k };
   },
   /**
-   * PDF §4.1 のデフォルトカラー (黒)。
+   * docs/specs/04_resources_graphics_state.md §4.1 のデフォルトカラー (黒)。
    *
    * @returns GrayColor { kind: "gray", g: 0 }
    */
