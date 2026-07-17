@@ -18,14 +18,25 @@ import {
 import { ContentStreamTokenizer } from "../tokenizer/index";
 import { readArrayOperand, readDictOperand } from "./composite-operand/index";
 
+/**
+ * `ContentStreamInterpreter.execute` の入力パラメータ。
+ */
 export type ContentStreamInterpreterExecuteOptions = {
+  /** 実行対象の content stream バイト列 */
   readonly data: Uint8Array;
+  /** operator handler の登録簿 */
   readonly registry: OperatorRegistry;
+  /** 呼び出し側が指定する任意の初期 context（省略時は新規生成される） */
   readonly initialContext?: OperatorHandlerContext;
 };
 
+/**
+ * `ContentStreamInterpreter.execute` の実行結果。
+ */
 export type ContentStreamInterpreterResult = {
+  /** 実行完了時点の最終 context */
   readonly context: OperatorHandlerContext;
+  /** 実行中に収集された warning の一覧 */
   readonly warnings: readonly PdfWarning[];
 };
 
@@ -37,6 +48,10 @@ type InterpreterStep =
   | { readonly type: "continue"; readonly context: OperatorHandlerContext }
   | { readonly type: "done"; readonly result: InterpreterDoneResult };
 
+/**
+ * Content stream (RPN 命令列) を解釈実行するインタプリタ。
+ * Operator dispatch・inline image・複合オペランド (array/dict) の読み取りを統括する。
+ */
 export const ContentStreamInterpreter = {
   /**
    * Content stream の token 列をRPNとしてEOFまで逐次実行する。
