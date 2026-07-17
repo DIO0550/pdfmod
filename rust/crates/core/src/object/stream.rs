@@ -68,9 +68,9 @@ mod tests {
     use crate::object::name::PdfName;
     use crate::object::pdf_object::PdfObject;
 
-    /// 値入り辞書 + `b"stream data"` で構築し `dictionary()` / `data()` で入力と同内容が返る（ラウンドトリップ・無損失）。
     #[test]
     fn new_then_accessors_roundtrip() {
+        // 値入り辞書 + `b"stream data"` で構築し `dictionary()` / `data()` で入力と同内容が返る（ラウンドトリップ・無損失）。
         let mut dict = PdfDictionary::new();
         dict.insert(PdfName::from("Length"), PdfObject::Integer(11));
         let stream = PdfStream::new(dict.clone(), b"stream data");
@@ -78,9 +78,9 @@ mod tests {
         assert_eq!(stream.data(), b"stream data");
     }
 
-    /// `b"..."`（`&[u8; N]`）・`Vec<u8>`・`&[u8]` の 3 形いずれも受理され `data()` が同一バイト列を返す（`impl Into<Vec<u8>>` の動作確認）。
     #[test]
     fn new_accepts_into_vec_u8_variants() {
+        // `b"..."`（`&[u8; N]`）・`Vec<u8>`・`&[u8]` の 3 形いずれも受理され `data()` が同一バイト列を返す（`impl Into<Vec<u8>>` の動作確認）。
         let from_array_ref = PdfStream::new(PdfDictionary::new(), b"abc");
         let from_vec = PdfStream::new(PdfDictionary::new(), b"abc".to_vec());
         let from_slice = PdfStream::new(PdfDictionary::new(), b"abc".as_slice());
@@ -89,9 +89,9 @@ mod tests {
         assert_eq!(from_slice.data(), b"abc");
     }
 
-    /// `/Length` キーを入れた辞書で構築し `dictionary().get(&key)` で挿入した値に到達できる（後段借用経路）。
     #[test]
     fn dictionary_accessor_reaches_entries() {
+        // `/Length` キーを入れた辞書で構築し `dictionary().get(&key)` で挿入した値に到達できる（後段借用経路）。
         let mut dict = PdfDictionary::new();
         dict.insert(PdfName::from("Length"), PdfObject::Integer(3));
         let stream = PdfStream::new(dict, b"xyz");
@@ -101,41 +101,41 @@ mod tests {
         );
     }
 
-    /// 空バイト列 `b""` を無検証で受理し `data()` が空スライスを返す。
     #[test]
     fn accepts_empty_data() {
+        // 空バイト列 `b""` を無検証で受理し `data()` が空スライスを返す。
         let mut dict = PdfDictionary::new();
         dict.insert(PdfName::from("Length"), PdfObject::Integer(0));
         let stream = PdfStream::new(dict, b"");
         assert_eq!(stream.data(), b"");
     }
 
-    /// 空辞書 `PdfDictionary::new()` を無検証で受理し `dictionary().is_empty()` が真になる。
     #[test]
     fn accepts_empty_dictionary() {
+        // 空辞書 `PdfDictionary::new()` を無検証で受理し `dictionary().is_empty()` が真になる。
         let stream = PdfStream::new(PdfDictionary::new(), b"data");
         assert!(stream.dictionary().is_empty());
         assert_eq!(stream.data(), b"data");
     }
 
-    /// 空辞書 + 空バイト列の両方空でも無検証で受理され両アクセサが空を返す。
     #[test]
     fn accepts_empty_dictionary_and_empty_data() {
+        // 空辞書 + 空バイト列の両方空でも無検証で受理され両アクセサが空を返す。
         let stream = PdfStream::new(PdfDictionary::new(), b"");
         assert!(stream.dictionary().is_empty());
         assert_eq!(stream.data(), b"");
     }
 
-    /// `vec![0x00, 0x80, 0xFF]`（NUL/非UTF-8/高位バイト）がテキスト解釈されず生バイトのまま忠実に保持される（無検証保持）。
     #[test]
     fn data_preserves_nul_non_utf8_and_high_bytes() {
+        // `vec![0x00, 0x80, 0xFF]`（NUL/非UTF-8/高位バイト）がテキスト解釈されず生バイトのまま忠実に保持される（無検証保持）。
         let stream = PdfStream::new(PdfDictionary::new(), vec![0x00, 0x80, 0xFF]);
         assert_eq!(stream.data(), [0x00, 0x80, 0xFF].as_slice());
     }
 
-    /// `into_parts()` で `(PdfDictionary, Vec<u8>)` に分解でき、分解結果が構築時の入力と同内容になる（所有権ムーブ）。
     #[test]
     fn into_parts_decomposes_ownership() {
+        // `into_parts()` で `(PdfDictionary, Vec<u8>)` に分解でき、分解結果が構築時の入力と同内容になる（所有権ムーブ）。
         let mut dict = PdfDictionary::new();
         dict.insert(PdfName::from("Length"), PdfObject::Integer(4));
         let stream = PdfStream::new(dict.clone(), b"body");
@@ -144,18 +144,18 @@ mod tests {
         assert_eq!(decomposed_data, b"body".to_vec());
     }
 
-    /// 空辞書 + 空データのストリームを `into_parts()` すると空辞書と空 `Vec` が返る。
     #[test]
     fn into_parts_on_empty_stream() {
+        // 空辞書 + 空データのストリームを `into_parts()` すると空辞書と空 `Vec` が返る。
         let stream = PdfStream::new(PdfDictionary::new(), b"");
         let (decomposed_dict, decomposed_data) = stream.into_parts();
         assert!(decomposed_dict.is_empty());
         assert!(decomposed_data.is_empty());
     }
 
-    /// `clone()` の複製が元と `==` 等価かつ元も引き続き使用可能（深いコピー・独立性）。
     #[test]
     fn clone_preserves_content_and_keeps_original_usable() {
+        // `clone()` の複製が元と `==` 等価かつ元も引き続き使用可能（深いコピー・独立性）。
         let mut dict = PdfDictionary::new();
         dict.insert(PdfName::from("Length"), PdfObject::Integer(4));
         let original = PdfStream::new(dict, b"body");
@@ -164,9 +164,9 @@ mod tests {
         assert_eq!(original.data(), b"body");
     }
 
-    /// 同内容（同辞書 + 同データ）の 2 値は `==` で等価（`PartialEq` が両フィールドに委譲）。
     #[test]
     fn same_content_streams_are_equal() {
+        // 同内容（同辞書 + 同データ）の 2 値は `==` で等価（`PartialEq` が両フィールドに委譲）。
         let mut dict_a = PdfDictionary::new();
         dict_a.insert(PdfName::from("Length"), PdfObject::Integer(4));
         let mut dict_b = PdfDictionary::new();
@@ -177,18 +177,18 @@ mod tests {
         );
     }
 
-    /// dictionary は同一で data のみ異なる 2 値は `!=` 非等価（data 軸の差異が反映される）。
     #[test]
     fn not_equal_when_data_differs() {
+        // dictionary は同一で data のみ異なる 2 値は `!=` 非等価（data 軸の差異が反映される）。
         assert_ne!(
             PdfStream::new(PdfDictionary::new(), b"abc"),
             PdfStream::new(PdfDictionary::new(), b"abd")
         );
     }
 
-    /// data は同一で dictionary のみ異なる 2 値は `!=` 非等価（dictionary 軸の差異が反映される）。
     #[test]
     fn not_equal_when_dictionary_differs() {
+        // data は同一で dictionary のみ異なる 2 値は `!=` 非等価（dictionary 軸の差異が反映される）。
         let mut dict = PdfDictionary::new();
         dict.insert(PdfName::from("Length"), PdfObject::Integer(3));
         assert_ne!(
@@ -197,9 +197,9 @@ mod tests {
         );
     }
 
-    /// 辞書値に `Real(NaN)` を含む同内容ストリーム同士は `!=` 非等価（`NaN != NaN` の再帰伝播。`Eq` 非実装の根拠）。
     #[test]
     fn nan_in_dictionary_propagates_to_inequality() {
+        // 辞書値に `Real(NaN)` を含む同内容ストリーム同士は `!=` 非等価（`NaN != NaN` の再帰伝播。`Eq` 非実装の根拠）。
         let mut dict_a = PdfDictionary::new();
         dict_a.insert(PdfName::from("N"), PdfObject::Real(f64::NAN));
         let mut dict_b = PdfDictionary::new();
@@ -210,9 +210,9 @@ mod tests {
         );
     }
 
-    /// `Debug` 出力に型名 `PdfStream` を含む。
     #[test]
     fn debug_format_contains_type_name() {
+        // `Debug` 出力に型名 `PdfStream` を含む。
         let stream = PdfStream::new(PdfDictionary::new(), b"data");
         assert!(format!("{:?}", stream).contains("PdfStream"));
     }
