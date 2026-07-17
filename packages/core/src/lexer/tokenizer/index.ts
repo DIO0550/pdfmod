@@ -13,7 +13,7 @@ import {
 const isWhitespace = isPdfWhitespace;
 const isDelimiter = isPdfDelimiter;
 
-// --- ASCII code point constants ---
+// --- ASCII コードポイント定数 ---
 const AsciiDigit0 = 48; // '0'
 const AsciiDigit7 = 55; // '7'
 const AsciiDigit9 = 57; // '9'
@@ -35,7 +35,7 @@ const AsciiLowerT = 116; // 't'
 const AsciiLowerB = 98; // 'b'
 const AsciiLowerF = 102; // 'f'
 
-// --- Numeric constants ---
+// --- 数値定数 ---
 const EofByte = -1;
 const DecimalRadix = 10;
 const OctalRadix = 8;
