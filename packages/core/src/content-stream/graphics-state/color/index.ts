@@ -1,15 +1,16 @@
 import { ColorSpace } from "../color-space";
 
 /**
- * PDF spec §8.6 のデバイス色値。
- * DeviceGray / DeviceRGB / DeviceCMYK を discriminated union で表現する。
- * 値域 (0.0〜1.0) の検証はここでは行わない (Issue #208 仕様)。
+ * DeviceGray の色値。
  */
 export type GrayColor = {
   readonly kind: "gray";
   readonly g: number;
 };
 
+/**
+ * DeviceRGB の色値。
+ */
 export type RgbColor = {
   readonly kind: "rgb";
   readonly r: number;
@@ -17,6 +18,9 @@ export type RgbColor = {
   readonly b: number;
 };
 
+/**
+ * DeviceCMYK の色値。
+ */
 export type CmykColor = {
   readonly kind: "cmyk";
   readonly c: number;
@@ -25,6 +29,11 @@ export type CmykColor = {
   readonly k: number;
 };
 
+/**
+ * PDF spec §8.6 のデバイス色値。
+ * DeviceGray / DeviceRGB / DeviceCMYK を discriminated union で表現する。
+ * 値域 (0.0〜1.0) の検証はここでは行わない (Issue #208 仕様)。
+ */
 export type Color = GrayColor | RgbColor | CmykColor;
 
 export const Color = {

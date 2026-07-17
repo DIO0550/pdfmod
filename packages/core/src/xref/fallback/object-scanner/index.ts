@@ -35,6 +35,10 @@ export interface ObjectScanSkipped {
   readonly reason: "object-number-invalid" | "generation-invalid";
 }
 
+/**
+ * `scanObjectHeaders` による走査結果。
+ * 検出できた `ObjectHit` と、検証で弾かれた `ObjectScanSkipped` の両方を含む。
+ */
 export interface ObjectScanReport {
   readonly hits: readonly ObjectHit[];
   readonly skipped: readonly ObjectScanSkipped[];
