@@ -17,7 +17,8 @@ type TextObjectFields = {
  * - `textMatrix`     : 現在のテキスト行列 (ISO 32000-1:2008 §9.4.2)。
  * - `textLineMatrix` : 現在のテキスト行の行列 (同 §9.4.2)。
  *
- * Phase 4-E の `Td` / `TD` / `Tm` / `T*` で matrix を更新する基盤となる。
+ * `Td` / `TD` / `Tm` / `T*` ハンドラが `translateLine` / `setMatrix` を通じて
+ * matrix を更新する。
  */
 export type TextObject = Brand<TextObjectFields, typeof TextObjectBrand>;
 
@@ -53,8 +54,10 @@ export const TextObject = {
    * `active = false` に戻し、両 matrix を identity に戻す。
    * 既に inactive な state に対しても冪等 (同値の inactive を返す)。
    *
-   * 現在は state を参照せず `inactive()` に委譲する。Phase 4-E で matrix
-   * 更新ロジックが入った際のシグネチャを保つために state を受け取る形にしてある。
+   * `ET` は現在の matrix の値によらず無条件で inactive に戻る仕様のため、
+   * `_state` は参照せず `inactive()` に委譲する。引数として `_state` を
+   * 受け取るシグネチャは、companion object 内の他メソッドとの統一のために
+   * 維持している。
    *
    * @param _state - 終了対象の TextObject (現在は読まない)
    * @returns 非アクティブな TextObject (`inactive()` と同値)

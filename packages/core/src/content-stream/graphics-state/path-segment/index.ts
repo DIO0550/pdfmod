@@ -1,6 +1,6 @@
 /**
- * ISO 32000-1:2008 §8.5.2 path construction operator が生成する 1 segment。
- * discriminated union + companion object (factory + is*).
+ * `m` operator (moveto) が生成する segment（ISO 32000-1:2008 §8.5.2 path construction operator）。
+ * 新しいサブパスを現在点として開始する。
  */
 export type MoveToSegment = {
   readonly kind: "moveTo";
@@ -8,12 +8,18 @@ export type MoveToSegment = {
   readonly y: number;
 };
 
+/**
+ * `l` operator (lineto) が生成する segment。現在点から直線を追加する。
+ */
 export type LineToSegment = {
   readonly kind: "lineTo";
   readonly x: number;
   readonly y: number;
 };
 
+/**
+ * `c` operator (curveto) が生成する segment。2 つの制御点を持つ 3 次 Bezier 曲線を追加する。
+ */
 export type CurveToSegment = {
   readonly kind: "curveTo";
   readonly x1: number;
@@ -24,10 +30,16 @@ export type CurveToSegment = {
   readonly y3: number;
 };
 
+/**
+ * `h` operator (closepath) が生成する segment。現在のサブパスを開始点へ直線で閉じる。
+ */
 export type CloseSegment = {
   readonly kind: "close";
 };
 
+/**
+ * `re` operator (rectangle) が生成する segment。矩形の独立したサブパスを追加する。
+ */
 export type RectSegment = {
   readonly kind: "rect";
   readonly x: number;
@@ -36,6 +48,10 @@ export type RectSegment = {
   readonly height: number;
 };
 
+/**
+ * PDF spec §4.1 path construction operator が生成する 1 segment。
+ * discriminated union + companion object (factory + is*).
+ */
 export type PathSegment =
   | MoveToSegment
   | LineToSegment

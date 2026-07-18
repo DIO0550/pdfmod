@@ -1,6 +1,6 @@
 /**
  * `@pdfmod/core` — PDF処理エンジン。
- * ISO 32000-1:2008 (PDF 1.7) 準拠のPDF字句解析・構造解析を提供する。
+ * ISO 32000-1:2008 (PDF 1.7) およびISO 32000-2:2020 (PDF 2.0) 準拠のPDF字句解析・構造解析を提供する。
  *
  * @packageDocumentation
  */
@@ -112,6 +112,7 @@ export {
   TokenType,
 } from "./pdf/index";
 export type { Brand } from "./utils/index";
+export * as Interop from "./utils/interop/index";
 export * as Option from "./utils/option/index";
 export * as Result from "./utils/result/index";
 export type { FallbackScanResult } from "./xref/index";

@@ -21,6 +21,7 @@ declare const MaxDepthBrand: unique symbol;
  */
 export type MaxDepth = Brand<number, typeof MaxDepthBrand>;
 
+// PDF仕様上の明示的な上限はなく、xrefの `/Prev` チェーンの循環参照防止のための防御的な上限値。
 const DEFAULT_MAX_PREV_CHAIN_DEPTH = 100;
 
 export const MaxDepth = {

@@ -165,6 +165,9 @@ export class ObjectStore {
   /**
    * xref エントリの type 別分岐を行う。
    *
+   * ISO 32000-1 §7.3.10 により、未定義オブジェクト・フリーエントリ・世代番号不一致の
+   * 間接参照はエラーではなく null オブジェクトとして解決する。
+   *
    * @param ref - 解決対象の間接参照
    * @param ancestors - 呼び出しチェーンの祖先キー
    * @param cacheKey - キャッシュキー文字列
@@ -177,15 +180,20 @@ export class ObjectStore {
   ): Promise<Result<PdfObject, PdfError>> {
     const entry = this.source.xref.entries.get(ref.objectNumber);
     if (entry === undefined) {
+      // ISO 32000-1 §7.3.10: 未定義オブジェクトへの間接参照は null オブジェクトとして解決する
       return ok({ type: "null" });
     }
 
     switch (entry.type) {
       case 0:
+        // ISO 32000-1 §7.3.10: フリーエントリ（type 0）への参照は未定義オブジェクトと同様に
+        // null オブジェクトとして解決する
         return ok({ type: "null" });
 
       case 1: {
         if (entry.generationNumber !== ref.generationNumber) {
+          // ISO 32000-1 §7.3.10: 世代番号が一致しない参照は未定義オブジェクトとみなし
+          // null オブジェクトとして解決する
           return ok({ type: "null" });
         }
         const resolver: ObjectResolver = (
@@ -215,6 +223,8 @@ export class ObjectStore {
 
       case 2: {
         if (ref.generationNumber !== GenerationNumber.of(0)) {
+          // ISO 32000-1 §7.3.10: ObjStm 内オブジェクトの世代番号は常に 0 のため、
+          // 0 以外を指定する参照は未定義オブジェクトとみなし null オブジェクトとして解決する
           return ok({ type: "null" });
         }
 
