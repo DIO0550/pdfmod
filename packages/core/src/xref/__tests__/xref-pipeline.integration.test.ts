@@ -113,18 +113,21 @@ test("scanStartXRef -> parseXRefTable -> parseTrailerのend-to-endパイプラ�
 });
 
 test("scanStartXRef -> parseIndirectObject -> decompressFlate -> decodeXRefStreamEntries -> buildXRefStreamTrailerDictのend-to-endパイプライン（xrefストリーム経路）", async () => {
-  // 解凍後の生エントリ: obj0=free(nextFree=0,gen=0) obj1=used(offset=9,gen=0) obj2=used(offset=74,gen=0)
-  // zlib.deflateSync(Buffer.from([0,0,0,0, 1,0,9,0, 1,0,74,0])) の結果
-  const compressed = new Uint8Array([
-    120, 156, 99, 96, 96, 96, 96, 100, 224, 100, 96, 100, 240, 98, 0, 0, 0, 226,
-    0, 86,
-  ]);
-
   const header = "%PDF-1.7\n";
   const objOffset = header.length;
+  // 解凍後の生エントリ（/Index [0 3 7 1]）:
+  // obj0=free(nextFree=0,gen=0) obj1=used(offset=200,gen=0) obj2=used(offset=300,gen=0)
+  // obj7=used(offset=objOffset,gen=0) ※xrefストリーム自身のオブジェクトも自己無矛盾に含める
+  // zlib.deflateSync(Buffer.from([0,0,0,0, 1,0,200,0, 1,1,44,0, 1,0,9,0])) の結果
+  const compressed = new Uint8Array([
+    120, 156, 99, 96, 96, 96, 96, 100, 56, 193, 192, 200, 168, 195, 192, 200,
+    192, 201, 0, 0, 9, 25, 1, 2,
+  ]);
+
   const objHeader =
     "7 0 obj\n" +
-    `<< /Type /XRef /Filter /FlateDecode /W [1 2 1] /Size 3 /Root 1 0 R /Length ${compressed.length} >>\n` +
+    "<< /Type /XRef /Filter /FlateDecode /W [1 2 1] /Size 8 " +
+    `/Index [0 3 7 1] /Root 1 0 R /Length ${compressed.length} >>\n` +
     "stream\n";
   const footer = `startxref\n${objOffset}\n%%EOF\n`;
 
@@ -152,24 +155,31 @@ test("scanStartXRef -> parseIndirectObject -> decompressFlate -> decodeXRefStrea
   assert(decompressResult.ok);
 
   const w = pdfIntArray(stream.dictionary.entries.get("W"));
+  const index = pdfIntArray(stream.dictionary.entries.get("Index"));
   const size = pdfInt(stream.dictionary.entries.get("Size"));
 
   const xrefResult = decodeXRefStreamEntries({
     data: decompressResult.value,
     w: [w[0], w[1], w[2]],
+    index,
     size,
   });
   assert(xrefResult.ok);
 
-  expect(xrefResult.value.size).toBe(3);
+  expect(xrefResult.value.size).toBe(8);
   expect(xrefResult.value.entries.get(ObjectNumber.of(1))).toEqual({
     type: 1,
-    offset: ByteOffset.of(9),
+    offset: ByteOffset.of(200),
     generationNumber: GenerationNumber.of(0),
   });
   expect(xrefResult.value.entries.get(ObjectNumber.of(2))).toEqual({
     type: 1,
-    offset: ByteOffset.of(74),
+    offset: ByteOffset.of(300),
+    generationNumber: GenerationNumber.of(0),
+  });
+  expect(xrefResult.value.entries.get(ObjectNumber.of(7))).toEqual({
+    type: 1,
+    offset: ByteOffset.of(objOffset),
     generationNumber: GenerationNumber.of(0),
   });
 
@@ -179,7 +189,7 @@ test("scanStartXRef -> parseIndirectObject -> decompressFlate -> decodeXRefStrea
     objectNumber: ObjectNumber.of(1),
     generationNumber: GenerationNumber.of(0),
   });
-  expect(trailerResult.value.size).toBe(3);
+  expect(trailerResult.value.size).toBe(8);
 });
 
 test("scanStartXRef -> mergeXRefChainで/Prevチェーンをまたいでend-to-endにマージする（テキストxref表とxrefストリームの混在）", async () => {
@@ -193,18 +203,21 @@ test("scanStartXRef -> mergeXRefChainで/Prevチェーンをまたいでend-to-e
     "<< /Root 1 0 R /Size 2 >>\n";
   const oldOffset = header.length;
 
-  // 解凍後の生エントリ: obj0=free(nextFree=0,gen=0) obj1=used(offset=999,gen=0、旧revisionのoffset=100を上書き) obj2=used(offset=1000,gen=0、新revisionで追加)
-  // zlib.deflateSync(Buffer.from([0,0,0,0, 1,3,0xe7,0, 1,3,0xe8,0])) の結果
+  const newOffset = header.length + oldSection.length;
+
+  // 解凍後の生エントリ（/Index [0 3 7 1]）:
+  // obj0=free(nextFree=0,gen=0) obj1=used(offset=999,gen=0、旧revisionのoffset=100を上書き)
+  // obj2=used(offset=1000,gen=0、新revisionで追加) obj7=used(offset=newOffset,gen=0、自己無矛盾)
+  // zlib.deflateSync(Buffer.from([0,0,0,0, 1,3,0xe7,0, 1,3,0xe8,0, 1,0,92,0])) の結果
   const newCompressed = new Uint8Array([
-    120, 156, 99, 96, 96, 96, 96, 100, 126, 206, 192, 200, 252, 130, 1, 0, 7,
-    112, 1, 216,
+    120, 156, 99, 96, 96, 96, 96, 100, 126, 206, 192, 200, 252, 130, 129, 145,
+    33, 134, 1, 0, 15, 140, 2, 53,
   ]);
 
-  const newOffset = header.length + oldSection.length;
   const newObjHeader =
     "7 0 obj\n" +
-    "<< /Type /XRef /Filter /FlateDecode /W [1 2 1] /Size 3 " +
-    `/Root 1 0 R /Prev ${oldOffset} /Length ${newCompressed.length} >>\n` +
+    "<< /Type /XRef /Filter /FlateDecode /W [1 2 1] /Size 8 " +
+    `/Index [0 3 7 1] /Root 1 0 R /Prev ${oldOffset} /Length ${newCompressed.length} >>\n` +
     "stream\n";
   const footer = `startxref\n${newOffset}\n%%EOF\n`;
 
@@ -231,11 +244,13 @@ test("scanStartXRef -> mergeXRefChainで/Prevチェーンをまたいでend-to-e
   assert(decompressResult.ok);
 
   const w = pdfIntArray(stream.dictionary.entries.get("W"));
+  const index = pdfIntArray(stream.dictionary.entries.get("Index"));
   const size = pdfInt(stream.dictionary.entries.get("Size"));
 
   const newXrefResult = decodeXRefStreamEntries({
     data: decompressResult.value,
     w: [w[0], w[1], w[2]],
+    index,
     size,
   });
   assert(newXrefResult.ok);
@@ -261,7 +276,7 @@ test("scanStartXRef -> mergeXRefChainで/Prevチェーンをまたいでend-to-e
   );
   assert(mergeResult.ok);
 
-  expect(mergeResult.value.mergedXRef.entries.size).toBe(3);
+  expect(mergeResult.value.mergedXRef.entries.size).toBe(4);
 
   const entry1 = mergeResult.value.mergedXRef.entries.get(ObjectNumber.of(1));
   assert(entry1 !== undefined && entry1.type === 1);
@@ -271,11 +286,15 @@ test("scanStartXRef -> mergeXRefChainで/Prevチェーンをまたいでend-to-e
   assert(entry2 !== undefined && entry2.type === 1);
   expect(entry2.offset).toBe(1000);
 
+  const entry7 = mergeResult.value.mergedXRef.entries.get(ObjectNumber.of(7));
+  assert(entry7 !== undefined && entry7.type === 1);
+  expect(entry7.offset).toBe(newOffset);
+
   expect(mergeResult.value.latestTrailer.root).toEqual({
     objectNumber: ObjectNumber.of(1),
     generationNumber: GenerationNumber.of(0),
   });
-  expect(mergeResult.value.latestTrailer.size).toBe(3);
+  expect(mergeResult.value.latestTrailer.size).toBe(8);
 });
 
 test("scanStartXRef -> parseXRefTable失敗 -> scanFallbackでend-to-endにtrailerを再構成する（xref破損時のfallback経路）", () => {
