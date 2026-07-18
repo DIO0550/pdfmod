@@ -1,12 +1,12 @@
-// --- PDF byte constants (ISO 32000) ---
-// Whitespace (Table 1)
+// --- PDFバイト定数 (ISO 32000) ---
+// ホワイトスペース (Table 1)
 const PdfNul = 0x00;
 const PdfTab = 0x09;
 const PdfLf = 0x0a;
 const PdfFf = 0x0c;
 const PdfCr = 0x0d;
 const PdfSpace = 0x20;
-// Delimiter (Table 2)
+// 区切り文字 (Table 2)
 const PdfPercent = 0x25;
 const PdfLeftParen = 0x28;
 const PdfRightParen = 0x29;
@@ -17,7 +17,7 @@ const PdfLeftBracket = 0x5b;
 const PdfRightBracket = 0x5d;
 const PdfLeftBrace = 0x7b;
 const PdfRightBrace = 0x7d;
-// ASCII digits ('0'-'9')
+// ASCII数字 ('0'-'9')
 const PdfDigit0 = 0x30;
 const PdfDigit9 = 0x39;
 

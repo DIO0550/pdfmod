@@ -181,7 +181,7 @@ function parseEntry(
     });
   }
 
-  // status flag ('n' or 'f')
+  // ステータスフラグ ('n' または 'f')
   const flagPos = flagSepPos + 1;
   const flagByte = data[flagPos];
 
