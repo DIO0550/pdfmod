@@ -241,7 +241,11 @@ function parseEntry(
  *
  * @param data - PDFバイト配列
  * @param pos - ヘッダ開始位置
- * @returns Some({ firstObj, count, nextPos }) または None (trailer 検出時)
+ * @returns 成功時は `ok(some({ firstObj, count, nextPos }))`、
+ *   trailer 検出時は `ok(none)`、
+ *   数値オーバーフローや構文不正 (object number / entry count 欠如、
+ *   区切りのホワイトスペース欠如、トークン境界不正など) の場合は
+ *   `err(PdfParseError)` (コード: `XREF_TABLE_INVALID`)
  */
 function parseSubsectionHeader(
   data: Uint8Array,

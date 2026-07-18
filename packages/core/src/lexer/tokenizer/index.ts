@@ -110,7 +110,7 @@ export class Tokenizer {
    * 次に読み取る byte offset を設定する。
    *
    * @param position - 移動先 byte offset
-   * @returns 移動できない場合は PdfError
+   * @returns 移動できた場合は `none`、範囲外の場合は `some(PdfError)`
    */
   seek(position: number): Option<PdfError> {
     if (
