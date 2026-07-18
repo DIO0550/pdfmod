@@ -102,34 +102,34 @@ impl Error for PdfError {
 mod tests {
     use super::*;
 
-    // 正常系: new(code) のみで構築すると code() は指定種別を返し、position()/message() は None。
     #[test]
     fn new_sets_code_and_leaves_position_and_message_none() {
+        // new(code) のみで構築すると code() は指定種別を返し、position()/message() は None。
         let err = PdfError::new(PdfErrorCode::UnexpectedEof);
         assert_eq!(err.code(), PdfErrorCode::UnexpectedEof);
         assert_eq!(err.position(), None);
         assert_eq!(err.message(), None);
     }
 
-    // 正常系: with_position で位置を付与すると position() が Some(指定 ByteOffset) を返す。
     #[test]
     fn with_position_sets_position() {
+        // with_position で位置を付与すると position() が Some(指定 ByteOffset) を返す。
         let err = PdfError::new(PdfErrorCode::UnexpectedToken).with_position(ByteOffset::new(12));
         assert_eq!(err.position(), Some(ByteOffset::new(12)));
         assert_eq!(err.message(), None);
     }
 
-    // 正常系: with_message でメッセージを付与すると message() が Some(指定文字列) を返す。
     #[test]
     fn with_message_sets_message() {
+        // with_message でメッセージを付与すると message() が Some(指定文字列) を返す。
         let err = PdfError::new(PdfErrorCode::InvalidNumber).with_message("bad number");
         assert_eq!(err.message(), Some("bad number"));
         assert_eq!(err.position(), None);
     }
 
-    // 正常系: with_position と with_message を連鎖すると全フィールドが指定値を返す。
     #[test]
     fn builder_chain_sets_all_fields() {
+        // with_position と with_message を連鎖すると全フィールドが指定値を返す。
         let err = PdfError::new(PdfErrorCode::InvalidSyntax)
             .with_position(ByteOffset::new(7))
             .with_message("oops");
@@ -138,9 +138,9 @@ mod tests {
         assert_eq!(err.message(), Some("oops"));
     }
 
-    // 正常系: with_message は &str / String / format! 結果（impl Into<String>）を受理できる。
     #[test]
     fn with_message_accepts_into_string_sources() {
+        // with_message は &str / String / format! 結果（impl Into<String>）を受理できる。
         let from_str = PdfError::new(PdfErrorCode::UnexpectedEof).with_message("literal");
         let from_string =
             PdfError::new(PdfErrorCode::UnexpectedEof).with_message(String::from("owned"));
@@ -151,9 +151,9 @@ mod tests {
         assert_eq!(from_format.message(), Some("tok=1"));
     }
 
-    // 正常系（上書き）: with_position/with_message を複数回呼ぶと後勝ちで最後の値が残る。
     #[test]
     fn builder_methods_overwrite_with_last_value() {
+        // with_position/with_message を複数回呼ぶと後勝ちで最後の値が残る。
         let err = PdfError::new(PdfErrorCode::UnexpectedEof)
             .with_position(ByteOffset::new(1))
             .with_position(ByteOffset::new(2))
@@ -163,55 +163,55 @@ mod tests {
         assert_eq!(err.message(), Some("last"));
     }
 
-    // 正常系（Display）: position/message なしのときは種別名のみを出力し、余分な記号を出さない。
     #[test]
     fn display_with_code_only() {
+        // position/message なしのときは種別名のみを出力し、余分な記号を出さない。
         let err = PdfError::new(PdfErrorCode::UnexpectedEof);
         assert_eq!(format!("{}", err), "unexpected end of file");
     }
 
-    // 正常系（Display）: position ありのときは " at byte N" を連結する。
     #[test]
     fn display_with_position() {
+        // position ありのときは " at byte N" を連結する。
         let err = PdfError::new(PdfErrorCode::UnexpectedEof).with_position(ByteOffset::new(12));
         assert_eq!(format!("{}", err), "unexpected end of file at byte 12");
     }
 
-    // 正常系（Display）: message のみのときは ": <message>" を連結し、" at byte" は出さない。
     #[test]
     fn display_with_message_only() {
+        // message のみのときは ": <message>" を連結し、" at byte" は出さない。
         let err = PdfError::new(PdfErrorCode::UnexpectedToken).with_message("unexpected");
         assert_eq!(format!("{}", err), "unexpected token: unexpected");
     }
 
-    // 正常系（Display）: 全要素ありのときは "{code} at byte N: <message>" 形式になる。
     #[test]
     fn display_with_all_fields() {
+        // 全要素ありのときは "{code} at byte N: <message>" 形式になる。
         let err = PdfError::new(PdfErrorCode::UnexpectedEof)
             .with_position(ByteOffset::new(12))
             .with_message("eof");
         assert_eq!(format!("{}", err), "unexpected end of file at byte 12: eof");
     }
 
-    // 境界値（Display）: 空文字列メッセージ Some("") を無検証で受理し ":" の後が空になる。
     #[test]
     fn display_with_empty_message() {
+        // 空文字列メッセージ Some("") を無検証で受理し ":" の後が空になる。
         let err = PdfError::new(PdfErrorCode::UnexpectedEof).with_message("");
         assert_eq!(err.message(), Some(""));
         assert_eq!(format!("{}", err), "unexpected end of file: ");
     }
 
-    // 正常系（等価）: 同一の code/position/message を持つ 2 値は == で等価になる。
     #[test]
     fn equal_errors_are_equal() {
+        // 同一の code/position/message を持つ 2 値は == で等価になる。
         let a = PdfError::new(PdfErrorCode::InvalidSyntax).with_position(ByteOffset::new(1));
         let b = PdfError::new(PdfErrorCode::InvalidSyntax).with_position(ByteOffset::new(1));
         assert_eq!(a, b);
     }
 
-    // 異常系（非等価）: code / position / message のいずれかが異なれば != で非等価になる。
     #[test]
     fn errors_differing_in_any_field_are_not_equal() {
+        // code / position / message のいずれかが異なれば != で非等価になる。
         let base = PdfError::new(PdfErrorCode::InvalidSyntax)
             .with_position(ByteOffset::new(1))
             .with_message("m");
@@ -248,34 +248,34 @@ mod tests {
         );
     }
 
-    // エッジケース（trait）: &dyn std::error::Error として扱え、Display 経由で文字列化できる。
     #[test]
     fn usable_as_dyn_error_ref() {
+        // &dyn std::error::Error として扱え、Display 経由で文字列化できる。
         let err = PdfError::new(PdfErrorCode::UnexpectedEof);
         let dyn_err: &dyn std::error::Error = &err;
         assert!(!dyn_err.to_string().is_empty());
     }
 
-    // エッジケース（trait）: Box<dyn std::error::Error> へアップキャストでき to_string() が Display と一致する。
     #[test]
     fn usable_as_boxed_dyn_error() {
+        // Box<dyn std::error::Error> へアップキャストでき to_string() が Display と一致する。
         let err = PdfError::new(PdfErrorCode::UnexpectedEof).with_position(ByteOffset::new(12));
         let expected = err.to_string();
         let boxed: Box<dyn std::error::Error> = Box::new(err);
         assert_eq!(boxed.to_string(), expected);
     }
 
-    // エッジケース（trait）: 下位エラー連鎖は当面ないため source() は None を返す。
     #[test]
     fn source_is_none() {
+        // 下位エラー連鎖は当面ないため source() は None を返す。
         use std::error::Error;
         let err = PdfError::new(PdfErrorCode::UnexpectedEof);
         assert!(err.source().is_none());
     }
 
-    // エッジケース（trait）: Result<(), Box<dyn Error>> の中で ? 演算子により PdfError が自動変換されて伝播する。
     #[test]
     fn propagates_via_question_mark_into_boxed_error() {
+        // Result<(), Box<dyn Error>> の中で ? 演算子により PdfError が自動変換されて伝播する。
         fn do_parse() -> Result<(), Box<dyn std::error::Error>> {
             Err(PdfError::new(PdfErrorCode::UnexpectedEof).with_position(ByteOffset::new(3)))?;
             Ok(())
