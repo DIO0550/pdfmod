@@ -194,13 +194,17 @@ test("scanStartXRef -> parseIndirectObject -> decompressFlate -> decodeXRefStrea
 
 test("scanStartXRef -> mergeXRefChainで/Prevチェーンをまたいでend-to-endにマージする（テキストxref表とxrefストリームの混在）", async () => {
   const header = "%PDF-1.7\n";
+  // obj3は新revisionのxrefストリーム（/Index [0 3 7 1]）に含まれない旧revision専有のエントリ。
+  // /Prevチェーンを実際に辿らないとmergedXRefに現れないため、マージ経路自体の実行を検証できる。
   const oldSection =
     "xref\n" +
     "0 2\n" +
     "0000000000 65535 f\r\n" +
     "0000000100 00000 n\r\n" +
+    "3 1\n" +
+    "0000000150 00000 n\r\n" +
     "trailer\n" +
-    "<< /Root 1 0 R /Size 2 >>\n";
+    "<< /Root 1 0 R /Size 4 >>\n";
   const oldOffset = header.length;
 
   const newOffset = header.length + oldSection.length;
@@ -208,10 +212,10 @@ test("scanStartXRef -> mergeXRefChainで/Prevチェーンをまたいでend-to-e
   // 解凍後の生エントリ（/Index [0 3 7 1]）:
   // obj0=free(nextFree=0,gen=0) obj1=used(offset=999,gen=0、旧revisionのoffset=100を上書き)
   // obj2=used(offset=1000,gen=0、新revisionで追加) obj7=used(offset=newOffset,gen=0、自己無矛盾)
-  // zlib.deflateSync(Buffer.from([0,0,0,0, 1,3,0xe7,0, 1,3,0xe8,0, 1,0,92,0])) の結果
+  // zlib.deflateSync(Buffer.from([0,0,0,0, 1,3,0xe7,0, 1,3,0xe8,0, 1,0,116,0])) の結果
   const newCompressed = new Uint8Array([
     120, 156, 99, 96, 96, 96, 96, 100, 126, 206, 192, 200, 252, 130, 129, 145,
-    33, 134, 1, 0, 15, 140, 2, 53,
+    161, 132, 1, 0, 15, 188, 2, 77,
   ]);
 
   const newObjHeader =
@@ -276,7 +280,7 @@ test("scanStartXRef -> mergeXRefChainで/Prevチェーンをまたいでend-to-e
   );
   assert(mergeResult.ok);
 
-  expect(mergeResult.value.mergedXRef.entries.size).toBe(4);
+  expect(mergeResult.value.mergedXRef.entries.size).toBe(5);
 
   const entry1 = mergeResult.value.mergedXRef.entries.get(ObjectNumber.of(1));
   assert(entry1 !== undefined && entry1.type === 1);
@@ -285,6 +289,11 @@ test("scanStartXRef -> mergeXRefChainで/Prevチェーンをまたいでend-to-e
   const entry2 = mergeResult.value.mergedXRef.entries.get(ObjectNumber.of(2));
   assert(entry2 !== undefined && entry2.type === 1);
   expect(entry2.offset).toBe(1000);
+
+  // obj3は旧revisionにしか存在しないため、/Prevチェーンが実際に辿られた場合のみ現れる
+  const entry3 = mergeResult.value.mergedXRef.entries.get(ObjectNumber.of(3));
+  assert(entry3 !== undefined && entry3.type === 1);
+  expect(entry3.offset).toBe(150);
 
   const entry7 = mergeResult.value.mergedXRef.entries.get(ObjectNumber.of(7));
   assert(entry7 !== undefined && entry7.type === 1);
