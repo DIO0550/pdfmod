@@ -83,10 +83,12 @@ fn clone_preserves_value_and_keeps_original_usable() {
 
 #[test]
 fn clone_preserves_nan_real() {
-    // Real(NaN) の clone 保持は == では検証できないため as_real().is_some_and(is_nan) で確認する
+    // Real(NaN) の clone 保持は == では検証できないため as_real().is_some_and(is_nan) で確認する。
+    // 複製後も original が引き続き使用可能であることも併せて確認する
     let original = PdfObject::Real(f64::NAN);
     let cloned = original.clone();
     assert!(cloned.as_real().is_some_and(f64::is_nan));
+    assert!(original.as_real().is_some_and(f64::is_nan));
 }
 
 #[test]

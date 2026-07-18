@@ -118,3 +118,12 @@ fn skip_comment_body_outlives_subsequent_peek_call() {
     assert_eq!(lexer.peek(), Some(b'r'));
     assert_eq!(body, Some(b"hello".as_slice()));
 }
+
+#[test]
+fn skip_comment_consumes_body_containing_pdf_delimiters() {
+    // コメント本文に PDF デリミタ ( ) / < > を含んでもトークン化されず EOL まで丸ごと本文として
+    // 消費され、次トークンの読み取り位置が正しく EOL 直後になることを確認する
+    let mut lexer = Lexer::new(b"%foo(bar)/Baz<01>\nrest");
+    assert_eq!(lexer.skip_comment(), Some(b"foo(bar)/Baz<01>".as_slice()));
+    assert_eq!(lexer.peek(), Some(b'r'));
+}
