@@ -6,7 +6,7 @@
 
 /// PDF オブジェクト番号。間接オブジェクトを一意に識別する非負整数のラッパ。
 ///
-/// 内部表現は `u64`（spec §4.4 の u32 とは意図的に乖離。Issue #255 指定）。
+/// 内部表現は `u64`（docs/specs/01_lexical_conventions.md §4.4 の u32 とは意図的に乖離。Issue #255 指定）。
 /// 値ラッパであり `Copy`。等価・順序・ハッシュは内部 `u64` の自然な振る舞いに従う。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct ObjectNumber(u64);

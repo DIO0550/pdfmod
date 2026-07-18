@@ -1,5 +1,6 @@
 /**
- * `m` operator (moveto) が生成する segment。新しいサブパスを現在点として開始する。
+ * `m` operator (moveto) が生成する segment（ISO 32000-1:2008 §8.5.2 path construction operator）。
+ * 新しいサブパスを現在点として開始する。
  */
 export type MoveToSegment = {
   readonly kind: "moveTo";

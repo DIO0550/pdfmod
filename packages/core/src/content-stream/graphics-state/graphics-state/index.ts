@@ -38,7 +38,7 @@ type GraphicsStatePartial = Partial<GraphicsStateFields>;
 
 export const GraphicsState = {
   /**
-   * PDF 仕様 §4.1 デフォルト値で GraphicsState を生成する。
+   * docs/specs/04_resources_graphics_state.md §4.1 デフォルト値で GraphicsState を生成する。
    *   ctm              = identity
    *   lineWidth        = 1.0
    *   lineCap          = 0 (Butt)
