@@ -1,6 +1,3 @@
-import type { Result } from "../result/index";
-import { err, ok } from "../result/index";
-
 /**
  * 値が存在することを表すOption型。
  * 値を `value` フィールドに保持する。
@@ -180,51 +177,3 @@ export const flatMap = <T, U>(
  */
 export const unwrapOr = <T>(option: Option<T>, defaultValue: T): T =>
   option.some ? option.value : defaultValue;
-
-/**
- * OptionをResultに変換する。
- * `Some` の場合は `Ok` を返し、`None` の場合は指定されたエラー値で `Err` を返す。
- *
- * @typeParam T - 値の型
- * @typeParam E - エラー値の型
- * @param option - 変換対象のOption
- * @param error - `None` の場合に使用するエラー値
- * @returns `Some` の場合は `Ok<T>`、`None` の場合は `Err<E>`
- *
- * @example
- * ```ts
- * import { Option } from "@pdfmod/core";
- *
- * Option.toResult(Option.some(42), "missing");  // { ok: true, value: 42 }
- * Option.toResult(Option.none, "missing");      // { ok: false, error: "missing" }
- * ```
- */
-export const toResult = <T, E>(option: Option<T>, error: E): Result<T, E> =>
-  option.some ? ok(option.value) : err(error);
-
-/**
- * ResultをOptionに変換する。
- * `Ok` かつ値が非nullishの場合は `Some` を返し、それ以外は `None` を返す。
- * エラー情報は破棄される。
- *
- * @typeParam T - 成功値の型
- * @typeParam E - エラー値の型
- * @param result - 変換対象のResult
- * @returns `Ok` かつ非nullish値の場合は `Some<NonNullable<T>>`、それ以外は `None`
- *
- * @see {@link import("../result/index").toOption} — Result モジュール側の同等関数
- *
- * @example
- * ```ts
- * import { Option, Result } from "@pdfmod/core";
- *
- * Option.fromResult(Result.ok(42));        // { some: true, value: 42 }
- * Option.fromResult(Result.err("error"));  // { some: false }
- * ```
- */
-export const fromResult = <T, E>(
-  result: Result<T, E>,
-): Option<NonNullable<T>> =>
-  result.ok && result.value != null
-    ? some(result.value as NonNullable<T>)
-    : none;

@@ -9,6 +9,7 @@ import {
   GraphicsState,
   GraphicsStateStack,
   InheritanceResolver,
+  Interop,
   LRUCache,
   ObjectNumber,
   ObjectParser,
@@ -19,6 +20,7 @@ import {
   Operator,
   type OperatorHandler,
   OperatorRegistry,
+  Option,
   PageTreeWalker,
   PdfDocument,
   PdfPage,
@@ -124,4 +126,18 @@ test("StringArrayExがルートからexportされている", () => {
   expect(typeof StringArrayEx.firstMissing).toBe("function");
   expect(typeof StringArrayEx.containsAll).toBe("function");
   expect(typeof StringArrayEx.allMissing).toBe("function");
+});
+
+test("Interop.toOptionがルートからexportされている", () => {
+  expect(Interop.toOption(Result.ok(42))).toEqual({
+    some: true,
+    value: 42,
+  });
+});
+
+test("Interop.toResultがルートからexportされている", () => {
+  expect(Interop.toResult(Option.none, "missing")).toEqual({
+    ok: false,
+    error: "missing",
+  });
 });
