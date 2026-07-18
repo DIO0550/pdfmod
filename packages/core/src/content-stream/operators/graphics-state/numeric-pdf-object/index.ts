@@ -2,7 +2,7 @@ import type { PdfObject } from "../../../../pdf/types/pdf-types/index";
 
 /**
  * `integer` または `real` の PdfObject に narrow した型。
- * graphics-state operator (cm / w / J / j / M) が期待する数値 operand の型。
+ * 数値 operand を取る content stream operator ハンドラが扱う型。
  */
 export type NumericPdfObject = Extract<PdfObject, { type: "integer" | "real" }>;
 
@@ -13,7 +13,7 @@ export type NumericPdfObject = Extract<PdfObject, { type: "integer" | "real" }>;
 export const NumericPdfObject = {
   /**
    * PdfObject が `integer` または `real` であるかを判定する type guard。
-   * graphics-state operator (cm / w / J / j / M) が共通で行う数値 operand チェック。
+   * 数値 operand を取る content stream operator ハンドラ共通の型ガード。
    *
    * @param operand - 判定対象の PdfObject
    * @returns integer / real のいずれかなら true
