@@ -1,3 +1,9 @@
+/**
+ * ページツリー（`/Pages` ノード）を走査し、継承属性（MediaBox/Resources 等）を解決するモジュール群を公開するバレル。
+ *
+ * @module
+ */
+
 export type {
   InheritedAttrs,
   ResolveInheritedOutcome,
