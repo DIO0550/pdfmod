@@ -1,3 +1,9 @@
+/**
+ * コンテンツストリーム実行時のグラフィックス状態（色、パス、行列、テキスト状態、q/Qスタック等）を表す型群を公開するバレル。
+ *
+ * @module
+ */
+
 export { Color } from "./color";
 export { ColorSpace } from "./color-space";
 export { CurrentPath } from "./current-path";

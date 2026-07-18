@@ -1,3 +1,9 @@
+/**
+ * PDF文書モデル（Catalog解析、メタデータ、ページツリー、PdfDocument/PdfPage）をまとめて公開するサブシステムのバレル。
+ *
+ * @module
+ */
+
 export type { ParsedCatalog, ResolveRef } from "./catalog";
 export { CatalogParser } from "./catalog";
 export type { DocumentMetadata, ParsedDocumentInfo } from "./metadata";
