@@ -131,13 +131,9 @@ export class Tokenizer {
   /**
    * 現在位置のバイトを読み進めずに返す。
    * データ末尾に達している場合は -1 を返す。
+   * Tokenizerの各readメソッドから使用される内部メソッド。
    *
    * @returns 現在位置のバイト値、または末尾の場合は -1
-   *
-   * @example
-   * ```ts
-   * // 内部メソッド: Tokenizerの各readメソッドから使用
-   * ```
    */
   private peek(): number {
     return this.pos < this.data.length ? this.data[this.pos] : EofByte;
@@ -146,13 +142,9 @@ export class Tokenizer {
   /**
    * 現在位置のバイトを読み取り、位置を1つ進める。
    * データ末尾に達している場合は -1 を返す。
+   * Tokenizerの各readメソッドから使用される内部メソッド。
    *
    * @returns 読み取ったバイト値、または末尾の場合は -1
-   *
-   * @example
-   * ```ts
-   * // 内部メソッド: Tokenizerの各readメソッドから使用
-   * ```
    */
   private read(): number {
     return this.pos < this.data.length ? this.data[this.pos++] : EofByte;
@@ -160,11 +152,7 @@ export class Tokenizer {
 
   /**
    * 現在位置からホワイトスペースとコメントをスキップする。
-   *
-   * @example
-   * ```ts
-   * // 内部メソッド: nextTokenから呼び出される
-   * ```
+   * nextTokenから呼び出される内部メソッド。
    */
   private skipWhitespaceAndComments(): void {
     this.pos = skipWsAndComments(this.data, this.pos);
@@ -249,13 +237,10 @@ export class Tokenizer {
    * 16進文字列トークンを読み取る: `<hex_digits>`。
    * `>` が出現するまで16進数字を収集する。ホワイトスペースは無視される。
    *
+   * nextTokenから "<" を検出した際に呼び出される内部メソッド。
+   *
    * @param offset - トークン開始位置のバイトオフセット
    * @returns 16進文字列トークン
-   *
-   * @example
-   * ```ts
-   * // 内部メソッド: nextTokenから "<" を検出した際に呼び出される
-   * ```
    */
   private readHexString(offset: number): Token {
     let hex = "";
@@ -283,13 +268,10 @@ export class Tokenizer {
    * リテラル文字列トークンを読み取る: `(chars)`。
    * 括弧のネストに対応し、エスケープシーケンスを処理する。
    *
+   * nextTokenから "(" を検出した際に呼び出される内部メソッド。
+   *
    * @param offset - トークン開始位置のバイトオフセット
    * @returns リテラル文字列トークン
-   *
-   * @example
-   * ```ts
-   * // 内部メソッド: nextTokenから "(" を検出した際に呼び出される
-   * ```
    */
   private readLiteralString(offset: number): Token {
     let result = "";
@@ -323,12 +305,9 @@ export class Tokenizer {
    * リテラル文字列内のエスケープシーケンスを処理する。
    * `\n`, `\r`, `\t`, `\b`, `\f`, `\(`, `\)`, `\\` および8進エスケープに対応する。
    *
-   * @returns エスケープシーケンスに対応する文字
+   * readLiteralStringからエスケープ文字検出時に呼び出される内部メソッド。
    *
-   * @example
-   * ```ts
-   * // 内部メソッド: readLiteralStringからエスケープ文字検出時に呼び出される
-   * ```
+   * @returns エスケープシーケンスに対応する文字
    */
   private readEscapeChar(): string {
     const b = this.read();
@@ -381,13 +360,10 @@ export class Tokenizer {
    * 名前オブジェクトトークンを読み取る: `/Name`。
    * `#` による16進エスケープに対応する。
    *
+   * nextTokenから "/" を検出した際に呼び出される内部メソッド。
+   *
    * @param offset - トークン開始位置のバイトオフセット
    * @returns 名前トークン
-   *
-   * @example
-   * ```ts
-   * // 内部メソッド: nextTokenから "/" を検出した際に呼び出される
-   * ```
    */
   private readName(offset: number): Token {
     let name = "";
@@ -426,15 +402,11 @@ export class Tokenizer {
    * 数値トークン（整数または実数）を読み取る。
    * 小数点を含む場合は `Real`、含まない場合は `Integer` トークンを返す。
    * 有効な数値の続きでない文字が出現した場合はキーワードとして読み取る。
+   * nextTokenから数字/符号/小数点を検出した際に呼び出される内部メソッド。
    *
    * @param offset - トークン開始位置のバイトオフセット
    * @param firstByte - 最初に読み取ったバイト
    * @returns 数値トークンまたはキーワードトークン
-   *
-   * @example
-   * ```ts
-   * // 内部メソッド: nextTokenから数字/符号/小数点を検出した際に呼び出される
-   * ```
    */
   private readNumber(offset: number, firstByte: number): Token {
     let str = String.fromCharCode(firstByte);
@@ -476,15 +448,11 @@ export class Tokenizer {
    * キーワードトークンを読み取る。
    * `true`, `false`, `null` はそれぞれ対応する型のトークンに変換される。
    * それ以外は `obj`, `endobj` 等の一般キーワードトークンとして返す。
+   * nextTokenからキーワード文字を検出した際に呼び出される内部メソッド。
    *
    * @param offset - トークン開始位置のバイトオフセット
    * @param firstByte - 最初に読み取ったバイト
    * @returns キーワード、Boolean、またはNullトークン
-   *
-   * @example
-   * ```ts
-   * // 内部メソッド: nextTokenからキーワード文字を検出した際に呼び出される
-   * ```
    */
   private readKeyword(offset: number, firstByte: number): Token {
     let str = String.fromCharCode(firstByte);
