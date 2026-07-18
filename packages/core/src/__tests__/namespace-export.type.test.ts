@@ -16,6 +16,7 @@ import {
   ContentStreamInterpreter,
   ContentStreamTokenizer,
   GraphicsState,
+  Interop,
   OperatorRegistry,
   Option,
   PdfVersion,
@@ -181,4 +182,31 @@ test("StringArrayEx.firstMissingがrequiredKeysの要素型にnarrowされたOpt
   > = true;
   expect(returnTypeIsExactlyOptionNarrowed).toBe(true);
   expect(missing).toEqual(Option.some("Height"));
+});
+
+test("Interop.toOptionの戻り値型がOption<T>に完全一致する", () => {
+  const converted = Interop.toOption(Result.ok(42));
+  const returnTypeIsExactlyOption: Assert<
+    IsExact<typeof converted, Option.Option<number>>
+  > = true;
+  expect(returnTypeIsExactlyOption).toBe(true);
+  expect(converted).toEqual({ some: true, value: 42 });
+});
+
+test("Result.toOptionが公開APIから削除されている", () => {
+  // @ts-expect-error toOption は Result namespace から削除済み（Interop.toOption へ移設）
+  const removed = Result.toOption;
+  expect(removed).toBeUndefined();
+});
+
+test("Option.fromResultが公開APIから削除されている", () => {
+  // @ts-expect-error fromResult は Option namespace から削除済み（Interop.toOption へ一本化）
+  const removed = Option.fromResult;
+  expect(removed).toBeUndefined();
+});
+
+test("Option.toResultが公開APIから削除されている", () => {
+  // @ts-expect-error toResult は Option namespace から削除済み（Interop.toResult へ移設）
+  const removed = Option.toResult;
+  expect(removed).toBeUndefined();
 });

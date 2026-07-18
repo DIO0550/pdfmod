@@ -112,6 +112,7 @@ export {
   TokenType,
 } from "./pdf/index";
 export type { Brand } from "./utils/index";
+export * as Interop from "./utils/interop/index";
 export * as Option from "./utils/option/index";
 export * as Result from "./utils/result/index";
 export type { FallbackScanResult } from "./xref/index";

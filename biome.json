@@ -28,7 +28,10 @@
   },
   "linter": {
     "rules": {
-      "recommended": true
+      "recommended": true,
+      "suspicious": {
+        "noImportCycles": "error"
+      }
     }
   }
 }
