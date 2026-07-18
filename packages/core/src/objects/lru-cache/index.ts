@@ -32,10 +32,7 @@ export class LRUCache<K, V> {
    *
    * @param capacity - キャッシュの最大容量
    *
-   * @example
-   * ```ts
-   * // privateコンストラクタ: LRUCache.create() を使用してください
-   * ```
+   * @see LRUCache.create
    */
   private constructor(capacity: number) {
     this.capacity = capacity;
