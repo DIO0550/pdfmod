@@ -27,6 +27,7 @@ import type { ResolvedPage } from "../page-tree/resolved-page";
 const PDF_HEADER_SIGNATURE: number[] = Array.from(
   new TextEncoder().encode("%PDF-"),
 );
+// PDF仕様上の規定ではなく、Adobe実装ノートで一般的に使われる慣行値。
 const HEADER_SCAN_LIMIT = 1024;
 const VERSION_MAX_LEN = 8;
 
