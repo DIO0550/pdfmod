@@ -197,7 +197,7 @@ export function scanStartXRef(
     return failStartXRef("invalid startxref offset value");
   }
 
-  // Verify only whitespace/comments remain between digits and %%EOF
+  // 数字と %%EOF の間に空白・コメント以外が残っていないことを検証する
   const trailing = skipWhitespaceAndComments(data, pos, eofOffset);
   if (trailing !== eofOffset) {
     return failStartXRef("invalid startxref offset value");
