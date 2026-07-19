@@ -1,5 +1,5 @@
 import { assert, expect, test } from "vitest";
-import type { PdfParseError } from "../../../pdf/errors/index";
+import type { PdfError } from "../../../pdf/errors/index";
 import { ByteOffset } from "../../../pdf/types/byte-offset/index";
 import { GenerationNumber } from "../../../pdf/types/generation-number/index";
 import type {
@@ -45,7 +45,7 @@ function makeTrailer(size: number, prev?: number): TrailerDict {
 
 type ParseCallback = (
   offset: ByteOffset,
-) => Result<{ xref: XRefTable; trailer: TrailerDict }, PdfParseError>;
+) => Promise<Result<{ xref: XRefTable; trailer: TrailerDict }, PdfError>>;
 
 function stubMap(
   entries: Array<[number, { xref: XRefTable; trailer: TrailerDict }]>,
@@ -56,7 +56,7 @@ function stubMap(
 function callbackFromMap(
   table: Map<ByteOffset, { xref: XRefTable; trailer: TrailerDict }>,
 ): ParseCallback {
-  return (offset: ByteOffset) => {
+  return async (offset: ByteOffset) => {
     const entry = table.get(offset);
     return entry
       ? ok(entry)
@@ -67,7 +67,7 @@ function callbackFromMap(
   };
 }
 
-test("循環参照検出: 2つのxrefが互いのオフセットを /Prev で参照 -> XREF_PREV_CHAIN_CYCLE", () => {
+test("循環参照検出: 2つのxrefが互いのオフセットを /Prev で参照 -> XREF_PREV_CHAIN_CYCLE", async () => {
   const callback = callbackFromMap(
     stubMap([
       [
@@ -87,13 +87,13 @@ test("循環参照検出: 2つのxrefが互いのオフセットを /Prev で参
     ]),
   );
 
-  const result = mergeXRefChain(ByteOffset.of(100), callback);
+  const result = await mergeXRefChain(ByteOffset.of(100), callback);
 
   assert(!result.ok);
   expect(result.error.code).toBe("XREF_PREV_CHAIN_CYCLE");
 });
 
-test("自己参照検出: /Prev が自分自身のオフセットを指す -> XREF_PREV_CHAIN_CYCLE", () => {
+test("自己参照検出: /Prev が自分自身のオフセットを指す -> XREF_PREV_CHAIN_CYCLE", async () => {
   const callback = callbackFromMap(
     stubMap([
       [
@@ -106,36 +106,66 @@ test("自己参照検出: /Prev が自分自身のオフセットを指す -> XR
     ]),
   );
 
-  const result = mergeXRefChain(ByteOffset.of(100), callback);
+  const result = await mergeXRefChain(ByteOffset.of(100), callback);
 
   assert(!result.ok);
   expect(result.error.code).toBe("XREF_PREV_CHAIN_CYCLE");
 });
 
-test("深さ制限超過: maxDepth を超えるチェーン -> XREF_PREV_CHAIN_TOO_DEEP", () => {
+test("深さ制限超過: maxDepth を超えるチェーン -> XREF_PREV_CHAIN_TOO_DEEP", async () => {
   let counter = 0;
-  const callback: ParseCallback = (_offset: ByteOffset) => {
+  const callback: ParseCallback = async (_offset: ByteOffset) => {
     counter++;
     const xref = makeXRef([[counter, usedEntry(counter * 100)]], counter + 1);
     const trailer = makeTrailer(counter + 1, counter * 1000);
     return ok({ xref, trailer });
   };
 
-  const result = mergeXRefChain(ByteOffset.of(0), callback, { maxDepth: 2 });
+  const result = await mergeXRefChain(ByteOffset.of(0), callback, {
+    maxDepth: 2,
+  });
 
   assert(!result.ok);
   expect(result.error.code).toBe("XREF_PREV_CHAIN_TOO_DEEP");
 });
 
-test("コールバックエラー透過: parseCallback が Err を返した場合、そのエラーがそのまま返る", () => {
-  const callback: ParseCallback = (_offset: ByteOffset) =>
+test("循環と深度上限到達が同時に起きる場合、深度制限より循環検出が優先される", async () => {
+  const callback = callbackFromMap(
+    stubMap([
+      [
+        100,
+        {
+          xref: makeXRef([[1, usedEntry(10)]], 2),
+          trailer: makeTrailer(2, 200),
+        },
+      ],
+      [
+        200,
+        {
+          xref: makeXRef([[2, usedEntry(20)]], 3),
+          trailer: makeTrailer(3, 100),
+        },
+      ],
+    ]),
+  );
+
+  const result = await mergeXRefChain(ByteOffset.of(100), callback, {
+    maxDepth: 2,
+  });
+
+  assert(!result.ok);
+  expect(result.error.code).toBe("XREF_PREV_CHAIN_CYCLE");
+});
+
+test("コールバックエラー透過: parseCallback が Err を返した場合、そのエラーがそのまま返る", async () => {
+  const callback: ParseCallback = async (_offset: ByteOffset) =>
     err({
       code: "XREF_TABLE_INVALID",
       message: "parse failed",
       offset: ByteOffset.of(42),
     });
 
-  const result = mergeXRefChain(ByteOffset.of(500), callback);
+  const result = await mergeXRefChain(ByteOffset.of(500), callback);
 
   assert(!result.ok);
   expect(result.error.code).toBe("XREF_TABLE_INVALID");

@@ -1,12 +1,16 @@
 import { isPdfWhitespace, matchesBytesAt } from "../../lexer/bytes/index";
+import { ObjectParser } from "../../objects/object-parser/index";
 import { ObjectStore } from "../../objects/object-store/index";
 import type {
   PdfError,
   PdfParseError,
   PdfWarning,
 } from "../../pdf/errors/index";
+import { PdfFilter } from "../../pdf/filter/index";
 import {
   ByteOffset,
+  PdfType,
+  type PdfValue,
   type TrailerDict,
   type XRefTable,
 } from "../../pdf/types/index";
@@ -16,6 +20,11 @@ import { err, ok, type Result } from "../../utils/result/index";
 import { scanFallback } from "../../xref/fallback/index";
 import { mergeXRefChain } from "../../xref/merger/index";
 import { scanStartXRef } from "../../xref/startxref/index";
+import {
+  decodeXRefStreamEntries,
+  decompressFlate,
+} from "../../xref/stream/index";
+import { buildXRefStreamTrailerDict } from "../../xref/stream/trailer/index";
 import { parseXRefTable } from "../../xref/table/index";
 import { parseTrailer } from "../../xref/trailer/index";
 import { CatalogParser, type ResolveRef } from "../catalog/catalog-parser";
@@ -107,15 +116,20 @@ const verifyHeader = (data: Uint8Array): Result<PdfVersion, PdfParseError> => {
   return ok(created.value);
 };
 
+const XREF_KEYWORD_BYTES: number[] = Array.from(
+  new TextEncoder().encode("xref"),
+);
+const XREF_STREAM_W_LENGTH = 3;
+
 /**
- * 指定オフセットから xref テーブルと trailer 辞書を続けて解析する。
- * `mergeXRefChain` の `parseCallback` 引数として使う合成。
+ * 指定オフセットから xref テーブルと trailer 辞書を続けて解析する
+ * （テキスト形式 xref。`xref` キーワードから始まる区間専用）。
  *
  * @param data - PDF のバイト列
  * @param offset - xref キーワードのバイトオフセット
  * @returns 成功時は `Ok<{ xref, trailer }>`、失敗時は `Err<PdfParseError>`
  */
-const parseXRefAt = (
+const parseTextXRefAt = (
   data: Uint8Array,
   offset: ByteOffset,
 ): Result<{ xref: XRefTable; trailer: TrailerDict }, PdfParseError> => {
@@ -133,6 +147,177 @@ const parseXRefAt = (
   });
 };
 
+interface XRefStreamLayout {
+  readonly w: readonly [number, number, number];
+  readonly size: number;
+  readonly index?: readonly number[];
+}
+
+/**
+ * PdfValue の配列から整数配列を読み取る。要素が1つでも整数でなければ `undefined`。
+ *
+ * @param value - 読み取り対象の PdfValue
+ * @returns 整数配列、または形状が一致しない場合は `undefined`
+ */
+const readIntArray = (value: PdfValue | undefined): number[] | undefined => {
+  if (value === undefined || value.type !== "array") {
+    return undefined;
+  }
+  const result: number[] = [];
+  for (const element of value.elements) {
+    if (element.type !== "integer") {
+      return undefined;
+    }
+    result.push(element.value);
+  }
+  return result;
+};
+
+/**
+ * xref ストリーム辞書から `/W` `/Size` `/Index` を抽出する
+ * （`decodeXRefStreamEntries` の引数を組み立てるための形状検証）。
+ *
+ * @param entries - xref ストリームの辞書エントリ
+ * @param offset - エラー報告用のストリーム開始バイトオフセット
+ * @returns 成功時は `Ok<XRefStreamLayout>`、失敗時は `Err<PdfParseError>` (コード: XREF_STREAM_INVALID)
+ */
+const readXRefStreamLayout = (
+  entries: ReadonlyMap<string, PdfValue>,
+  offset: ByteOffset,
+): Result<XRefStreamLayout, PdfParseError> => {
+  const w = readIntArray(entries.get("W"));
+  if (w === undefined || w.length !== XREF_STREAM_W_LENGTH) {
+    return err({
+      code: "XREF_STREAM_INVALID",
+      message: "invalid /W array in xref stream",
+      offset,
+    });
+  }
+
+  const sizeEntry = entries.get("Size");
+  if (sizeEntry === undefined || sizeEntry.type !== "integer") {
+    return err({
+      code: "XREF_STREAM_INVALID",
+      message: "invalid /Size in xref stream",
+      offset,
+    });
+  }
+
+  if (!entries.has("Index")) {
+    return ok({ w: [w[0], w[1], w[2]], size: sizeEntry.value });
+  }
+  const index = readIntArray(entries.get("Index"));
+  if (index === undefined) {
+    return err({
+      code: "XREF_STREAM_INVALID",
+      message: "invalid /Index array in xref stream",
+      offset,
+    });
+  }
+
+  return ok({ w: [w[0], w[1], w[2]], size: sizeEntry.value, index });
+};
+
+/**
+ * 指定オフセットの間接オブジェクトを xref ストリームとして解析する
+ * （`N G obj << /Type /XRef ... >> stream ... endstream` 区間専用）。
+ * `/Filter` が `/FlateDecode` なら展開してからエントリをデコードする。
+ * Predictor 逆変換は未実装のため、`/DecodeParms` を持つストリームは
+ * 誤ったエントリを静かに生成しないよう `XREF_STREAM_INVALID` で拒否する。
+ *
+ * @param data - PDF のバイト列
+ * @param offset - 間接オブジェクトの開始バイトオフセット
+ * @returns 成功時は `Ok<{ xref, trailer }>`、失敗時は `Err<PdfError>`
+ */
+const parseStreamXRefAt = async (
+  data: Uint8Array,
+  offset: ByteOffset,
+): Promise<Result<{ xref: XRefTable; trailer: TrailerDict }, PdfError>> => {
+  const objectResult = await ObjectParser.parseIndirectObject(data, offset);
+  if (!objectResult.ok) {
+    return objectResult;
+  }
+  const body = objectResult.value.body;
+  if (body.type !== "stream") {
+    return err({
+      code: "XREF_STREAM_INVALID",
+      message: "startxref/Prev offset does not point to a stream object",
+      offset,
+    });
+  }
+
+  const typeCheck = PdfType.validate(body.dictionary.entries, "XRef");
+  if (typeCheck.some) {
+    return err(typeCheck.value);
+  }
+
+  if (body.dictionary.entries.has("DecodeParms")) {
+    return err({
+      code: "XREF_STREAM_INVALID",
+      message:
+        "/DecodeParms (e.g. Predictor) is not supported for xref streams",
+      offset,
+    });
+  }
+
+  const layoutResult = readXRefStreamLayout(body.dictionary.entries, offset);
+  if (!layoutResult.ok) {
+    return layoutResult;
+  }
+
+  const filterResult = PdfFilter.parse(body.dictionary.entries);
+  if (!filterResult.ok) {
+    return filterResult;
+  }
+
+  let decoded = body.data;
+  if (filterResult.value === "FlateDecode") {
+    const decompressResult = await decompressFlate(body.data);
+    if (!decompressResult.ok) {
+      return decompressResult;
+    }
+    decoded = decompressResult.value;
+  }
+
+  const xrefResult = decodeXRefStreamEntries({
+    data: decoded,
+    w: layoutResult.value.w,
+    size: layoutResult.value.size,
+    index: layoutResult.value.index,
+    baseOffset: offset,
+  });
+  if (!xrefResult.ok) {
+    return xrefResult;
+  }
+
+  const trailerResult = buildXRefStreamTrailerDict(body.dictionary.entries);
+  if (!trailerResult.ok) {
+    return trailerResult;
+  }
+
+  return ok({ xref: xrefResult.value, trailer: trailerResult.value });
+};
+
+/**
+ * 指定オフセットの xref セクションを解析する。先頭が `xref` キーワードなら
+ * テキスト形式、そうでなければ xref ストリーム（間接オブジェクト）として
+ * 解析する（ISO 32000-1 §7.5.8, XM-004）。`mergeXRefChain` の
+ * `parseCallback` 引数として使う。
+ *
+ * @param data - PDF のバイト列
+ * @param offset - xref セクションの開始バイトオフセット
+ * @returns 成功時は `Ok<{ xref, trailer }>`、失敗時は `Err<PdfError>`
+ */
+const parseXRefAt = async (
+  data: Uint8Array,
+  offset: ByteOffset,
+): Promise<Result<{ xref: XRefTable; trailer: TrailerDict }, PdfError>> => {
+  if (matchesBytesAt(data, offset, XREF_KEYWORD_BYTES)) {
+    return parseTextXRefAt(data, offset);
+  }
+  return parseStreamXRefAt(data, offset);
+};
+
 /** PdfWarning 配列を消費するローカルコールバック型。 */
 type EmitWarnings = (warnings: readonly PdfWarning[]) => void;
 
@@ -148,10 +333,10 @@ type EmitWarnings = (warnings: readonly PdfWarning[]) => void;
  * @param emitWarnings - fallback 復元時の警告通知コールバック
  * @returns 成功時は `Ok<{ xref, trailer }>`、失敗時は `Err<PdfError>`
  */
-const resolveXRefStructure = (
+const resolveXRefStructure = async (
   data: Uint8Array,
   emitWarnings: EmitWarnings,
-): Result<{ xref: XRefTable; trailer: TrailerDict }, PdfError> => {
+): Promise<Result<{ xref: XRefTable; trailer: TrailerDict }, PdfError>> => {
   const startXRefResult = scanStartXRef(data);
   if (!startXRefResult.ok) {
     const fb = scanFallback(data);
@@ -169,7 +354,7 @@ const resolveXRefStructure = (
     return ok({ xref: fb.value.xrefTable, trailer: fb.value.trailer.value });
   }
 
-  const mergeResult = mergeXRefChain(startXRefResult.value, (off) =>
+  const mergeResult = await mergeXRefChain(startXRefResult.value, (off) =>
     parseXRefAt(data, off),
   );
   if (mergeResult.ok) {
@@ -273,11 +458,19 @@ export class PdfDocument {
       }
     };
 
-    const xrefResolution = resolveXRefStructure(data, emitWarnings);
+    const xrefResolution = await resolveXRefStructure(data, emitWarnings);
     if (!xrefResolution.ok) {
       return xrefResolution;
     }
     const { xref, trailer: latestTrailer } = xrefResolution.value;
+
+    if (latestTrailer.encrypt !== undefined) {
+      return err({
+        code: "ENCRYPTED_PDF_UNSUPPORTED",
+        message: "encrypted PDF is not supported",
+        offset: ByteOffset.of(0),
+      });
+    }
 
     const storeResult = ObjectStore.create(
       { xref, data },

@@ -1,5 +1,5 @@
 import { assert, expect, test } from "vitest";
-import type { PdfParseError } from "../../../pdf/errors/index";
+import type { PdfError } from "../../../pdf/errors/index";
 import { ByteOffset } from "../../../pdf/types/byte-offset/index";
 import { GenerationNumber } from "../../../pdf/types/generation-number/index";
 import type {
@@ -45,24 +45,26 @@ function makeTrailer(size: number, prev?: number): TrailerDict {
 
 type ParseCallback = (
   offset: ByteOffset,
-) => Result<{ xref: XRefTable; trailer: TrailerDict }, PdfParseError>;
+) => Promise<Result<{ xref: XRefTable; trailer: TrailerDict }, PdfError>>;
 
-test("maxDepth = 1 で単一xrefが成功する", () => {
-  const callback: ParseCallback = (_offset: ByteOffset) =>
+test("maxDepth = 1 で単一xrefが成功する", async () => {
+  const callback: ParseCallback = async (_offset: ByteOffset) =>
     ok({
       xref: makeXRef([[1, usedEntry(100)]], 2),
       trailer: makeTrailer(2),
     });
 
-  const result = mergeXRefChain(ByteOffset.of(500), callback, { maxDepth: 1 });
+  const result = await mergeXRefChain(ByteOffset.of(500), callback, {
+    maxDepth: 1,
+  });
 
   assert(result.ok);
   expect(result.value.mergedXRef.size).toBe(2);
 });
 
-test("maxDepth = 1 で2段チェーンが深さ制限エラーになる", () => {
+test("maxDepth = 1 で2段チェーンが深さ制限エラーになる", async () => {
   let calls = 0;
-  const callback: ParseCallback = (_offset: ByteOffset) => {
+  const callback: ParseCallback = async (_offset: ByteOffset) => {
     calls++;
     return ok({
       xref: makeXRef([[calls, usedEntry(calls * 100)]], calls + 1),
@@ -70,15 +72,17 @@ test("maxDepth = 1 で2段チェーンが深さ制限エラーになる", () => 
     });
   };
 
-  const result = mergeXRefChain(ByteOffset.of(400), callback, { maxDepth: 1 });
+  const result = await mergeXRefChain(ByteOffset.of(400), callback, {
+    maxDepth: 1,
+  });
 
   assert(!result.ok);
   expect(result.error.code).toBe("XREF_PREV_CHAIN_TOO_DEEP");
 });
 
-test("maxDepth オプション指定: カスタム深さ制限が適用される", () => {
+test("maxDepth オプション指定: カスタム深さ制限が適用される", async () => {
   let counter = 0;
-  const callback: ParseCallback = (_offset: ByteOffset) => {
+  const callback: ParseCallback = async (_offset: ByteOffset) => {
     counter++;
     return ok({
       xref: makeXRef([[counter, usedEntry(counter * 100)]], counter + 1),
@@ -86,50 +90,52 @@ test("maxDepth オプション指定: カスタム深さ制限が適用される
     });
   };
 
-  const result = mergeXRefChain(ByteOffset.of(0), callback, { maxDepth: 3 });
+  const result = await mergeXRefChain(ByteOffset.of(0), callback, {
+    maxDepth: 3,
+  });
 
   assert(!result.ok);
   expect(result.error.code).toBe("XREF_PREV_CHAIN_TOO_DEEP");
 });
 
-test("maxDepth 未指定（options 省略）はデフォルト 100 で単一 xref を成功させる", () => {
+test("maxDepth 未指定（options 省略）はデフォルト 100 で単一 xref を成功させる", async () => {
   // 未指定経路: options 省略時に MaxDepth.DEFAULT (100) が採用され成功
-  const callback: ParseCallback = (_offset: ByteOffset) =>
+  const callback: ParseCallback = async (_offset: ByteOffset) =>
     ok({
       xref: makeXRef([[1, usedEntry(100)]], 2),
       trailer: makeTrailer(2),
     });
 
-  const result = mergeXRefChain(ByteOffset.of(500), callback);
+  const result = await mergeXRefChain(ByteOffset.of(500), callback);
 
   assert(result.ok);
   expect(result.value.mergedXRef.size).toBe(2);
 });
 
-test("maxDepth: undefined 明示指定でもデフォルト 100 が適用される", () => {
+test("maxDepth: undefined 明示指定でもデフォルト 100 が適用される", async () => {
   // 明示 undefined でも MaxDepth.DEFAULT が採用される
-  const callback: ParseCallback = (_offset: ByteOffset) =>
+  const callback: ParseCallback = async (_offset: ByteOffset) =>
     ok({
       xref: makeXRef([[1, usedEntry(100)]], 2),
       trailer: makeTrailer(2),
     });
 
-  const result = mergeXRefChain(ByteOffset.of(500), callback, {
+  const result = await mergeXRefChain(ByteOffset.of(500), callback, {
     maxDepth: undefined,
   });
 
   assert(result.ok);
 });
 
-test("maxDepth = Number.MAX_SAFE_INTEGER で単一 xref を成功させる", () => {
+test("maxDepth = Number.MAX_SAFE_INTEGER で単一 xref を成功させる", async () => {
   // safe integer 上限も有効値として受理される
-  const callback: ParseCallback = (_offset: ByteOffset) =>
+  const callback: ParseCallback = async (_offset: ByteOffset) =>
     ok({
       xref: makeXRef([[1, usedEntry(100)]], 2),
       trailer: makeTrailer(2),
     });
 
-  const result = mergeXRefChain(ByteOffset.of(500), callback, {
+  const result = await mergeXRefChain(ByteOffset.of(500), callback, {
     maxDepth: Number.MAX_SAFE_INTEGER,
   });
 
@@ -143,16 +149,16 @@ test.each([
   Infinity,
   -Infinity,
   Number.MAX_SAFE_INTEGER + 1,
-])("maxDepth に無効値 %s を渡した場合、XREF_MAX_DEPTH_INVALID を返す", (invalidValue) => {
+])("maxDepth に無効値 %s を渡した場合、XREF_MAX_DEPTH_INVALID を返す", async (invalidValue) => {
   // 異常系: 詳細な境界値は max-depth.validation.test.ts に集約。
   // ここでは「mergeXRefChain が MaxDepth.create の Err を素通しする」ことを確認する
-  const callback: ParseCallback = (_offset: ByteOffset) =>
+  const callback: ParseCallback = async (_offset: ByteOffset) =>
     ok({
       xref: makeXRef([[1, usedEntry(100)]], 2),
       trailer: makeTrailer(2),
     });
 
-  const result = mergeXRefChain(ByteOffset.of(500), callback, {
+  const result = await mergeXRefChain(ByteOffset.of(500), callback, {
     maxDepth: invalidValue,
   });
 
@@ -160,15 +166,15 @@ test.each([
   expect(result.error.code).toBe("XREF_MAX_DEPTH_INVALID");
 });
 
-test("maxDepth = NaN で XREF_MAX_DEPTH_INVALID を返す", () => {
+test("maxDepth = NaN で XREF_MAX_DEPTH_INVALID を返す", async () => {
   // NaN は test.each の label 表示が壊れるため単独 test に分離
-  const callback: ParseCallback = (_offset: ByteOffset) =>
+  const callback: ParseCallback = async (_offset: ByteOffset) =>
     ok({
       xref: makeXRef([[1, usedEntry(100)]], 2),
       trailer: makeTrailer(2),
     });
 
-  const result = mergeXRefChain(ByteOffset.of(500), callback, {
+  const result = await mergeXRefChain(ByteOffset.of(500), callback, {
     maxDepth: NaN,
   });
 
@@ -176,15 +182,17 @@ test("maxDepth = NaN で XREF_MAX_DEPTH_INVALID を返す", () => {
   expect(result.error.code).toBe("XREF_MAX_DEPTH_INVALID");
 });
 
-test("XREF_MAX_DEPTH_INVALID の message に invalid 値が含まれる", () => {
+test("XREF_MAX_DEPTH_INVALID の message に invalid 値が含まれる", async () => {
   // 検証補助: エラーメッセージから何が invalid だったかが分かる
-  const callback: ParseCallback = (_offset: ByteOffset) =>
+  const callback: ParseCallback = async (_offset: ByteOffset) =>
     ok({
       xref: makeXRef([[1, usedEntry(100)]], 2),
       trailer: makeTrailer(2),
     });
 
-  const result = mergeXRefChain(ByteOffset.of(500), callback, { maxDepth: -1 });
+  const result = await mergeXRefChain(ByteOffset.of(500), callback, {
+    maxDepth: -1,
+  });
 
   assert(!result.ok);
   expect(result.error.message).toContain("-1");
