@@ -1,4 +1,4 @@
-import type { PdfParseError } from "../../pdf/errors/index";
+import type { PdfError, PdfParseError } from "../../pdf/errors/index";
 import type { ByteOffset } from "../../pdf/types/byte-offset/index";
 import type { TrailerDict, XRefEntry, XRefTable } from "../../pdf/types/index";
 import type { ObjectNumber } from "../../pdf/types/object-number/index";
@@ -50,31 +50,33 @@ function mergeCollectedChain(
   };
 }
 
-/** xref+trailer をオフセットからパースするコールバック。 */
+/**
+ * xref+trailer をオフセットからパースするコールバック。
+ * 間接オブジェクトのパース（xref ストリーム経路）を含みうるため非同期。
+ */
 type XRefParseCallback = (
   offset: ByteOffset,
-) => Result<{ xref: XRefTable; trailer: TrailerDict }, PdfParseError>;
+) => Promise<Result<{ xref: XRefTable; trailer: TrailerDict }, PdfError>>;
 
 /**
  * /Prevチェーンを辿り、全xrefテーブルをマージする。
  * 新しいエントリが古いものを上書きし、最新のトレイラ辞書を返す。
  *
  * @param startOffset - 最初のxrefセクションのバイトオフセット（startxrefの値）
- * @param parseCallback - オフセットからxref+trailerをパースするコールバック
+ * @param parseCallback - オフセットからxref+trailerをパースする非同期コールバック
  * @param options - オプション（maxDepth: /Prevチェーンの最大走査深さ。
  *   `undefined` は既定値 100 を採用、正の safe integer 以外は
  *   `XREF_MAX_DEPTH_INVALID` を含む Err）
  * @returns マージ済みXRefTableと最新TrailerDict、
  *   maxDepth 不正時は `XREF_MAX_DEPTH_INVALID`、
- *   その他の失敗時は該当する `PdfParseError`
+ *   その他の失敗時は該当する `PdfError`
  */
-export function mergeXRefChain(
+export async function mergeXRefChain(
   startOffset: ByteOffset,
   parseCallback: XRefParseCallback,
   options?: { readonly maxDepth?: number },
-): Result<
-  { mergedXRef: XRefTable; latestTrailer: TrailerDict },
-  PdfParseError
+): Promise<
+  Result<{ mergedXRef: XRefTable; latestTrailer: TrailerDict }, PdfError>
 > {
   const maxDepthResult = MaxDepth.create(options?.maxDepth);
   if (!maxDepthResult.ok) {
@@ -106,7 +108,7 @@ export function mergeXRefChain(
 
     traversedOffsets.add(currentOffset);
 
-    const parseResult = parseCallback(currentOffset);
+    const parseResult = await parseCallback(currentOffset);
     if (!parseResult.ok) {
       return parseResult;
     }
