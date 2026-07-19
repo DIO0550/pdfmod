@@ -757,18 +757,23 @@ export const buildPdfWithHybridXRefStm = async (): Promise<Uint8Array> => {
   ]);
 };
 
+/** {@link buildPdfWithEncryptDict} の暗号化辞書 (4 0 obj) の本体。ISO 32000-1 §7.6.1 準拠の最小構成。 */
+const ENCRYPT_DICT_BODY =
+  "<< /Filter /Standard /V 1 /R 2 /O <0000000000000000000000000000000000000000000000000000000000000000> /U <0000000000000000000000000000000000000000000000000000000000000000> /P -44 >>";
+
 /**
  * trailer に `/Encrypt` を持つ暗号化 PDF を生成する。
  *
- * Catalog / Pages / Page は通常構成だが、trailer に `/Encrypt 4 0 R` を追加する。
- * 参照先オブジェクト (4 0 obj) は実際には定義しない — `PdfDocument.load` は
- * `/Encrypt` の値を解決せず、trailer にエントリが存在するかどうかのみで
- * `ENCRYPTED_PDF_UNSUPPORTED` を返すため、参照先の実在は不要。
+ * Catalog / Pages / Page に加え、trailer から `/Encrypt 4 0 R` で参照される
+ * 暗号化辞書 (4 0 obj) も定義し、xref 上で実在する妥当な PDF にする
+ * （`PdfDocument.load` は `/Encrypt` の値を解決せず trailer にエントリが
+ * 存在するかどうかのみで `ENCRYPTED_PDF_UNSUPPORTED` を返すが、fixture 自体は
+ * 将来の `/Size`・参照整合性検証にも耐えるよう妥当な構造にしておく）。
  *
  * @returns `/Encrypt` を持つ PDF バイト列
  */
 export const buildPdfWithEncryptDict = (): Uint8Array =>
   assembleTextPdf(
-    [CATALOG_BODY, PAGES_BODY_SINGLE, PAGE_BODY],
+    [CATALOG_BODY, PAGES_BODY_SINGLE, PAGE_BODY, ENCRYPT_DICT_BODY],
     ["/Encrypt 4 0 R"],
   );
