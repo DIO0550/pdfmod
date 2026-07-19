@@ -4,7 +4,7 @@
  *
  * @example
  * ```ts
- * const code: PdfWarningCode = "CATALOG_VERSION_INVALID";
+ * const code: PdfWarningCode = "GENERATION_MISMATCH";
  * ```
  */
 export type PdfWarningCode =
@@ -28,7 +28,8 @@ export type PdfWarningCode =
   | "TRAPPED_INVALID"
   | "UNKNOWN_OPERATOR"
   | "CATALOG_VERSION_INVALID"
-  | "UNBALANCED_RESTORE";
+  | "UNBALANCED_RESTORE"
+  | "GENERATION_MISMATCH";
 
 /**
  * 回復可能なPDF問題の警告。
