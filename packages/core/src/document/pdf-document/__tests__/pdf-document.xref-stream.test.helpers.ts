@@ -60,6 +60,15 @@ const compressedEntryBytes = (
 const FREE_ENTRY_BYTES: readonly number[] = [0, 0, 0, 0];
 
 /**
+ * テキスト形式 xref エントリの10桁ゼロ埋めオフセット文字列を組み立てる。
+ *
+ * @param n - 0 以上の整数オフセット値
+ * @returns 10桁ゼロ埋め文字列
+ */
+const pad10 = (n: number): string =>
+  n.toString(OFFSET_PAD_RADIX).padStart(OFFSET_PAD_DIGITS, "0");
+
+/**
  * バイト配列群を連結する。
  *
  * @param chunks - 連結対象のバイト配列群
@@ -158,8 +167,6 @@ export const buildPdfWithIncrementalUpdateViaXRefStream = (): Uint8Array => {
   }
   const oldXrefOffset = cursor;
 
-  const pad10 = (n: number): string =>
-    n.toString(OFFSET_PAD_RADIX).padStart(OFFSET_PAD_DIGITS, "0");
   const oldXrefRows = [
     "0000000000 65535 f \n",
     ...oldOffsets.map((o) => `${pad10(o)} 00000 n \n`),
@@ -280,5 +287,90 @@ export const buildPdfWithXRefStreamAndObjStm = (): Uint8Array => {
     rawEntries,
     encoder.encode("\nendstream\nendobj\n"),
     encoder.encode(footer),
+  ]);
+};
+
+/**
+ * ハイブリッド参照ファイル（ISO 32000-1 §7.5.8.4）を生成する。
+ *
+ * `startxref` はテキスト形式 xref テーブル（obj0-2 の free/Catalog/Pages のみを列挙、
+ * 旧リーダー互換のため ObjStm やそれを指す type=2 エントリは含まない）を指し、その
+ * trailer に `/XRefStm` で補助クロスリファレンスストリーム（5 0 obj）を追加する。
+ * Page（3 0 obj）は ObjStm（4 0 obj）内にのみ格納され、テキスト xref からは
+ * 到達できない — `/XRefStm` を無視すると obj3 は「free/未登録」に見え、
+ * `PdfDocument.load` は少なくともページが解決できない状態になる。
+ *
+ * @returns テキストxref + `/XRefStm` によるハイブリッド参照 PDF のバイト列
+ */
+export const buildHybridReferencePdfWithXRefStm = (): Uint8Array => {
+  const OBJSTM_OBJECT_NUMBER = 4;
+  const obj1 = `1 0 obj\n${CATALOG_BODY}\nendobj\n`;
+  const obj2 = `2 0 obj\n${PAGES_BODY}\nendobj\n`;
+
+  let cursor = byteLen(HEADER);
+  const obj1Offset = cursor;
+  cursor += byteLen(obj1);
+  const obj2Offset = cursor;
+  cursor += byteLen(obj2);
+
+  const objStmEntries = [{ objNum: 3, body: PAGE_BODY }];
+  let bodyCursor = 0;
+  const relOffsets: number[] = [];
+  for (const e of objStmEntries) {
+    relOffsets.push(bodyCursor);
+    bodyCursor += byteLen(e.body) + 1;
+  }
+  const objStmHeaderStr = `${objStmEntries
+    .map((e, i) => `${e.objNum} ${relOffsets[i]}`)
+    .join(" ")} `;
+  const objStmBodyStr = objStmEntries.map((e) => `${e.body} `).join("");
+  const objStmData = encoder.encode(objStmHeaderStr + objStmBodyStr);
+  const first = byteLen(objStmHeaderStr);
+
+  const obj4Offset = cursor;
+  const obj4 =
+    "4 0 obj\n" +
+    `<< /Type /ObjStm /N ${objStmEntries.length} /First ${first} /Length ${objStmData.length} >>\n` +
+    "stream\n";
+  cursor +=
+    byteLen(obj4) + objStmData.length + byteLen("\nendstream\nendobj\n");
+
+  const obj5Offset = cursor;
+  const streamRawEntries = new Uint8Array([
+    ...compressedEntryBytes(OBJSTM_OBJECT_NUMBER, 0),
+    ...usedEntryBytes(obj4Offset),
+    ...usedEntryBytes(obj5Offset),
+  ]);
+  const obj5 =
+    "5 0 obj\n" +
+    "<< /Type /XRef /W [1 2 1] /Size 6 /Index [3 3] /Root 1 0 R " +
+    `/Length ${streamRawEntries.length} >>\n` +
+    "stream\n";
+  cursor +=
+    byteLen(obj5) + streamRawEntries.length + byteLen("\nendstream\nendobj\n");
+
+  const xrefOffset2 = cursor;
+  const textXrefRows = [
+    "0000000000 65535 f \n",
+    `${pad10(obj1Offset)} 00000 n \n`,
+    `${pad10(obj2Offset)} 00000 n \n`,
+  ];
+  const textXref = `xref\n0 3\n${textXrefRows.join("")}`;
+  const hybridTrailer =
+    `trailer\n<< /Size 6 /Root 1 0 R /XRefStm ${obj5Offset} >>\n` +
+    `startxref\n${xrefOffset2}\n%%EOF\n`;
+
+  return concatBytes([
+    encoder.encode(HEADER),
+    encoder.encode(obj1),
+    encoder.encode(obj2),
+    encoder.encode(obj4),
+    objStmData,
+    encoder.encode("\nendstream\nendobj\n"),
+    encoder.encode(obj5),
+    streamRawEntries,
+    encoder.encode("\nendstream\nendobj\n"),
+    encoder.encode(textXref),
+    encoder.encode(hybridTrailer),
   ]);
 };

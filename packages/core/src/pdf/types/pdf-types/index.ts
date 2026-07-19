@@ -239,6 +239,12 @@ export interface TrailerDict {
   size: number;
   /** /Prev - 前の相互参照テーブルのバイトオフセット */
   prev?: ByteOffset;
+  /**
+   * /XRefStm - ハイブリッド参照ファイル（ISO 32000-1 §7.5.8.4）における
+   * 補助クロスリファレンスストリームのバイトオフセット。
+   * テキスト形式 trailer にのみ現れ、`/Prev` を辿る前に読む必要がある。
+   */
+  xrefStm?: ByteOffset;
   /** /Info - ドキュメント情報辞書の間接参照 */
   info?: IndirectRef;
   /** /ID - ファイル識別子 [永続ID, 変更ID] */
