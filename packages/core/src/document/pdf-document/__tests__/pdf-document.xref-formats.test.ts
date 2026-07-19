@@ -4,6 +4,7 @@ import {
   buildMinimalSinglePagePdfWithXRefStream,
   buildPdfWithEncryptDict,
   buildPdfWithHybridXRefStm,
+  buildPdfWithWrongTypeXRefStream,
   buildPdfWithXRefStreamDecodeParms,
 } from "./pdf-document.test.helpers";
 
@@ -85,6 +86,19 @@ test("/DecodeParmsを持つxrefストリームのPDFはXREF_STREAM_INVALIDでfal
   const result = await PdfDocument.load(
     await buildPdfWithXRefStreamDecodeParms(),
     { onWarning: (w) => seen.push(w.code) },
+  );
+
+  assert(result.ok);
+  expect(seen).toContain("XREF_REBUILD");
+});
+
+test("/TypeがXRefでないストリームがxrefストリーム位置にあるPDFはXREF_STREAM_INVALIDでfallback scanへ移行しXREF_REBUILD warningを伴ってOkになる", async () => {
+  const seen: string[] = [];
+  const result = await PdfDocument.load(
+    await buildPdfWithWrongTypeXRefStream(),
+    {
+      onWarning: (w) => seen.push(w.code),
+    },
   );
 
   assert(result.ok);

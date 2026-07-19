@@ -248,7 +248,11 @@ const parseStreamXRefAt = async (
 
   const typeCheck = PdfType.validate(body.dictionary.entries, "XRef");
   if (typeCheck.some) {
-    return err(typeCheck.value);
+    return err({
+      code: "XREF_STREAM_INVALID",
+      message: typeCheck.value.message,
+      offset,
+    });
   }
 
   if (body.dictionary.entries.has("DecodeParms")) {

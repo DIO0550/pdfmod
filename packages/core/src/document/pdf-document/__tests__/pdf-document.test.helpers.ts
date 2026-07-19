@@ -637,6 +637,56 @@ export const buildPdfWithXRefStreamDecodeParms =
     ]);
   };
 
+/**
+ * `/Type` が `/XRef` でないストリームを xref ストリーム位置に持つ PDF を生成する。
+ *
+ * `startxref` が指す間接オブジェクトはストリームだが `/Type /NotXRef` であり、
+ * `PdfType.validate` の型不一致を `parseStreamXRefAt` が `XREF_STREAM_INVALID`
+ * （offset付き）に変換して返すことを検証する fixture。ストリームデータは
+ * {@link buildMinimalSinglePagePdfWithXRefStream} と同じ（`/Type` 検証で
+ * 早期に失敗するため実際には展開されず内容は無関係）。
+ *
+ * @returns `/Type /XRef` でないストリームを xref 位置に持つ PDF バイト列
+ */
+export const buildPdfWithWrongTypeXRefStream =
+  async (): Promise<Uint8Array> => {
+    const encoder = new TextEncoder();
+    const objectBodies = [CATALOG_BODY, PAGES_BODY_SINGLE, PAGE_BODY];
+    const objs = formatIndirectObjects(objectBodies);
+
+    const offsets: number[] = [];
+    let cursor = encoder.encode(PDF_HEADER).length;
+    for (const obj of objs) {
+      offsets.push(cursor);
+      cursor += encoder.encode(obj).length;
+    }
+    const xrefStreamObjNum = objectBodies.length + 1;
+    const xrefStreamOffset = cursor;
+
+    const rawEntries = [
+      xrefStreamEntryBytes(0, 0, 0),
+      xrefStreamEntryBytes(1, offsets[0], 0),
+      xrefStreamEntryBytes(1, offsets[1], 0),
+      xrefStreamEntryBytes(1, offsets[2], 0),
+      xrefStreamEntryBytes(1, xrefStreamOffset, 0),
+    ].flat();
+    const compressed = await compressFlate(new Uint8Array(rawEntries));
+
+    const size = xrefStreamObjNum + 1;
+    const dict =
+      `<< /Type /NotXRef /Filter /FlateDecode /W [${XREF_STREAM_W.join(" ")}] ` +
+      `/Size ${size} /Root 1 0 R /Length ${compressed.length} >>`;
+
+    return concatUint8Arrays([
+      encoder.encode(PDF_HEADER),
+      ...objs.map((o) => encoder.encode(o)),
+      encoder.encode(`${xrefStreamObjNum} 0 obj\n${dict}\nstream\n`),
+      compressed,
+      encoder.encode("\nendstream\nendobj\n"),
+      encoder.encode(`startxref\n${xrefStreamOffset}\n%%EOF\n`),
+    ]);
+  };
+
 /** {@link buildPdfWithHybridXRefStm} で ObjStm 内にのみ存在する `/Info` のオブジェクト番号。 */
 const HYBRID_INFO_OBJECT_NUMBER = 4;
 /** {@link buildPdfWithHybridXRefStm} の ObjStm 自体のオブジェクト番号。 */
@@ -702,7 +752,7 @@ export const buildPdfWithHybridXRefStm = async (): Promise<Uint8Array> => {
     new Uint8Array(xrefStreamRawEntries),
   );
 
-  const xrefStreamSize = HYBRID_XREF_STREAM_OBJECT_NUMBER;
+  const xrefStreamSize = HYBRID_XREF_STREAM_OBJECT_NUMBER + 1;
   const xrefStreamDict =
     `<< /Type /XRef /Filter /FlateDecode /W [${XREF_STREAM_W.join(" ")}] ` +
     `/Index [${HYBRID_INFO_OBJECT_NUMBER} 1 ${HYBRID_OBJSTM_OBJECT_NUMBER} 1] ` +
