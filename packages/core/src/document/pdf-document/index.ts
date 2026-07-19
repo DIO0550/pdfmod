@@ -151,12 +151,15 @@ const isXRefKeywordAt = (data: Uint8Array, offset: number): boolean => {
  *
  * @param data - PDF のバイト列
  * @param offset - xref キーワード、または xref ストリームを定義する間接オブジェクトのバイトオフセット
- * @returns 成功時は `Ok<{ xref, trailer }>`、失敗時は `Err<PdfError>`
+ * @returns 成功時は `Ok<{ xref, trailer }>`（`trailer` は `/XRefStm` 補助ストリームのように
+ *   `/Root` を持たない場合 `undefined`）、失敗時は `Err<PdfError>`
  */
 const parseXRefAt = async (
   data: Uint8Array,
   offset: ByteOffset,
-): Promise<Result<{ xref: XRefTable; trailer: TrailerDict }, PdfError>> => {
+): Promise<
+  Result<{ xref: XRefTable; trailer: TrailerDict | undefined }, PdfError>
+> => {
   if (!isXRefKeywordAt(data, offset as number)) {
     return parseXRefStream(data, offset);
   }

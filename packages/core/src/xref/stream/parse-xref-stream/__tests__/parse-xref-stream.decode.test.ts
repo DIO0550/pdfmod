@@ -53,6 +53,7 @@ test("Predictorなしのxrefストリームをデコードしてxref/trailerを�
     offset: ByteOffset.of(100),
     generationNumber: GenerationNumber.of(0),
   });
+  assert(result.value.trailer !== undefined);
   expect(result.value.trailer.root).toEqual({
     objectNumber: ObjectNumber.of(2),
     generationNumber: GenerationNumber.of(0),
@@ -103,6 +104,30 @@ test("/Filter省略時は展開せず生データをそのままデコードす�
   const result = await parseXRefStream(data, ByteOffset.of(HEADER_LEN));
 
   assert(result.ok);
+  expect(result.value.xref.entries.get(ObjectNumber.of(0))).toEqual({
+    type: 1,
+    offset: ByteOffset.of(5),
+    generationNumber: GenerationNumber.of(0),
+  });
+});
+
+test("/Rootが無いxrefストリームはtrailer:undefinedで成功する（/XRefStm補助ストリーム用, ISO 32000-1 §7.5.8.4）", async () => {
+  const rawEntries = new Uint8Array([1, 5, 0]);
+  const objHeader =
+    "1 0 obj\n" +
+    `<< /Type /XRef /W [1 1 1] /Size 1 /Length ${rawEntries.length} >>\n` +
+    "stream\n";
+  const data = concatBytes([
+    encode(HEADER),
+    encode(objHeader),
+    rawEntries,
+    encode("\nendstream\nendobj\n"),
+  ]);
+
+  const result = await parseXRefStream(data, ByteOffset.of(HEADER_LEN));
+
+  assert(result.ok);
+  expect(result.value.trailer).toBeUndefined();
   expect(result.value.xref.entries.get(ObjectNumber.of(0))).toEqual({
     type: 1,
     offset: ByteOffset.of(5),

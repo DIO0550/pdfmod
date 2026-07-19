@@ -53,10 +53,14 @@ function mergeCollectedChain(
 /**
  * xref+trailer をオフセットからパースするコールバック。
  * 間接オブジェクトのパース（xref ストリーム経路）を含みうるため非同期。
+ * `trailer` は `/XRefStm` が指す補助ストリームのように `/Root` を持たない
+ * xref ソースの場合 `undefined` になりうる（{@link visitSection} 参照）。
  */
 type XRefParseCallback = (
   offset: ByteOffset,
-) => Promise<Result<{ xref: XRefTable; trailer: TrailerDict }, PdfError>>;
+) => Promise<
+  Result<{ xref: XRefTable; trailer: TrailerDict | undefined }, PdfError>
+>;
 
 /**
  * /Prevチェーンを辿り、全xrefテーブルをマージする。
@@ -97,6 +101,11 @@ export async function mergeXRefChain(
    * それも読んで `entryLayers` に優先度順（ストリーム側が高優先）で push する。
    * 戻り値の trailer はチェーン継続判定（`/Prev`）用。
    *
+   * このセクション自身（`offset`）の trailer が `undefined`（`/Root` 欠如）の
+   * 場合は `ROOT_NOT_FOUND` エラーとする — チェーンの主要セクションは常に
+   * 文書 trailer を持つ必要がある。一方 `/XRefStm` が指す補助ストリームの
+   * trailer は `.xref` しか使わないため、`undefined` でも許容する。
+   *
    * @param offset - 読み取り対象のバイトオフセット
    * @returns セクション自身の TrailerDict、またはエラー
    */
@@ -108,6 +117,13 @@ export async function mergeXRefChain(
       return parseResult;
     }
     const { xref, trailer } = parseResult.value;
+    if (trailer === undefined) {
+      return err({
+        code: "ROOT_NOT_FOUND",
+        message: `xref section at offset ${String(offset)} has no trailer (/Root missing)`,
+        offset,
+      });
+    }
 
     if (trailer.xrefStm !== undefined) {
       const xrefStmOffset = trailer.xrefStm;

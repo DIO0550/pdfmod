@@ -48,3 +48,15 @@ test("ハイブリッド参照ファイル(/XRefStm)経由でObjStm内のみに�
   assert(page.some);
   expect(page.value.mediaBox).toEqual([0, 0, 612, 792]);
 });
+
+test("補助ストリーム自体に/Rootが無いハイブリッド参照ファイルでもObjStm内のPageが解決される", async () => {
+  const result = await PdfDocument.load(
+    buildHybridReferencePdfWithXRefStm({ includeRootInStream: false }),
+  );
+
+  assert(result.ok);
+  expect(result.value.pageCount).toBe(1);
+  const page = result.value.getPage(0);
+  assert(page.some);
+  expect(page.value.mediaBox).toEqual([0, 0, 612, 792]);
+});

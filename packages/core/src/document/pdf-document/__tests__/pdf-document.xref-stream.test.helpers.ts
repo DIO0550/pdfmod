@@ -326,9 +326,17 @@ export const buildPdfWithXRefStreamAndObjStm = (): Uint8Array => {
  * 到達できない — `/XRefStm` を無視すると obj3 は「free/未登録」に見え、
  * `PdfDocument.load` は少なくともページが解決できない状態になる。
  *
+ * 補助ストリーム（5 0 obj）自体の `/Root` は `includeRootInStream` で切り替えられる
+ * （ISO 32000-1 §7.5.8.4 上、補助ストリームは `/Root` を持たなくてもよい —
+ * 本来の文書 trailer はテキストセクション側が供給するため）。
+ *
+ * @param options - `includeRootInStream`: 補助ストリームに `/Root` を含めるか（既定 `true`）
  * @returns テキストxref + `/XRefStm` によるハイブリッド参照 PDF のバイト列
  */
-export const buildHybridReferencePdfWithXRefStm = (): Uint8Array => {
+export const buildHybridReferencePdfWithXRefStm = (
+  options: { readonly includeRootInStream?: boolean } = {},
+): Uint8Array => {
+  const includeRootInStream = options.includeRootInStream ?? true;
   const OBJSTM_OBJECT_NUMBER = 4;
   const obj1 = `1 0 obj\n${CATALOG_BODY}\nendobj\n`;
   const obj2 = `2 0 obj\n${PAGES_BODY}\nendobj\n`;
@@ -367,9 +375,10 @@ export const buildHybridReferencePdfWithXRefStm = (): Uint8Array => {
     ...usedEntryBytes(obj4Offset),
     ...usedEntryBytes(obj5Offset),
   ]);
+  const rootEntry = includeRootInStream ? "/Root 1 0 R " : "";
   const obj5 =
     "5 0 obj\n" +
-    "<< /Type /XRef /W [1 2 1] /Size 6 /Index [3 3] /Root 1 0 R " +
+    `<< /Type /XRef /W [1 2 1] /Size 6 /Index [3 3] ${rootEntry}` +
     `/Length ${streamRawEntries.length} >>\n` +
     "stream\n";
   cursor +=

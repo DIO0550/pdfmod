@@ -60,16 +60,20 @@ function makeTrailer(
 
 type ParseCallback = (
   offset: ByteOffset,
-) => Promise<Result<{ xref: XRefTable; trailer: TrailerDict }, PdfError>>;
+) => Promise<
+  Result<{ xref: XRefTable; trailer: TrailerDict | undefined }, PdfError>
+>;
 
 function stubMap(
-  entries: Array<[number, { xref: XRefTable; trailer: TrailerDict }]>,
-): Map<ByteOffset, { xref: XRefTable; trailer: TrailerDict }> {
+  entries: Array<
+    [number, { xref: XRefTable; trailer: TrailerDict | undefined }]
+  >,
+): Map<ByteOffset, { xref: XRefTable; trailer: TrailerDict | undefined }> {
   return new Map(entries.map(([n, v]) => [ByteOffset.of(n), v]));
 }
 
 function callbackFromMap(
-  table: Map<ByteOffset, { xref: XRefTable; trailer: TrailerDict }>,
+  table: Map<ByteOffset, { xref: XRefTable; trailer: TrailerDict | undefined }>,
 ): ParseCallback {
   return async (offset: ByteOffset) => {
     const entry = table.get(offset);
@@ -175,4 +179,34 @@ test("/XRefStmが存在しないセクションはこれまで通りテキスト
   expect(result.value.mergedXRef.entries.get(ObjectNumber.of(1))).toEqual(
     usedEntry(100),
   );
+});
+
+test("/XRefStm側のtrailerがundefined（/Root欠如）でもxrefエントリはマージされる", async () => {
+  const textXRef = makeXRef([[1, usedEntry(100)]], 2);
+  const streamXRef = makeXRef([[2, compressedEntry(10, 0)]], 3);
+  const callback = callbackFromMap(
+    stubMap([
+      [500, { xref: textXRef, trailer: makeTrailer(3, { xrefStm: 700 }) }],
+      [700, { xref: streamXRef, trailer: undefined }],
+    ]),
+  );
+
+  const result = await mergeXRefChain(ByteOffset.of(500), callback);
+
+  assert(result.ok);
+  const entry2 = result.value.mergedXRef.entries.get(ObjectNumber.of(2));
+  assert(entry2 !== undefined);
+  expect(entry2.type).toBe(2);
+});
+
+test("主セクション自体のtrailerがundefined（/Root欠如）の場合はROOT_NOT_FOUNDを返す", async () => {
+  const textXRef = makeXRef([[1, usedEntry(100)]], 2);
+  const callback = callbackFromMap(
+    stubMap([[500, { xref: textXRef, trailer: undefined }]]),
+  );
+
+  const result = await mergeXRefChain(ByteOffset.of(500), callback);
+
+  assert(!result.ok);
+  expect(result.error.code).toBe("ROOT_NOT_FOUND");
 });

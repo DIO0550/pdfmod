@@ -26,14 +26,24 @@ const FLATE_DECODE_FILTER_NAME = "FlateDecode";
 /**
  * 指定オフセットの間接オブジェクトを xref ストリームとしてパースする。
  *
+ * `/XRefStm`（ISO 32000-1 §7.5.8.4）が指す補助クロスリファレンスストリームは
+ * `/Root` を持たないことがある（本来の文書 trailer はテキストセクション側が
+ * 供給するため）。この場合 `buildXRefStreamTrailerDict` は `ROOT_NOT_FOUND` を
+ * 返すが、それ自体は致命的エラーとせず `trailer: undefined` を返す。それ以外の
+ * trailer 構築エラー（`/Prev` 等の既存オプションフィールドが不正な場合）は
+ * 引き続き `Err` として伝播する。
+ *
  * @param data - PDF ファイル全体のバイト配列
  * @param offset - xref ストリームを定義する間接オブジェクトの開始バイトオフセット
- * @returns 成功時は `Ok<{ xref, trailer }>`、失敗時は `Err<PdfError>`
+ * @returns 成功時は `Ok<{ xref, trailer }>`（`trailer` は `/Root` 欠如時 `undefined`）、
+ *   失敗時は `Err<PdfError>`
  */
 export async function parseXRefStream(
   data: Uint8Array,
   offset: ByteOffset,
-): Promise<Result<{ xref: XRefTable; trailer: TrailerDict }, PdfError>> {
+): Promise<
+  Result<{ xref: XRefTable; trailer: TrailerDict | undefined }, PdfError>
+> {
   const objectResult = await ObjectParser.parseIndirectObject(data, offset);
   if (!objectResult.ok) {
     return objectResult;
@@ -88,6 +98,9 @@ export async function parseXRefStream(
 
   const trailerResult = buildXRefStreamTrailerDict(body.dictionary.entries);
   if (!trailerResult.ok) {
+    if (trailerResult.error.code === "ROOT_NOT_FOUND") {
+      return ok({ xref: entriesResult.value, trailer: undefined });
+    }
     return trailerResult;
   }
 

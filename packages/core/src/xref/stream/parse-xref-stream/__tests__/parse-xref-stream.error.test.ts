@@ -98,6 +98,26 @@ test("展開後データ長が/Wと/Sizeに一致しない場合、decodeXRefStr
   expect(result.error.code).toBe("XREF_STREAM_INVALID");
 });
 
+test("/Rootが有っても/Prevが不正な値の場合はXREF_STREAM_INVALIDが伝播する（ROOT_NOT_FOUND以外は寛容にしない）", async () => {
+  const rawEntries = new Uint8Array([1, 5, 0]);
+  const objHeader =
+    "1 0 obj\n" +
+    "<< /Type /XRef /W [1 1 1] /Size 1 /Root 2 0 R /Prev -1 " +
+    `/Length ${rawEntries.length} >>\n` +
+    "stream\n";
+  const data = concatBytes([
+    encode(HEADER),
+    encode(objHeader),
+    rawEntries,
+    encode("\nendstream\nendobj\n"),
+  ]);
+
+  const result = await parseXRefStream(data, ByteOffset.of(HEADER_LEN));
+
+  assert(!result.ok);
+  expect(result.error.code).toBe("XREF_STREAM_INVALID");
+});
+
 test("/DecodeParmsの/Predictorが未サポート値の場合、Predictor由来のXREF_STREAM_INVALIDが伝播する", async () => {
   const compressed = new Uint8Array([
     120, 156, 99, 96, 96, 96, 96, 100, 72, 97, 0, 0, 0, 212, 0, 102,
