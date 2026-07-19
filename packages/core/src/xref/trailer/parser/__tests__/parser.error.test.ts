@@ -143,6 +143,28 @@ test("/Prevが名前の場合にXREF_TABLE_INVALIDエラーが返る", () => {
   expect(result.error.code).toBe("XREF_TABLE_INVALID");
 });
 
+test("/XRefStmが負数の場合にXREF_TABLE_INVALIDエラーが返る", () => {
+  const { data, offset } = trailerAt(
+    "trailer << /Root 1 0 R /Size 10 /XRefStm -1 >>",
+  );
+  const result = parseTrailer(data, offset);
+  assert(!result.ok);
+  expect(result.error.code).toBe("XREF_TABLE_INVALID");
+});
+
+test("/XRefStmが実数の場合にXREF_TABLE_INVALIDエラーが返る", () => {
+  const { data, offset } = trailerAt(
+    "trailer << /Root 1 0 R /Size 10 /XRefStm 1.5 >>",
+  );
+  const result = parseTrailer(data, offset);
+  assert(!result.ok);
+  expect(result.error.code).toBe("XREF_TABLE_INVALID");
+  expect(result.error.message).toBe(
+    "/XRefStm entry is not a non-negative integer",
+  );
+  expect(result.error.offset).toBeDefined();
+});
+
 test("/Infoが非間接参照の場合にXREF_TABLE_INVALIDエラーが返る", () => {
   const { data, offset } = trailerAt(
     "trailer << /Root 1 0 R /Size 10 /Info /SomeName >>",

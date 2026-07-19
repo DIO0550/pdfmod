@@ -50,6 +50,22 @@ test("/Prevがない辞書でprevがundefinedである", () => {
   expect(result.value.prev).toBeUndefined();
 });
 
+test("/XRefStmを含む辞書からxrefStmが数値として抽出される（ハイブリッド参照ファイル, ISO 32000-1 §7.5.8.4）", () => {
+  const { data, offset } = trailerAt(
+    "trailer << /Root 1 0 R /Size 10 /XRefStm 5000 >>",
+  );
+  const result = parseTrailer(data, offset);
+  assert(result.ok);
+  expect(result.value.xrefStm).toBe(5000);
+});
+
+test("/XRefStmがない辞書でxrefStmがundefinedである", () => {
+  const { data, offset } = trailerAt("trailer << /Root 1 0 R /Size 10 >>");
+  const result = parseTrailer(data, offset);
+  assert(result.ok);
+  expect(result.value.xrefStm).toBeUndefined();
+});
+
 test("/Infoを含む辞書からinfoが間接参照として抽出される", () => {
   const { data, offset } = trailerAt(
     "trailer << /Root 1 0 R /Size 10 /Info 5 0 R >>",
