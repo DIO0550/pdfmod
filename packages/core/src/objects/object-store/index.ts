@@ -5,7 +5,7 @@
  * @module
  */
 
-import type { PdfError } from "../../pdf/errors/index";
+import type { PdfError, PdfWarning } from "../../pdf/errors/index";
 import { GenerationNumber } from "../../pdf/types/generation-number/index";
 import type { ObjectNumber } from "../../pdf/types/object-number/index";
 import type { IndirectRef, PdfObject } from "../../pdf/types/pdf-types/index";
@@ -30,6 +30,7 @@ export class ObjectStore {
   private readonly source: ObjectStoreSource;
   private readonly cache: LRUCache<string, PdfObject>;
   private readonly streamCache: LRUCache<ObjectNumber, Uint8Array> | undefined;
+  private readonly onWarning: ((warning: PdfWarning) => void) | undefined;
   private readonly inFlight = new Map<
     string,
     Promise<Result<PdfObject, PdfError>>
@@ -39,15 +40,18 @@ export class ObjectStore {
    * @param source - データソース（xref, data）
    * @param cache - 解決結果キャッシュ
    * @param streamCache - ObjStm 展開済みデータキャッシュ
+   * @param onWarning - 回復可能な警告を受け取るコールバック
    */
   private constructor(
     source: ObjectStoreSource,
     cache: LRUCache<string, PdfObject>,
     streamCache: LRUCache<ObjectNumber, Uint8Array> | undefined,
+    onWarning: ((warning: PdfWarning) => void) | undefined,
   ) {
     this.source = source;
     this.cache = cache;
     this.streamCache = streamCache;
+    this.onWarning = onWarning;
   }
 
   /**
@@ -79,7 +83,14 @@ export class ObjectStore {
       streamCache = streamCacheResult.value;
     }
 
-    return ok(new ObjectStore(source, cacheResult.value, streamCache));
+    return ok(
+      new ObjectStore(
+        source,
+        cacheResult.value,
+        streamCache,
+        options?.onWarning,
+      ),
+    );
   }
 
   /**
@@ -194,6 +205,15 @@ export class ObjectStore {
         if (entry.generationNumber !== ref.generationNumber) {
           // ISO 32000-1 §7.3.10: 世代番号が一致しない参照は未定義オブジェクトとみなし
           // null オブジェクトとして解決する
+          this.onWarning?.({
+            code: "GENERATION_MISMATCH",
+            message: `Object ${ref.objectNumber}: generation mismatch (expected ${entry.generationNumber}, got ${ref.generationNumber})`,
+            offset: entry.offset,
+          });
+          // 警告の重複発火防止: mismatch 結果は他の成功パス（inline/ObjStm 読み取り）と
+          // 異なりキャッシュされないため、cache.set しないと再 get() のたびに
+          // dispatch() が再実行され警告も再発火してしまう
+          this.cache.set(cacheKey, { type: "null" });
           return ok({ type: "null" });
         }
         const resolver: ObjectResolver = (
