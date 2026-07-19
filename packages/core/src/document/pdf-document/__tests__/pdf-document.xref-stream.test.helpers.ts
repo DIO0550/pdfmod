@@ -13,6 +13,8 @@ const encoder = new TextEncoder();
 
 const BYTE_SHIFT = 8;
 const BYTE_MASK = 0xff;
+const MAX_UINT16 = 0xffff;
+const MAX_UINT8 = 0xff;
 const XREF_ENTRY_TYPE_USED = 1;
 const XREF_ENTRY_TYPE_COMPRESSED = 2;
 const OFFSET_PAD_DIGITS = 10;
@@ -27,34 +29,58 @@ const OFFSET_PAD_RADIX = 10;
 const byteLen = (s: string): number => encoder.encode(s).length;
 
 /**
+ * 値が `[0, max]` の整数範囲に収まるか検証し、範囲外なら即座に throw する。
+ * W=[1,2,1] のビット幅に収まらない値をビット演算で暗黙に切り詰めると、
+ * 壊れた（しかし気づきにくい）xref ストリームフィクスチャを生成してしまうため、
+ * テスト作成時のミスを早期に検出する目的のガード。
+ *
+ * @param value - 検証対象の値
+ * @param max - 許容最大値
+ * @param label - エラーメッセージに含める値の名称
+ * @throws {Error} value が整数でない、または `[0, max]` の範囲外の場合
+ */
+const assertFitsInRange = (value: number, max: number, label: string): void => {
+  if (!Number.isInteger(value) || value < 0 || value > max) {
+    throw new Error(`${label} must be an integer in [0, ${max}], got ${value}`);
+  }
+};
+
+/**
  * W=[1,2,1] 前提で xref ストリームの type=1（使用中）エントリ4バイトを組み立てる。
  *
- * @param offset - ファイル内バイトオフセット（2バイトBEで表現可能な範囲）
+ * @param offset - ファイル内バイトオフセット（2バイトBEで表現可能な範囲、0-65535）
  * @returns 4バイトのエントリ配列
  */
-const usedEntryBytes = (offset: number): number[] => [
-  XREF_ENTRY_TYPE_USED,
-  (offset >> BYTE_SHIFT) & BYTE_MASK,
-  offset & BYTE_MASK,
-  0,
-];
+const usedEntryBytes = (offset: number): number[] => {
+  assertFitsInRange(offset, MAX_UINT16, "offset");
+  return [
+    XREF_ENTRY_TYPE_USED,
+    (offset >> BYTE_SHIFT) & BYTE_MASK,
+    offset & BYTE_MASK,
+    0,
+  ];
+};
 
 /**
  * W=[1,2,1] 前提で xref ストリームの type=2（ObjStm内圧縮）エントリ4バイトを組み立てる。
  *
- * @param streamObjectNumber - 親 ObjStm のオブジェクト番号
- * @param indexInStream - ObjStm 内インデックス
+ * @param streamObjectNumber - 親 ObjStm のオブジェクト番号（2バイトBEで表現可能な範囲、0-65535）
+ * @param indexInStream - ObjStm 内インデックス（1バイトで表現可能な範囲、0-255）
  * @returns 4バイトのエントリ配列
  */
 const compressedEntryBytes = (
   streamObjectNumber: number,
   indexInStream: number,
-): number[] => [
-  XREF_ENTRY_TYPE_COMPRESSED,
-  (streamObjectNumber >> BYTE_SHIFT) & BYTE_MASK,
-  streamObjectNumber & BYTE_MASK,
-  indexInStream,
-];
+): number[] => {
+  assertFitsInRange(streamObjectNumber, MAX_UINT16, "streamObjectNumber");
+  assertFitsInRange(indexInStream, MAX_UINT8, "indexInStream");
+  return [
+    XREF_ENTRY_TYPE_COMPRESSED,
+    (streamObjectNumber >> BYTE_SHIFT) & BYTE_MASK,
+    streamObjectNumber & BYTE_MASK,
+    indexInStream,
+  ];
+};
 
 /** W=[1,2,1] 前提で xref ストリームの type=0（フリー）エントリ4バイト。 */
 const FREE_ENTRY_BYTES: readonly number[] = [0, 0, 0, 0];
