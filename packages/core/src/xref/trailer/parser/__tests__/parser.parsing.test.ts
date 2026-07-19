@@ -115,11 +115,63 @@ test.each([
 
 test("未サポートキー(単一トークン値)を含む辞書が正常にパースされる", () => {
   const { data, offset } = trailerAt(
-    "trailer << /Root 1 0 R /Size 10 /Encrypt 3 0 R >>",
+    "trailer << /Root 1 0 R /Size 10 /Unsupported 3 0 R >>",
   );
   const result = parseTrailer(data, offset);
   assert(result.ok);
   expect(result.value.size).toBe(10);
+});
+
+test("/Encryptを含む辞書からencryptが間接参照として抽出される", () => {
+  const { data, offset } = trailerAt(
+    "trailer << /Root 1 0 R /Size 10 /Encrypt 3 0 R >>",
+  );
+  const result = parseTrailer(data, offset);
+  assert(result.ok);
+  expect(result.value.encrypt).toEqual({
+    objectNumber: ObjectNumber.of(3),
+    generationNumber: GenerationNumber.of(0),
+  });
+});
+
+test("/Encryptが直接辞書として与えられた場合にPdfDictionaryとして抽出される", () => {
+  const { data, offset } = trailerAt(
+    "trailer << /Root 1 0 R /Size 10 /Encrypt << /Filter /Standard /V 1 /R 2 /P -44 >> >>",
+  );
+  const result = parseTrailer(data, offset);
+  assert(result.ok);
+  assert(result.value.encrypt !== undefined);
+  assert(!("objectNumber" in result.value.encrypt));
+  expect(result.value.encrypt.type).toBe("dictionary");
+  expect(result.value.encrypt.entries.get("V")).toEqual({
+    type: "integer",
+    value: 1,
+  });
+});
+
+test.each([
+  { key: "Encrypt", field: "encrypt" as const },
+  { key: "Info", field: "info" as const },
+  { key: "Prev", field: "prev" as const },
+  { key: "ID", field: "id" as const },
+  { key: "XRefStm", field: "xrefStm" as const },
+])("/$keyがnullの場合はキー不在と同義に扱われ$fieldがundefinedになる（ISO 32000-1 §7.3.9）", ({
+  key,
+  field,
+}) => {
+  const { data, offset } = trailerAt(
+    `trailer << /Root 1 0 R /Size 10 /${key} null >>`,
+  );
+  const result = parseTrailer(data, offset);
+  assert(result.ok);
+  expect(result.value[field]).toBeUndefined();
+});
+
+test("/Encryptがない辞書でencryptがundefinedである", () => {
+  const { data, offset } = trailerAt("trailer << /Root 1 0 R /Size 10 >>");
+  const result = parseTrailer(data, offset);
+  assert(result.ok);
+  expect(result.value.encrypt).toBeUndefined();
 });
 
 test("未知キーの値がネストされた辞書の場合に正しく読み飛ばされる", () => {

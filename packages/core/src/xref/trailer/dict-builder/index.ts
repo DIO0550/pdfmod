@@ -10,13 +10,27 @@ import { ObjectNumber } from "../../../pdf/types/object-number/index";
 import type { Result } from "../../../utils/result/index";
 import { err, ok } from "../../../utils/result/index";
 
+/**
+ * オプションフィールドの値が「実在する」か判定する。
+ * PDF辞書のnull値はキー不在と同義（ISO 32000-1 §7.3.9）のため、
+ * `{ type: "null" }` は他の型と同様に truthy な PdfValue オブジェクトだが
+ * 「不在」として扱わなければならない。
+ *
+ * @param value - 判定対象の PdfValue（未設定なら `undefined`）
+ * @returns 値が存在し、かつ null オブジェクトでなければ `true`
+ */
+function isPresent(value: PdfValue | undefined): value is PdfValue {
+  return value !== undefined && value.type !== "null";
+}
+
 interface TrailerDictBuilderChain {
   root(value?: PdfValue, offset?: ByteOffset): TrailerDictBuilderChain;
   size(value?: PdfValue, offset?: ByteOffset): TrailerDictBuilderChain;
   prev(value?: PdfValue, offset?: ByteOffset): TrailerDictBuilderChain;
-  xrefStm(value?: PdfValue, offset?: ByteOffset): TrailerDictBuilderChain;
   info(value?: PdfValue, offset?: ByteOffset): TrailerDictBuilderChain;
   id(value?: PdfValue, offset?: ByteOffset): TrailerDictBuilderChain;
+  encrypt(value?: PdfValue, offset?: ByteOffset): TrailerDictBuilderChain;
+  xrefStm(value?: PdfValue, offset?: ByteOffset): TrailerDictBuilderChain;
   build(): Result<TrailerDict, PdfParseError>;
 }
 
@@ -38,12 +52,14 @@ export function trailerDictBuilder(): TrailerDictBuilderChain {
   let _sizeOffset: ByteOffset | undefined;
   let _prev: PdfValue | undefined;
   let _prevOffset: ByteOffset | undefined;
-  let _xrefStm: PdfValue | undefined;
-  let _xrefStmOffset: ByteOffset | undefined;
   let _info: PdfValue | undefined;
   let _infoOffset: ByteOffset | undefined;
   let _id: PdfValue | undefined;
   let _idOffset: ByteOffset | undefined;
+  let _encrypt: PdfValue | undefined;
+  let _encryptOffset: ByteOffset | undefined;
+  let _xrefStm: PdfValue | undefined;
+  let _xrefStmOffset: ByteOffset | undefined;
 
   const chain: TrailerDictBuilderChain = {
     root(value?: PdfValue, offset?: ByteOffset) {
@@ -61,11 +77,6 @@ export function trailerDictBuilder(): TrailerDictBuilderChain {
       _prevOffset = offset;
       return chain;
     },
-    xrefStm(value?: PdfValue, offset?: ByteOffset) {
-      _xrefStm = value;
-      _xrefStmOffset = offset;
-      return chain;
-    },
     info(value?: PdfValue, offset?: ByteOffset) {
       _info = value;
       _infoOffset = offset;
@@ -74,6 +85,16 @@ export function trailerDictBuilder(): TrailerDictBuilderChain {
     id(value?: PdfValue, offset?: ByteOffset) {
       _id = value;
       _idOffset = offset;
+      return chain;
+    },
+    encrypt(value?: PdfValue, offset?: ByteOffset) {
+      _encrypt = value;
+      _encryptOffset = offset;
+      return chain;
+    },
+    xrefStm(value?: PdfValue, offset?: ByteOffset) {
+      _xrefStm = value;
+      _xrefStmOffset = offset;
       return chain;
     },
     build(): Result<TrailerDict, PdfParseError> {
@@ -144,7 +165,7 @@ export function trailerDictBuilder(): TrailerDictBuilderChain {
       const result: TrailerDict = { root, size };
 
       // /Prev - optional, non-negative integer
-      if (_prev) {
+      if (isPresent(_prev)) {
         if (
           _prev.type !== "integer" ||
           !NumberEx.isSafeIntegerAtLeastZero(_prev.value as number)
@@ -158,23 +179,8 @@ export function trailerDictBuilder(): TrailerDictBuilderChain {
         result.prev = BO.of(_prev.value as number);
       }
 
-      // /XRefStm - optional, non-negative integer (ISO 32000-1 §7.5.8.4 hybrid-reference files)
-      if (_xrefStm) {
-        if (
-          _xrefStm.type !== "integer" ||
-          !NumberEx.isSafeIntegerAtLeastZero(_xrefStm.value as number)
-        ) {
-          return err({
-            code: "TRAILER_DICT_INVALID",
-            message: "/XRefStm entry is not a non-negative integer",
-            offset: _xrefStmOffset,
-          });
-        }
-        result.xrefStm = BO.of(_xrefStm.value as number);
-      }
-
       // /Info - optional, IndirectRef
-      if (_info) {
+      if (isPresent(_info)) {
         if (_info.type !== "indirect-ref") {
           return err({
             code: "TRAILER_DICT_INVALID",
@@ -214,7 +220,7 @@ export function trailerDictBuilder(): TrailerDictBuilderChain {
       }
 
       // /ID - optional, must be 2-element array of string objects
-      if (_id) {
+      if (isPresent(_id)) {
         if (_id.type !== "array") {
           return err({
             code: "TRAILER_DICT_INVALID",
@@ -247,6 +253,67 @@ export function trailerDictBuilder(): TrailerDictBuilderChain {
         }
 
         result.id = idPair;
+      }
+
+      // /Encrypt - optional, IndirectRef or Dictionary
+      if (isPresent(_encrypt)) {
+        if (_encrypt.type === "indirect-ref") {
+          if (!NumberEx.isSafeIntegerAtLeastZero(_encrypt.objectNumber)) {
+            return err({
+              code: "TRAILER_DICT_INVALID",
+              message:
+                "/Encrypt entry has an invalid object number (must be a non-negative safe integer)",
+              offset: _encryptOffset,
+            });
+          }
+          if (!NumberEx.isSafeIntegerAtLeastZero(_encrypt.generationNumber)) {
+            return err({
+              code: "TRAILER_DICT_INVALID",
+              message:
+                "/Encrypt entry has an invalid generation number (must be a non-negative safe integer)",
+              offset: _encryptOffset,
+            });
+          }
+          const encryptGenResult = GenerationNumber.create(
+            _encrypt.generationNumber,
+          );
+          if (!encryptGenResult.ok) {
+            return err({
+              code: "TRAILER_DICT_INVALID",
+              message:
+                "/Encrypt entry generation number must be in range 0-65535",
+              offset: _encryptOffset,
+            });
+          }
+          result.encrypt = {
+            objectNumber: ObjectNumber.of(_encrypt.objectNumber),
+            generationNumber: encryptGenResult.value,
+          };
+        } else if (_encrypt.type === "dictionary") {
+          result.encrypt = _encrypt;
+        } else {
+          return err({
+            code: "TRAILER_DICT_INVALID",
+            message:
+              "/Encrypt entry must be a dictionary or indirect reference",
+            offset: _encryptOffset,
+          });
+        }
+      }
+
+      // /XRefStm - optional, non-negative integer (text-format trailer only)
+      if (isPresent(_xrefStm)) {
+        if (
+          _xrefStm.type !== "integer" ||
+          !NumberEx.isSafeIntegerAtLeastZero(_xrefStm.value as number)
+        ) {
+          return err({
+            code: "TRAILER_DICT_INVALID",
+            message: "/XRefStm entry is not a non-negative integer",
+            offset: _xrefStmOffset,
+          });
+        }
+        result.xrefStm = BO.of(_xrefStm.value as number);
       }
 
       return ok(result);
