@@ -88,6 +88,33 @@ test("PNG Up予測子付きのxrefストリームを展開・予測子逆変換�
   });
 });
 
+test("/Filterが単一要素配列[/FlateDecode]の場合もbareネームと同様に展開してデコードする（ISO 32000-1 §7.4）", async () => {
+  // zlib.deflateSync(Buffer.from([0,0,0,0, 1,0,100,0])) の結果
+  const compressed = new Uint8Array([
+    120, 156, 99, 96, 96, 96, 96, 100, 72, 97, 0, 0, 0, 212, 0, 102,
+  ]);
+  const objHeader =
+    "1 0 obj\n" +
+    "<< /Type /XRef /Filter [/FlateDecode] /W [1 2 1] /Size 2 " +
+    `/Root 2 0 R /Length ${compressed.length} >>\n` +
+    "stream\n";
+  const data = concatBytes([
+    encode(HEADER),
+    encode(objHeader),
+    compressed,
+    encode("\nendstream\nendobj\n"),
+  ]);
+
+  const result = await parseXRefStream(data, ByteOffset.of(HEADER_LEN));
+
+  assert(result.ok);
+  expect(result.value.xref.entries.get(ObjectNumber.of(1))).toEqual({
+    type: 1,
+    offset: ByteOffset.of(100),
+    generationNumber: GenerationNumber.of(0),
+  });
+});
+
 test("/Filter省略時は展開せず生データをそのままデコードする", async () => {
   const rawEntries = new Uint8Array([1, 5, 0]);
   const objHeader =

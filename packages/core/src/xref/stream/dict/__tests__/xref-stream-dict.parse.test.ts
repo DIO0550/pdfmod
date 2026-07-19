@@ -151,6 +151,67 @@ test("parseは/Filterが未サポートの場合にXREF_STREAM_INVALIDを返す"
   expect(result.error.message).toContain("LZWDecode");
 });
 
+test("parseは/Filterが単一要素配列[/FlateDecode]の場合bareネームと同義にfilterNameを返す（ISO 32000-1 §7.4）", () => {
+  const result = XRefStreamDict.parse(
+    makeXRefStreamDict({
+      Filter: {
+        type: "array",
+        elements: [{ type: "name", value: "FlateDecode" }],
+      },
+    }),
+  );
+
+  assert(result.ok);
+  expect(result.value.filterName).toBe("FlateDecode");
+});
+
+test("parseは/Filterが単一要素配列で未サポートフィルタの場合にXREF_STREAM_INVALIDを返す", () => {
+  const result = XRefStreamDict.parse(
+    makeXRefStreamDict({
+      Filter: {
+        type: "array",
+        elements: [{ type: "name", value: "LZWDecode" }],
+      },
+    }),
+  );
+
+  assert(!result.ok);
+  expect(result.error.code).toBe("XREF_STREAM_INVALID");
+  expect(result.error.message).toContain("LZWDecode");
+});
+
+test("parseは/Filterが複数要素配列（カスケードフィルタ）の場合にXREF_STREAM_INVALIDを返す", () => {
+  const result = XRefStreamDict.parse(
+    makeXRefStreamDict({
+      Filter: {
+        type: "array",
+        elements: [
+          { type: "name", value: "ASCII85Decode" },
+          { type: "name", value: "FlateDecode" },
+        ],
+      },
+    }),
+  );
+
+  assert(!result.ok);
+  expect(result.error.code).toBe("XREF_STREAM_INVALID");
+  expect(result.error.message).toContain("array");
+});
+
+test("parseは/Filter配列の要素が名前でない場合にXREF_STREAM_INVALIDを返す", () => {
+  const result = XRefStreamDict.parse(
+    makeXRefStreamDict({
+      Filter: {
+        type: "array",
+        elements: [{ type: "integer", value: 1 }],
+      },
+    }),
+  );
+
+  assert(!result.ok);
+  expect(result.error.code).toBe("XREF_STREAM_INVALID");
+});
+
 test("parseは/DecodeParmsが辞書でない場合にXREF_STREAM_INVALIDを返す", () => {
   const result = XRefStreamDict.parse(
     makeXRefStreamDict({
