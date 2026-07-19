@@ -388,12 +388,19 @@ function readValue(
         offset,
       });
     }
-    case TokenType.DictBegin:
-      return err({
-        code: "XREF_TABLE_INVALID",
-        message: "dictionary value is not supported in trailer dictionary",
+    case TokenType.DictBegin: {
+      if (depth >= MAX_NESTING_DEPTH) {
+        return failNestingTooDeep(offset);
+      }
+      const dictEntries = readDictValueEntries(tokens, baseOffset, depth + 1);
+      if (!dictEntries.ok) {
+        return dictEntries;
+      }
+      return ok({
+        value: { type: "dictionary", entries: dictEntries.value },
         offset,
       });
+    }
     default:
       return err({
         code: "XREF_TABLE_INVALID",
@@ -438,13 +445,67 @@ function readArrayElements(
   }
 }
 
+/**
+ * `<<` 直後から `>>` までの辞書エントリを読み取り `Map<string, PdfValue>` として返す。
+ * `/Encrypt` の値が直接辞書（間接参照でなく）で与えられる場合（ISO 32000-1 §7.6.1、
+ * `docs/specs/02_file_structure.md`）に `readValue` から呼ばれる。
+ *
+ * @param tokens - バッファ付きトークナイザ
+ * @param baseOffset - エラー報告用のベースオフセット
+ * @param depth - 現在のネスト深さ
+ * @returns 成功時は `Ok<Map<string, PdfValue>>`、失敗時は `Err<PdfParseError>`
+ */
+function readDictValueEntries(
+  tokens: BufferedTokenizer,
+  baseOffset: ByteOffset,
+  depth: number,
+): Result<Map<string, PdfValue>, PdfParseError> {
+  const entries = new Map<string, PdfValue>();
+  while (true) {
+    const keyToken = tokens.next();
+    if (keyToken.type === TokenType.DictEnd) {
+      return ok(entries);
+    }
+    if (keyToken.type === TokenType.EOF) {
+      return err({
+        code: "XREF_TABLE_INVALID",
+        message:
+          "unexpected end of data while parsing dictionary value in trailer dictionary",
+        offset: BO.add(baseOffset, keyToken.offset),
+      });
+    }
+    if (keyToken.type !== TokenType.Name) {
+      return err({
+        code: "XREF_TABLE_INVALID",
+        message: "expected name key in nested dictionary value",
+        offset: BO.add(baseOffset, keyToken.offset),
+      });
+    }
+    const valueToken = tokens.next();
+    if (valueToken.type === TokenType.EOF) {
+      return err({
+        code: "XREF_TABLE_INVALID",
+        message:
+          "unexpected end of data while parsing dictionary value in trailer dictionary",
+        offset: BO.add(baseOffset, valueToken.offset),
+      });
+    }
+    const valueResult = readValue(valueToken, tokens, baseOffset, depth);
+    if (!valueResult.ok) {
+      return valueResult;
+    }
+    entries.set(keyToken.value, valueResult.value.value);
+  }
+}
+
 const SUPPORTED_TRAILER_KEYS = new Set([
   "Root",
   "Size",
   "Prev",
-  "XRefStm",
   "Info",
   "ID",
+  "Encrypt",
+  "XRefStm",
 ]);
 const ID_MAX_ELEMENTS = 2;
 
@@ -610,7 +671,7 @@ function parseDictTokens(
       });
     }
 
-    if (key === "ID") {
+    if (key === "ID" && valueToken.type !== TokenType.Null) {
       const idResult = readIdArray(valueToken, tokens, baseOffset);
       if (!idResult.ok) {
         return idResult;
@@ -646,6 +707,7 @@ function buildTrailerDict(
   const xrefStmEntry = entries.get("XRefStm");
   const infoEntry = entries.get("Info");
   const idEntry = entries.get("ID");
+  const encryptEntry = entries.get("Encrypt");
 
   const result = trailerDictBuilder()
     .root(rootEntry?.value, rootEntry?.offset)
@@ -654,6 +716,7 @@ function buildTrailerDict(
     .xrefStm(xrefStmEntry?.value, xrefStmEntry?.offset)
     .info(infoEntry?.value, infoEntry?.offset)
     .id(idEntry?.value, idEntry?.offset)
+    .encrypt(encryptEntry?.value, encryptEntry?.offset)
     .build();
   if (!result.ok) {
     return err(mapErr(result.error));

@@ -129,6 +129,34 @@ test("深さ制限超過: maxDepth を超えるチェーン -> XREF_PREV_CHAIN_T
   expect(result.error.code).toBe("XREF_PREV_CHAIN_TOO_DEEP");
 });
 
+test("循環と深度上限到達が同時に起きる場合、深度制限より循環検出が優先される", async () => {
+  const callback = callbackFromMap(
+    stubMap([
+      [
+        100,
+        {
+          xref: makeXRef([[1, usedEntry(10)]], 2),
+          trailer: makeTrailer(2, 200),
+        },
+      ],
+      [
+        200,
+        {
+          xref: makeXRef([[2, usedEntry(20)]], 3),
+          trailer: makeTrailer(3, 100),
+        },
+      ],
+    ]),
+  );
+
+  const result = await mergeXRefChain(ByteOffset.of(100), callback, {
+    maxDepth: 2,
+  });
+
+  assert(!result.ok);
+  expect(result.error.code).toBe("XREF_PREV_CHAIN_CYCLE");
+});
+
 test("コールバックエラー透過: parseCallback が Err を返した場合、そのエラーがそのまま返る", async () => {
   const callback: ParseCallback = async (_offset: ByteOffset) =>
     err({

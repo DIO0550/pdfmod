@@ -324,6 +324,14 @@ export class PdfDocument {
     }
     const { xref, trailer: latestTrailer } = xrefResolution.value;
 
+    if (latestTrailer.encrypt !== undefined) {
+      return err({
+        code: "ENCRYPTED_PDF_UNSUPPORTED",
+        message: "encrypted PDF is not supported",
+        offset: ByteOffset.of(0),
+      });
+    }
+
     const storeResult = ObjectStore.create(
       { xref, data },
       { cacheCapacity: options?.cacheCapacity },

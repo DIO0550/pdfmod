@@ -469,3 +469,311 @@ export const buildPdfWithIncrementalUpdate = (): Uint8Array => {
       newTrailer,
   );
 };
+
+// --- xref ストリーム / ハイブリッド参照 (/XRefStm) fixture 用ヘルパー ---
+
+/** xref ストリーム fixture 共通の `/W` 配列（1エントリ4バイト固定）。 */
+const XREF_STREAM_W: readonly [number, number, number] = [1, 2, 1];
+
+/**
+ * バイト列を結合する。
+ *
+ * @param chunks - 結合対象のバイト列配列
+ * @returns 結合後のバイト列
+ */
+const concatUint8Arrays = (chunks: readonly Uint8Array[]): Uint8Array => {
+  const total = chunks.reduce((sum, c) => sum + c.length, 0);
+  const result = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    result.set(chunk, offset);
+    offset += chunk.length;
+  }
+  return result;
+};
+
+/**
+ * zlib (FlateDecode) でバイト列を圧縮する。本体側 `decompressFlate` の逆変換として、
+ * xref ストリーム / ObjStm fixture のストリームデータ組み立てに使う。
+ *
+ * @param data - 圧縮対象のバイト列
+ * @returns 圧縮後のバイト列
+ */
+const compressFlate = async (data: Uint8Array): Promise<Uint8Array> => {
+  const cs = new CompressionStream("deflate");
+  const writer = cs.writable.getWriter();
+  const bufPromise = new Response(cs.readable).arrayBuffer();
+  await writer.write(data as BufferSource);
+  await writer.close();
+  return new Uint8Array(await bufPromise);
+};
+
+const XREF_ENTRY_TYPE_MAX = 2;
+const XREF_ENTRY_FIELD2_MAX = 0xffff;
+const XREF_ENTRY_FIELD3_MAX = 0xff;
+
+/**
+ * 値が `[0, max]` の整数範囲に収まるか検証し、範囲外なら即座に throw する。
+ * `XREF_STREAM_W` (`/W [1 2 1]`) のビット幅に収まらない値をビット演算で暗黙に
+ * 切り詰めると、壊れた（しかし気づきにくい）xref ストリームフィクスチャを
+ * 生成してしまうため、テスト作成時のミスを早期に検出する目的のガード。
+ *
+ * @param value - 検証対象の値
+ * @param max - 許容最大値
+ * @param label - エラーメッセージに含める値の名称
+ * @throws {Error} value が整数でない、または `[0, max]` の範囲外の場合
+ */
+const assertFitsInRange = (value: number, max: number, label: string): void => {
+  if (!Number.isInteger(value) || value < 0 || value > max) {
+    throw new Error(`${label} must be an integer in [0, ${max}], got ${value}`);
+  }
+};
+
+/**
+ * `XREF_STREAM_W` (`/W [1 2 1]`) 固定幅で1エントリ分のバイト列を組み立てる。
+ *
+ * @param type - エントリ種別 (0=free, 1=used, 2=compressed)
+ * @param field2 - type=1ならオフセット、type=2なら親ストリームのオブジェクト番号（2バイトBE）
+ * @param field3 - type=0,1なら世代番号、type=2ならストリーム内インデックス（1バイト）
+ * @returns 4バイトのエントリ
+ */
+const xrefStreamEntryBytes = (
+  type: number,
+  field2: number,
+  field3: number,
+): number[] => {
+  assertFitsInRange(type, XREF_ENTRY_TYPE_MAX, "type");
+  assertFitsInRange(field2, XREF_ENTRY_FIELD2_MAX, "field2");
+  assertFitsInRange(field3, XREF_ENTRY_FIELD3_MAX, "field3");
+
+  const FIELD2_BYTE_SHIFT = 8;
+  const BYTE_MASK = 0xff;
+  return [
+    type,
+    (field2 >> FIELD2_BYTE_SHIFT) & BYTE_MASK,
+    field2 & BYTE_MASK,
+    field3,
+  ];
+};
+
+/**
+ * xref ストリーム形式（テキスト xref を持たない PDF 1.5+ 形式）のみで構成される
+ * 1 ページの最小 PDF を生成する。
+ *
+ * Catalog (1 0 obj) / Pages (2 0 obj) / Page (3 0 obj) に加え、xref テーブルの
+ * 代わりに xref ストリーム (4 0 obj, `/Type /XRef`) を持つ。`startxref` は
+ * 直接この xref ストリームを指す。
+ *
+ * `PdfDocument.load` が `parseXRefAt` で `xref` キーワードでなく間接オブジェクトを
+ * 検出し、`parseXRefStream` 経由の xref ストリーム経路を通ることを検証する fixture。
+ *
+ * @returns xref ストリーム形式の 1 ページ PDF を表すバイト列
+ */
+export const buildMinimalSinglePagePdfWithXRefStream =
+  async (): Promise<Uint8Array> => {
+    const encoder = new TextEncoder();
+    const objectBodies = [CATALOG_BODY, PAGES_BODY_SINGLE, PAGE_BODY];
+    const objs = formatIndirectObjects(objectBodies);
+
+    const offsets: number[] = [];
+    let cursor = encoder.encode(PDF_HEADER).length;
+    for (const obj of objs) {
+      offsets.push(cursor);
+      cursor += encoder.encode(obj).length;
+    }
+    const xrefStreamObjNum = objectBodies.length + 1;
+    const xrefStreamOffset = cursor;
+
+    const rawEntries = [
+      xrefStreamEntryBytes(0, 0, 0),
+      xrefStreamEntryBytes(1, offsets[0], 0),
+      xrefStreamEntryBytes(1, offsets[1], 0),
+      xrefStreamEntryBytes(1, offsets[2], 0),
+      xrefStreamEntryBytes(1, xrefStreamOffset, 0),
+    ].flat();
+    const compressed = await compressFlate(new Uint8Array(rawEntries));
+
+    const size = xrefStreamObjNum + 1;
+    const dict =
+      `<< /Type /XRef /Filter /FlateDecode /W [${XREF_STREAM_W.join(" ")}] ` +
+      `/Size ${size} /Root 1 0 R /Length ${compressed.length} >>`;
+
+    return concatUint8Arrays([
+      encoder.encode(PDF_HEADER),
+      ...objs.map((o) => encoder.encode(o)),
+      encoder.encode(`${xrefStreamObjNum} 0 obj\n${dict}\nstream\n`),
+      compressed,
+      encoder.encode("\nendstream\nendobj\n"),
+      encoder.encode(`startxref\n${xrefStreamOffset}\n%%EOF\n`),
+    ]);
+  };
+
+/**
+ * `/Type` が `/XRef` でないストリームを xref ストリーム位置に持つ PDF を生成する。
+ *
+ * `startxref` が指す間接オブジェクトはストリームだが `/Type /NotXRef` であり、
+ * `XRefStreamDict.parse` の型不一致検出により `XREF_STREAM_INVALID` を返す
+ * ことを `PdfDocument.load` 経由で検証する fixture。ストリームデータは
+ * {@link buildMinimalSinglePagePdfWithXRefStream} と同じ（`/Type` 検証で
+ * 早期に失敗するため実際には展開されず内容は無関係）。
+ *
+ * @returns `/Type /XRef` でないストリームを xref 位置に持つ PDF バイト列
+ */
+export const buildPdfWithWrongTypeXRefStream =
+  async (): Promise<Uint8Array> => {
+    const encoder = new TextEncoder();
+    const objectBodies = [CATALOG_BODY, PAGES_BODY_SINGLE, PAGE_BODY];
+    const objs = formatIndirectObjects(objectBodies);
+
+    const offsets: number[] = [];
+    let cursor = encoder.encode(PDF_HEADER).length;
+    for (const obj of objs) {
+      offsets.push(cursor);
+      cursor += encoder.encode(obj).length;
+    }
+    const xrefStreamObjNum = objectBodies.length + 1;
+    const xrefStreamOffset = cursor;
+
+    const rawEntries = [
+      xrefStreamEntryBytes(0, 0, 0),
+      xrefStreamEntryBytes(1, offsets[0], 0),
+      xrefStreamEntryBytes(1, offsets[1], 0),
+      xrefStreamEntryBytes(1, offsets[2], 0),
+      xrefStreamEntryBytes(1, xrefStreamOffset, 0),
+    ].flat();
+    const compressed = await compressFlate(new Uint8Array(rawEntries));
+
+    const size = xrefStreamObjNum + 1;
+    const dict =
+      `<< /Type /NotXRef /Filter /FlateDecode /W [${XREF_STREAM_W.join(" ")}] ` +
+      `/Size ${size} /Root 1 0 R /Length ${compressed.length} >>`;
+
+    return concatUint8Arrays([
+      encoder.encode(PDF_HEADER),
+      ...objs.map((o) => encoder.encode(o)),
+      encoder.encode(`${xrefStreamObjNum} 0 obj\n${dict}\nstream\n`),
+      compressed,
+      encoder.encode("\nendstream\nendobj\n"),
+      encoder.encode(`startxref\n${xrefStreamOffset}\n%%EOF\n`),
+    ]);
+  };
+
+/** {@link buildPdfWithHybridXRefStm} で ObjStm 内にのみ存在する `/Info` のオブジェクト番号。 */
+const HYBRID_INFO_OBJECT_NUMBER = 4;
+/** {@link buildPdfWithHybridXRefStm} の ObjStm 自体のオブジェクト番号。 */
+const HYBRID_OBJSTM_OBJECT_NUMBER = 5;
+/** {@link buildPdfWithHybridXRefStm} の xref ストリーム（`/XRefStm` が指す先）のオブジェクト番号。 */
+const HYBRID_XREF_STREAM_OBJECT_NUMBER = 6;
+/** {@link buildPdfWithHybridXRefStm} が ObjStm 経由で載せる `/Title` の値。 */
+const HYBRID_INFO_TITLE = "Hybrid Test";
+
+/**
+ * ハイブリッド参照ファイル（テキスト xref + `/XRefStm`）を生成する。
+ *
+ * テキスト形式 xref は obj 0〜3（Catalog/Pages/Page）のみを収録し、ObjStm
+ * 内に格納された `/Info` オブジェクト（obj {@link HYBRID_INFO_OBJECT_NUMBER}）と
+ * ObjStm 自体（obj {@link HYBRID_OBJSTM_OBJECT_NUMBER}）はテキスト xref に
+ * 一切現れない。trailer の `/XRefStm` が指す xref ストリーム
+ * （obj {@link HYBRID_XREF_STREAM_OBJECT_NUMBER}）にのみ、obj
+ * {@link HYBRID_INFO_OBJECT_NUMBER}（type=2, 圧縮）と obj
+ * {@link HYBRID_OBJSTM_OBJECT_NUMBER}（type=1, 通常）のエントリが存在する。
+ *
+ * `/Prev` を辿る前に `/XRefStm` を解決し、ObjStm 内オブジェクトが正しく解決
+ * される（`metadata.title` が {@link HYBRID_INFO_TITLE} になる）ことを検証する
+ * fixture（ISO 32000-1 §7.5.8.4）。
+ *
+ * @returns ハイブリッド参照 PDF を表すバイト列
+ */
+export const buildPdfWithHybridXRefStm = async (): Promise<Uint8Array> => {
+  const encoder = new TextEncoder();
+  const objectBodies = [CATALOG_BODY, PAGES_BODY_SINGLE, PAGE_BODY];
+  const objs = formatIndirectObjects(objectBodies);
+
+  const offsets: number[] = [];
+  let cursor = encoder.encode(PDF_HEADER).length;
+  for (const obj of objs) {
+    offsets.push(cursor);
+    cursor += encoder.encode(obj).length;
+  }
+
+  const objStmHeader = `${HYBRID_INFO_OBJECT_NUMBER} 0\n`;
+  const objStmObjectData = `<< /Title ${toPdfString(HYBRID_INFO_TITLE)} >>`;
+  const objStmFirst = encoder.encode(objStmHeader).length;
+  const objStmDecompressed = encoder.encode(objStmHeader + objStmObjectData);
+  const objStmCompressed = await compressFlate(objStmDecompressed);
+
+  const objStmDict =
+    `<< /Type /ObjStm /N 1 /First ${objStmFirst} /Filter /FlateDecode ` +
+    `/Length ${objStmCompressed.length} >>`;
+  const objStmOffset = cursor;
+  const objStmBytes = concatUint8Arrays([
+    encoder.encode(
+      `${HYBRID_OBJSTM_OBJECT_NUMBER} 0 obj\n${objStmDict}\nstream\n`,
+    ),
+    objStmCompressed,
+    encoder.encode("\nendstream\nendobj\n"),
+  ]);
+  cursor += objStmBytes.length;
+
+  const xrefStreamRawEntries = [
+    xrefStreamEntryBytes(2, HYBRID_OBJSTM_OBJECT_NUMBER, 0),
+    xrefStreamEntryBytes(1, objStmOffset, 0),
+  ].flat();
+  const xrefStreamCompressed = await compressFlate(
+    new Uint8Array(xrefStreamRawEntries),
+  );
+
+  const xrefStreamSize = HYBRID_XREF_STREAM_OBJECT_NUMBER + 1;
+  const xrefStreamDict =
+    `<< /Type /XRef /Filter /FlateDecode /W [${XREF_STREAM_W.join(" ")}] ` +
+    `/Index [${HYBRID_INFO_OBJECT_NUMBER} 1 ${HYBRID_OBJSTM_OBJECT_NUMBER} 1] ` +
+    `/Size ${xrefStreamSize} /Root 1 0 R /Length ${xrefStreamCompressed.length} >>`;
+  const xrefStreamOffset = cursor;
+  const xrefStreamBytes = concatUint8Arrays([
+    encoder.encode(
+      `${HYBRID_XREF_STREAM_OBJECT_NUMBER} 0 obj\n${xrefStreamDict}\nstream\n`,
+    ),
+    xrefStreamCompressed,
+    encoder.encode("\nendstream\nendobj\n"),
+  ]);
+  cursor += xrefStreamBytes.length;
+
+  const textXrefOffset = cursor;
+  const textXrefRows = [
+    "0000000000 65535 f \n",
+    ...offsets.map((o) => `${padOffset10(o)} 00000 n \n`),
+  ];
+  const textXref = `xref\n0 ${objectBodies.length + 1}\n${textXrefRows.join("")}`;
+  const trailer =
+    `trailer\n<< /Size ${xrefStreamSize} /Root 1 0 R /Info ${HYBRID_INFO_OBJECT_NUMBER} 0 R ` +
+    `/XRefStm ${xrefStreamOffset} >>\nstartxref\n${textXrefOffset}\n%%EOF\n`;
+
+  return concatUint8Arrays([
+    encoder.encode(PDF_HEADER),
+    ...objs.map((o) => encoder.encode(o)),
+    objStmBytes,
+    xrefStreamBytes,
+    encoder.encode(textXref + trailer),
+  ]);
+};
+
+/** {@link buildPdfWithEncryptDict} の暗号化辞書 (4 0 obj) の本体。ISO 32000-1 §7.6.1 準拠の最小構成。 */
+const ENCRYPT_DICT_BODY =
+  "<< /Filter /Standard /V 1 /R 2 /O <0000000000000000000000000000000000000000000000000000000000000000> /U <0000000000000000000000000000000000000000000000000000000000000000> /P -44 >>";
+
+/**
+ * trailer に `/Encrypt` を持つ暗号化 PDF を生成する。
+ *
+ * Catalog / Pages / Page に加え、trailer から `/Encrypt 4 0 R` で参照される
+ * 暗号化辞書 (4 0 obj) も定義し、xref 上で実在する妥当な PDF にする
+ * （`PdfDocument.load` は `/Encrypt` の値を解決せず trailer にエントリが
+ * 存在するかどうかのみで `ENCRYPTED_PDF_UNSUPPORTED` を返すが、fixture 自体は
+ * 将来の `/Size`・参照整合性検証にも耐えるよう妥当な構造にしておく）。
+ *
+ * @returns `/Encrypt` を持つ PDF バイト列
+ */
+export const buildPdfWithEncryptDict = (): Uint8Array =>
+  assembleTextPdf(
+    [CATALOG_BODY, PAGES_BODY_SINGLE, PAGE_BODY, ENCRYPT_DICT_BODY],
+    ["/Encrypt 4 0 R"],
+  );

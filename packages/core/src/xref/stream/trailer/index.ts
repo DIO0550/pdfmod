@@ -23,8 +23,9 @@ const mapErr = (e: PdfParseError): PdfParseError => {
  * xrefストリーム辞書から TrailerDict を構築する。
  *
  * 入力は既にパース済みの辞書データ。辞書Map から TrailerDict に必要な
- * フィールド (`/Root`, `/Size`, `/Prev`, `/Info`, `/ID`) を取得し、
- * 共通ビルダーでバリデーション・構築を行う。
+ * フィールド (`/Root`, `/Size`, `/Prev`, `/Info`, `/ID`, `/Encrypt`) を取得し、
+ * 共通ビルダーでバリデーション・構築を行う。`/XRefStm` はテキスト形式
+ * trailer専用のため、ここでは扱わない。
  *
  * ビルダーがオプションフィールドの不正に対して返す `TRAILER_DICT_INVALID`
  * は、外部 API 契約の `XREF_STREAM_INVALID` に書き換える。
@@ -42,6 +43,7 @@ export function buildXRefStreamTrailerDict(
     .prev(dict.get("Prev"))
     .info(dict.get("Info"))
     .id(dict.get("ID"))
+    .encrypt(dict.get("Encrypt"))
     .build();
   if (!result.ok) {
     return err(mapErr(result.error));
