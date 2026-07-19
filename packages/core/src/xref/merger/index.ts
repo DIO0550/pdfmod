@@ -1,8 +1,7 @@
-import type { PdfError } from "../../pdf/errors/index";
+import type { PdfError, PdfParseError } from "../../pdf/errors/index";
 import type { ByteOffset } from "../../pdf/types/byte-offset/index";
 import type { TrailerDict, XRefEntry, XRefTable } from "../../pdf/types/index";
 import type { ObjectNumber } from "../../pdf/types/object-number/index";
-import { none, type Option, some } from "../../utils/option/index";
 import type { Err, Result } from "../../utils/result/index";
 import { err, ok } from "../../utils/result/index";
 import { MaxDepth } from "./max-depth/index";
@@ -13,82 +12,37 @@ import { MaxDepth } from "./max-depth/index";
  * @param code - エラーコード
  * @param message - エラーメッセージ
  * @param offset - 問題が検出されたバイトオフセット
- * @returns PdfError を含む Err
+ * @returns PdfParseError を含む Err
  */
 function failPrevChain(
   code: "XREF_PREV_CHAIN_CYCLE" | "XREF_PREV_CHAIN_TOO_DEEP",
   message: string,
   offset?: ByteOffset,
-): Err<PdfError> {
+): Err<PdfParseError> {
   return err({ code, message, offset });
 }
 
 /**
- * オフセットが走査済みなら循環エラーを `Some` で返し、未走査なら `traversedOffsets`
- * に登録して `None` を返す。`/Prev` と `/XRefStm` の両方の循環検出で共有する。
- * 成功時に値を持たない検証系のため `Result<void, E>` ではなく `Option<E>` で表現する。
+ * 収集済みの xref エントリレイヤーをマージし、統合結果を返す。
+ * entryLayers は優先度が高い順（newest-first。同一世代内は /XRefStm 側がテキスト側より高優先）
+ * で渡される。[...entryLayers].reverse() で優先度が低い方から走査し、
+ * 優先度が高いレイヤーが低いレイヤーを上書きする形でエントリを統合する。entryLayers は破壊しない。
  *
- * @param offset - 判定対象のオフセット
- * @param traversedOffsets - 走査済みオフセット集合（副作用で追加）
- * @param sourceLabel - エラーメッセージに含める参照元の名称（`/Prev` または `/XRefStm`）
- * @returns 循環なら `Some<PdfError>`、未走査なら `None`
+ * @precondition entryLayers は非空であること（呼び出し元で最低1回の parseCallback 成功を保証）
  */
-function checkAndMarkVisited(
-  offset: ByteOffset,
-  traversedOffsets: Set<ByteOffset>,
-  sourceLabel: "/Prev" | "/XRefStm",
-): Option<PdfError> {
-  if (traversedOffsets.has(offset)) {
-    return some({
-      code: "XREF_PREV_CHAIN_CYCLE",
-      message: `Circular ${sourceLabel} reference detected at offset ${String(offset)}`,
-      offset,
-    });
-  }
-  traversedOffsets.add(offset);
-  return none;
-}
-
-/**
- * 1つのxrefセクション（/Prevチェーンの1ホップ分）を表す内部構造。
- * `xrefLayers` は適用順（先が古い・後が新しい）で保持し、後のレイヤーが
- * 同一オブジェクト番号のエントリを上書きする。ハイブリッド参照ファイル
- * (XM-005) では `[テキスト側, ストリーム側]` の2層になり、ストリーム側の
- * エントリがテキスト側を上書きする。`trailer` は常にテキスト形式
- * （またはxrefストリーム自身）の trailer で、チェーン継続・最新trailer
- * の両方に使われる。
- */
-interface ChainLink {
-  readonly xrefLayers: readonly XRefTable[];
-  readonly trailer: TrailerDict;
-}
-
-/**
- * 収集済みの xref チェーンをマージし、統合結果を返す。
- * chain は newest-first の順序で渡される。[...chain].reverse() で oldest から走査し、
- * newer が older を上書きする形でエントリを統合する。chain は破壊しない。
- *
- * @precondition chain は非空であること（呼び出し元で最低1回の parseCallback 成功を保証）
- * @param chain - newest-first で収集された xref セクションの列
- * @returns マージ済み XRefTable と、size を正規化した最新 TrailerDict
- */
-function mergeCollectedChain(chain: ReadonlyArray<ChainLink>): {
-  mergedXRef: XRefTable;
-  latestTrailer: TrailerDict;
-} {
+function mergeCollectedChain(
+  entryLayers: ReadonlyArray<XRefTable>,
+  latestTrailer: TrailerDict,
+): { mergedXRef: XRefTable; latestTrailer: TrailerDict } {
   const mergedEntries = new Map<ObjectNumber, XRefEntry>();
   let maxSize = 0;
 
-  for (const { xrefLayers } of [...chain].reverse()) {
-    for (const xref of xrefLayers) {
-      for (const [objNum, entry] of xref.entries) {
-        mergedEntries.set(objNum, entry);
-      }
-      maxSize = Math.max(maxSize, xref.size);
+  for (const xref of [...entryLayers].reverse()) {
+    for (const [objNum, entry] of xref.entries) {
+      mergedEntries.set(objNum, entry);
     }
+    maxSize = Math.max(maxSize, xref.size);
   }
-
-  const latestTrailer = chain[0].trailer;
 
   return {
     mergedXRef: { entries: mergedEntries, size: maxSize },
@@ -96,59 +50,30 @@ function mergeCollectedChain(chain: ReadonlyArray<ChainLink>): {
   };
 }
 
-/** xref+trailer をオフセットからパースするコールバック。 */
+/**
+ * xref+trailer をオフセットからパースするコールバック。
+ * 間接オブジェクトのパース（xref ストリーム経路）を含みうるため非同期。
+ * `trailer` は `/XRefStm` が指す補助ストリームのように `/Root` を持たない
+ * xref ソースの場合 `undefined` になりうる（{@link visitSection} 参照）。
+ */
 type XRefParseCallback = (
   offset: ByteOffset,
-) => Promise<Result<{ xref: XRefTable; trailer: TrailerDict }, PdfError>>;
-
-/**
- * 現在のホップに `/XRefStm` があれば、`/Prev` を辿る前にそのオフセットを
- * 解決し、ストリーム側の XRefTable をテキスト側の後ろに積んだレイヤー列を返す
- * (ISO 32000-1 §7.5.8.4, XM-005)。`/XRefStm` オフセットも循環検出対象に加える。
- *
- * @param textXref - 現在のホップのテキスト（または単独ストリーム）側 XRefTable
- * @param trailer - 現在のホップの trailer（`/XRefStm` の有無を判定する）
- * @param parseCallback - オフセットからxref+trailerをパースするコールバック
- * @param traversedOffsets - 循環検出用の走査済みオフセット集合（副作用で追加）
- * @returns 成功時は `Ok<XRefTable[]>`（xrefStmなしなら `[textXref]` のみ）、失敗時は `Err<PdfError>`
- */
-async function resolveXRefLayers(
-  textXref: XRefTable,
-  trailer: TrailerDict,
-  parseCallback: XRefParseCallback,
-  traversedOffsets: Set<ByteOffset>,
-): Promise<Result<XRefTable[], PdfError>> {
-  if (trailer.xrefStm === undefined) {
-    return ok([textXref]);
-  }
-
-  const xrefStmOffset = trailer.xrefStm;
-  const cycleCheck = checkAndMarkVisited(
-    xrefStmOffset,
-    traversedOffsets,
-    "/XRefStm",
-  );
-  if (cycleCheck.some) {
-    return err(cycleCheck.value);
-  }
-
-  const xrefStmResult = await parseCallback(xrefStmOffset);
-  if (!xrefStmResult.ok) {
-    return xrefStmResult;
-  }
-
-  return ok([textXref, xrefStmResult.value.xref]);
-}
+) => Promise<
+  Result<{ xref: XRefTable; trailer: TrailerDict | undefined }, PdfError>
+>;
 
 /**
  * /Prevチェーンを辿り、全xrefテーブルをマージする。
  * 新しいエントリが古いものを上書きし、最新のトレイラ辞書を返す。
- * trailer に `/XRefStm` があれば、`/Prev` を辿る前にそのオフセットの
- * 相互参照ストリームを読み、同一更新世代内ではストリーム側のエントリを
- * テキスト側より優先する（ISO 32000-1 §7.5.8.4, XM-005）。
+ *
+ * ハイブリッド参照ファイル（ISO 32000-1 §7.5.8.4）対応: 各セクションの trailer に
+ * `/XRefStm` があれば、`/Prev` を辿る前にそのオフセットの補助クロスリファレンス
+ * ストリームを読み、同一世代内ではストリーム側のエントリをテキストセクションより
+ * 優先してマージする（ObjStm 内オブジェクトの type=2 エントリはストリーム側にのみ
+ * 存在しうるため）。チェーンの継続には常にテキスト trailer 側の `/Prev` を使う。
  *
  * @param startOffset - 最初のxrefセクションのバイトオフセット（startxrefの値）
- * @param parseCallback - オフセットからxref+trailerを非同期にパースするコールバック
+ * @param parseCallback - オフセットからxref+trailerをパースする非同期コールバック
  * @param options - オプション（maxDepth: /Prevチェーンの最大走査深さ。
  *   `undefined` は既定値 100 を採用、正の safe integer 以外は
  *   `XREF_MAX_DEPTH_INVALID` を含む Err）
@@ -169,19 +94,76 @@ export async function mergeXRefChain(
   }
   const maxDepth = maxDepthResult.value;
   const traversedOffsets = new Set<ByteOffset>();
-  const chain: ChainLink[] = [];
+  const entryLayers: XRefTable[] = [];
 
-  let currentOffset: ByteOffset = startOffset;
-  let depth = 0;
+  /**
+   * 1つの xref セクション（テキストまたはストリーム）を読み、`/XRefStm` があれば
+   * それも読んで `entryLayers` に優先度順（ストリーム側が高優先）で push する。
+   * 戻り値の trailer はチェーン継続判定（`/Prev`）用。
+   *
+   * このセクション自身（`offset`）の trailer が `undefined`（`/Root` 欠如）の
+   * 場合は `ROOT_NOT_FOUND` エラーとする — チェーンの主要セクションは常に
+   * 文書 trailer を持つ必要がある。一方 `/XRefStm` が指す補助ストリームの
+   * trailer は `.xref` しか使わないため、`undefined` でも許容する。
+   *
+   * @param offset - 読み取り対象のバイトオフセット
+   * @returns セクション自身の TrailerDict、またはエラー
+   */
+  const visitSection = async (
+    offset: ByteOffset,
+  ): Promise<Result<TrailerDict, PdfError>> => {
+    const parseResult = await parseCallback(offset);
+    if (!parseResult.ok) {
+      return parseResult;
+    }
+    const { xref, trailer } = parseResult.value;
+    if (trailer === undefined) {
+      return err({
+        code: "ROOT_NOT_FOUND",
+        message: `xref section at offset ${String(offset)} has no trailer (/Root missing)`,
+        offset,
+      });
+    }
 
-  while (true) {
-    const cycleCheck = checkAndMarkVisited(
-      currentOffset,
-      traversedOffsets,
-      "/Prev",
-    );
-    if (cycleCheck.some) {
-      return err(cycleCheck.value);
+    if (trailer.xrefStm !== undefined) {
+      const xrefStmOffset = trailer.xrefStm;
+      if (traversedOffsets.has(xrefStmOffset)) {
+        return failPrevChain(
+          "XREF_PREV_CHAIN_CYCLE",
+          `Circular /XRefStm reference detected at offset ${String(xrefStmOffset)}`,
+          xrefStmOffset,
+        );
+      }
+      traversedOffsets.add(xrefStmOffset);
+
+      const xrefStmResult = await parseCallback(xrefStmOffset);
+      if (!xrefStmResult.ok) {
+        return xrefStmResult;
+      }
+      entryLayers.push(xrefStmResult.value.xref);
+    }
+
+    entryLayers.push(xref);
+    return ok(trailer);
+  };
+
+  traversedOffsets.add(startOffset);
+  const firstResult = await visitSection(startOffset);
+  if (!firstResult.ok) {
+    return firstResult;
+  }
+  const latestTrailer = firstResult.value;
+
+  let currentOffset = latestTrailer.prev;
+  let depth = 1;
+
+  while (currentOffset !== undefined) {
+    if (traversedOffsets.has(currentOffset)) {
+      return failPrevChain(
+        "XREF_PREV_CHAIN_CYCLE",
+        `Circular /Prev reference detected at offset ${String(currentOffset)}`,
+        currentOffset,
+      );
     }
 
     if (depth >= (maxDepth as number)) {
@@ -192,31 +174,15 @@ export async function mergeXRefChain(
       );
     }
 
-    const parseResult = await parseCallback(currentOffset);
-    if (!parseResult.ok) {
-      return parseResult;
+    traversedOffsets.add(currentOffset);
+
+    const result = await visitSection(currentOffset);
+    if (!result.ok) {
+      return result;
     }
     depth++;
-
-    const { xref, trailer } = parseResult.value;
-    const layersResult = await resolveXRefLayers(
-      xref,
-      trailer,
-      parseCallback,
-      traversedOffsets,
-    );
-    if (!layersResult.ok) {
-      return layersResult;
-    }
-
-    chain.push({ xrefLayers: layersResult.value, trailer });
-
-    if (trailer.prev === undefined) {
-      break;
-    }
-
-    currentOffset = trailer.prev;
+    currentOffset = result.value.prev;
   }
 
-  return ok(mergeCollectedChain(chain));
+  return ok(mergeCollectedChain(entryLayers, latestTrailer));
 }

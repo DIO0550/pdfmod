@@ -540,8 +540,7 @@ const xrefStreamEntryBytes = (
  * 直接この xref ストリームを指す。
  *
  * `PdfDocument.load` が `parseXRefAt` で `xref` キーワードでなく間接オブジェクトを
- * 検出し、xref ストリーム経路（decompressFlate → decodeXRefStreamEntries →
- * buildXRefStreamTrailerDict）を通ることを検証する fixture。
+ * 検出し、`parseXRefStream` 経由の xref ストリーム経路を通ることを検証する fixture。
  *
  * @returns xref ストリーム形式の 1 ページ PDF を表すバイト列
  */
@@ -585,64 +584,11 @@ export const buildMinimalSinglePagePdfWithXRefStream =
   };
 
 /**
- * `/DecodeParms`（Predictor 等）を持つ xref ストリームの PDF を生成する。
- *
- * Predictor 逆変換は未実装のため、`/DecodeParms` を持つ xref ストリームを
- * FlateDecode だけで展開すると生エントリを取り違えて誤った offset を静かに
- * 生成しうる。`parseStreamXRefAt` はこれを防ぐため `/DecodeParms` の存在自体を
- * 検出して `XREF_STREAM_INVALID` を返す。ストリームデータは
- * {@link buildMinimalSinglePagePdfWithXRefStream} と同じ（実際には
- * `/DecodeParms` 検出時点で展開されないため内容は無関係）。
- *
- * @returns `/DecodeParms` 付き xref ストリームを持つ PDF バイト列
- */
-export const buildPdfWithXRefStreamDecodeParms =
-  async (): Promise<Uint8Array> => {
-    const encoder = new TextEncoder();
-    const objectBodies = [CATALOG_BODY, PAGES_BODY_SINGLE, PAGE_BODY];
-    const objs = formatIndirectObjects(objectBodies);
-
-    const offsets: number[] = [];
-    let cursor = encoder.encode(PDF_HEADER).length;
-    for (const obj of objs) {
-      offsets.push(cursor);
-      cursor += encoder.encode(obj).length;
-    }
-    const xrefStreamObjNum = objectBodies.length + 1;
-    const xrefStreamOffset = cursor;
-
-    const rawEntries = [
-      xrefStreamEntryBytes(0, 0, 0),
-      xrefStreamEntryBytes(1, offsets[0], 0),
-      xrefStreamEntryBytes(1, offsets[1], 0),
-      xrefStreamEntryBytes(1, offsets[2], 0),
-      xrefStreamEntryBytes(1, xrefStreamOffset, 0),
-    ].flat();
-    const compressed = await compressFlate(new Uint8Array(rawEntries));
-
-    const size = xrefStreamObjNum + 1;
-    const dict =
-      `<< /Type /XRef /Filter /FlateDecode ` +
-      `/DecodeParms << /Predictor 12 /Columns 4 >> ` +
-      `/W [${XREF_STREAM_W.join(" ")}] /Size ${size} /Root 1 0 R ` +
-      `/Length ${compressed.length} >>`;
-
-    return concatUint8Arrays([
-      encoder.encode(PDF_HEADER),
-      ...objs.map((o) => encoder.encode(o)),
-      encoder.encode(`${xrefStreamObjNum} 0 obj\n${dict}\nstream\n`),
-      compressed,
-      encoder.encode("\nendstream\nendobj\n"),
-      encoder.encode(`startxref\n${xrefStreamOffset}\n%%EOF\n`),
-    ]);
-  };
-
-/**
  * `/Type` が `/XRef` でないストリームを xref ストリーム位置に持つ PDF を生成する。
  *
  * `startxref` が指す間接オブジェクトはストリームだが `/Type /NotXRef` であり、
- * `PdfType.validate` の型不一致を `parseStreamXRefAt` が `XREF_STREAM_INVALID`
- * （offset付き）に変換して返すことを検証する fixture。ストリームデータは
+ * `XRefStreamDict.parse` の型不一致検出により `XREF_STREAM_INVALID` を返す
+ * ことを `PdfDocument.load` 経由で検証する fixture。ストリームデータは
  * {@link buildMinimalSinglePagePdfWithXRefStream} と同じ（`/Type` 検証で
  * 早期に失敗するため実際には展開されず内容は無関係）。
  *

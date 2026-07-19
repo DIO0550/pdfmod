@@ -644,19 +644,19 @@ function buildTrailerDict(
   const rootEntry = entries.get("Root");
   const sizeEntry = entries.get("Size");
   const prevEntry = entries.get("Prev");
+  const xrefStmEntry = entries.get("XRefStm");
   const infoEntry = entries.get("Info");
   const idEntry = entries.get("ID");
   const encryptEntry = entries.get("Encrypt");
-  const xrefStmEntry = entries.get("XRefStm");
 
   const result = trailerDictBuilder()
     .root(rootEntry?.value, rootEntry?.offset)
     .size(sizeEntry?.value, sizeEntry?.offset)
     .prev(prevEntry?.value, prevEntry?.offset)
+    .xrefStm(xrefStmEntry?.value, xrefStmEntry?.offset)
     .info(infoEntry?.value, infoEntry?.offset)
     .id(idEntry?.value, idEntry?.offset)
     .encrypt(encryptEntry?.value, encryptEntry?.offset)
-    .xrefStm(xrefStmEntry?.value, xrefStmEntry?.offset)
     .build();
   if (!result.ok) {
     return err(mapErr(result.error));

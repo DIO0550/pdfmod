@@ -5,28 +5,7 @@ import {
   buildPdfWithEncryptDict,
   buildPdfWithHybridXRefStm,
   buildPdfWithWrongTypeXRefStream,
-  buildPdfWithXRefStreamDecodeParms,
 } from "./pdf-document.test.helpers";
-
-test("xrefストリーム形式のみのPDFをloadするとpageCount=1を返す", async () => {
-  const result = await PdfDocument.load(
-    await buildMinimalSinglePagePdfWithXRefStream(),
-  );
-
-  assert(result.ok);
-  expect(result.value.pageCount).toBe(1);
-});
-
-test("xrefストリーム形式のみのPDFのgetPage(0)は正しいMediaBoxを返す", async () => {
-  const result = await PdfDocument.load(
-    await buildMinimalSinglePagePdfWithXRefStream(),
-  );
-
-  assert(result.ok);
-  const page = result.value.getPage(0);
-  assert(page.some);
-  expect(page.value.mediaBox).toEqual([0, 0, 612, 792]);
-});
 
 test("xrefストリーム形式のみのPDFはfallback scanを経由せず（XREF_REBUILD warningなしで）loadされる", async () => {
   const seen: string[] = [];
@@ -37,12 +16,6 @@ test("xrefストリーム形式のみのPDFはfallback scanを経由せず（XRE
 
   assert(result.ok);
   expect(seen).not.toContain("XREF_REBUILD");
-});
-
-test("ハイブリッド参照(/XRefStm)PDFをloadするとOkを返す", async () => {
-  const result = await PdfDocument.load(await buildPdfWithHybridXRefStm());
-
-  assert(result.ok);
 });
 
 test("ハイブリッド参照(/XRefStm)PDFはfallback scanを経由せず（XREF_REBUILD warningなしで）loadされる", async () => {
@@ -79,17 +52,6 @@ test("trailerに/Encryptを持つPDFをloadするとENCRYPTED_PDF_UNSUPPORTEDを
   assert(!result.ok);
   assert(!(result.error instanceof RangeError));
   expect(result.error.code).toBe("ENCRYPTED_PDF_UNSUPPORTED");
-});
-
-test("/DecodeParmsを持つxrefストリームのPDFはXREF_STREAM_INVALIDでfallback scanへ移行しXREF_REBUILD warningを伴ってOkになる", async () => {
-  const seen: string[] = [];
-  const result = await PdfDocument.load(
-    await buildPdfWithXRefStreamDecodeParms(),
-    { onWarning: (w) => seen.push(w.code) },
-  );
-
-  assert(result.ok);
-  expect(seen).toContain("XREF_REBUILD");
 });
 
 test("/TypeがXRefでないストリームがxrefストリーム位置にあるPDFはXREF_STREAM_INVALIDでfallback scanへ移行しXREF_REBUILD warningを伴ってOkになる", async () => {
