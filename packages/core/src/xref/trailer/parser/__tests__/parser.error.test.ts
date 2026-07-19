@@ -223,3 +223,43 @@ test("/Info の世代番号が65535超の場合にXREF_TABLE_INVALIDエラーが
   assert(!result.ok);
   expect(result.error.code).toBe("XREF_TABLE_INVALID");
 });
+
+test("/Encryptが間接参照でも辞書でもない場合にXREF_TABLE_INVALIDエラーが返る", () => {
+  const { data, offset } = trailerAt(
+    "trailer << /Root 1 0 R /Size 10 /Encrypt /Foo >>",
+  );
+  const result = parseTrailer(data, offset);
+  assert(!result.ok);
+  expect(result.error.code).toBe("XREF_TABLE_INVALID");
+  expect(result.error.message).toContain("/Encrypt");
+});
+
+test("/Encrypt の世代番号が65535超の場合にXREF_TABLE_INVALIDエラーが返る", () => {
+  const { data, offset } = trailerAt(
+    "trailer << /Root 1 0 R /Size 10 /Encrypt 1 99999 R >>",
+  );
+  const result = parseTrailer(data, offset);
+  assert(!result.ok);
+  expect(result.error.code).toBe("XREF_TABLE_INVALID");
+});
+
+test("/XRefStmが負数の場合にXREF_TABLE_INVALIDエラーが返る", () => {
+  const { data, offset } = trailerAt(
+    "trailer << /Root 1 0 R /Size 10 /XRefStm -1 >>",
+  );
+  const result = parseTrailer(data, offset);
+  assert(!result.ok);
+  expect(result.error.code).toBe("XREF_TABLE_INVALID");
+});
+
+test("/XRefStmが実数の場合にXREF_TABLE_INVALIDエラーが返る", () => {
+  const { data, offset } = trailerAt(
+    "trailer << /Root 1 0 R /Size 10 /XRefStm 1.5 >>",
+  );
+  const result = parseTrailer(data, offset);
+  assert(!result.ok);
+  expect(result.error.code).toBe("XREF_TABLE_INVALID");
+  expect(result.error.message).toBe(
+    "/XRefStm entry is not a non-negative integer",
+  );
+});

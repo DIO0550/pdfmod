@@ -438,7 +438,15 @@ function readArrayElements(
   }
 }
 
-const SUPPORTED_TRAILER_KEYS = new Set(["Root", "Size", "Prev", "Info", "ID"]);
+const SUPPORTED_TRAILER_KEYS = new Set([
+  "Root",
+  "Size",
+  "Prev",
+  "Info",
+  "ID",
+  "Encrypt",
+  "XRefStm",
+]);
 const ID_MAX_ELEMENTS = 2;
 
 /**
@@ -638,6 +646,8 @@ function buildTrailerDict(
   const prevEntry = entries.get("Prev");
   const infoEntry = entries.get("Info");
   const idEntry = entries.get("ID");
+  const encryptEntry = entries.get("Encrypt");
+  const xrefStmEntry = entries.get("XRefStm");
 
   const result = trailerDictBuilder()
     .root(rootEntry?.value, rootEntry?.offset)
@@ -645,6 +655,8 @@ function buildTrailerDict(
     .prev(prevEntry?.value, prevEntry?.offset)
     .info(infoEntry?.value, infoEntry?.offset)
     .id(idEntry?.value, idEntry?.offset)
+    .encrypt(encryptEntry?.value, encryptEntry?.offset)
+    .xrefStm(xrefStmEntry?.value, xrefStmEntry?.offset)
     .build();
   if (!result.ok) {
     return err(mapErr(result.error));

@@ -243,6 +243,10 @@ export interface TrailerDict {
   info?: IndirectRef;
   /** /ID - ファイル識別子 [永続ID, 変更ID] */
   id?: [Uint8Array, Uint8Array];
+  /** /Encrypt - 暗号化辞書（辞書またはその間接参照）。存在する場合、暗号化PDFとして検出する */
+  encrypt?: IndirectRef | PdfDictionary;
+  /** /XRefStm - ハイブリッド参照ファイルにおける相互参照ストリームのバイトオフセット（テキスト形式trailerのみ） */
+  xrefStm?: ByteOffset;
 }
 
 /**

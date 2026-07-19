@@ -51,3 +51,17 @@ test("/Root, /Size, /Prev, /Info, /IDすべてを含む辞書からTrailerDict�
   expect(result.value.id?.[0]).toEqual(new Uint8Array([0x01, 0x02]));
   expect(result.value.id?.[1]).toEqual(new Uint8Array([0x03, 0x04]));
 });
+
+test("/Encryptを含む辞書からencryptが間接参照として抽出される", () => {
+  const dict = new Map<string, PdfValue>([
+    ["Root", { type: "indirect-ref", objectNumber: 1, generationNumber: 0 }],
+    ["Size", { type: "integer", value: 10 }],
+    ["Encrypt", { type: "indirect-ref", objectNumber: 7, generationNumber: 0 }],
+  ]);
+  const result = buildXRefStreamTrailerDict(dict);
+  assert(result.ok);
+  expect(result.value.encrypt).toEqual({
+    objectNumber: 7,
+    generationNumber: 0,
+  });
+});
