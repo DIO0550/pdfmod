@@ -158,4 +158,5 @@ vite.config.ts.timestamp-*
 .claude/settings.local.json
 .claude/plugin-workspace/
 /plugin-workspace/
+.plugin-workspace/
 .codex/
