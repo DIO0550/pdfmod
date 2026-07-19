@@ -50,3 +50,8 @@ test("PdfWarningCode に UNBALANCED_RESTORE が含まれる", () => {
   const code: PdfWarningCode = "UNBALANCED_RESTORE";
   expect(code).toBe("UNBALANCED_RESTORE");
 });
+
+test("PdfWarningCode に GENERATION_MISMATCH が含まれる", () => {
+  const code: PdfWarningCode = "GENERATION_MISMATCH";
+  expect(code).toBe("GENERATION_MISMATCH");
+});
