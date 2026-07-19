@@ -46,7 +46,7 @@ export class ObjectStore {
     source: ObjectStoreSource,
     cache: LRUCache<string, PdfObject>,
     streamCache: LRUCache<ObjectNumber, Uint8Array> | undefined,
-    onWarning: ((warning: PdfWarning) => void) | undefined,
+    onWarning: undefined | ((warning: PdfWarning) => void),
   ) {
     this.source = source;
     this.cache = cache;
