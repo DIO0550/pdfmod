@@ -334,7 +334,10 @@ export class PdfDocument {
 
     const storeResult = ObjectStore.create(
       { xref, data },
-      { cacheCapacity: options?.cacheCapacity },
+      {
+        cacheCapacity: options?.cacheCapacity,
+        onWarning: options?.onWarning,
+      },
     );
     if (!storeResult.ok) {
       return storeResult;
