@@ -10,7 +10,7 @@
     "typescript-rules-plugin@d-market-typescript": true,
     "react-rules-plugin@d-market-react": true,
     "spec-plugin@d-market-spec": true,
-    "spec-review-plugin@d-market-spec": true,
+    "spec-based-code-review-plugin@d-market-spec": true,
     "git-workflow-plugin@d-market-git": true,
     "spec-to-issues-plugin@d-market-git": true,
     "workflow-automation-plugin@d-market-git": true,
@@ -20,7 +20,12 @@
     "marketplace-template@d-market-skill": true,
     "skill-grower@d-market-skill": true,
     "rust-workflow-plugin@d-market-rust": true,
-    "typescript-lsp@claude-plugins-official": true
+    "rust-rules-plugin@d-market-rust": true,
+    "rust-hooks-plugin@d-market-rust": true,
+    "typescript-lsp@claude-plugins-official": true,
+    "rust-analyzer-lsp@claude-plugins-official": true,
+    "code-intent-layering-guard@d-market-workflow": true,
+    "discord-notifier@d-market-workflow": true
   },
   "extraKnownMarketplaces": {
     "d-market-typescript": {
@@ -74,6 +79,12 @@
       "source": {
         "source": "github",
         "repo": "DIO0550/d-market-rust"
+      }
+    },
+    "d-market-workflow": {
+      "source": {
+        "source": "git",
+        "url": "https://github.com/DIO0550/d-market-workflow.git"
       }
     }
   }
