@@ -14,6 +14,7 @@ interface TrailerDictBuilderChain {
   root(value?: PdfValue, offset?: ByteOffset): TrailerDictBuilderChain;
   size(value?: PdfValue, offset?: ByteOffset): TrailerDictBuilderChain;
   prev(value?: PdfValue, offset?: ByteOffset): TrailerDictBuilderChain;
+  xrefStm(value?: PdfValue, offset?: ByteOffset): TrailerDictBuilderChain;
   info(value?: PdfValue, offset?: ByteOffset): TrailerDictBuilderChain;
   id(value?: PdfValue, offset?: ByteOffset): TrailerDictBuilderChain;
   build(): Result<TrailerDict, PdfParseError>;
@@ -37,6 +38,8 @@ export function trailerDictBuilder(): TrailerDictBuilderChain {
   let _sizeOffset: ByteOffset | undefined;
   let _prev: PdfValue | undefined;
   let _prevOffset: ByteOffset | undefined;
+  let _xrefStm: PdfValue | undefined;
+  let _xrefStmOffset: ByteOffset | undefined;
   let _info: PdfValue | undefined;
   let _infoOffset: ByteOffset | undefined;
   let _id: PdfValue | undefined;
@@ -56,6 +59,11 @@ export function trailerDictBuilder(): TrailerDictBuilderChain {
     prev(value?: PdfValue, offset?: ByteOffset) {
       _prev = value;
       _prevOffset = offset;
+      return chain;
+    },
+    xrefStm(value?: PdfValue, offset?: ByteOffset) {
+      _xrefStm = value;
+      _xrefStmOffset = offset;
       return chain;
     },
     info(value?: PdfValue, offset?: ByteOffset) {
@@ -148,6 +156,21 @@ export function trailerDictBuilder(): TrailerDictBuilderChain {
           });
         }
         result.prev = BO.of(_prev.value as number);
+      }
+
+      // /XRefStm - optional, non-negative integer (ISO 32000-1 §7.5.8.4 hybrid-reference files)
+      if (_xrefStm) {
+        if (
+          _xrefStm.type !== "integer" ||
+          !NumberEx.isSafeIntegerAtLeastZero(_xrefStm.value as number)
+        ) {
+          return err({
+            code: "TRAILER_DICT_INVALID",
+            message: "/XRefStm entry is not a non-negative integer",
+            offset: _xrefStmOffset,
+          });
+        }
+        result.xrefStm = BO.of(_xrefStm.value as number);
       }
 
       // /Info - optional, IndirectRef

@@ -5,5 +5,6 @@
  */
 
 export { decompressFlate } from "./flatedecode/index";
+export { parseXRefStream } from "./parse-xref-stream/index";
 export { decodeXRefStreamEntries } from "./parser/index";
 export { buildXRefStreamTrailerDict } from "./trailer/index";

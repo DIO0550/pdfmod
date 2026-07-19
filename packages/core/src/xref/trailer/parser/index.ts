@@ -438,7 +438,14 @@ function readArrayElements(
   }
 }
 
-const SUPPORTED_TRAILER_KEYS = new Set(["Root", "Size", "Prev", "Info", "ID"]);
+const SUPPORTED_TRAILER_KEYS = new Set([
+  "Root",
+  "Size",
+  "Prev",
+  "XRefStm",
+  "Info",
+  "ID",
+]);
 const ID_MAX_ELEMENTS = 2;
 
 /**
@@ -636,6 +643,7 @@ function buildTrailerDict(
   const rootEntry = entries.get("Root");
   const sizeEntry = entries.get("Size");
   const prevEntry = entries.get("Prev");
+  const xrefStmEntry = entries.get("XRefStm");
   const infoEntry = entries.get("Info");
   const idEntry = entries.get("ID");
 
@@ -643,6 +651,7 @@ function buildTrailerDict(
     .root(rootEntry?.value, rootEntry?.offset)
     .size(sizeEntry?.value, sizeEntry?.offset)
     .prev(prevEntry?.value, prevEntry?.offset)
+    .xrefStm(xrefStmEntry?.value, xrefStmEntry?.offset)
     .info(infoEntry?.value, infoEntry?.offset)
     .id(idEntry?.value, idEntry?.offset)
     .build();

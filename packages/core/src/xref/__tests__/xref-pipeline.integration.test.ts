@@ -273,7 +273,7 @@ test("scanStartXRef -> mergeXRefChainで/Prevチェーンをまたいでend-to-e
       ),
     );
 
-  const mergeResult = mergeXRefChain(NEW_OFFSET, (offset) =>
+  const mergeResult = await mergeXRefChain(NEW_OFFSET, async (offset) =>
     offset === NEW_OFFSET
       ? ok({ xref: newXrefResult.value, trailer: newTrailerResult.value })
       : parseOldSectionAt(offset),

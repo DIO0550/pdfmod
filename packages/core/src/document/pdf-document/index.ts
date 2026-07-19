@@ -1,4 +1,8 @@
-import { isPdfWhitespace, matchesBytesAt } from "../../lexer/bytes/index";
+import {
+  isPdfTokenBoundary,
+  isPdfWhitespace,
+  matchesBytesAt,
+} from "../../lexer/bytes/index";
 import { ObjectStore } from "../../objects/object-store/index";
 import type {
   PdfError,
@@ -16,6 +20,7 @@ import { err, ok, type Result } from "../../utils/result/index";
 import { scanFallback } from "../../xref/fallback/index";
 import { mergeXRefChain } from "../../xref/merger/index";
 import { scanStartXRef } from "../../xref/startxref/index";
+import { parseXRefStream } from "../../xref/stream/index";
 import { parseXRefTable } from "../../xref/table/index";
 import { parseTrailer } from "../../xref/trailer/index";
 import { CatalogParser, type ResolveRef } from "../catalog/catalog-parser";
@@ -107,18 +112,58 @@ const verifyHeader = (data: Uint8Array): Result<PdfVersion, PdfParseError> => {
   return ok(created.value);
 };
 
+const XREF_KEYWORD_BYTES: number[] = Array.from(
+  new TextEncoder().encode("xref"),
+);
+
 /**
- * 指定オフセットから xref テーブルと trailer 辞書を続けて解析する。
- * `mergeXRefChain` の `parseCallback` 引数として使う合成。
+ * `offset` がテキスト形式 xref テーブルの `xref` キーワード先頭を指しているか判定する。
+ * 前後のトークン境界も検証する（`parseXRefTable` 内部の判定と同じ基準）。
  *
  * @param data - PDF のバイト列
- * @param offset - xref キーワードのバイトオフセット
- * @returns 成功時は `Ok<{ xref, trailer }>`、失敗時は `Err<PdfParseError>`
+ * @param offset - 判定対象のバイトオフセット
+ * @returns `xref` キーワードであれば `true`
  */
-const parseXRefAt = (
+const isXRefKeywordAt = (data: Uint8Array, offset: number): boolean => {
+  if (offset < 0 || offset >= data.length) {
+    return false;
+  }
+  const afterXref = offset + XREF_KEYWORD_BYTES.length;
+  if (!matchesBytesAt(data, offset, XREF_KEYWORD_BYTES)) {
+    return false;
+  }
+  if (offset > 0 && !isPdfTokenBoundary(data[offset - 1])) {
+    return false;
+  }
+  if (afterXref < data.length && !isPdfTokenBoundary(data[afterXref])) {
+    return false;
+  }
+  return true;
+};
+
+/**
+ * 指定オフセットから xref テーブルまたは xref ストリームと trailer 辞書を続けて解析する。
+ * `mergeXRefChain` の `parseCallback` 引数として使う合成。
+ *
+ * ISO 32000-1 §7.5.8 により、PDF 1.5 以降は startxref が直接クロスリファレンス
+ * ストリームオブジェクト（`N G obj << /Type /XRef ... >> stream`）を指しうる。
+ * `offset` が `xref` キーワードでなければ間接オブジェクトとして xref ストリームを解析する。
+ *
+ * @param data - PDF のバイト列
+ * @param offset - xref キーワード、または xref ストリームを定義する間接オブジェクトのバイトオフセット
+ * @returns 成功時は `Ok<{ xref, trailer }>`（`trailer` は `/XRefStm` 補助ストリームのように
+ *   `/Root` を持たない場合 `undefined`）、失敗時は `Err<PdfError>`
+ */
+const parseXRefAt = async (
   data: Uint8Array,
   offset: ByteOffset,
-): Result<{ xref: XRefTable; trailer: TrailerDict }, PdfParseError> => {
+): Promise<
+  Result<{ xref: XRefTable; trailer: TrailerDict | undefined }, PdfError>
+> => {
+  if (!isXRefKeywordAt(data, offset as number)) {
+    return parseXRefStream(data, offset);
+  }
+
   const tableResult = parseXRefTable(data, offset);
   if (!tableResult.ok) {
     return tableResult;
@@ -148,10 +193,10 @@ type EmitWarnings = (warnings: readonly PdfWarning[]) => void;
  * @param emitWarnings - fallback 復元時の警告通知コールバック
  * @returns 成功時は `Ok<{ xref, trailer }>`、失敗時は `Err<PdfError>`
  */
-const resolveXRefStructure = (
+const resolveXRefStructure = async (
   data: Uint8Array,
   emitWarnings: EmitWarnings,
-): Result<{ xref: XRefTable; trailer: TrailerDict }, PdfError> => {
+): Promise<Result<{ xref: XRefTable; trailer: TrailerDict }, PdfError>> => {
   const startXRefResult = scanStartXRef(data);
   if (!startXRefResult.ok) {
     const fb = scanFallback(data);
@@ -169,7 +214,7 @@ const resolveXRefStructure = (
     return ok({ xref: fb.value.xrefTable, trailer: fb.value.trailer.value });
   }
 
-  const mergeResult = mergeXRefChain(startXRefResult.value, (off) =>
+  const mergeResult = await mergeXRefChain(startXRefResult.value, (off) =>
     parseXRefAt(data, off),
   );
   if (mergeResult.ok) {
@@ -273,7 +318,7 @@ export class PdfDocument {
       }
     };
 
-    const xrefResolution = resolveXRefStructure(data, emitWarnings);
+    const xrefResolution = await resolveXRefStructure(data, emitWarnings);
     if (!xrefResolution.ok) {
       return xrefResolution;
     }

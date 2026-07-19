@@ -1,5 +1,5 @@
 import { assert, expect, test } from "vitest";
-import type { PdfParseError } from "../../../pdf/errors/index";
+import type { PdfError } from "../../../pdf/errors/index";
 import { ByteOffset } from "../../../pdf/types/byte-offset/index";
 import { GenerationNumber } from "../../../pdf/types/generation-number/index";
 import type {
@@ -61,7 +61,7 @@ function makeTrailer(size: number, prev?: number): TrailerDict {
 
 type ParseCallback = (
   offset: ByteOffset,
-) => Result<{ xref: XRefTable; trailer: TrailerDict }, PdfParseError>;
+) => Promise<Result<{ xref: XRefTable; trailer: TrailerDict }, PdfError>>;
 
 function stubMap(
   entries: Array<[number, { xref: XRefTable; trailer: TrailerDict }]>,
@@ -72,7 +72,7 @@ function stubMap(
 function callbackFromMap(
   table: Map<ByteOffset, { xref: XRefTable; trailer: TrailerDict }>,
 ): ParseCallback {
-  return (offset: ByteOffset) => {
+  return async (offset: ByteOffset) => {
     const entry = table.get(offset);
     return entry
       ? ok(entry)
@@ -83,7 +83,7 @@ function callbackFromMap(
   };
 }
 
-test("単一xref（/Prevなし）: コールバック1回呼び出し、そのままのXRefTableとTrailerDictが返る", () => {
+test("単一xref（/Prevなし）: コールバック1回呼び出し、そのままのXRefTableとTrailerDictが返る", async () => {
   const xref = makeXRef(
     [
       [0, freeEntry(0, 65535)],
@@ -94,7 +94,7 @@ test("単一xref（/Prevなし）: コールバック1回呼び出し、その�
   const trailer = makeTrailer(2);
   const callback = callbackFromMap(stubMap([[500, { xref, trailer }]]));
 
-  const result = mergeXRefChain(ByteOffset.of(500), callback);
+  const result = await mergeXRefChain(ByteOffset.of(500), callback);
 
   assert(result.ok);
   expect(result.value.mergedXRef.entries.size).toBe(2);
@@ -103,7 +103,7 @@ test("単一xref（/Prevなし）: コールバック1回呼び出し、その�
   expect(result.value.latestTrailer.size).toBe(2);
 });
 
-test("2段チェーン: 新しいエントリが古いエントリを上書きする", () => {
+test("2段チェーン: 新しいエントリが古いエントリを上書きする", async () => {
   const oldXRef = makeXRef(
     [
       [0, freeEntry(0, 65535)],
@@ -125,7 +125,7 @@ test("2段チェーン: 新しいエントリが古いエントリを上書き�
     ]),
   );
 
-  const result = mergeXRefChain(ByteOffset.of(500), callback);
+  const result = await mergeXRefChain(ByteOffset.of(500), callback);
 
   assert(result.ok);
   expect(result.value.mergedXRef.entries.size).toBe(3);
@@ -135,7 +135,7 @@ test("2段チェーン: 新しいエントリが古いエントリを上書き�
   expect(result.value.latestTrailer.root).toEqual(dummyRoot);
 });
 
-test("3段チェーン: 古い順にマージされ、最新が優先", () => {
+test("3段チェーン: 古い順にマージされ、最新が優先", async () => {
   const callback = callbackFromMap(
     stubMap([
       [
@@ -171,7 +171,7 @@ test("3段チェーン: 古い順にマージされ、最新が優先", () => {
     ]),
   );
 
-  const result = mergeXRefChain(ByteOffset.of(300), callback);
+  const result = await mergeXRefChain(ByteOffset.of(300), callback);
 
   assert(result.ok);
   const entry1 = result.value.mergedXRef.entries.get(ObjectNumber.of(1));
@@ -187,7 +187,7 @@ test("3段チェーン: 古い順にマージされ、最新が優先", () => {
   expect(entry3.offset).toBe(50);
 });
 
-test("エントリの上書き: 同一ObjectNumberのエントリが新しい方で上書き", () => {
+test("エントリの上書き: 同一ObjectNumberのエントリが新しい方で上書き", async () => {
   const callback = callbackFromMap(
     stubMap([
       [
@@ -204,7 +204,7 @@ test("エントリの上書き: 同一ObjectNumberのエントリが新しい方
     ]),
   );
 
-  const result = mergeXRefChain(ByteOffset.of(500), callback);
+  const result = await mergeXRefChain(ByteOffset.of(500), callback);
 
   assert(result.ok);
   const entry = result.value.mergedXRef.entries.get(ObjectNumber.of(5));
@@ -212,7 +212,7 @@ test("エントリの上書き: 同一ObjectNumberのエントリが新しい方
   expect(entry.offset).toBe(999);
 });
 
-test("重複しないエントリ: 各テーブル固有のエントリがすべてマージ結果に含まれる", () => {
+test("重複しないエントリ: 各テーブル固有のエントリがすべてマージ結果に含まれる", async () => {
   const callback = callbackFromMap(
     stubMap([
       [
@@ -229,7 +229,7 @@ test("重複しないエントリ: 各テーブル固有のエントリがすべ
     ]),
   );
 
-  const result = mergeXRefChain(ByteOffset.of(400), callback);
+  const result = await mergeXRefChain(ByteOffset.of(400), callback);
 
   assert(result.ok);
   expect(result.value.mergedXRef.entries.size).toBe(2);
@@ -237,7 +237,7 @@ test("重複しないエントリ: 各テーブル固有のエントリがすべ
   expect(result.value.mergedXRef.entries.has(ObjectNumber.of(2))).toBe(true);
 });
 
-test("free entry による used entry の上書き: type=0 が type=1 を無効化", () => {
+test("free entry による used entry の上書き: type=0 が type=1 を無効化", async () => {
   const callback = callbackFromMap(
     stubMap([
       [
@@ -254,7 +254,7 @@ test("free entry による used entry の上書き: type=0 が type=1 を無効�
     ]),
   );
 
-  const result = mergeXRefChain(ByteOffset.of(400), callback);
+  const result = await mergeXRefChain(ByteOffset.of(400), callback);
 
   assert(result.ok);
   const entry = result.value.mergedXRef.entries.get(ObjectNumber.of(1));
@@ -262,7 +262,7 @@ test("free entry による used entry の上書き: type=0 が type=1 を無効�
   expect(entry.type).toBe(0);
 });
 
-test("compressed entry (type=2) による used entry (type=1) の上書き", () => {
+test("compressed entry (type=2) による used entry (type=1) の上書き", async () => {
   const callback = callbackFromMap(
     stubMap([
       [
@@ -279,7 +279,7 @@ test("compressed entry (type=2) による used entry (type=1) の上書き", () 
     ]),
   );
 
-  const result = mergeXRefChain(ByteOffset.of(400), callback);
+  const result = await mergeXRefChain(ByteOffset.of(400), callback);
 
   assert(result.ok);
   const entry = result.value.mergedXRef.entries.get(ObjectNumber.of(1));
@@ -287,7 +287,7 @@ test("compressed entry (type=2) による used entry (type=1) の上書き", () 
   expect(entry.type).toBe(2);
 });
 
-test("/Prev = 0（ByteOffset(0)）を持つ trailer が正しく辿られる", () => {
+test("/Prev = 0（ByteOffset(0)）を持つ trailer が正しく辿られる", async () => {
   const callback = callbackFromMap(
     stubMap([
       [
@@ -304,7 +304,7 @@ test("/Prev = 0（ByteOffset(0)）を持つ trailer が正しく辿られる", (
     ]),
   );
 
-  const result = mergeXRefChain(ByteOffset.of(500), callback);
+  const result = await mergeXRefChain(ByteOffset.of(500), callback);
 
   assert(result.ok);
   expect(result.value.mergedXRef.entries.size).toBe(2);
@@ -312,7 +312,7 @@ test("/Prev = 0（ByteOffset(0)）を持つ trailer が正しく辿られる", (
   expect(result.value.mergedXRef.entries.has(ObjectNumber.of(2))).toBe(true);
 });
 
-test("size は全テーブルの最大値を採用", () => {
+test("size は全テーブルの最大値を採用", async () => {
   const callback = callbackFromMap(
     stubMap([
       [
@@ -336,13 +336,13 @@ test("size は全テーブルの最大値を採用", () => {
     ]),
   );
 
-  const result = mergeXRefChain(ByteOffset.of(300), callback);
+  const result = await mergeXRefChain(ByteOffset.of(300), callback);
 
   assert(result.ok);
   expect(result.value.mergedXRef.size).toBe(10);
 });
 
-test("latestTrailer は最新トレイラをベースにし、size のみ mergedXRef.size で上書き", () => {
+test("latestTrailer は最新トレイラをベースにし、size のみ mergedXRef.size で上書き", async () => {
   const newRoot = {
     objectNumber: ObjectNumber.of(99),
     generationNumber: GenerationNumber.of(0),
@@ -363,7 +363,7 @@ test("latestTrailer は最新トレイラをベースにし、size のみ merged
     ]),
   );
 
-  const result = mergeXRefChain(ByteOffset.of(300), callback);
+  const result = await mergeXRefChain(ByteOffset.of(300), callback);
 
   assert(result.ok);
   expect(result.value.latestTrailer.root).toEqual(newRoot);
@@ -371,19 +371,19 @@ test("latestTrailer は最新トレイラをベースにし、size のみ merged
   expect(result.value.mergedXRef.size).toBe(20);
 });
 
-test("空のxrefテーブル（entries が空の Map）のマージ", () => {
+test("空のxrefテーブル（entries が空の Map）のマージ", async () => {
   const callback = callbackFromMap(
     stubMap([[500, { xref: makeXRef([], 0), trailer: makeTrailer(0) }]]),
   );
 
-  const result = mergeXRefChain(ByteOffset.of(500), callback);
+  const result = await mergeXRefChain(ByteOffset.of(500), callback);
 
   assert(result.ok);
   expect(result.value.mergedXRef.entries.size).toBe(0);
   expect(result.value.mergedXRef.size).toBe(0);
 });
 
-test("latestTrailer.size が mergedXRef.size（全テーブルの最大値）に正規化されている", () => {
+test("latestTrailer.size が mergedXRef.size（全テーブルの最大値）に正規化されている", async () => {
   const callback = callbackFromMap(
     stubMap([
       [
@@ -400,7 +400,7 @@ test("latestTrailer.size が mergedXRef.size（全テーブルの最大値）に
     ]),
   );
 
-  const result = mergeXRefChain(ByteOffset.of(500), callback);
+  const result = await mergeXRefChain(ByteOffset.of(500), callback);
 
   assert(result.ok);
   expect(result.value.mergedXRef.size).toBe(50);

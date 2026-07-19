@@ -1,4 +1,4 @@
-import type { PdfParseError } from "../../pdf/errors/index";
+import type { PdfError, PdfParseError } from "../../pdf/errors/index";
 import type { ByteOffset } from "../../pdf/types/byte-offset/index";
 import type { TrailerDict, XRefEntry, XRefTable } from "../../pdf/types/index";
 import type { ObjectNumber } from "../../pdf/types/object-number/index";
@@ -23,26 +23,26 @@ function failPrevChain(
 }
 
 /**
- * 収集済みの xref チェーンをマージし、統合結果を返す。
- * chain は newest-first の順序で渡される。[...chain].reverse() で oldest から走査し、
- * newer が older を上書きする形でエントリを統合する。chain は破壊しない。
+ * 収集済みの xref エントリレイヤーをマージし、統合結果を返す。
+ * entryLayers は優先度が高い順（newest-first。同一世代内は /XRefStm 側がテキスト側より高優先）
+ * で渡される。[...entryLayers].reverse() で優先度が低い方から走査し、
+ * 優先度が高いレイヤーが低いレイヤーを上書きする形でエントリを統合する。entryLayers は破壊しない。
  *
- * @precondition chain は非空であること（呼び出し元で最低1回の parseCallback 成功を保証）
+ * @precondition entryLayers は非空であること（呼び出し元で最低1回の parseCallback 成功を保証）
  */
 function mergeCollectedChain(
-  chain: ReadonlyArray<{ xref: XRefTable; trailer: TrailerDict }>,
+  entryLayers: ReadonlyArray<XRefTable>,
+  latestTrailer: TrailerDict,
 ): { mergedXRef: XRefTable; latestTrailer: TrailerDict } {
   const mergedEntries = new Map<ObjectNumber, XRefEntry>();
   let maxSize = 0;
 
-  for (const { xref } of [...chain].reverse()) {
+  for (const xref of [...entryLayers].reverse()) {
     for (const [objNum, entry] of xref.entries) {
       mergedEntries.set(objNum, entry);
     }
     maxSize = Math.max(maxSize, xref.size);
   }
-
-  const latestTrailer = chain[0].trailer;
 
   return {
     mergedXRef: { entries: mergedEntries, size: maxSize },
@@ -50,31 +50,43 @@ function mergeCollectedChain(
   };
 }
 
-/** xref+trailer をオフセットからパースするコールバック。 */
+/**
+ * xref+trailer をオフセットからパースするコールバック。
+ * 間接オブジェクトのパース（xref ストリーム経路）を含みうるため非同期。
+ * `trailer` は `/XRefStm` が指す補助ストリームのように `/Root` を持たない
+ * xref ソースの場合 `undefined` になりうる（{@link visitSection} 参照）。
+ */
 type XRefParseCallback = (
   offset: ByteOffset,
-) => Result<{ xref: XRefTable; trailer: TrailerDict }, PdfParseError>;
+) => Promise<
+  Result<{ xref: XRefTable; trailer: TrailerDict | undefined }, PdfError>
+>;
 
 /**
  * /Prevチェーンを辿り、全xrefテーブルをマージする。
  * 新しいエントリが古いものを上書きし、最新のトレイラ辞書を返す。
  *
+ * ハイブリッド参照ファイル（ISO 32000-1 §7.5.8.4）対応: 各セクションの trailer に
+ * `/XRefStm` があれば、`/Prev` を辿る前にそのオフセットの補助クロスリファレンス
+ * ストリームを読み、同一世代内ではストリーム側のエントリをテキストセクションより
+ * 優先してマージする（ObjStm 内オブジェクトの type=2 エントリはストリーム側にのみ
+ * 存在しうるため）。チェーンの継続には常にテキスト trailer 側の `/Prev` を使う。
+ *
  * @param startOffset - 最初のxrefセクションのバイトオフセット（startxrefの値）
- * @param parseCallback - オフセットからxref+trailerをパースするコールバック
+ * @param parseCallback - オフセットからxref+trailerをパースする非同期コールバック
  * @param options - オプション（maxDepth: /Prevチェーンの最大走査深さ。
  *   `undefined` は既定値 100 を採用、正の safe integer 以外は
  *   `XREF_MAX_DEPTH_INVALID` を含む Err）
  * @returns マージ済みXRefTableと最新TrailerDict、
  *   maxDepth 不正時は `XREF_MAX_DEPTH_INVALID`、
- *   その他の失敗時は該当する `PdfParseError`
+ *   その他の失敗時は該当する `PdfError`
  */
-export function mergeXRefChain(
+export async function mergeXRefChain(
   startOffset: ByteOffset,
   parseCallback: XRefParseCallback,
   options?: { readonly maxDepth?: number },
-): Result<
-  { mergedXRef: XRefTable; latestTrailer: TrailerDict },
-  PdfParseError
+): Promise<
+  Result<{ mergedXRef: XRefTable; latestTrailer: TrailerDict }, PdfError>
 > {
   const maxDepthResult = MaxDepth.create(options?.maxDepth);
   if (!maxDepthResult.ok) {
@@ -82,12 +94,70 @@ export function mergeXRefChain(
   }
   const maxDepth = maxDepthResult.value;
   const traversedOffsets = new Set<ByteOffset>();
-  const chain: Array<{ xref: XRefTable; trailer: TrailerDict }> = [];
+  const entryLayers: XRefTable[] = [];
 
-  let currentOffset: ByteOffset = startOffset;
-  let depth = 0;
+  /**
+   * 1つの xref セクション（テキストまたはストリーム）を読み、`/XRefStm` があれば
+   * それも読んで `entryLayers` に優先度順（ストリーム側が高優先）で push する。
+   * 戻り値の trailer はチェーン継続判定（`/Prev`）用。
+   *
+   * このセクション自身（`offset`）の trailer が `undefined`（`/Root` 欠如）の
+   * 場合は `ROOT_NOT_FOUND` エラーとする — チェーンの主要セクションは常に
+   * 文書 trailer を持つ必要がある。一方 `/XRefStm` が指す補助ストリームの
+   * trailer は `.xref` しか使わないため、`undefined` でも許容する。
+   *
+   * @param offset - 読み取り対象のバイトオフセット
+   * @returns セクション自身の TrailerDict、またはエラー
+   */
+  const visitSection = async (
+    offset: ByteOffset,
+  ): Promise<Result<TrailerDict, PdfError>> => {
+    const parseResult = await parseCallback(offset);
+    if (!parseResult.ok) {
+      return parseResult;
+    }
+    const { xref, trailer } = parseResult.value;
+    if (trailer === undefined) {
+      return err({
+        code: "ROOT_NOT_FOUND",
+        message: `xref section at offset ${String(offset)} has no trailer (/Root missing)`,
+        offset,
+      });
+    }
 
-  while (true) {
+    if (trailer.xrefStm !== undefined) {
+      const xrefStmOffset = trailer.xrefStm;
+      if (traversedOffsets.has(xrefStmOffset)) {
+        return failPrevChain(
+          "XREF_PREV_CHAIN_CYCLE",
+          `Circular /XRefStm reference detected at offset ${String(xrefStmOffset)}`,
+          xrefStmOffset,
+        );
+      }
+      traversedOffsets.add(xrefStmOffset);
+
+      const xrefStmResult = await parseCallback(xrefStmOffset);
+      if (!xrefStmResult.ok) {
+        return xrefStmResult;
+      }
+      entryLayers.push(xrefStmResult.value.xref);
+    }
+
+    entryLayers.push(xref);
+    return ok(trailer);
+  };
+
+  traversedOffsets.add(startOffset);
+  const firstResult = await visitSection(startOffset);
+  if (!firstResult.ok) {
+    return firstResult;
+  }
+  const latestTrailer = firstResult.value;
+
+  let currentOffset = latestTrailer.prev;
+  let depth = 1;
+
+  while (currentOffset !== undefined) {
     if (traversedOffsets.has(currentOffset)) {
       return failPrevChain(
         "XREF_PREV_CHAIN_CYCLE",
@@ -106,21 +176,13 @@ export function mergeXRefChain(
 
     traversedOffsets.add(currentOffset);
 
-    const parseResult = parseCallback(currentOffset);
-    if (!parseResult.ok) {
-      return parseResult;
+    const result = await visitSection(currentOffset);
+    if (!result.ok) {
+      return result;
     }
-
-    chain.push(parseResult.value);
     depth++;
-
-    const { trailer } = parseResult.value;
-    if (trailer.prev === undefined) {
-      break;
-    }
-
-    currentOffset = trailer.prev;
+    currentOffset = result.value.prev;
   }
 
-  return ok(mergeCollectedChain(chain));
+  return ok(mergeCollectedChain(entryLayers, latestTrailer));
 }
