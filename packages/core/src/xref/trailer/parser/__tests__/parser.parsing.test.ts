@@ -149,6 +149,24 @@ test("/Encryptが直接辞書として与えられた場合にPdfDictionaryと�
   });
 });
 
+test.each([
+  { key: "Encrypt", field: "encrypt" as const },
+  { key: "Info", field: "info" as const },
+  { key: "Prev", field: "prev" as const },
+  { key: "ID", field: "id" as const },
+  { key: "XRefStm", field: "xrefStm" as const },
+])("/$keyがnullの場合はキー不在と同義に扱われ$fieldがundefinedになる（ISO 32000-1 §7.3.9）", ({
+  key,
+  field,
+}) => {
+  const { data, offset } = trailerAt(
+    `trailer << /Root 1 0 R /Size 10 /${key} null >>`,
+  );
+  const result = parseTrailer(data, offset);
+  assert(result.ok);
+  expect(result.value[field]).toBeUndefined();
+});
+
 test("/Encryptがない辞書でencryptがundefinedである", () => {
   const { data, offset } = trailerAt("trailer << /Root 1 0 R /Size 10 >>");
   const result = parseTrailer(data, offset);

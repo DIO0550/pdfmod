@@ -10,6 +10,19 @@ import { ObjectNumber } from "../../../pdf/types/object-number/index";
 import type { Result } from "../../../utils/result/index";
 import { err, ok } from "../../../utils/result/index";
 
+/**
+ * オプションフィールドの値が「実在する」か判定する。
+ * PDF辞書のnull値はキー不在と同義（ISO 32000-1 §7.3.9）のため、
+ * `{ type: "null" }` は他の型と同様に truthy な PdfValue オブジェクトだが
+ * 「不在」として扱わなければならない。
+ *
+ * @param value - 判定対象の PdfValue（未設定なら `undefined`）
+ * @returns 値が存在し、かつ null オブジェクトでなければ `true`
+ */
+function isPresent(value: PdfValue | undefined): value is PdfValue {
+  return value !== undefined && value.type !== "null";
+}
+
 interface TrailerDictBuilderChain {
   root(value?: PdfValue, offset?: ByteOffset): TrailerDictBuilderChain;
   size(value?: PdfValue, offset?: ByteOffset): TrailerDictBuilderChain;
@@ -152,7 +165,7 @@ export function trailerDictBuilder(): TrailerDictBuilderChain {
       const result: TrailerDict = { root, size };
 
       // /Prev - optional, non-negative integer
-      if (_prev) {
+      if (isPresent(_prev)) {
         if (
           _prev.type !== "integer" ||
           !NumberEx.isSafeIntegerAtLeastZero(_prev.value as number)
@@ -167,7 +180,7 @@ export function trailerDictBuilder(): TrailerDictBuilderChain {
       }
 
       // /Info - optional, IndirectRef
-      if (_info) {
+      if (isPresent(_info)) {
         if (_info.type !== "indirect-ref") {
           return err({
             code: "TRAILER_DICT_INVALID",
@@ -207,7 +220,7 @@ export function trailerDictBuilder(): TrailerDictBuilderChain {
       }
 
       // /ID - optional, must be 2-element array of string objects
-      if (_id) {
+      if (isPresent(_id)) {
         if (_id.type !== "array") {
           return err({
             code: "TRAILER_DICT_INVALID",
@@ -243,7 +256,7 @@ export function trailerDictBuilder(): TrailerDictBuilderChain {
       }
 
       // /Encrypt - optional, IndirectRef or Dictionary
-      if (_encrypt) {
+      if (isPresent(_encrypt)) {
         if (_encrypt.type === "indirect-ref") {
           if (!NumberEx.isSafeIntegerAtLeastZero(_encrypt.objectNumber)) {
             return err({
@@ -289,7 +302,7 @@ export function trailerDictBuilder(): TrailerDictBuilderChain {
       }
 
       // /XRefStm - optional, non-negative integer (text-format trailer only)
-      if (_xrefStm) {
+      if (isPresent(_xrefStm)) {
         if (
           _xrefStm.type !== "integer" ||
           !NumberEx.isSafeIntegerAtLeastZero(_xrefStm.value as number)

@@ -671,7 +671,7 @@ function parseDictTokens(
       });
     }
 
-    if (key === "ID") {
+    if (key === "ID" && valueToken.type !== TokenType.Null) {
       const idResult = readIdArray(valueToken, tokens, baseOffset);
       if (!idResult.ok) {
         return idResult;
