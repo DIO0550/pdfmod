@@ -508,6 +508,27 @@ const compressFlate = async (data: Uint8Array): Promise<Uint8Array> => {
   return new Uint8Array(await bufPromise);
 };
 
+const XREF_ENTRY_TYPE_MAX = 2;
+const XREF_ENTRY_FIELD2_MAX = 0xffff;
+const XREF_ENTRY_FIELD3_MAX = 0xff;
+
+/**
+ * 値が `[0, max]` の整数範囲に収まるか検証し、範囲外なら即座に throw する。
+ * `XREF_STREAM_W` (`/W [1 2 1]`) のビット幅に収まらない値をビット演算で暗黙に
+ * 切り詰めると、壊れた（しかし気づきにくい）xref ストリームフィクスチャを
+ * 生成してしまうため、テスト作成時のミスを早期に検出する目的のガード。
+ *
+ * @param value - 検証対象の値
+ * @param max - 許容最大値
+ * @param label - エラーメッセージに含める値の名称
+ * @throws {Error} value が整数でない、または `[0, max]` の範囲外の場合
+ */
+const assertFitsInRange = (value: number, max: number, label: string): void => {
+  if (!Number.isInteger(value) || value < 0 || value > max) {
+    throw new Error(`${label} must be an integer in [0, ${max}], got ${value}`);
+  }
+};
+
 /**
  * `XREF_STREAM_W` (`/W [1 2 1]`) 固定幅で1エントリ分のバイト列を組み立てる。
  *
@@ -521,6 +542,10 @@ const xrefStreamEntryBytes = (
   field2: number,
   field3: number,
 ): number[] => {
+  assertFitsInRange(type, XREF_ENTRY_TYPE_MAX, "type");
+  assertFitsInRange(field2, XREF_ENTRY_FIELD2_MAX, "field2");
+  assertFitsInRange(field3, XREF_ENTRY_FIELD3_MAX, "field3");
+
   const FIELD2_BYTE_SHIFT = 8;
   const BYTE_MASK = 0xff;
   return [
