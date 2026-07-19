@@ -134,6 +134,21 @@ test("/Encryptを含む辞書からencryptが間接参照として抽出され�
   });
 });
 
+test("/Encryptが直接辞書として与えられた場合にPdfDictionaryとして抽出される", () => {
+  const { data, offset } = trailerAt(
+    "trailer << /Root 1 0 R /Size 10 /Encrypt << /Filter /Standard /V 1 /R 2 /P -44 >> >>",
+  );
+  const result = parseTrailer(data, offset);
+  assert(result.ok);
+  assert(result.value.encrypt !== undefined);
+  assert(!("objectNumber" in result.value.encrypt));
+  expect(result.value.encrypt.type).toBe("dictionary");
+  expect(result.value.encrypt.entries.get("V")).toEqual({
+    type: "integer",
+    value: 1,
+  });
+});
+
 test("/Encryptがない辞書でencryptがundefinedである", () => {
   const { data, offset } = trailerAt("trailer << /Root 1 0 R /Size 10 >>");
   const result = parseTrailer(data, offset);
