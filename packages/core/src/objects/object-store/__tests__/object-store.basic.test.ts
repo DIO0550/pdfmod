@@ -1,5 +1,8 @@
 import { expect, test, vi } from "vitest";
-import type { PdfTypeMismatchError } from "../../../pdf/errors/index";
+import type {
+  PdfTypeMismatchError,
+  PdfWarning,
+} from "../../../pdf/errors/index";
 import { ByteOffset } from "../../../pdf/types/byte-offset/index";
 import { GenerationNumber } from "../../../pdf/types/generation-number/index";
 import { ObjectNumber } from "../../../pdf/types/object-number/index";
@@ -81,27 +84,55 @@ test("type=0 の XRefFreeEntry で get すると PdfNull が返る", async () =>
   expect(resolved).toEqual({ ok: true, value: { type: "null" } });
 });
 
-test("type=1 の XRefUsedEntry で get するとオブジェクトがパースされる", async () => {
+test("type=1 の XRefUsedEntry で get するとオブジェクトがパースされ onWarning は呼ばれない", async () => {
   const pdfData = new TextEncoder().encode("7 0 obj\n42\nendobj");
   const usedEntry: XRefUsedEntry = {
     type: 1,
     offset: ByteOffset.of(0),
     generationNumber: GenerationNumber.of(0),
   };
+  const seen: PdfWarning[] = [];
   const store = unwrapOk(
     ObjectStore.create(
       makeStoreSource({
         xref: makeXRefTable([[7, usedEntry]]),
         data: pdfData,
       }),
+      { onWarning: (w) => seen.push(w) },
     ),
   );
   const resolved = await store.get(makeRef(7));
   const value = unwrapOk(resolved);
   expect(value).toEqual({ type: "integer", value: 42 });
+  expect(seen).toHaveLength(0);
 });
 
-test("type=1 で generation mismatch の場合は PdfNull が返る", async () => {
+test("type=1 で generation mismatch の場合 onWarning に GENERATION_MISMATCH が渡る", async () => {
+  const usedEntry: XRefUsedEntry = {
+    type: 1,
+    offset: ByteOffset.of(100),
+    generationNumber: GenerationNumber.of(2),
+  };
+  const seen: PdfWarning[] = [];
+  const store = unwrapOk(
+    ObjectStore.create(
+      makeStoreSource({ xref: makeXRefTable([[7, usedEntry]]) }),
+      { onWarning: (w) => seen.push(w) },
+    ),
+  );
+  const resolved = await store.get(makeRef(7, 0));
+
+  expect(resolved).toEqual({ ok: true, value: { type: "null" } });
+  expect(seen).toEqual([
+    {
+      code: "GENERATION_MISMATCH",
+      message: "Object 7: generation mismatch (expected 2, got 0)",
+      offset: 100,
+    },
+  ]);
+});
+
+test("type=1 で generation mismatch でも onWarning 未指定なら例外にならない", async () => {
   const usedEntry: XRefUsedEntry = {
     type: 1,
     offset: ByteOffset.of(100),
@@ -114,6 +145,76 @@ test("type=1 で generation mismatch の場合は PdfNull が返る", async () =
   );
   const resolved = await store.get(makeRef(7, 0));
   expect(resolved).toEqual({ ok: true, value: { type: "null" } });
+});
+
+test("type=1 で generation mismatch の場合、2回目の get では onWarning が再発火しない", async () => {
+  const usedEntry: XRefUsedEntry = {
+    type: 1,
+    offset: ByteOffset.of(100),
+    generationNumber: GenerationNumber.of(2),
+  };
+  const seen: PdfWarning[] = [];
+  const store = unwrapOk(
+    ObjectStore.create(
+      makeStoreSource({ xref: makeXRefTable([[7, usedEntry]]) }),
+      { onWarning: (w) => seen.push(w) },
+    ),
+  );
+
+  await store.get(makeRef(7, 0));
+  expect(seen).toHaveLength(1);
+
+  await store.get(makeRef(7, 0));
+  expect(seen).toHaveLength(1);
+});
+
+test.each([
+  {
+    entryGen: 1,
+    refGen: 0,
+    label: "entry世代1・ref世代0（境界値: refが最小値0）",
+  },
+  {
+    entryGen: 0,
+    refGen: 1,
+    label: "entry世代0・ref世代1（境界値: entryが最小値0）",
+  },
+  {
+    entryGen: 65535,
+    refGen: 0,
+    label: "entry世代65535・ref世代0（境界値: GenerationNumber許容最大値）",
+  },
+  {
+    entryGen: 5,
+    refGen: 3,
+    label: "entry世代5・ref世代3（正常系バリエーション: 非ゼロ同士の不一致）",
+  },
+])("type=1 で世代不一致 $label のとき onWarning に期待/実際の値を含む GENERATION_MISMATCH が渡る", async ({
+  entryGen,
+  refGen,
+}) => {
+  const usedEntry: XRefUsedEntry = {
+    type: 1,
+    offset: ByteOffset.of(100),
+    generationNumber: GenerationNumber.of(entryGen),
+  };
+  const seen: PdfWarning[] = [];
+  const store = unwrapOk(
+    ObjectStore.create(
+      makeStoreSource({ xref: makeXRefTable([[7, usedEntry]]) }),
+      { onWarning: (w) => seen.push(w) },
+    ),
+  );
+  const resolved = await store.get(makeRef(7, refGen));
+
+  expect(resolved).toEqual({ ok: true, value: { type: "null" } });
+  expect(seen).toEqual([
+    {
+      code: "GENERATION_MISMATCH",
+      message: `Object 7: generation mismatch (expected ${entryGen}, got ${refGen})`,
+      offset: 100,
+    },
+  ]);
 });
 
 test("type=1 で obj ヘッダの objNum が xref と不一致の場合エラーが返る", async () => {
