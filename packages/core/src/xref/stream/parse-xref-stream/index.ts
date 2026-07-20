@@ -164,7 +164,12 @@ export async function resolveLocalLength(
   return err({
     code: "OBJECT_PARSE_STREAM_LENGTH",
     message: `/Length reference target object parse failed: ${lastError?.message ?? "unknown"}`,
-    offset: lastError?.offset ?? offsets[0] ?? ByteOffset.of(0),
+    offset:
+      (lastError !== undefined && "offset" in lastError
+        ? lastError.offset
+        : undefined) ??
+      offsets[0] ??
+      ByteOffset.of(0),
   });
 }
 
