@@ -130,6 +130,7 @@ PDF解析パイプラインのエラー体系を定義する。基本方針はPo
 | `DATE_PARSE_FAILED` | PDF日時文字列のパース失敗 | undefinedを設定 |
 | `STRING_DECODE_FAILED` | テキスト文字列のデコード失敗（不正なUTF-16BE等） | 元のバイト列を保持しメタデータはundefined |
 | `GENERATION_MISMATCH` | 間接参照の世代番号がxrefエントリと不一致 | PdfNullを返却して続行 |
+| `XREF_STREAM_LENGTH_BOOTSTRAP` | xrefストリーム自身のstream辞書`/Length`が間接参照で、オブジェクトヘッダ走査により解決 | ファイル全体のバイト走査で発見した`N G obj`の値（末尾優先）を採用 |
 
 ## フォールバックメカニズム
 
