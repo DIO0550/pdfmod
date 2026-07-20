@@ -48,6 +48,7 @@ export async function parseXRefStream(
 ): Promise<
   Result<{ xref: XRefTable; trailer: TrailerDict | undefined }, PdfError>
 > {
+  /** @param objNum - オブジェクト番号 @param genNum - 世代番号 @returns 解決結果 */
   const resolver = (
     objNum: ObjectNumber,
     genNum: GenerationNumber,
