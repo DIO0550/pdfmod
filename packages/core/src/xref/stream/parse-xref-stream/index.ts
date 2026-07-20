@@ -9,10 +9,16 @@
  * @module
  */
 
+import type { ObjectResolver } from "../../../objects/object-parser/index";
 import { ObjectParser } from "../../../objects/object-parser/index";
-import type { PdfError } from "../../../pdf/errors/index";
+import type { PdfError, PdfWarning } from "../../../pdf/errors/index";
 import type { ByteOffset } from "../../../pdf/types/byte-offset/index";
-import type { TrailerDict, XRefTable } from "../../../pdf/types/index";
+import type {
+  GenerationNumber,
+  ObjectNumber,
+  TrailerDict,
+  XRefTable,
+} from "../../../pdf/types/index";
 import type { Result } from "../../../utils/result/index";
 import { err, ok } from "../../../utils/result/index";
 import { XRefStreamDict } from "../dict/index";
@@ -20,6 +26,7 @@ import { decompressFlate } from "../flatedecode/index";
 import { decodeXRefStreamEntries } from "../parser/index";
 import { Predictor } from "../predictor/index";
 import { buildXRefStreamTrailerDict } from "../trailer/index";
+import { createBootstrapLengthResolver } from "./bootstrap-length-resolver/index";
 
 const FLATE_DECODE_FILTER_NAME = "FlateDecode";
 
@@ -33,18 +40,63 @@ const FLATE_DECODE_FILTER_NAME = "FlateDecode";
  * trailer 構築エラー（`/Prev` 等の既存オプションフィールドが不正な場合）は
  * 引き続き `Err` として伝播する。
  *
+ * `/Length` が間接参照の場合、xref テーブル構築前のブートストラップ resolver
+ * （`createBootstrapLengthResolver`、`scanObjectHeaders` によるバイト走査ベース）で解決する。
+ * 解決に成功した場合、xref ストリーム全体のパースが最終的に成功した時点で
+ * `onWarning` 経由で `XREF_STREAM_LENGTH_BOOTSTRAP` を通知する。
+ *
  * @param data - PDF ファイル全体のバイト配列
  * @param offset - xref ストリームを定義する間接オブジェクトの開始バイトオフセット
+ * @param onWarning - 間接 `/Length` をブートストラップ解決した場合に通知するコールバック（省略可）
  * @returns 成功時は `Ok<{ xref, trailer }>`（`trailer` は `/Root` 欠如時 `undefined`）、
  *   失敗時は `Err<PdfError>`
  */
 export async function parseXRefStream(
   data: Uint8Array,
   offset: ByteOffset,
+  onWarning?: (warning: PdfWarning) => void,
 ): Promise<
   Result<{ xref: XRefTable; trailer: TrailerDict | undefined }, PdfError>
 > {
-  const objectResult = await ObjectParser.parseIndirectObject(data, offset);
+  const bootstrapResolver = createBootstrapLengthResolver(data);
+  let bootstrapInfo:
+    | { objectNumber: ObjectNumber; generationNumber: GenerationNumber }
+    | undefined;
+  // ObjectParser.parseIndirectObject は resolver を stream の /Length が間接参照の
+  // 場合にのみ呼び出す（objects/object-parser/types.ts の ObjectResolver コメント参照）。
+  // そのためこの resolver が呼ばれ成功した = 間接 /Length をブートストラップ解決した、
+  // という前提で bootstrapInfo を設定してよい。
+  const resolver: ObjectResolver = async (objectNumber, generationNumber) => {
+    const result = await bootstrapResolver(objectNumber, generationNumber);
+    if (result.ok) {
+      bootstrapInfo = { objectNumber, generationNumber };
+    }
+    return result;
+  };
+
+  /**
+   * xref ストリーム全体のパースが最終的に成功した場合にのみ呼ぶ。
+   * `bootstrapInfo` は resolver 呼び出し時点（間接 `/Length` の解決成功時点）で
+   * 設定されるが、その後 dict/decode/entries/trailer のいずれかが失敗した場合は
+   * この関数を呼ばないことで、実際には使われなかった中間結果の warning が
+   * 利用者へ漏れることを防ぐ。
+   */
+  const emitBootstrapWarningIfUsed = (): void => {
+    if (bootstrapInfo === undefined) {
+      return;
+    }
+    onWarning?.({
+      code: "XREF_STREAM_LENGTH_BOOTSTRAP",
+      message: `xref stream /Length resolved via bootstrap object header scan (object ${bootstrapInfo.objectNumber} ${bootstrapInfo.generationNumber})`,
+      offset,
+    });
+  };
+
+  const objectResult = await ObjectParser.parseIndirectObject(
+    data,
+    offset,
+    resolver,
+  );
   if (!objectResult.ok) {
     return objectResult;
   }
@@ -99,10 +151,12 @@ export async function parseXRefStream(
   const trailerResult = buildXRefStreamTrailerDict(body.dictionary.entries);
   if (!trailerResult.ok) {
     if (trailerResult.error.code === "ROOT_NOT_FOUND") {
+      emitBootstrapWarningIfUsed();
       return ok({ xref: entriesResult.value, trailer: undefined });
     }
     return trailerResult;
   }
 
+  emitBootstrapWarningIfUsed();
   return ok({ xref: entriesResult.value, trailer: trailerResult.value });
 }

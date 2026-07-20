@@ -118,6 +118,47 @@ test("/Rootが有っても/Prevが不正な値の場合はXREF_STREAM_INVALIDが
   expect(result.error.code).toBe("XREF_STREAM_INVALID");
 });
 
+test("間接/Lengthの解決先オブジェクトが見つからない場合、OBJECT_PARSE_STREAM_LENGTHが伝播する", async () => {
+  const rawEntries = new Uint8Array([1, 5, 0]);
+  const objHeader =
+    "1 0 obj\n" +
+    "<< /Type /XRef /W [1 1 1] /Size 1 /Root 2 0 R /Length 9 0 R >>\n" +
+    "stream\n";
+  const data = concatBytes([
+    encode(HEADER),
+    encode(objHeader),
+    rawEntries,
+    encode("\nendstream\nendobj\n"),
+  ]);
+
+  const result = await parseXRefStream(data, ByteOffset.of(HEADER_LEN));
+
+  assert(!result.ok);
+  expect(result.error.code).toBe("OBJECT_PARSE_STREAM_LENGTH");
+});
+
+test("間接/Lengthの解決先が整数以外の場合、TYPE_MISMATCHが伝播する", async () => {
+  const rawEntries = new Uint8Array([1, 5, 0]);
+  const lengthObj = "9 0 obj\n<< /Foo /Bar >>\nendobj\n";
+  const objHeader =
+    "1 0 obj\n" +
+    "<< /Type /XRef /W [1 1 1] /Size 1 /Root 2 0 R /Length 9 0 R >>\n" +
+    "stream\n";
+  const data = concatBytes([
+    encode(HEADER),
+    encode(lengthObj),
+    encode(objHeader),
+    rawEntries,
+    encode("\nendstream\nendobj\n"),
+  ]);
+  const xrefObjOffset = encode(HEADER).length + encode(lengthObj).length;
+
+  const result = await parseXRefStream(data, ByteOffset.of(xrefObjOffset));
+
+  assert(!result.ok);
+  expect(result.error.code).toBe("TYPE_MISMATCH");
+});
+
 test("/DecodeParmsの/Predictorが未サポート値の場合、Predictor由来のXREF_STREAM_INVALIDが伝播する", async () => {
   const compressed = new Uint8Array([
     120, 156, 99, 96, 96, 96, 96, 100, 72, 97, 0, 0, 0, 212, 0, 102,
