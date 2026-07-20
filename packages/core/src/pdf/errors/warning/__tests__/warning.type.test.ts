@@ -55,3 +55,8 @@ test("PdfWarningCode に GENERATION_MISMATCH が含まれる", () => {
   const code: PdfWarningCode = "GENERATION_MISMATCH";
   expect(code).toBe("GENERATION_MISMATCH");
 });
+
+test("PdfWarningCode に XREF_STREAM_LENGTH_BOOTSTRAP が含まれる", () => {
+  const code: PdfWarningCode = "XREF_STREAM_LENGTH_BOOTSTRAP";
+  expect(code).toBe("XREF_STREAM_LENGTH_BOOTSTRAP");
+});
