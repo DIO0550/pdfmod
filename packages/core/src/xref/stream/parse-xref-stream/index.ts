@@ -171,9 +171,9 @@ export async function resolveLocalLength(
 /**
  * バイト列を走査して `{objNum} {genNum} obj` パターンに一致するオフセットを全て返す。
  *
- * @param _data - PDF ファイル全体のバイト配列
- * @param _objNum - 検索対象のオブジェクト番号
- * @param _genNum - 検索対象の世代番号
+ * @param data - PDF ファイル全体のバイト配列
+ * @param objNum - 検索対象のオブジェクト番号
+ * @param genNum - 検索対象の世代番号
  * @returns 一致した各候補のバイトオフセット配列（出現順）
  */
 export function scanForObjectOffsets(
