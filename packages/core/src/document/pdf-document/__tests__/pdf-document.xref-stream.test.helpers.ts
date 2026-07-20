@@ -251,29 +251,34 @@ export const buildPdfWithXRefStreamIndirectLengthAndBrokenPrev =
       cursor += byteLen(obj);
     }
 
+    const lengthObjOffset = cursor;
     const rawEntries = new Uint8Array([
       ...FREE_ENTRY_BYTES,
       ...usedEntryBytes(offsets[0]),
       ...usedEntryBytes(offsets[1]),
       ...usedEntryBytes(offsets[2]),
       ...usedEntryBytes(0), // xrefOffset は後で確定するため一旦プレースホルダ
+      ...usedEntryBytes(lengthObjOffset),
     ]);
 
     const lengthObj = `5 0 obj\n${rawEntries.length}\nendobj\n`;
     cursor += byteLen(lengthObj);
     const xrefOffset = cursor;
 
+    // 5 0 obj（/Length の解決先）も obj4（xrefストリーム自身）まで含む /Size 6 の
+    // 一部として xref エントリに含め、生成 PDF を自己無矛盾に保つ。
     const finalRawEntries = new Uint8Array([
       ...FREE_ENTRY_BYTES,
       ...usedEntryBytes(offsets[0]),
       ...usedEntryBytes(offsets[1]),
       ...usedEntryBytes(offsets[2]),
       ...usedEntryBytes(xrefOffset),
+      ...usedEntryBytes(lengthObjOffset),
     ]);
 
     const xrefObj =
       "4 0 obj\n" +
-      "<< /Type /XRef /W [1 2 1] /Size 5 /Root 1 0 R /Length 5 0 R " +
+      "<< /Type /XRef /W [1 2 1] /Size 6 /Root 1 0 R /Length 5 0 R " +
       `/Prev ${BROKEN_PREV_OFFSET} >>\n` +
       "stream\n";
     const footer = `startxref\n${xrefOffset}\n%%EOF\n`;
