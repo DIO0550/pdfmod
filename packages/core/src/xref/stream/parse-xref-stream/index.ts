@@ -150,10 +150,10 @@ export async function resolveLocalLength(
   }
 
   let lastError: PdfError | undefined;
-  for (const candidateOffset of offsets.reverse()) {
+  for (let i = offsets.length - 1; i >= 0; i--) {
     const parseResult = await ObjectParser.parseIndirectObject(
       data,
-      candidateOffset,
+      offsets[i] as ByteOffset,
     );
     if (parseResult.ok) {
       return ok(parseResult.value.body);
