@@ -162,9 +162,10 @@ export const buildSinglePagePdfWithXRefStream = (): Uint8Array => {
  *
  * Catalog (1 0 obj) / Pages (2 0 obj) / Page (3 0 obj) / xref ストリーム (4 0 obj) の
  * 配置は `buildSinglePagePdfWithXRefStream` と同一。追加で、xref ストリームより前に
- * `/Length` の解決先となる整数オブジェクト（5 0 obj）を配置する
- * （xref テーブルにはエントリを持たない — ブートストラップ resolver は
- * `scanObjectHeaders` によるバイト走査で解決するため xref エントリを必要としない）。
+ * `/Length` の解決先となる整数オブジェクト（5 0 obj）を配置する。
+ * ブートストラップ resolver 自体は `scanObjectHeaders` によるバイト走査で解決するため
+ * xref エントリを必要としないが、生成 PDF を自己無矛盾に保つため `/Size` と
+ * xref エントリにも obj5 を含める。
  *
  * @returns xref ストリーム自身の `/Length` が間接参照の 1 ページ PDF バイト列
  */
@@ -180,12 +181,14 @@ export const buildSinglePagePdfWithXRefStreamIndirectLength =
       cursor += byteLen(obj);
     }
 
+    const lengthObjOffset = cursor;
     const rawEntries = new Uint8Array([
       ...FREE_ENTRY_BYTES,
       ...usedEntryBytes(offsets[0]),
       ...usedEntryBytes(offsets[1]),
       ...usedEntryBytes(offsets[2]),
       ...usedEntryBytes(0), // xrefOffset は後で確定するため一旦プレースホルダ
+      ...usedEntryBytes(lengthObjOffset),
     ]);
 
     const lengthObj = `5 0 obj\n${rawEntries.length}\nendobj\n`;
@@ -193,17 +196,20 @@ export const buildSinglePagePdfWithXRefStreamIndirectLength =
     const xrefOffset = cursor;
 
     // xrefOffset が確定したので type=1 エントリを再構築する。
+    // 5 0 obj（/Length の解決先）も obj4（xrefストリーム自身）まで含む /Size 6 の
+    // 一部として xref エントリに含め、生成 PDF を自己無矛盾に保つ。
     const finalRawEntries = new Uint8Array([
       ...FREE_ENTRY_BYTES,
       ...usedEntryBytes(offsets[0]),
       ...usedEntryBytes(offsets[1]),
       ...usedEntryBytes(offsets[2]),
       ...usedEntryBytes(xrefOffset),
+      ...usedEntryBytes(lengthObjOffset),
     ]);
 
     const xrefObj =
       "4 0 obj\n" +
-      "<< /Type /XRef /W [1 2 1] /Size 5 /Root 1 0 R /Length 5 0 R >>\n" +
+      "<< /Type /XRef /W [1 2 1] /Size 6 /Root 1 0 R /Length 5 0 R >>\n" +
       "stream\n";
     const footer = `startxref\n${xrefOffset}\n%%EOF\n`;
 
