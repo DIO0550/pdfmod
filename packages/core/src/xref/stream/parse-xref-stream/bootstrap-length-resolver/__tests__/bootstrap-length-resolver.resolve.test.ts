@@ -65,7 +65,7 @@ test("objectNumber=0のオブジェクトを解決する", async () => {
   expect(result.value).toEqual({ type: "integer", value: 7 });
 });
 
-test("objectNumberが仕様上の上限に近い大きな値のオブジェクトを解決する", async () => {
+test("objectNumberの桁数が多い場合でも正しく解決する（境界値）", async () => {
   const LARGE_OBJECT_NUMBER = 999999999999;
   const data = encode(`${LARGE_OBJECT_NUMBER} 0 obj\n123\nendobj\n`);
   const resolver = createBootstrapLengthResolver(data);
