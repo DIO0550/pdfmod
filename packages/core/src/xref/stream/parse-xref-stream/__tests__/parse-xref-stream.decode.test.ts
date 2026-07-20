@@ -161,3 +161,38 @@ test("/Rootが無いxrefストリームはtrailer:undefinedで成功する（/XR
     generationNumber: GenerationNumber.of(0),
   });
 });
+
+test("間接参照 /Length を持つ xref ストリームをデコードする", async () => {
+  const rawEntries = new Uint8Array([1, 5, 0]);
+  const lengthObj = `10 0 obj\n${rawEntries.length}\nendobj\n`;
+  const objHeader =
+    "1 0 obj\n" +
+    "<< /Type /XRef /W [1 1 1] /Size 1 /Root 2 0 R /Length 10 0 R >>\n" +
+    "stream\n";
+  const data = concatBytes([
+    encode(HEADER),
+    encode(lengthObj),
+    encode(objHeader),
+    rawEntries,
+    encode("\nendstream\nendobj\n"),
+  ]);
+
+  const lengthObjLen = encode(lengthObj).length;
+  const result = await parseXRefStream(
+    data,
+    ByteOffset.of(HEADER_LEN + lengthObjLen),
+  );
+
+  assert(result.ok);
+  expect(result.value.xref.size).toBe(1);
+  expect(result.value.xref.entries.get(ObjectNumber.of(0))).toEqual({
+    type: 1,
+    offset: ByteOffset.of(5),
+    generationNumber: GenerationNumber.of(0),
+  });
+  assert(result.value.trailer !== undefined);
+  expect(result.value.trailer.root).toEqual({
+    objectNumber: ObjectNumber.of(2),
+    generationNumber: GenerationNumber.of(0),
+  });
+});
