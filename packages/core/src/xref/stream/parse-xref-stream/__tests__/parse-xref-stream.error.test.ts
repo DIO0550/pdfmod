@@ -139,3 +139,22 @@ test("/DecodeParmsの/Predictorが未サポート値の場合、Predictor由来�
   assert(!result.ok);
   expect(result.error.code).toBe("XREF_STREAM_INVALID");
 });
+
+test("間接参照 /Length の参照先が存在しない xref ストリームでエラーを返す", async () => {
+  const rawEntries = new Uint8Array([1, 5, 0]);
+  const objHeader =
+    "1 0 obj\n" +
+    "<< /Type /XRef /W [1 1 1] /Size 1 /Root 2 0 R /Length 999 0 R >>\n" +
+    "stream\n";
+  const data = concatBytes([
+    encode(HEADER),
+    encode(objHeader),
+    rawEntries,
+    encode("\nendstream\nendobj\n"),
+  ]);
+
+  const result = await parseXRefStream(data, ByteOffset.of(HEADER_LEN));
+
+  assert(!result.ok);
+  expect(result.error.code).toBe("OBJECT_PARSE_STREAM_LENGTH");
+});

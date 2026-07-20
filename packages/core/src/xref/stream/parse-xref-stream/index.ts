@@ -9,10 +9,14 @@
  * @module
  */
 
+import { isPdfTokenBoundary } from "../../../lexer/bytes/index";
 import { ObjectParser } from "../../../objects/object-parser/index";
 import type { PdfError } from "../../../pdf/errors/index";
-import type { ByteOffset } from "../../../pdf/types/byte-offset/index";
+import { ByteOffset } from "../../../pdf/types/byte-offset/index";
+import type { GenerationNumber } from "../../../pdf/types/generation-number/index";
 import type { TrailerDict, XRefTable } from "../../../pdf/types/index";
+import type { ObjectNumber } from "../../../pdf/types/object-number/index";
+import type { PdfObject } from "../../../pdf/types/pdf-types/index";
 import type { Result } from "../../../utils/result/index";
 import { err, ok } from "../../../utils/result/index";
 import { XRefStreamDict } from "../dict/index";
@@ -44,7 +48,17 @@ export async function parseXRefStream(
 ): Promise<
   Result<{ xref: XRefTable; trailer: TrailerDict | undefined }, PdfError>
 > {
-  const objectResult = await ObjectParser.parseIndirectObject(data, offset);
+  /** @param objNum - オブジェクト番号 @param genNum - 世代番号 @returns 解決結果 */
+  const resolver = (
+    objNum: ObjectNumber,
+    genNum: GenerationNumber,
+  ): Promise<Result<PdfObject, PdfError>> =>
+    resolveLocalLength(data, objNum, genNum);
+  const objectResult = await ObjectParser.parseIndirectObject(
+    data,
+    offset,
+    resolver,
+  );
   if (!objectResult.ok) {
     return objectResult;
   }
@@ -105,4 +119,124 @@ export async function parseXRefStream(
   }
 
   return ok({ xref: entriesResult.value, trailer: trailerResult.value });
+}
+
+/**
+ * バイト列全体を走査して指定オブジェクトを発見・パースし、body を返す。
+ * xref テーブル未構築段階で間接参照 `/Length` を解決するために使用する。
+ *
+ * @param data - PDF ファイル全体のバイト配列
+ * @param objectNumber - 解決対象のオブジェクト番号
+ * @param generationNumber - 解決対象の世代番号
+ * @returns 成功時は参照先オブジェクトの body、失敗時は `OBJECT_PARSE_STREAM_LENGTH` エラー
+ */
+export async function resolveLocalLength(
+  data: Uint8Array,
+  objectNumber: ObjectNumber,
+  generationNumber: GenerationNumber,
+): Promise<Result<PdfObject, PdfError>> {
+  const offsets = scanForObjectOffsets(
+    data,
+    objectNumber as number,
+    generationNumber as number,
+  );
+
+  if (offsets.length === 0) {
+    return err({
+      code: "OBJECT_PARSE_STREAM_LENGTH",
+      message: `/Length resolution: Cannot locate object ${String(objectNumber)} ${String(generationNumber)} in data`,
+      offset: ByteOffset.of(0),
+    });
+  }
+
+  let lastError: PdfError | undefined;
+  for (let i = offsets.length - 1; i >= 0; i--) {
+    const parseResult = await ObjectParser.parseIndirectObject(
+      data,
+      offsets[i] as ByteOffset,
+    );
+    if (parseResult.ok) {
+      return ok(parseResult.value.body);
+    }
+    lastError = parseResult.error;
+  }
+
+  return err({
+    code: "OBJECT_PARSE_STREAM_LENGTH",
+    message: `/Length reference target object parse failed: ${lastError?.message ?? "unknown"}`,
+    offset:
+      (lastError !== undefined && "offset" in lastError
+        ? lastError.offset
+        : undefined) ??
+      offsets[0] ??
+      ByteOffset.of(0),
+  });
+}
+
+/**
+ * バイト列を走査して `{objNum} {genNum} obj` パターンに一致するオフセットを全て返す。
+ *
+ * @param data - PDF ファイル全体のバイト配列
+ * @param objNum - 検索対象のオブジェクト番号
+ * @param genNum - 検索対象の世代番号
+ * @returns 一致した各候補のバイトオフセット配列（出現順）
+ */
+export function scanForObjectOffsets(
+  data: Uint8Array,
+  objNum: number,
+  genNum: number,
+): ByteOffset[] {
+  const pattern = new TextEncoder().encode(
+    `${String(objNum)} ${String(genNum)} obj`,
+  );
+  const PERCENT = 0x25;
+  const LF = 0x0a;
+  const CR = 0x0d;
+  const results: ByteOffset[] = [];
+  let inComment = false;
+
+  for (let i = 0; i <= data.length - pattern.length; i++) {
+    const byte = data[i];
+    if (byte === PERCENT) {
+      inComment = true;
+      continue;
+    }
+    if (inComment) {
+      if (byte === LF || byte === CR) {
+        inComment = false;
+      }
+      continue;
+    }
+
+    const prevByte = data[i - 1];
+    if (i > 0 && prevByte !== undefined && !isPdfTokenBoundary(prevByte)) {
+      continue;
+    }
+
+    let matched = true;
+    for (let j = 0; j < pattern.length; j++) {
+      if (data[i + j] !== pattern[j]) {
+        matched = false;
+        break;
+      }
+    }
+
+    if (!matched) {
+      continue;
+    }
+
+    const afterPattern = i + pattern.length;
+    const afterByte = data[afterPattern];
+    if (
+      afterPattern < data.length &&
+      afterByte !== undefined &&
+      !isPdfTokenBoundary(afterByte)
+    ) {
+      continue;
+    }
+
+    results.push(ByteOffset.of(i));
+  }
+
+  return results;
 }
