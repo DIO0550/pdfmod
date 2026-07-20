@@ -144,7 +144,7 @@ export async function resolveLocalLength(
   if (offsets.length === 0) {
     return err({
       code: "OBJECT_PARSE_STREAM_LENGTH",
-      message: `Cannot locate object ${String(objectNumber)} ${String(generationNumber)} in data for /Length resolution`,
+      message: `/Length resolution: Cannot locate object ${String(objectNumber)} ${String(generationNumber)} in data`,
       offset: ByteOffset.of(0),
     });
   }

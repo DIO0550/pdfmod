@@ -19,6 +19,7 @@ test("参照先オブジェクトがデータ内に存在しない場合にエ�
   assert(!result.ok);
   expect(result.error.code).toBe("OBJECT_PARSE_STREAM_LENGTH");
   expect(result.error.message).toContain("Cannot locate object");
+  expect(result.error.message).toContain("/Length resolution");
 });
 
 test("参照先オブジェクトのパースに失敗する場合にエラーを返す", async () => {
@@ -47,6 +48,7 @@ test("空の Uint8Array でスキャンした場合にエラーを返す", async
   assert(!result.ok);
   expect(result.error.code).toBe("OBJECT_PARSE_STREAM_LENGTH");
   expect(result.error.message).toContain("Cannot locate object");
+  expect(result.error.message).toContain("/Length resolution");
 });
 
 test("類似パターンがあるが token boundary で区切られていない場合にマッチしない", async () => {
@@ -74,4 +76,5 @@ test("コメント内の N G obj パターンにマッチしない", async () =>
   assert(!result.ok);
   expect(result.error.code).toBe("OBJECT_PARSE_STREAM_LENGTH");
   expect(result.error.message).toContain("Cannot locate object");
+  expect(result.error.message).toContain("/Length resolution");
 });
