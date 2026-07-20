@@ -73,4 +73,5 @@ test("コメント内の N G obj パターンにマッチしない", async () =>
 
   assert(!result.ok);
   expect(result.error.code).toBe("OBJECT_PARSE_STREAM_LENGTH");
+  expect(result.error.message).toContain("Cannot locate object");
 });
