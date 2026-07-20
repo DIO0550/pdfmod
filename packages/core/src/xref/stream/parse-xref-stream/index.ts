@@ -184,9 +184,25 @@ export function scanForObjectOffsets(
   const pattern = new TextEncoder().encode(
     `${String(objNum)} ${String(genNum)} obj`,
   );
+  const PERCENT = 0x25;
+  const LF = 0x0a;
+  const CR = 0x0d;
   const results: ByteOffset[] = [];
+  let inComment = false;
 
   for (let i = 0; i <= data.length - pattern.length; i++) {
+    const byte = data[i];
+    if (byte === PERCENT) {
+      inComment = true;
+      continue;
+    }
+    if (inComment) {
+      if (byte === LF || byte === CR) {
+        inComment = false;
+      }
+      continue;
+    }
+
     const prevByte = data[i - 1];
     if (i > 0 && prevByte !== undefined && !isPdfTokenBoundary(prevByte)) {
       continue;
