@@ -7,6 +7,10 @@ import {
   buildPdfWithInvalidCatalogVersion,
   buildPdfWithInvalidInfoRef,
 } from "./pdf-document.test.helpers";
+import {
+  buildPdfWithXRefStreamIndirectLengthAndBrokenPrev,
+  buildSinglePagePdfWithXRefStreamIndirectLength,
+} from "./pdf-document.xref-stream.test.helpers";
 
 test("/Info を持たない PDF を load すると metadata はキー数 0 の空オブジェクト (L-005)", async () => {
   const result = await PdfDocument.load(buildMinimalSinglePagePdf());
@@ -67,4 +71,28 @@ test("Catalog /Version が invalid name でも onWarning 未指定なら load �
   const result = await PdfDocument.load(buildPdfWithInvalidCatalogVersion());
 
   assert(result.ok);
+});
+
+test("xrefストリーム自身の間接/LengthをonWarning指定でloadするとXREF_STREAM_LENGTH_BOOTSTRAPが観測される（Issue #549）", async () => {
+  const seen: PdfWarning[] = [];
+  const result = await PdfDocument.load(
+    buildSinglePagePdfWithXRefStreamIndirectLength(),
+    { onWarning: (w) => seen.push(w) },
+  );
+
+  assert(result.ok);
+  expect(seen.map((w) => w.code)).toContain("XREF_STREAM_LENGTH_BOOTSTRAP");
+});
+
+test("新世代の間接/Length解決に成功してもchain全体が/Prev解析失敗でscanFallbackに切り替わった場合、XREF_STREAM_LENGTH_BOOTSTRAPは観測されない（Issue #549）", async () => {
+  const seen: PdfWarning[] = [];
+  const result = await PdfDocument.load(
+    buildPdfWithXRefStreamIndirectLengthAndBrokenPrev(),
+    { onWarning: (w) => seen.push(w) },
+  );
+
+  assert(result.ok);
+  const codes = seen.map((w) => w.code);
+  expect(codes).not.toContain("XREF_STREAM_LENGTH_BOOTSTRAP");
+  expect(codes).toContain("XREF_REBUILD");
 });

@@ -157,11 +157,12 @@ const isXRefKeywordAt = (data: Uint8Array, offset: number): boolean => {
 const parseXRefAt = async (
   data: Uint8Array,
   offset: ByteOffset,
+  onWarning?: (warning: PdfWarning) => void,
 ): Promise<
   Result<{ xref: XRefTable; trailer: TrailerDict | undefined }, PdfError>
 > => {
   if (!isXRefKeywordAt(data, offset as number)) {
-    return parseXRefStream(data, offset);
+    return parseXRefStream(data, offset, onWarning);
   }
 
   const tableResult = parseXRefTable(data, offset);
@@ -214,10 +215,16 @@ const resolveXRefStructure = async (
     return ok({ xref: fb.value.xrefTable, trailer: fb.value.trailer.value });
   }
 
+  // xref chain の1セクション（例: xref ストリーム自身）でブートストラップ /Length 解決に
+  // 成功しても、後続セクション（/Prev が指す旧世代等）の解析が失敗し mergeXRefChain 全体が
+  // Err になって scanFallback に切り替わった場合、最終的に採用されなかった xref chain 由来の
+  // warning を利用者に届けないよう、chain 全体成功まで一時バッファに保持する。
+  const chainWarnings: PdfWarning[] = [];
   const mergeResult = await mergeXRefChain(startXRefResult.value, (off) =>
-    parseXRefAt(data, off),
+    parseXRefAt(data, off, (w) => chainWarnings.push(w)),
   );
   if (mergeResult.ok) {
+    emitWarnings(chainWarnings);
     return ok({
       xref: mergeResult.value.mergedXRef,
       trailer: mergeResult.value.latestTrailer,

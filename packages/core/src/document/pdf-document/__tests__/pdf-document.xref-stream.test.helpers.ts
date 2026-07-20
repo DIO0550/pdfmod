@@ -156,6 +156,189 @@ export const buildSinglePagePdfWithXRefStream = (): Uint8Array => {
   ]);
 };
 
+/**
+ * `buildSinglePagePdfWithXRefStream` を土台に、xref ストリーム自身の stream 辞書
+ * `/Length` を間接参照（`N G R`）にした 1 ページ PDF を生成する（Issue #549）。
+ *
+ * Catalog (1 0 obj) / Pages (2 0 obj) / Page (3 0 obj) / xref ストリーム (4 0 obj) の
+ * 配置は `buildSinglePagePdfWithXRefStream` と同一。追加で、xref ストリームより前に
+ * `/Length` の解決先となる整数オブジェクト（5 0 obj）を配置する
+ * （xref テーブルにはエントリを持たない — ブートストラップ resolver は
+ * `scanObjectHeaders` によるバイト走査で解決するため xref エントリを必要としない）。
+ *
+ * @returns xref ストリーム自身の `/Length` が間接参照の 1 ページ PDF バイト列
+ */
+export const buildSinglePagePdfWithXRefStreamIndirectLength =
+  (): Uint8Array => {
+    const bodies = [CATALOG_BODY, PAGES_BODY, PAGE_BODY];
+    const objs = bodies.map((body, i) => `${i + 1} 0 obj\n${body}\nendobj\n`);
+
+    const offsets: number[] = [];
+    let cursor = byteLen(HEADER);
+    for (const obj of objs) {
+      offsets.push(cursor);
+      cursor += byteLen(obj);
+    }
+
+    const rawEntries = new Uint8Array([
+      ...FREE_ENTRY_BYTES,
+      ...usedEntryBytes(offsets[0]),
+      ...usedEntryBytes(offsets[1]),
+      ...usedEntryBytes(offsets[2]),
+      ...usedEntryBytes(0), // xrefOffset は後で確定するため一旦プレースホルダ
+    ]);
+
+    const lengthObj = `5 0 obj\n${rawEntries.length}\nendobj\n`;
+    cursor += byteLen(lengthObj);
+    const xrefOffset = cursor;
+
+    // xrefOffset が確定したので type=1 エントリを再構築する。
+    const finalRawEntries = new Uint8Array([
+      ...FREE_ENTRY_BYTES,
+      ...usedEntryBytes(offsets[0]),
+      ...usedEntryBytes(offsets[1]),
+      ...usedEntryBytes(offsets[2]),
+      ...usedEntryBytes(xrefOffset),
+    ]);
+
+    const xrefObj =
+      "4 0 obj\n" +
+      "<< /Type /XRef /W [1 2 1] /Size 5 /Root 1 0 R /Length 5 0 R >>\n" +
+      "stream\n";
+    const footer = `startxref\n${xrefOffset}\n%%EOF\n`;
+
+    return concatBytes([
+      encoder.encode(HEADER),
+      encoder.encode(objs.join("")),
+      encoder.encode(lengthObj),
+      encoder.encode(xrefObj),
+      finalRawEntries,
+      encoder.encode("\nendstream\nendobj\n"),
+      encoder.encode(footer),
+    ]);
+  };
+
+/** {@link buildPdfWithXRefStreamIndirectLengthAndBrokenPrev} の /Prev 値（ファイル長を超えパースを失敗させる）。 */
+const BROKEN_PREV_OFFSET = 999999999;
+
+/**
+ * `buildSinglePagePdfWithXRefStreamIndirectLength` を土台に、xref ストリーム自身は
+ * 間接 `/Length` の解決に成功するが、`/Prev` が指す旧世代セクションの解析が失敗する
+ * PDF を生成する（Issue #549）。
+ *
+ * `mergeXRefChain` が新世代（本 xref ストリーム）の読み取りには成功しつつ、
+ * `/Prev` を辿った時点で `Err` になり `scanFallback` に切り替わるケースの検証に使う。
+ * Catalog/Pages/Page はテキスト形式のまま残るため `scanFallback` は
+ * `XREF_REBUILD` で復旧できる。
+ *
+ * @returns 新世代の間接 `/Length` 解決に成功するが `/Prev` 解析が失敗する PDF バイト列
+ */
+export const buildPdfWithXRefStreamIndirectLengthAndBrokenPrev =
+  (): Uint8Array => {
+    const bodies = [CATALOG_BODY, PAGES_BODY, PAGE_BODY];
+    const objs = bodies.map((body, i) => `${i + 1} 0 obj\n${body}\nendobj\n`);
+
+    const offsets: number[] = [];
+    let cursor = byteLen(HEADER);
+    for (const obj of objs) {
+      offsets.push(cursor);
+      cursor += byteLen(obj);
+    }
+
+    const rawEntries = new Uint8Array([
+      ...FREE_ENTRY_BYTES,
+      ...usedEntryBytes(offsets[0]),
+      ...usedEntryBytes(offsets[1]),
+      ...usedEntryBytes(offsets[2]),
+      ...usedEntryBytes(0), // xrefOffset は後で確定するため一旦プレースホルダ
+    ]);
+
+    const lengthObj = `5 0 obj\n${rawEntries.length}\nendobj\n`;
+    cursor += byteLen(lengthObj);
+    const xrefOffset = cursor;
+
+    const finalRawEntries = new Uint8Array([
+      ...FREE_ENTRY_BYTES,
+      ...usedEntryBytes(offsets[0]),
+      ...usedEntryBytes(offsets[1]),
+      ...usedEntryBytes(offsets[2]),
+      ...usedEntryBytes(xrefOffset),
+    ]);
+
+    const xrefObj =
+      "4 0 obj\n" +
+      "<< /Type /XRef /W [1 2 1] /Size 5 /Root 1 0 R /Length 5 0 R " +
+      `/Prev ${BROKEN_PREV_OFFSET} >>\n` +
+      "stream\n";
+    const footer = `startxref\n${xrefOffset}\n%%EOF\n`;
+
+    return concatBytes([
+      encoder.encode(HEADER),
+      encoder.encode(objs.join("")),
+      encoder.encode(lengthObj),
+      encoder.encode(xrefObj),
+      finalRawEntries,
+      encoder.encode("\nendstream\nendobj\n"),
+      encoder.encode(footer),
+    ]);
+  };
+
+/**
+ * xref ストリーム自身の間接 `/Length`（`9 0 R`、実在しないオブジェクトを参照）の
+ * ブートストラップ解決に失敗する 1 ページ PDF を共通で組み立てる。
+ *
+ * `includeCatalogTypeHint` が `true`（既定）の場合、Catalog は `/Type /Catalog` を保持し、
+ * `scanFallback` の FB-004（`/Type /Catalog` からの Root 推定）で復旧できる（UC-2a）。
+ * `false` の場合は `/Type /Catalog` の手がかりを除去し、`scanFallback` でも
+ * trailer を復元できないPDFになる（UC-2b、`findValidTrailer` の対象となる
+ * `trailer` キーワードも本フィクスチャには存在しないため FB-002 も不発）。
+ *
+ * @param options - `includeCatalogTypeHint`: Catalog に `/Type /Catalog` を含めるか（既定 `true`）
+ * @returns 間接 `/Length` の解決先オブジェクトが存在しない PDF バイト列
+ */
+export const buildPdfWithUnresolvableXRefStreamIndirectLength = (
+  options: { readonly includeCatalogTypeHint?: boolean } = {},
+): Uint8Array => {
+  const includeCatalogTypeHint = options.includeCatalogTypeHint ?? true;
+  const catalogBody = includeCatalogTypeHint
+    ? CATALOG_BODY
+    : "<< /Pages 2 0 R >>";
+  const bodies = [catalogBody, PAGES_BODY, PAGE_BODY];
+  const objs = bodies.map((body, i) => `${i + 1} 0 obj\n${body}\nendobj\n`);
+
+  const offsets: number[] = [];
+  let cursor = byteLen(HEADER);
+  for (const obj of objs) {
+    offsets.push(cursor);
+    cursor += byteLen(obj);
+  }
+  const xrefOffset = cursor;
+
+  const rawEntries = new Uint8Array([
+    ...FREE_ENTRY_BYTES,
+    ...usedEntryBytes(offsets[0]),
+    ...usedEntryBytes(offsets[1]),
+    ...usedEntryBytes(offsets[2]),
+    ...usedEntryBytes(xrefOffset),
+  ]);
+
+  // /Length 9 0 R の解決先（9 0 obj）はファイル中のどこにも存在しない。
+  const xrefObj =
+    "4 0 obj\n" +
+    "<< /Type /XRef /W [1 2 1] /Size 5 /Root 1 0 R /Length 9 0 R >>\n" +
+    "stream\n";
+  const footer = `startxref\n${xrefOffset}\n%%EOF\n`;
+
+  return concatBytes([
+    encoder.encode(HEADER),
+    encoder.encode(objs.join("")),
+    encoder.encode(xrefObj),
+    rawEntries,
+    encoder.encode("\nendstream\nendobj\n"),
+    encoder.encode(footer),
+  ]);
+};
+
 const OLD_SIZE = 4;
 const NEW_SECTION_FIRST_OBJ_NUM = 4;
 const NEW_PAGE_WIDTH = 200;
