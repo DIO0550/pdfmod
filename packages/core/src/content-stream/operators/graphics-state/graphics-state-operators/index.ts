@@ -8,12 +8,16 @@ import { lineCapHandler } from "../line-cap-handler";
 import { lineJoinHandler } from "../line-join-handler";
 import { lineWidthHandler } from "../line-width-handler";
 import { miterLimitHandler } from "../miter-limit-handler";
+import { qHandler } from "../q";
+import { qRestoreHandler } from "../q-restore";
 
 export { cmHandler } from "../cm";
 export { lineCapHandler } from "../line-cap-handler";
 export { lineJoinHandler } from "../line-join-handler";
 export { lineWidthHandler } from "../line-width-handler";
 export { miterLimitHandler } from "../miter-limit-handler";
+export { qHandler } from "../q";
+export { qRestoreHandler } from "../q-restore";
 
 const GRAPHICS_STATE_OPERATORS: ReadonlyArray<
   readonly [string, OperatorHandler]
@@ -23,6 +27,8 @@ const GRAPHICS_STATE_OPERATORS: ReadonlyArray<
   ["J", lineCapHandler],
   ["j", lineJoinHandler],
   ["M", miterLimitHandler],
+  ["q", qHandler],
+  ["Q", qRestoreHandler],
 ];
 
 /**

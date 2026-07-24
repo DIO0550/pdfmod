@@ -8,6 +8,8 @@ test.each([
   ["J"],
   ["j"],
   ["M"],
+  ["q"],
+  ["Q"],
 ])("registerGraphicsStateOperators は %s を登録する", (name) => {
   const result = registerGraphicsStateOperators(OperatorRegistry.create());
   assert(result.ok);
