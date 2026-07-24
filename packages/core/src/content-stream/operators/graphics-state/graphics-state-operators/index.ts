@@ -32,7 +32,7 @@ const GRAPHICS_STATE_OPERATORS: ReadonlyArray<
 ];
 
 /**
- * Graphics State operator (cm / w / J / j / M) を OperatorRegistry に
+ * Graphics State operator (cm / w / J / j / M / q / Q) を OperatorRegistry に
  * 一括登録するヘルパ。
  *
  * fail-fast: いずれかの register が Err を返した時点で reduce 内 flatMap が
