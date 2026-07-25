@@ -297,3 +297,149 @@ test.each([
   const result = scanFallback(data);
   expect(result.ok).toBe(true);
 });
+
+test("/Type /XRef obj 内に /Encrypt があるとき合成 trailer に encrypt を付与する", () => {
+  const body =
+    "5 0 obj\n<< /Type /XRef /Size 6 /Encrypt 4 0 R >>\nendobj\n" +
+    "1 0 obj\n<< /Type /Catalog >>\nendobj\n";
+  const data = encode(body);
+  const result = scanFallback(data);
+  assert(result.ok);
+  assert(result.value.trailer.some);
+  expect(result.value.trailer.value.encrypt).toBeDefined();
+});
+
+test("/Type /XRef obj に /Encrypt が無いとき合成 trailer に encrypt を付与しない", () => {
+  const body =
+    "5 0 obj\n<< /Type /XRef /Size 6 >>\nendobj\n" +
+    "1 0 obj\n<< /Type /Catalog >>\nendobj\n";
+  const data = encode(body);
+  const result = scanFallback(data);
+  assert(result.ok);
+  assert(result.value.trailer.some);
+  expect(result.value.trailer.value.encrypt).toBeUndefined();
+});
+
+test("/Type/XRef（スペース無し派生）+ /Encrypt も暗号化として検出する", () => {
+  const body =
+    "5 0 obj\n<</Type/XRef/Size 6/Encrypt 4 0 R>>\nendobj\n" +
+    "1 0 obj\n<< /Type /Catalog >>\nendobj\n";
+  const data = encode(body);
+  const result = scanFallback(data);
+  assert(result.ok);
+  assert(result.value.trailer.some);
+  expect(result.value.trailer.value.encrypt).toBeDefined();
+});
+
+test("/Type/XRef（スペース無し派生）に /Encrypt が無ければ encrypt を付与しない", () => {
+  const body =
+    "5 0 obj\n<</Type/XRef/Size 6>>\nendobj\n" +
+    "1 0 obj\n<< /Type /Catalog >>\nendobj\n";
+  const data = encode(body);
+  const result = scanFallback(data);
+  assert(result.ok);
+  assert(result.value.trailer.some);
+  expect(result.value.trailer.value.encrypt).toBeUndefined();
+});
+
+test("ストリームデータ内の `/Encrypt` バイト列は暗号化として検出しない", () => {
+  const body =
+    "5 0 obj\n<< /Type /XRef /Length 14 >>\nstream\n/Encrypt 4 0 R\nendstream\nendobj\n" +
+    "1 0 obj\n<< /Type /Catalog >>\nendobj\n";
+  const data = encode(body);
+  const result = scanFallback(data);
+  assert(result.ok);
+  assert(result.value.trailer.some);
+  expect(result.value.trailer.value.encrypt).toBeUndefined();
+});
+
+test("ストリームデータ内の `/Type /XRef` バイト列は xref ストリーム obj として扱わない", () => {
+  const body =
+    "5 0 obj\n<< /Encrypt 4 0 R /Length 11 >>\nstream\n/Type /XRef\nendstream\nendobj\n" +
+    "1 0 obj\n<< /Type /Catalog >>\nendobj\n";
+  const data = encode(body);
+  const result = scanFallback(data);
+  assert(result.ok);
+  assert(result.value.trailer.some);
+  expect(result.value.trailer.value.encrypt).toBeUndefined();
+});
+
+test("/Encrypt が /Type /XRef と別 obj にある場合は暗号化として検出しない", () => {
+  const body =
+    "5 0 obj\n<< /Type /XRef /Size 6 >>\nendobj\n" +
+    "4 0 obj\n<< /Encrypt 3 0 R >>\nendobj\n" +
+    "1 0 obj\n<< /Type /Catalog >>\nendobj\n";
+  const data = encode(body);
+  const result = scanFallback(data);
+  assert(result.ok);
+  assert(result.value.trailer.some);
+  expect(result.value.trailer.value.encrypt).toBeUndefined();
+});
+
+test("`endobj` 後の `garbage /Type /XRef /Encrypt` は obj scope 外のため検出しない", () => {
+  const body =
+    "1 0 obj\n<< /Type /Catalog >>\nendobj\n" +
+    "garbage /Type /XRef /Encrypt 4 0 R\n";
+  const data = encode(body);
+  const result = scanFallback(data);
+  assert(result.ok);
+  assert(result.value.trailer.some);
+  expect(result.value.trailer.value.encrypt).toBeUndefined();
+});
+
+test("/Type /XRef obj が複数あり片方だけ /Encrypt を持つ場合も検出する", () => {
+  const body =
+    "5 0 obj\n<< /Type /XRef /Size 7 >>\nendobj\n" +
+    "6 0 obj\n<< /Type /XRef /Encrypt 4 0 R >>\nendobj\n" +
+    "1 0 obj\n<< /Type /Catalog >>\nendobj\n";
+  const data = encode(body);
+  const result = scanFallback(data);
+  assert(result.ok);
+  assert(result.value.trailer.some);
+  expect(result.value.trailer.value.encrypt).toBeDefined();
+});
+
+test("obj が 1 件も無いデータでは /Type /XRef /Encrypt があっても trailer は None", () => {
+  const data = encode("%PDF-1.7\n/Type /XRef /Encrypt 4 0 R\n%%EOF\n");
+  const result = scanFallback(data);
+  assert(result.ok);
+  expect(result.value.trailer.some).toBe(false);
+});
+
+test("/Encrypt を持たないテキスト trailer 採用時も /Type /XRef obj の /Encrypt を検出する (FB-002)", () => {
+  const body =
+    "1 0 obj\n<< /Type /Catalog >>\nendobj\n" +
+    "trailer\n<< /Root 1 0 R /Size 6 >>\n" +
+    "5 0 obj\n<< /Type /XRef /Size 6 /Encrypt 4 0 R >>\nendobj\n";
+  const data = encode(body);
+  const result = scanFallback(data);
+  assert(result.ok);
+  assert(result.value.trailer.some);
+  expect(result.value.trailer.value.encrypt).toBeDefined();
+});
+
+test("テキスト trailer 自身の /Encrypt はマーカーで上書きされず間接参照のまま保たれる (FB-002)", () => {
+  const body =
+    "1 0 obj\n<< /Type /Catalog >>\nendobj\n" +
+    "trailer\n<< /Root 1 0 R /Size 6 /Encrypt 4 0 R >>\n" +
+    "5 0 obj\n<< /Type /XRef /Size 6 /Encrypt 4 0 R >>\nendobj\n";
+  const data = encode(body);
+  const result = scanFallback(data);
+  assert(result.ok);
+  assert(result.value.trailer.some);
+  expect(result.value.trailer.value.encrypt).toEqual({
+    objectNumber: ObjectNumber.of(4),
+    generationNumber: GenerationNumber.of(0),
+  });
+});
+
+test("テキスト trailer 採用時に /Type /XRef obj が無ければ encrypt を付与しない (FB-002)", () => {
+  const body =
+    "1 0 obj\n<< /Type /Catalog >>\nendobj\n" +
+    "trailer\n<< /Root 1 0 R /Size 6 >>\n";
+  const data = encode(body);
+  const result = scanFallback(data);
+  assert(result.ok);
+  assert(result.value.trailer.some);
+  expect(result.value.trailer.value.encrypt).toBeUndefined();
+});

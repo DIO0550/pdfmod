@@ -777,3 +777,112 @@ export const buildPdfWithEncryptDict = (): Uint8Array =>
     [CATALOG_BODY, PAGES_BODY_SINGLE, PAGE_BODY, ENCRYPT_DICT_BODY],
     ["/Encrypt 4 0 R"],
   );
+
+/**
+ * `/Filter /FlateDecode` を宣言しながら zlib として展開できないストリームデータ。
+ * xref ストリームの解析を必ず失敗させ、fallback scan 経路へ落とすために使う。
+ */
+const BROKEN_FLATE_STREAM_BYTE = 0xff;
+const BROKEN_FLATE_STREAM_LENGTH = 4;
+const BROKEN_FLATE_STREAM_DATA = new Uint8Array(
+  BROKEN_FLATE_STREAM_LENGTH,
+).fill(BROKEN_FLATE_STREAM_BYTE);
+
+/** {@link buildBrokenXRefStreamPdf} が `/Encrypt` から参照する暗号化辞書のオブジェクト番号。 */
+const BROKEN_XREF_STREAM_ENCRYPT_OBJECT_NUMBER = 4;
+
+/**
+ * `/Type /XRef` を持つがストリームデータを展開できない xref ストリームを唯一の
+ * xref 構造として持つ PDF を生成する。
+ *
+ * `startxref` は xref ストリームを指すが、`/Filter /FlateDecode` の宣言に反して
+ * ストリームデータが zlib ではないため `parseXRefStream` が失敗し、
+ * `PdfDocument.load` は `scanFallback` 経路（生バイト走査による xref 再構築）へ落ちる。
+ * この経路は失敗した xref ストリームの辞書を解析しないため、`/Encrypt` の検出は
+ * fallback スキャナのバイト走査に委ねられる。
+ *
+ * `includeTextTrailer` を立てると、`/Encrypt` を持たないテキスト形式 trailer を
+ * xref ストリームの後ろに置く。fallback スキャナはこの trailer を直接採用する経路
+ * （FB-002）に入るため、xref ストリーム辞書側の `/Encrypt` を拾えるかを検証できる。
+ *
+ * @param options - `includeEncrypt`: xref ストリーム辞書に `/Encrypt` と参照先の暗号化辞書を含めるか。
+ *   `includeTextTrailer`: `/Encrypt` を持たないテキスト trailer を併置するか
+ * @returns 解析不能な xref ストリームを持つ PDF バイト列
+ */
+const buildBrokenXRefStreamPdf = (options: {
+  readonly includeEncrypt: boolean;
+  readonly includeTextTrailer?: boolean;
+}): Uint8Array => {
+  const encoder = new TextEncoder();
+  const baseBodies = [CATALOG_BODY, PAGES_BODY_SINGLE, PAGE_BODY];
+  const objectBodies = options.includeEncrypt
+    ? [...baseBodies, ENCRYPT_DICT_BODY]
+    : baseBodies;
+  const objs = formatIndirectObjects(objectBodies);
+
+  let cursor = encoder.encode(PDF_HEADER).length;
+  for (const obj of objs) {
+    cursor += encoder.encode(obj).length;
+  }
+  const xrefStreamObjNum = objectBodies.length + 1;
+  const xrefStreamOffset = cursor;
+
+  const size = xrefStreamObjNum + 1;
+  const encryptEntry = options.includeEncrypt
+    ? ` /Encrypt ${BROKEN_XREF_STREAM_ENCRYPT_OBJECT_NUMBER} 0 R`
+    : "";
+  const dict =
+    `<< /Type /XRef /Filter /FlateDecode /W [${XREF_STREAM_W.join(" ")}] ` +
+    `/Size ${size} /Root 1 0 R${encryptEntry} ` +
+    `/Length ${BROKEN_FLATE_STREAM_DATA.length} >>`;
+
+  const textTrailer =
+    options.includeTextTrailer === true
+      ? `trailer\n<< /Size ${size} /Root 1 0 R >>\n`
+      : "";
+
+  return concatUint8Arrays([
+    encoder.encode(PDF_HEADER),
+    ...objs.map((o) => encoder.encode(o)),
+    encoder.encode(`${xrefStreamObjNum} 0 obj\n${dict}\nstream\n`),
+    BROKEN_FLATE_STREAM_DATA,
+    encoder.encode("\nendstream\nendobj\n"),
+    encoder.encode(textTrailer),
+    encoder.encode(`startxref\n${xrefStreamOffset}\n%%EOF\n`),
+  ]);
+};
+
+/**
+ * 解析不能な xref ストリームの辞書に `/Encrypt` を持つ暗号化 PDF を生成する。
+ *
+ * fallback scan 経路でも xref ストリーム辞書の `/Encrypt` が拾われ、
+ * `PdfDocument.load` が `ENCRYPTED_PDF_UNSUPPORTED` を返すことを検証する fixture。
+ *
+ * @returns `/Encrypt` を持つ解析不能な xref ストリーム PDF のバイト列
+ */
+export const buildXRefStreamPdfWithEncrypt = (): Uint8Array =>
+  buildBrokenXRefStreamPdf({ includeEncrypt: true });
+
+/**
+ * 解析不能な xref ストリームを持つが `/Encrypt` は持たない非暗号化 PDF を生成する。
+ *
+ * {@link buildXRefStreamPdfWithEncrypt} の対照 fixture。fallback scan 経路が
+ * `/Encrypt` 不在の PDF を暗号化と誤判定せず、従来どおり読み込めることを検証する。
+ *
+ * @returns `/Encrypt` を持たない解析不能な xref ストリーム PDF のバイト列
+ */
+export const buildXRefStreamPdfWithoutEncrypt = (): Uint8Array =>
+  buildBrokenXRefStreamPdf({ includeEncrypt: false });
+
+/**
+ * 解析不能な xref ストリームの辞書に `/Encrypt` を持ちつつ、`/Encrypt` を持たない
+ * テキスト形式 trailer も併置した暗号化 PDF を生成する。
+ *
+ * fallback scan がテキスト trailer をそのまま採用する経路（FB-002）でも
+ * xref ストリーム辞書の `/Encrypt` が拾われ、`ENCRYPTED_PDF_UNSUPPORTED` を返す
+ * ことを検証する fixture。テキスト trailer だけを信じると暗号化検出をすり抜ける。
+ *
+ * @returns テキスト trailer と `/Encrypt` 付き xref ストリームを併せ持つ PDF バイト列
+ */
+export const buildXRefStreamPdfWithEncryptAndTextTrailer = (): Uint8Array =>
+  buildBrokenXRefStreamPdf({ includeEncrypt: true, includeTextTrailer: true });
