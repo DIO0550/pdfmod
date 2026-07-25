@@ -112,3 +112,21 @@ test("余剰 operand は残り、Tf は末尾 2 個のみ消費する", () => {
   assert(top.some);
   expect(top.value).toEqual(surplus);
 });
+
+test.each<[string, PdfObject, number]>([
+  ["0", { type: "integer", value: 0 }, 0],
+  ["負値", { type: "real", value: -1.5 }, -1.5],
+  ["NaN", { type: "real", value: Number.NaN }, Number.NaN],
+  [
+    "Infinity",
+    { type: "real", value: Number.POSITIVE_INFINITY },
+    Number.POSITIVE_INFINITY,
+  ],
+])("境界値 '%s' の fontSize も値域検証せず textState.fontSize に格納する", (_label, sizeOperand, expected) => {
+  const ctx = buildContext([{ type: "name", value: "F1" }, sizeOperand]);
+  const result = tfHandler(ctx);
+
+  assert(result.ok);
+  const current = GraphicsStateStack.current(result.value.graphicsStateStack);
+  expect(current.textState.fontSize).toBe(expected);
+});
