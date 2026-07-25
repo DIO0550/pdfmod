@@ -43,6 +43,13 @@ const CATALOG_SPACED_BYTES = Array.from(
 const CATALOG_COMPACT_BYTES = Array.from(
   new TextEncoder().encode("/Type/Catalog"),
 );
+const XREF_TYPE_SPACED_BYTES = Array.from(
+  new TextEncoder().encode("/Type /XRef"),
+);
+const XREF_TYPE_COMPACT_BYTES = Array.from(
+  new TextEncoder().encode("/Type/XRef"),
+);
+const ENCRYPT_BYTES = Array.from(new TextEncoder().encode("/Encrypt"));
 const PERCENT = 0x25;
 const LF = 0x0a;
 const CR = 0x0d;
@@ -569,9 +576,110 @@ function inferCatalogRoot(
 }
 
 /**
+ * 2 つのバイト位置が同一 obj 本体スコープに属するか判定する。
+ * どちらかがどの scope にも含まれない場合は `false`。
+ * ObjectHit の同一性は `objectNumber` / `generation` / `offset` の三つ組で比較する
+ * （同一オブジェクト番号が複数回出現する壊れた PDF でも別 obj として扱うため）。
+ *
+ * @param scopes - obj 本体スコープ列（buildObjectScopes 由来）
+ * @param posA - 比較する一方のバイト位置
+ * @param posB - 比較するもう一方のバイト位置
+ * @returns 同一 obj スコープ内であれば `true`
+ */
+function areInSameScope(
+  scopes: readonly ObjectScope[],
+  posA: number,
+  posB: number,
+): boolean {
+  const hitA = findScopeContaining(scopes, posA);
+  const hitB = findScopeContaining(scopes, posB);
+  if (!hitA.some || !hitB.some) {
+    return false;
+  }
+  return (
+    hitA.value.objectNumber === hitB.value.objectNumber &&
+    hitA.value.generation === hitB.value.generation &&
+    hitA.value.offset === hitB.value.offset
+  );
+}
+
+/**
+ * xref ストリーム obj（`/Type /XRef`）の辞書に `/Encrypt` が含まれるか判定する。
+ * `parseXRefStream` が失敗して辞書を得られない場合でも、生バイト走査で
+ * 暗号化 PDF であることを検出するために用いる。
+ * `/Type /XRef` と `/Type/XRef` の双方を候補に含め、stream 領域内の偶発一致は除外し、
+ * `/Encrypt` が同一 obj スコープに属する場合のみ検出とみなす。
+ *
+ * @param data - PDF ファイル全体
+ * @param scopes - obj 本体スコープ列（buildObjectScopes 由来）
+ * @param streamRegions - stream 領域列（findStreamRegions 由来）
+ * @returns `/Encrypt` を持つ xref ストリーム obj が存在すれば `true`
+ */
+function hasEncryptInXRefStream(
+  data: Uint8Array,
+  scopes: readonly ObjectScope[],
+  streamRegions: readonly ByteRange[],
+): boolean {
+  const encryptPositions = findCatalogPositions(data, ENCRYPT_BYTES).filter(
+    (pos) => !isInsideAnyRange(streamRegions, pos),
+  );
+  if (encryptPositions.length === 0) {
+    return false;
+  }
+  const xrefPositions = [
+    ...findCatalogPositions(data, XREF_TYPE_SPACED_BYTES),
+    ...findCatalogPositions(data, XREF_TYPE_COMPACT_BYTES),
+  ];
+  for (const xrefPos of xrefPositions) {
+    if (isInsideAnyRange(streamRegions, xrefPos)) {
+      continue;
+    }
+    for (const encryptPos of encryptPositions) {
+      if (areInSameScope(scopes, xrefPos, encryptPos)) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+/**
+ * trailer に `/Encrypt` が無く、かつ xref ストリーム obj が `/Encrypt` を持つ場合に限り、
+ * 暗号化 PDF の早期検出用マーカーとして空の辞書を `encrypt` に設定した trailer を返す。
+ * trailer が既に `/Encrypt` を持つ場合は、解析済みの値を保つためそのまま返す。
+ *
+ * @param trailer - 補完対象の TrailerDict（FB-002 の直接取得 / FB-004 の合成のいずれか）
+ * @param data - PDF ファイル全体
+ * @param scopes - obj 本体スコープ列（buildObjectScopes 由来）
+ * @param streamRegions - stream 領域列（findStreamRegions 由来）
+ * @returns 必要に応じて `encrypt` を補完した TrailerDict
+ */
+function withXRefStreamEncrypt(
+  trailer: TrailerDict,
+  data: Uint8Array,
+  scopes: readonly ObjectScope[],
+  streamRegions: readonly ByteRange[],
+): TrailerDict {
+  if (trailer.encrypt !== undefined) {
+    return trailer;
+  }
+  if (!hasEncryptInXRefStream(data, scopes, streamRegions)) {
+    return trailer;
+  }
+  return {
+    ...trailer,
+    encrypt: { type: "dictionary", entries: new Map() },
+  };
+}
+
+/**
  * xref 通常パース失敗時のフォールバックスキャナ (#19)。
  * FB-001/003 で XRefTable を再構築し、FB-002 で trailer を直接取得、
  * trailer 不在時は FB-004 で `/Type /Catalog` から最小 trailer を合成する。
+ * どちらの経路で得た trailer にも、`/Encrypt` を欠いていて xref ストリーム obj 側に
+ * `/Encrypt` がある場合は、暗号化 PDF の早期検出のためのマーカーとして
+ * 空の `encrypt` 辞書を付与する（呼び出し側は `encrypt` の有無のみを見るため、
+ * 辞書の中身は復元しない）。
  *
  * @param data - PDF ファイル全体のバイト配列
  * @returns 復元した XRef テーブル / trailer / `XREF_REBUILD` warning 1 件
@@ -588,7 +696,9 @@ export function scanFallback(
   if (directTrailer.some) {
     return ok({
       xrefTable,
-      trailer: directTrailer,
+      trailer: some(
+        withXRefStreamEncrypt(directTrailer.value, data, scopes, streamRegions),
+      ),
       warnings: [warning],
     });
   }
@@ -598,5 +708,14 @@ export function scanFallback(
     streamRegions,
     xrefTable.size,
   );
-  return ok({ xrefTable, trailer: synthTrailer, warnings: [warning] });
+  if (!synthTrailer.some) {
+    return ok({ xrefTable, trailer: synthTrailer, warnings: [warning] });
+  }
+  return ok({
+    xrefTable,
+    trailer: some(
+      withXRefStreamEncrypt(synthTrailer.value, data, scopes, streamRegions),
+    ),
+    warnings: [warning],
+  });
 }
