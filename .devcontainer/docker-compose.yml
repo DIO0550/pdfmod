@@ -8,3 +8,7 @@ services:
     ports:
       - "13200:13200"
     command: sleep infinity
+    tmpfs:
+      - /var/tmp/codex-sqlite:size=1g
+    environment:
+      CODEX_SQLITE_HOME: /var/tmp/codex-sqlite
