@@ -197,6 +197,22 @@ test("1桁オクタルエスケープ \\5 を処理する", () => {
   });
 });
 
+test("オクタルエスケープの上端境界 \\377 (0xFF) を処理する", () => {
+  const tokens = tokenize("(\\377)");
+  expect(tokens[0]).toMatchObject({
+    type: TokenType.LiteralString,
+    value: "\u00ff",
+  });
+});
+
+test("現行挙動: オクタルエスケープ境界外 \\400 (0x100 / 256) を 0x100 としてトークン化する (0xFF超は上位で検証)", () => {
+  const tokens = tokenize("(\\400)");
+  expect(tokens[0]).toMatchObject({
+    type: TokenType.LiteralString,
+    value: "\u0100",
+  });
+});
+
 test("16進文字列内の空白を無視する", () => {
   const tokens = tokenize("<4 8 65 6C>");
   expect(tokens[0]).toMatchObject({
