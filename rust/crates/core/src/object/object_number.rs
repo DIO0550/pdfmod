@@ -4,6 +4,8 @@
 //! 構成要素として用いる。生成は無検証（infallible）で、0 や `u64::MAX` も無条件に受理する。
 //! 0（フリーリスト先頭の予約番号）の特別扱いは xref レイヤ（R2）に委譲する。
 
+use std::fmt;
+
 /// PDF オブジェクト番号。間接オブジェクトを一意に識別する非負整数のラッパ。
 ///
 /// 内部表現は `u64`（docs/specs/01_lexical_conventions.md §4.4 の u32 とは意図的に乖離。Issue #255 指定）。
@@ -25,6 +27,47 @@ impl ObjectNumber {
     }
 }
 
+impl From<u64> for ObjectNumber {
+    /// `u64` から `ObjectNumber` を生成する慣習的な変換経路。
+    ///
+    /// `u64` の定義域が `ObjectNumber` の定義域と完全に一致するロスレスな全域変換であり、
+    /// panic する経路を持たないため `TryFrom` ではなく `From` を採用する。既存の `new` は
+    /// 非破壊で残しており本変換は唯一の構築経路ではないが、`42u64.into()` /
+    /// `ObjectNumber::from(42)` という標準的な書き方と、`impl Into<ObjectNumber>` を
+    /// 受け取るジェネリック API を可能にする目的で併設する。
+    fn from(n: u64) -> ObjectNumber {
+        ObjectNumber(n)
+    }
+}
+
+impl From<ObjectNumber> for u64 {
+    /// `ObjectNumber` から内部の `u64` を取り出す逆方向の変換経路。
+    ///
+    /// ロスレスな変換は双方向に `From` を提供するのが Rust API Guidelines (C-CONV) の
+    /// 推奨であるため、入力方向とあわせて実装する。既存の `value()` と結果は等価。
+    /// 本型は `Copy` なので本変換に渡したあとも元の値は使い続けられる。`value()` は
+    /// `&ObjectNumber` しか手元にない場面で自動参照外しにより値だけ取り出せる経路として
+    /// 引き続き提供する（どちらも残す）。
+    fn from(number: ObjectNumber) -> u64 {
+        number.0
+    }
+}
+
+/// 内部のオブジェクト番号を装飾なしで出力する（型名などを付け足さない）。
+///
+/// 現時点でクレート内に書式化の呼び出し元はないが、値ラッパ newtype 3 型で同じ変換集合を
+/// 持たせるために実装する（型ごとに標準変換が不揃いな状態を解消する）。実装は内部 `u64` の
+/// `Display` へ**委譲**する。`write!(f, "{}", self.0)` と書くと呼び出し側が `Formatter` に
+/// 載せた書式指定（幅・ゼロ埋め・寄せ）が捨てられ、`format!("{:06}", number)` が `"42"` に
+/// なってしまう。委譲すれば既定の `{}` は `"42"` のまま、`{:06}` は `"000042"` と
+/// 期待どおりに働く。`Debug` は derive のまま（`ObjectNumber(42)`）とし、開発者向け
+/// ダンプとの役割分離を保つ。
+impl fmt::Display for ObjectNumber {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&self.0, f)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -37,6 +80,109 @@ mod tests {
         for n in [0, 1, 42, u64::MAX] {
             assert_eq!(ObjectNumber::new(n).value(), n);
         }
+    }
+
+    #[test]
+    fn from_u64_builds_object_number() {
+        // u64 から From で変換した結果が new で生成した ObjectNumber と等価になることを確認する
+        assert_eq!(ObjectNumber::from(42), ObjectNumber::new(42));
+    }
+
+    #[test]
+    fn into_object_number_from_u64() {
+        // u64 側から .into() を呼ぶ経路でも同じ ObjectNumber が得られることを確認する
+        let number: ObjectNumber = 42u64.into();
+        assert_eq!(number, ObjectNumber::new(42));
+    }
+
+    #[test]
+    fn unsuffixed_integer_literal_into_resolves_uniquely() {
+        // サフィックスなし整数リテラルの .into() が候補一意で u64 に推論されることを確認する
+        // （From<u32> 等を後から足すと E0283 でコンパイルが落ちる回帰ガード）
+        let number: ObjectNumber = 42.into();
+        assert_eq!(number, ObjectNumber::new(42));
+    }
+
+    #[test]
+    fn into_u64_returns_inner_value() {
+        // ObjectNumber から u64 への逆方向 From が内部の生値を返すことを確認する
+        let number = ObjectNumber::new(42);
+        assert_eq!(u64::from(number), 42);
+    }
+
+    #[test]
+    fn from_matches_new() {
+        // 新設の From と既存 new が同じ値の ObjectNumber を作ることを確認する
+        assert_eq!(ObjectNumber::from(7), ObjectNumber::new(7));
+    }
+
+    #[test]
+    fn into_u64_matches_value() {
+        // 逆方向 From と既存 value() がどちらも同じ生値を返すことを確認する
+        let number = ObjectNumber::new(7);
+        assert_eq!(u64::from(number), number.value());
+    }
+
+    #[test]
+    fn from_then_into_roundtrips() {
+        // 代表値（0 / 1 / 42 / u64::MAX）を u64 → ObjectNumber → u64 と往復させても
+        // 入力と一致する（双方向 From が無損失である）ことを確認する
+        for n in [0, 1, 42, u64::MAX] {
+            assert_eq!(u64::from(ObjectNumber::from(n)), n);
+        }
+    }
+
+    #[test]
+    fn from_zero_builds_object_number() {
+        // フリーリスト先頭の予約番号 0 を From で変換しても値が保持されることを確認する
+        assert_eq!(ObjectNumber::from(0), ObjectNumber::new(0));
+    }
+
+    #[test]
+    fn from_u64_max_builds_object_number() {
+        // 上限 u64::MAX を From で変換しても値が保持されることを確認する
+        assert_eq!(ObjectNumber::from(u64::MAX), ObjectNumber::new(u64::MAX));
+    }
+
+    #[test]
+    fn display_renders_decimal() {
+        // Display が内部値の 10 進表記のみを出力することを確認する
+        assert_eq!(format!("{}", ObjectNumber::new(42)), "42");
+    }
+
+    #[test]
+    fn display_renders_zero() {
+        // 0 の書式化が空文字列にならず "0" になることを確認する
+        assert_eq!(format!("{}", ObjectNumber::new(0)), "0");
+    }
+
+    #[test]
+    fn display_renders_one() {
+        // 1 の書式化が "1" になることを確認する
+        assert_eq!(format!("{}", ObjectNumber::new(1)), "1");
+    }
+
+    #[test]
+    fn display_renders_u64_max() {
+        // 上限 u64::MAX が桁落ちせず 10 進表記されることを確認する
+        assert_eq!(
+            format!("{}", ObjectNumber::new(u64::MAX)),
+            "18446744073709551615"
+        );
+    }
+
+    #[test]
+    fn display_omits_type_name_decoration() {
+        // Display は値のみ、Debug は型名付きという役割分離を固定する
+        let number = ObjectNumber::new(42);
+        assert_eq!(format!("{number}"), "42");
+        assert_eq!(format!("{number:?}"), "ObjectNumber(42)");
+    }
+
+    #[test]
+    fn display_respects_width_and_zero_pad() {
+        // 呼び出し側が指定した幅・ゼロ埋めが握り潰されず内部 u64 の Display へ渡ることを確認する
+        assert_eq!(format!("{:06}", ObjectNumber::new(42)), "000042");
     }
 
     #[test]
