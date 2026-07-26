@@ -33,7 +33,9 @@ const bdcSpanName: MarkedContentEntry = {
   tag: spanTag,
   properties: some(propertyName),
 };
-// `/Span // BDC` 由来: 空文字 name（境界値。bdcHandler は空文字 name を受理する）
+// `/Span / BDC` 由来: 空文字 name（境界値。bdcHandler は空文字 name を受理する）
+// name は `/` 1 個で始まり次の区切り文字までが名前のため、空文字 name の表記は
+// `/` 単独になる。`//` と書くと空文字 name 2 個にトークナイズされ operand 数が変わる。
 const bdcSpanEmptyName: MarkedContentEntry = {
   tag: spanTag,
   properties: some(emptyPropertyName),
@@ -67,7 +69,7 @@ test("properties が some(name) の entry を push→pop すると同一参照�
   });
 });
 
-test("properties が空文字 name（//）でも some のまま保持される", () => {
+test("properties が空文字 name（`/` 単独）でも some のまま保持される", () => {
   // 空文字 name は falsy だが Option としては some のまま扱われる境界値。
   // bdc.name.test.ts は同じ境界入力を「handler が受理するか」の観点で見ている。
   // 本 test は「stack が some のまま保持するか」の観点で見る点が差分。
