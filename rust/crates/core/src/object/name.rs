@@ -56,6 +56,40 @@ impl From<&str> for PdfName {
     }
 }
 
+impl From<String> for PdfName {
+    /// 所有された `String` から `PdfName` を生成する変換経路。
+    ///
+    /// `into_bytes()` によりバッファをそのままムーブするため、`From<&str>` の
+    /// `to_vec()` と違ってコピーが発生しない。UTF-8 妥当性の検査はしない
+    /// （`String` は常に妥当な UTF-8 であり、本型はさらに広いバイト列を受理する）。
+    fn from(s: String) -> PdfName {
+        PdfName(s.into_bytes())
+    }
+}
+
+impl From<Vec<u8>> for PdfName {
+    /// 所有されたバイト列から `PdfName` を生成する変換経路。
+    ///
+    /// レクサーが `#XX` デコード後に組み立てた `Vec<u8>` をそのままムーブで受け取る
+    /// 想定の主経路。無検証（infallible）であり、空バイト列・NUL・非 UTF-8 バイトを
+    /// 無条件に受理する（`new` と同一の契約）。
+    fn from(bytes: Vec<u8>) -> PdfName {
+        PdfName(bytes)
+    }
+}
+
+impl From<&[u8]> for PdfName {
+    /// 借用したバイトスライスから `PdfName` を生成する変換経路（1 回コピーする）。
+    ///
+    /// なお `From` にはデリファレンス強制が効かないため、`b"Length"`（`&[u8; N]`）や
+    /// `&Vec<u8>` は本 impl では受理できない。バイト列リテラルからは `new(b"Length")`
+    /// を使うか、`b"Length".as_slice()` のようにスライスへ明示的に変換する。
+    /// `From<&[u8; N]>` は今回実装しないが、後から非破壊で追加できる。
+    fn from(bytes: &[u8]) -> PdfName {
+        PdfName(bytes.to_vec())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -73,6 +107,129 @@ mod tests {
     fn from_str_builds_name() {
         // &str リテラルから From で生成すると as_bytes がそのバイト列に一致することを確認する
         assert_eq!(PdfName::from("Type").as_bytes(), b"Type");
+    }
+
+    #[test]
+    fn from_string_builds_name() {
+        // 所有された String から From で生成すると as_bytes がそのバイト列に一致することを確認する
+        assert_eq!(PdfName::from(String::from("Type")).as_bytes(), b"Type");
+    }
+
+    #[test]
+    fn from_vec_u8_builds_name() {
+        // 所有された Vec<u8> から From で生成すると as_bytes がそのバイト列に一致することを確認する
+        assert_eq!(PdfName::from(b"Type".to_vec()).as_bytes(), b"Type");
+    }
+
+    #[test]
+    fn from_slice_builds_name() {
+        // 借用バイトスライスから From で生成すると as_bytes がそのバイト列に一致することを確認する
+        let bytes = b"Type".to_vec();
+        assert_eq!(PdfName::from(bytes.as_slice()).as_bytes(), b"Type");
+    }
+
+    #[test]
+    fn from_slice_matches_from_vec() {
+        // 借用経路と所有経路が同一の PdfName を作ることを確認する
+        let bytes = b"Type".to_vec();
+        assert_eq!(
+            PdfName::from(bytes.as_slice()),
+            PdfName::from(bytes.clone())
+        );
+    }
+
+    #[test]
+    fn from_empty_slice_builds_empty_name() {
+        // 空スライスを無検証で受理し as_bytes が空になることを確認する
+        let empty: &[u8] = &[];
+        assert!(PdfName::from(empty).as_bytes().is_empty());
+    }
+
+    #[test]
+    fn from_slice_preserves_nul_byte() {
+        // #00 デコード結果の NUL バイトが借用経路でも無検証に保持されることを確認する
+        let bytes: &[u8] = &[0x00];
+        assert_eq!(PdfName::from(bytes).as_bytes(), &[0x00]);
+    }
+
+    #[test]
+    fn from_slice_preserves_non_utf8_byte() {
+        // 非 UTF-8 バイト（0x80）が借用経路でも保持され、as_str が None を返すことを確認する
+        let bytes: &[u8] = &[0x80];
+        let name = PdfName::from(bytes);
+        assert_eq!(name.as_bytes(), &[0x80]);
+        assert_eq!(name.as_str(), None);
+    }
+
+    #[test]
+    fn from_byte_literal_slice_builds_name() {
+        // b"..."（&[u8; N]）は From に deref 強制が効かず直接渡せないため、
+        // .as_slice() を挟む回避策が機能することを確認する
+        assert_eq!(PdfName::from(b"Length".as_slice()).as_bytes(), b"Length");
+    }
+
+    #[test]
+    fn from_vec_reference_requires_as_slice() {
+        // &Vec<u8> も deref 強制が効かず From では受理されないため、
+        // .as_slice() を挟む回避策が所有経路と等価になることを確認する
+        let bytes = b"Length".to_vec();
+        assert_eq!(
+            PdfName::from(bytes.as_slice()),
+            PdfName::from(bytes.clone())
+        );
+    }
+
+    #[test]
+    fn from_vec_matches_new() {
+        // 新設 From<Vec<u8>> と既存 new が同一の PdfName を作ることを確認する
+        assert_eq!(
+            PdfName::from(b"Type".to_vec()),
+            PdfName::new(b"Type".to_vec())
+        );
+    }
+
+    #[test]
+    fn from_empty_vec_builds_empty_name() {
+        // 空 Vec<u8> を無検証で受理し as_bytes が空になることを確認する
+        assert!(PdfName::from(Vec::new()).as_bytes().is_empty());
+    }
+
+    #[test]
+    fn from_vec_preserves_nul_byte() {
+        // #00 デコード結果の NUL バイトが所有経路で無検証に保持されることを確認する
+        assert_eq!(PdfName::from(vec![0x00]).as_bytes(), &[0x00]);
+    }
+
+    #[test]
+    fn from_vec_preserves_non_utf8_byte() {
+        // 非 UTF-8 バイト（0x80）が所有経路で保持され、as_str が None を返すことを確認する
+        let name = PdfName::from(vec![0x80]);
+        assert_eq!(name.as_bytes(), &[0x80]);
+        assert_eq!(name.as_str(), None);
+    }
+
+    #[test]
+    fn from_string_matches_from_str() {
+        // String 経路と既存 &str 経路が同一の PdfName を作ることを確認する
+        assert_eq!(PdfName::from(String::from("Type")), PdfName::from("Type"));
+    }
+
+    #[test]
+    fn from_empty_string_builds_empty_name() {
+        // 空 String（PDF 仕様上有効な空名 `/`）を無検証で受理し as_bytes が空になることを確認する
+        assert!(PdfName::from(String::new()).as_bytes().is_empty());
+    }
+
+    #[test]
+    fn from_string_preserves_multibyte_utf8() {
+        // 多バイト UTF-8（日本語）の名前が String 経路でも忠実に保持されることを確認する
+        assert_eq!(PdfName::from(String::from("名前")).as_str(), Some("名前"));
+    }
+
+    #[test]
+    fn from_string_preserves_nul_byte() {
+        // String も NUL を保持できるため、String 経路でも無検証で NUL が残ることを確認する
+        assert_eq!(PdfName::from(String::from("\u{0}")).as_bytes(), &[0x00]);
     }
 
     #[test]
