@@ -85,7 +85,7 @@ impl fmt::Display for PdfError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.code)?;
         if let Some(position) = self.position {
-            write!(f, " at byte {}", position.value())?;
+            write!(f, " at byte {}", position)?;
         }
         if let Some(message) = &self.message {
             write!(f, ": {}", message)?;
