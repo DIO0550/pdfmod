@@ -1,6 +1,9 @@
 import { assert, expect, test } from "vitest";
 import type { PdfObject } from "../../../../../pdf/types/pdf-types/index";
-import { GraphicsStateStack } from "../../../../graphics-state/index";
+import {
+  GraphicsState,
+  GraphicsStateStack,
+} from "../../../../graphics-state/index";
 import { MarkedContentStack } from "../../../../marked-content/stack";
 import { OperandStack } from "../../../../operand-stack/index";
 import type { OperatorHandlerContext } from "../../../../operator-registry/index";
@@ -96,4 +99,47 @@ test("連続 Q 実行後も operandStack が消費されない", () => {
   const top = OperandStack.peek(second.value.operandStack);
   assert(top.some);
   expect(top.value).toEqual(operand2);
+});
+
+test("非デフォルト current で saved が空の Q を打っても値が保たれ、その後の q → Q で復帰する", () => {
+  const ctx = buildContext();
+  const seeded = GraphicsState.update(
+    GraphicsStateStack.current(ctx.graphicsStateStack),
+    { lineWidth: 3.75 },
+  );
+
+  const unbalanced = qRestoreHandler({
+    ...ctx,
+    graphicsStateStack: GraphicsStateStack.replaceCurrent(
+      ctx.graphicsStateStack,
+      seeded,
+    ),
+  });
+
+  assert(unbalanced.ok);
+  expect(
+    GraphicsStateStack.current(unbalanced.value.graphicsStateStack),
+  ).toEqual(seeded);
+  expect(unbalanced.value.graphicsStateStack.saved).toHaveLength(0);
+
+  const savedStack = GraphicsStateStack.save(
+    unbalanced.value.graphicsStateStack,
+  );
+  const modified = GraphicsStateStack.replaceCurrent(
+    savedStack,
+    GraphicsState.update(seeded, { lineWidth: 99 }),
+  );
+
+  const restored = qRestoreHandler({
+    ...ctx,
+    graphicsStateStack: modified,
+  });
+
+  assert(restored.ok);
+  const finalCurrent = GraphicsStateStack.current(
+    restored.value.graphicsStateStack,
+  );
+  expect(finalCurrent).toEqual(seeded);
+  expect(finalCurrent.lineWidth).toBe(3.75);
+  expect(restored.value.graphicsStateStack.saved).toHaveLength(0);
 });
