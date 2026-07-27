@@ -396,9 +396,7 @@ test("/ID要素パース中にデータ末尾(EOF)に達した場合にXREF_TABL
 });
 
 test("トップレベルの辞書キーがNameでない場合にXREF_TABLE_INVALIDエラーが返る", () => {
-  const { data, offset } = trailerAt(
-    "trailer << 123 /Root 1 0 R /Size 10 >>",
-  );
+  const { data, offset } = trailerAt("trailer << 123 /Root 1 0 R /Size 10 >>");
   const result = parseTrailer(data, offset);
   assert(!result.ok);
   expect(result.error.code).toBe("XREF_TABLE_INVALID");
@@ -406,9 +404,7 @@ test("トップレベルの辞書キーがNameでない場合にXREF_TABLE_INVAL
 });
 
 test("トップレベルの辞書値の前にDictEnd(>>)が現れた場合にXREF_TABLE_INVALIDエラーが返る", () => {
-  const { data, offset } = trailerAt(
-    "trailer << /Root 1 0 R /Size >>",
-  );
+  const { data, offset } = trailerAt("trailer << /Root 1 0 R /Size >>");
   const result = parseTrailer(data, offset);
   assert(!result.ok);
   expect(result.error.code).toBe("XREF_TABLE_INVALID");
@@ -416,9 +412,7 @@ test("トップレベルの辞書値の前にDictEnd(>>)が現れた場合にXRE
 });
 
 test("トップレベルの辞書値の前にEOFに達した場合にXREF_TABLE_INVALIDエラーが返る", () => {
-  const { data, offset } = trailerAt(
-    "trailer << /Root 1 0 R /Size",
-  );
+  const { data, offset } = trailerAt("trailer << /Root 1 0 R /Size");
   const result = parseTrailer(data, offset);
   assert(!result.ok);
   expect(result.error.code).toBe("XREF_TABLE_INVALID");
@@ -432,7 +426,9 @@ test("スキップ対象辞書内で予期せぬトークン(])が現れた場�
   const result = parseTrailer(data, offset);
   assert(!result.ok);
   expect(result.error.code).toBe("XREF_TABLE_INVALID");
-  expect(result.error.message).toContain("unexpected ] while skipping dictionary value");
+  expect(result.error.message).toContain(
+    "unexpected ] while skipping dictionary value",
+  );
 });
 
 test("スキップ対象辞書内で非Nameキーが現れた場合でもスキップされ正常に処理される", () => {
@@ -460,7 +456,9 @@ test("ネストした辞書内でキー読み取り直前にEOFに達した場�
   const result = parseTrailer(data, offset);
   assert(!result.ok);
   expect(result.error.code).toBe("XREF_TABLE_INVALID");
-  expect(result.error.message).toContain("unexpected end of data while parsing dictionary value");
+  expect(result.error.message).toContain(
+    "unexpected end of data while parsing dictionary value",
+  );
 });
 
 test("スキップ対象の単体数値のプッシュバック処理が正常に動作する", () => {
@@ -478,5 +476,7 @@ test("スキップ対象で整数が2個連続しRでない場合に2個目の�
   const result = parseTrailer(data, offset);
   assert(!result.ok);
   expect(result.error.code).toBe("XREF_TABLE_INVALID");
-  expect(result.error.message).toContain("expected name key in trailer dictionary");
+  expect(result.error.message).toContain(
+    "expected name key in trailer dictionary",
+  );
 });
