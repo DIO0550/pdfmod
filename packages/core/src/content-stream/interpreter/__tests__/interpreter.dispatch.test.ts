@@ -11,6 +11,10 @@ import {
   type OperatorHandler,
   OperatorRegistry,
 } from "../../operator-registry/index";
+import {
+  qHandler,
+  qRestoreHandler,
+} from "../../operators/graphics-state/graphics-state-operators/index";
 import { ContentStreamInterpreter } from "../index";
 
 const encode = (value: string): Uint8Array => new TextEncoder().encode(value);
@@ -423,16 +427,8 @@ test("handlerのErrは同じerrorを返して後続operatorを実行しない", 
   expect(laterCalled).toBe(false);
 });
 
-test("qとQはregistry handler経由でgraphics state stackを更新する", () => {
-  const qRegistry = registerOperator(
-    OperatorRegistry.create(),
-    "q",
-    (context) =>
-      ok({
-        ...context,
-        graphicsStateStack: GraphicsStateStack.save(context.graphicsStateStack),
-      }),
-  );
+test("production の q/Q handler が registry 経由で graphics state stack を更新する", () => {
+  const qRegistry = registerOperator(OperatorRegistry.create(), "q", qHandler);
   const changeRegistry = registerOperator(qRegistry, "change", (context) =>
     ok({
       ...context,
@@ -448,13 +444,7 @@ test("qとQはregistry handler経由でgraphics state stackを更新する", () 
       ),
     }),
   );
-  const registry = registerOperator(changeRegistry, "Q", (context) =>
-    ok({
-      ...context,
-      graphicsStateStack: GraphicsStateStack.restore(context.graphicsStateStack)
-        .stack,
-    }),
-  );
+  const registry = registerOperator(changeRegistry, "Q", qRestoreHandler);
 
   const result = ContentStreamInterpreter.execute({
     data: encode("q change Q"),
