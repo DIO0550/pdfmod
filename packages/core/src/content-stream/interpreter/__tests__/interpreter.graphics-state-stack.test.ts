@@ -2,18 +2,26 @@
 // 「中間状態」と「unbalanced Q で warnings が積まれないこと」を担当する。
 //
 // 既存の担当範囲（重複を作らないための境界）:
-//   - graphics-state-operators.integration.test.ts:46 が 3 段ネスト
-//     `q 2 w q 3 w q 4 w Q Q Q` の interpreter 経由の初期復帰を検証済み
+//   - graphics-state-operators.integration.test.ts の
+//     「3 段ネスト `q 2 w q 3 w q 4 w Q Q Q` で初期状態に復帰する」が
+//     interpreter 経由の初期復帰を検証済み
 //     （Issue #484 の「ネスト 3 段以上の動作確認」はこのテストで充足されている）。
-//     同 :62 が unbalanced Q の ok・current 不変、同 :30 が cm + w の一括巻き戻しを担当。
+//     同ファイルの「unbalanced Q を interpreter 経由で実行しても ok で継続する」が
+//     unbalanced Q の ok・current 不変を、
+//     「`q 1 0 0 1 100 200 cm 2 w Q` を実行すると save/restore で初期
+//     GraphicsState に戻る」が cm + w の一括巻き戻しを担当。
 //   - q-restore.nested.test.ts / q.basic.test.ts が handler 直呼びで
 //     中間 current と saved の中身を検証済み。
-//   - q.basic.test.ts:48,66 / q-restore.basic.test.ts:59,85 /
-//     q-restore.unbalanced.test.ts:83 が operand stack の同一参照・非消費を
-//     handler 層で検証済み（本ファイルでは独立ケースを立てず、ケース 1 の
-//     アサーションとして interpreter 層でも一度だけ確認する）。
-//   - q-restore.unbalanced.test.ts:104 が非デフォルト state での unbalanced Q と
-//     その後の復帰を検証済み（本ファイルでは扱わない）。
+//   - q.basic.test.ts / q-restore.basic.test.ts の
+//     「（q または Q）実行後も operandStack は同一参照のまま」および
+//     「非空 operandStack で（q または Q）を実行しても operand が消費されない」、
+//     q-restore.unbalanced.test.ts の「連続 Q 実行後も operandStack が消費されない」が
+//     operand stack の同一参照・非消費を handler 層で検証済み
+//     （本ファイルでは独立ケースを立てず、ケース 1 のアサーションとして
+//     interpreter 層でも一度だけ確認する）。
+//   - q-restore.unbalanced.test.ts の「非デフォルト current で saved が空の Q を
+//     打っても値が保たれ、その後の q → Q で復帰する」が非デフォルト state での
+//     unbalanced Q とその後の復帰を検証済み（本ファイルでは扱わない）。
 //
 // 本ファイルの差分は次の 3 点:
 //   1. ストリームのプレフィックスを段階的に伸ばして毎回 fresh context で一括実行し、
