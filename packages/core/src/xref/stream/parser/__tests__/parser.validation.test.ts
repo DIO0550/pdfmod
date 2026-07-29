@@ -311,8 +311,18 @@ test("2番目のエントリで field3 エラー発生時に baseOffset + entryO
   // entry 0: type=1, offset=10, gen=0 (正常)
   // entry 1: type=1, offset=10, gen=65536 (エラー: field3 offset = 6 + 3 = 9)
   const data = new Uint8Array([
-    0x01, 0x00, 0x0a, 0x00, 0x00, 0x00, // entry 0
-    0x01, 0x00, 0x0a, 0x01, 0x00, 0x00, // entry 1
+    0x01,
+    0x00,
+    0x0a,
+    0x00,
+    0x00,
+    0x00, // entry 0
+    0x01,
+    0x00,
+    0x0a,
+    0x01,
+    0x00,
+    0x00, // entry 1
   ]);
   const result = decodeXRefStreamEntries({
     data,
@@ -325,4 +335,3 @@ test("2番目のエントリで field3 エラー発生時に baseOffset + entryO
   expect(result.error.code).toBe("XREF_STREAM_INVALID");
   expect(result.error.offset).toBe(ByteOffset.of(1009));
 });
-
