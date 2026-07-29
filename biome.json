@@ -11,7 +11,8 @@
       "packages/*/tsconfig*.json",
       "vitest*.ts",
       ".storybook/**",
-      "!.claude/worktrees"
+      "!.claude/worktrees",
+      "!.gemini"
     ]
   },
   "formatter": {
