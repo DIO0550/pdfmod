@@ -76,13 +76,19 @@ interface MockDecompressionStreamInstance {
   readable: { getReader: () => MockDecompressionStreamInstance["mockReader"] };
 }
 
-type MockDecompressionStreamClass = new () => MockDecompressionStreamInstance;
+type MockDecompressionStreamClass =
+  (new () => MockDecompressionStreamInstance) & {
+    lastMockReader: MockDecompressionStreamInstance["mockReader"] | null;
+  };
 
 function createMockDecompressionStream(options: {
   writeError?: Error;
   closeError?: Error;
 }): MockDecompressionStreamClass {
-  return class MockDecompressionStream
+  let lastMockReader: MockDecompressionStreamInstance["mockReader"] | null =
+    null;
+
+  const MockClass = class MockDecompressionStream
     implements MockDecompressionStreamInstance
   {
     mockWriter = {
@@ -102,7 +108,16 @@ function createMockDecompressionStream(options: {
 
     writable = { getWriter: () => this.mockWriter };
     readable = { getReader: () => this.mockReader };
+
+    constructor() {
+      lastMockReader = this.mockReader;
+    }
   };
+
+  return Object.defineProperty(MockClass, "lastMockReader", {
+    get: () => lastMockReader,
+    configurable: true,
+  }) as MockDecompressionStreamClass;
 }
 
 test("writer.write() がエラーを起こした場合に FLATEDECODE_FAILED エラーを返し reader.cancel が呼ばれる", async () => {
@@ -118,6 +133,7 @@ test("writer.write() がエラーを起こした場合に FLATEDECODE_FAILED エ
   expect(result.error.message).toBe(
     "FlateDecode decompression failed during write",
   );
+  expect(MockDS.lastMockReader?.cancel).toHaveBeenCalled();
 });
 
 test("writer.close() がエラーを起こした場合に FLATEDECODE_FAILED エラーを返し reader.cancel が呼ばれる", async () => {
@@ -133,4 +149,5 @@ test("writer.close() がエラーを起こした場合に FLATEDECODE_FAILED エ
   expect(result.error.message).toBe(
     "FlateDecode decompression failed during write",
   );
+  expect(MockDS.lastMockReader?.cancel).toHaveBeenCalled();
 });
