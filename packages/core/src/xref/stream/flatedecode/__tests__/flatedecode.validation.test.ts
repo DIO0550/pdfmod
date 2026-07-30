@@ -32,7 +32,8 @@ test("展開サイズがmaxDecompressedSizeを超過した場合にFLATEDECODE_F
 
 // --- Issue #500: maxDecompressedSize 不正引数バリデーションテスト ---
 const dummyData = new Uint8Array([
-  120, 156, 243, 72, 205, 201, 201, 215, 81, 8, 112, 113, 83, 4, 0, 21, 171, 3, 60,
+  120, 156, 243, 72, 205, 201, 201, 215, 81, 8, 112, 113, 83, 4, 0, 21, 171, 3,
+  60,
 ]);
 
 test.each([
@@ -46,18 +47,15 @@ test.each([
     "MAX_SAFE_INTEGER超過 (Number.MAX_SAFE_INTEGER + 1)",
     Number.MAX_SAFE_INTEGER + 1,
   ],
-])(
-  "maxDecompressedSize に不正な値 (%s) を渡した場合にFLATEDECODE_FAILEDエラーを返す",
-  async (_, invalidSize) => {
-    const result = await decompressFlate(dummyData, invalidSize);
-    expect(result.ok).toBe(false);
-    assert(!result.ok);
-    expect(result.error.code).toBe("FLATEDECODE_FAILED");
-    expect(result.error.message).toBe(
-      "Invalid maxDecompressedSize: must be a finite, positive safe integer",
-    );
-  },
-);
+])("maxDecompressedSize に不正な値 (%s) を渡した場合にFLATEDECODE_FAILEDエラーを返す", async (_, invalidSize) => {
+  const result = await decompressFlate(dummyData, invalidSize);
+  expect(result.ok).toBe(false);
+  assert(!result.ok);
+  expect(result.error.code).toBe("FLATEDECODE_FAILED");
+  expect(result.error.message).toBe(
+    "Invalid maxDecompressedSize: must be a finite, positive safe integer",
+  );
+});
 
 // --- Issue #500: Stream Writer エラーハンドリングテスト ---
 afterEach(() => {
