@@ -62,11 +62,29 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+interface MockDecompressionStreamInstance {
+  mockWriter: {
+    write: ReturnType<typeof vi.fn>;
+    close: ReturnType<typeof vi.fn>;
+    abort: ReturnType<typeof vi.fn>;
+  };
+  mockReader: {
+    read: ReturnType<typeof vi.fn>;
+    cancel: ReturnType<typeof vi.fn>;
+  };
+  writable: { getWriter: () => MockDecompressionStreamInstance["mockWriter"] };
+  readable: { getReader: () => MockDecompressionStreamInstance["mockReader"] };
+}
+
+type MockDecompressionStreamClass = new () => MockDecompressionStreamInstance;
+
 function createMockDecompressionStream(options: {
   writeError?: Error;
   closeError?: Error;
-}) {
-  return class MockDecompressionStream {
+}): MockDecompressionStreamClass {
+  return class MockDecompressionStream
+    implements MockDecompressionStreamInstance
+  {
     mockWriter = {
       write: options.writeError
         ? vi.fn().mockRejectedValue(options.writeError)
