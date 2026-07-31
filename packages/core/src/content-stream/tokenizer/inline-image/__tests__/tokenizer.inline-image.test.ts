@@ -173,7 +173,7 @@ test.each([
   [
     "compound value閉じ括弧ミスマッチ(辞書を配列で閉じる)",
     "BI /DP << /Predictor 12 ] /W 1 ID abc EI",
-    ByteOffset.of(23),
+    ByteOffset.of(24),
   ],
   ["EI欠損", "BI /W 1 ID abc", ByteOffset.of(14)],
   ["ID直後CRのみでEI欠損", "BI /W 1 ID\r", ByteOffset.of(11)],
