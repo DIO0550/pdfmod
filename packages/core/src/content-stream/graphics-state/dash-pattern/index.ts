@@ -25,7 +25,7 @@ export type DashPattern = Brand<DashPatternFields, typeof DashPatternBrand>;
 export const DashPattern = {
   /**
    * 破線なし (solid line) を表す `DashPattern` を返す。
-   * graphics state の初期値 `[[] 0]` に対応する。
+   * graphics state の初期値 (`[] 0 d` 相当) に対応する。
    *
    * 参照同一性 (singleton かどうか) は API 契約にしない。
    * 呼び出し側は `toEqual` で構造比較すること (`toBe` / `not.toBe` を assert しない)。
