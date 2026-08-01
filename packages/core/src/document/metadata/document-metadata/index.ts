@@ -40,7 +40,7 @@ export { PdfTrapped };
  * @param value - 要約対象の PdfValue
  * @returns 値の種別ごとの簡潔な文字列表現
  */
-const summarizePdfValue = (value: PdfValue): string => {
+export const summarizePdfValue = (value: PdfValue): string => {
   switch (value.type) {
     case "null":
       return "null";
