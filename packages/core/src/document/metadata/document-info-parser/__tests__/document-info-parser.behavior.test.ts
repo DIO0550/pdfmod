@@ -98,23 +98,22 @@ const STRING_FIELDS = [
   ["Producer", "producer"],
 ] as const;
 
-test.each(STRING_FIELDS)(
-  "/%s が PdfString 以外 (PdfInteger) の場合 undefined + STRING_DECODE_FAILED",
-  async (key, prop) => {
-    const integerValue: PdfValue = { type: "integer", value: 42 };
-    const dict = makeInfoDict([[key, integerValue]]);
-    const result = await DocumentInfoParser.parse(
-      makeTrailerWithInfo(makeRef(2)),
-      makeResolverWithInfo(dict),
-    );
-    const { metadata, warnings } = unwrapOk(result);
-    expect(metadata[prop]).toBeUndefined();
-    expect(warnings).toHaveLength(1);
-    expect(warnings[0].code).toBe("STRING_DECODE_FAILED");
-    expect(warnings[0].message).toContain(key);
-    expect(warnings[0].message).toContain("integer");
-  },
-);
+test.each(
+  STRING_FIELDS,
+)("/%s が PdfString 以外 (PdfInteger) の場合 undefined + STRING_DECODE_FAILED", async (key, prop) => {
+  const integerValue: PdfValue = { type: "integer", value: 42 };
+  const dict = makeInfoDict([[key, integerValue]]);
+  const result = await DocumentInfoParser.parse(
+    makeTrailerWithInfo(makeRef(2)),
+    makeResolverWithInfo(dict),
+  );
+  const { metadata, warnings } = unwrapOk(result);
+  expect(metadata[prop]).toBeUndefined();
+  expect(warnings).toHaveLength(1);
+  expect(warnings[0].code).toBe("STRING_DECODE_FAILED");
+  expect(warnings[0].message).toContain(key);
+  expect(warnings[0].message).toContain("integer");
+});
 
 test("/CreationDate が D:20230615120530+09'00' の場合 UTC 換算 Date が抽出される", async () => {
   const dict = makeInfoDict([
@@ -162,22 +161,21 @@ const DATE_FIELDS = [
   ["ModDate", "modDate"],
 ] as const;
 
-test.each(DATE_FIELDS)(
-  "/%s が PdfString 以外 (PdfInteger) の場合 undefined + DATE_PARSE_FAILED",
-  async (key, prop) => {
-    const integerValue: PdfValue = { type: "integer", value: 0 };
-    const dict = makeInfoDict([[key, integerValue]]);
-    const result = await DocumentInfoParser.parse(
-      makeTrailerWithInfo(makeRef(2)),
-      makeResolverWithInfo(dict),
-    );
-    const { metadata, warnings } = unwrapOk(result);
-    expect(metadata[prop]).toBeUndefined();
-    expect(warnings).toHaveLength(1);
-    expect(warnings[0].code).toBe("DATE_PARSE_FAILED");
-    expect(warnings[0].message).toContain(key);
-  },
-);
+test.each(
+  DATE_FIELDS,
+)("/%s が PdfString 以外 (PdfInteger) の場合 undefined + DATE_PARSE_FAILED", async (key, prop) => {
+  const integerValue: PdfValue = { type: "integer", value: 0 };
+  const dict = makeInfoDict([[key, integerValue]]);
+  const result = await DocumentInfoParser.parse(
+    makeTrailerWithInfo(makeRef(2)),
+    makeResolverWithInfo(dict),
+  );
+  const { metadata, warnings } = unwrapOk(result);
+  expect(metadata[prop]).toBeUndefined();
+  expect(warnings).toHaveLength(1);
+  expect(warnings[0].code).toBe("DATE_PARSE_FAILED");
+  expect(warnings[0].message).toContain(key);
+});
 
 const VALID_TRAPPED: ReadonlyArray<readonly ["True" | "False" | "Unknown"]> = [
   ["True"],

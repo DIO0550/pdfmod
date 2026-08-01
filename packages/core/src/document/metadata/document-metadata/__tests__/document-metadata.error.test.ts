@@ -1,5 +1,7 @@
 import { describe, expect, test } from "vitest";
 import type { PdfWarning } from "../../../../pdf/errors/warning/index";
+import { GenerationNumber } from "../../../../pdf/types/generation-number/index";
+import { ObjectNumber } from "../../../../pdf/types/object-number/index";
 import type { PdfValue } from "../../../../pdf/types/pdf-types/index";
 import { parseTrappedName, summarizePdfValue } from "../../document-metadata";
 
@@ -13,14 +15,22 @@ describe("summarizePdfValue", () => {
     [{ type: "integer", value: 42 } as PdfValue, "42"],
     [{ type: "real", value: 3.14 } as PdfValue, "3.14"],
     [
-      { type: "string", value: new Uint8Array([0x41]), encoding: "literal" } as PdfValue,
+      {
+        type: "string",
+        value: new Uint8Array([0x41]),
+        encoding: "literal",
+      } as PdfValue,
       "<bytes len=1 enc=literal>",
     ],
     [{ type: "name", value: "Helvetica" } as PdfValue, "'Helvetica'"],
     [{ type: "array", elements: [] } as PdfValue, "<array length=0>"],
     [{ type: "dictionary", entries: new Map() } as PdfValue, "<dict size=0>"],
     [
-      { type: "indirect-ref", objectNumber: 1 as any, generationNumber: 0 as any } as PdfValue,
+      {
+        type: "indirect-ref",
+        objectNumber: ObjectNumber.of(1),
+        generationNumber: GenerationNumber.of(0),
+      } as PdfValue,
       "<ref 1 0>",
     ],
   ])("summarizePdfValue(%o) -> %s", (value, expected) => {
@@ -99,10 +109,18 @@ describe("parseTrappedName", () => {
     ["null", { type: "null" } as PdfValue, "null"],
     ["real", { type: "real", value: 3.14 } as PdfValue, "3.14"],
     ["array", { type: "array", elements: [] } as PdfValue, "<array length=0>"],
-    ["dictionary", { type: "dictionary", entries: new Map() } as PdfValue, "<dict size=0>"],
+    [
+      "dictionary",
+      { type: "dictionary", entries: new Map() } as PdfValue,
+      "<dict size=0>",
+    ],
     [
       "indirect-ref",
-      { type: "indirect-ref", objectNumber: 1 as any, generationNumber: 0 as any } as PdfValue,
+      {
+        type: "indirect-ref",
+        objectNumber: ObjectNumber.of(1),
+        generationNumber: GenerationNumber.of(0),
+      } as PdfValue,
       "<ref 1 0>",
     ],
   ])("/Trapped が %s のとき undefined + TRAPPED_INVALID（メッセージに type と値要約を含む）", (type, value, expectedSubstr) => {
