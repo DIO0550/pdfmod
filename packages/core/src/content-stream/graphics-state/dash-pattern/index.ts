@@ -17,7 +17,8 @@ type DashPatternFields = {
  * (`Object.freeze` はしないため実行時に強制されるわけではない)。
  *
  * 値の検証 (負値 / `NaN` / `Infinity` / 奇数長 / 全要素 0 など) はここでは行わない。
- * operand の型検証も、値の妥当性検証も operator handler 層 (`d` handler) の責務。
+ * operand の型検証は operator handler 層 (`d` handler) が担う。
+ * 値の妥当性検証をどの層で行うかは未確定であり、上位層の方針に従う。
  */
 export type DashPattern = Brand<DashPatternFields, typeof DashPatternBrand>;
 
