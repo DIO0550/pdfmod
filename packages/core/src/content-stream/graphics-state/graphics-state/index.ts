@@ -46,7 +46,7 @@ export const GraphicsState = {
    *   lineCap          = 0 (Butt)
    *   lineJoin         = 0 (Miter)
    *   miterLimit       = 10.0
-   *   dashPattern      = solid()
+   *   dashPattern      = DashPattern.solid()
    *   currentPath      = empty()
    *   strokeColor      = defaultBlack (DeviceGray gray=0)
    *   fillColor        = defaultBlack (DeviceGray gray=0)
