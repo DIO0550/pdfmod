@@ -3,6 +3,7 @@ import {
   Color,
   ColorSpace,
   CurrentPath,
+  DashPattern,
   GraphicsState,
   LineCap,
   LineJoin,
@@ -20,6 +21,7 @@ test("createはPDF仕様準拠のデフォルト値を返す", () => {
     lineCap: LineCap.create(0),
     lineJoin: LineJoin.create(0),
     miterLimit: 10.0,
+    dashPattern: DashPattern.solid(),
     currentPath: CurrentPath.empty(),
     strokeColor: Color.defaultBlack(),
     fillColor: Color.defaultBlack(),
@@ -43,6 +45,7 @@ test("updateは未指定フィールドを保持する", () => {
   expect(updated.lineCap).toBe(state.lineCap);
   expect(updated.lineJoin).toBe(state.lineJoin);
   expect(updated.miterLimit).toBe(state.miterLimit);
+  expect(updated.dashPattern).toBe(state.dashPattern);
   expect(updated.currentPath).toBe(state.currentPath);
 });
 
@@ -63,6 +66,7 @@ test.each([
   ["lineCap", { lineCap: LineCap.create(1) }],
   ["lineJoin", { lineJoin: LineJoin.create(2) }],
   ["miterLimit", { miterLimit: 5.0 }],
+  ["dashPattern", { dashPattern: DashPattern.create([2, 1], 0) }],
   ["ctm", { ctm: Matrix.create(2, 0, 0, 2, 0, 0) }],
   [
     "currentPath",
@@ -115,6 +119,7 @@ test("updateはundefinedの明示指定で既存フィールドを壊さない",
     CurrentPath.empty(),
     PathSegment.moveTo(1, 2),
   );
+  const dashPattern = DashPattern.create([2, 1], 0);
   const strokeColor = Color.rgb(1, 0, 0);
   const fillColor = Color.cmyk(0, 1, 1, 0);
   const strokeColorSpace = ColorSpace.deviceRGB();
@@ -124,6 +129,7 @@ test("updateはundefinedの明示指定で既存フィールドを壊さない",
   const state = GraphicsState.update(GraphicsState.create(), {
     lineWidth: 2.0,
     miterLimit: 5.0,
+    dashPattern,
     currentPath: path,
     strokeColor,
     fillColor,
@@ -135,6 +141,7 @@ test("updateはundefinedの明示指定で既存フィールドを壊さない",
   const updated = GraphicsState.update(state, {
     lineWidth: undefined,
     miterLimit: undefined,
+    dashPattern: undefined,
     currentPath: undefined,
     strokeColor: undefined,
     fillColor: undefined,
@@ -145,6 +152,7 @@ test("updateはundefinedの明示指定で既存フィールドを壊さない",
   });
   expect(updated.lineWidth).toBe(2.0);
   expect(updated.miterLimit).toBe(5.0);
+  expect(updated.dashPattern).toEqual(dashPattern);
   expect(updated.currentPath).toBe(path);
   expect(updated.strokeColor).toBe(strokeColor);
   expect(updated.fillColor).toBe(fillColor);
