@@ -2,6 +2,7 @@ import type { Brand } from "../../../utils/brand/index";
 import { Color } from "../color";
 import { ColorSpace } from "../color-space";
 import { CurrentPath } from "../current-path";
+import { DashPattern } from "../dash-pattern";
 import { LineCap } from "../line-cap";
 import { LineJoin } from "../line-join";
 import { Matrix } from "../matrix";
@@ -16,6 +17,7 @@ type GraphicsStateFields = {
   readonly lineCap: LineCap;
   readonly lineJoin: LineJoin;
   readonly miterLimit: number;
+  readonly dashPattern: DashPattern;
   readonly currentPath: CurrentPath;
   readonly strokeColor: Color;
   readonly fillColor: Color;
@@ -44,6 +46,7 @@ export const GraphicsState = {
    *   lineCap          = 0 (Butt)
    *   lineJoin         = 0 (Miter)
    *   miterLimit       = 10.0
+   *   dashPattern      = DashPattern.solid()
    *   currentPath      = empty()
    *   strokeColor      = defaultBlack (DeviceGray gray=0)
    *   fillColor        = defaultBlack (DeviceGray gray=0)
@@ -61,6 +64,7 @@ export const GraphicsState = {
       lineCap: LineCap.create(0),
       lineJoin: LineJoin.create(0),
       miterLimit: 10.0,
+      dashPattern: DashPattern.solid(),
       currentPath: CurrentPath.empty(),
       strokeColor: Color.defaultBlack(),
       fillColor: Color.defaultBlack(),
@@ -91,6 +95,10 @@ export const GraphicsState = {
         partial.miterLimit !== undefined
           ? partial.miterLimit
           : state.miterLimit,
+      dashPattern:
+        partial.dashPattern !== undefined
+          ? partial.dashPattern
+          : state.dashPattern,
       currentPath:
         partial.currentPath !== undefined
           ? partial.currentPath
