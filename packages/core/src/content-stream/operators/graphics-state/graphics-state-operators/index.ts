@@ -4,6 +4,7 @@ import { flatMap, ok } from "../../../../utils/result/index";
 import type { OperatorHandler } from "../../../operator-registry/index";
 import { OperatorRegistry } from "../../../operator-registry/index";
 import { cmHandler } from "../cm";
+import { dHandler } from "../d";
 import { lineCapHandler } from "../line-cap-handler";
 import { lineJoinHandler } from "../line-join-handler";
 import { lineWidthHandler } from "../line-width-handler";
@@ -12,6 +13,7 @@ import { qHandler } from "../q";
 import { qRestoreHandler } from "../q-restore";
 
 export { cmHandler } from "../cm";
+export { dHandler } from "../d";
 export { lineCapHandler } from "../line-cap-handler";
 export { lineJoinHandler } from "../line-join-handler";
 export { lineWidthHandler } from "../line-width-handler";
@@ -27,12 +29,13 @@ const GRAPHICS_STATE_OPERATORS: ReadonlyArray<
   ["J", lineCapHandler],
   ["j", lineJoinHandler],
   ["M", miterLimitHandler],
+  ["d", dHandler],
   ["q", qHandler],
   ["Q", qRestoreHandler],
 ];
 
 /**
- * Graphics State operator (cm / w / J / j / M / q / Q) を OperatorRegistry に
+ * Graphics State operator (cm / w / J / j / M / d / q / Q) を OperatorRegistry に
  * 一括登録するヘルパ。
  *
  * fail-fast: いずれかの register が Err を返した時点で reduce 内 flatMap が
