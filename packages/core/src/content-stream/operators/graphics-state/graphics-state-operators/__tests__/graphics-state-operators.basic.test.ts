@@ -8,6 +8,7 @@ test.each([
   ["J"],
   ["j"],
   ["M"],
+  ["d"],
   ["q"],
   ["Q"],
 ])("registerGraphicsStateOperators は %s を登録する", (name) => {
