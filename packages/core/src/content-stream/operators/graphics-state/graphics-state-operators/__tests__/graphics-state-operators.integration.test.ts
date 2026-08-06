@@ -1,5 +1,6 @@
 import { assert, expect, test } from "vitest";
 import {
+  DashPattern,
   GraphicsState,
   GraphicsStateStack,
   Matrix,
@@ -57,6 +58,22 @@ test("3 段ネスト `q 2 w q 3 w q 4 w Q Q Q` で初期状態に復帰する", 
     result.value.context.graphicsStateStack,
   );
   expect(current).toEqual(GraphicsState.create());
+});
+
+test("barrel 経由で `[3 2] 11 d` を実行すると dashPattern が更新される", () => {
+  const registered = registerGraphicsStateOperators(OperatorRegistry.create());
+  assert(registered.ok);
+
+  const result = ContentStreamInterpreter.execute({
+    data: encode("[3 2] 11 d"),
+    registry: registered.value,
+  });
+
+  assert(result.ok);
+  const current = GraphicsStateStack.current(
+    result.value.context.graphicsStateStack,
+  );
+  expect(current.dashPattern).toEqual(DashPattern.create([3, 2], 11));
 });
 
 test("unbalanced Q を interpreter 経由で実行しても ok で継続する", () => {
