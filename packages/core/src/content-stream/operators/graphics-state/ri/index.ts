@@ -1,4 +1,5 @@
 import type { PdfError } from "../../../../pdf/errors/index";
+import { PdfName } from "../../../../pdf/types/pdf-types/index";
 import { err, ok } from "../../../../utils/result/index";
 import {
   GraphicsState,
@@ -38,7 +39,7 @@ export const riHandler: OperatorHandler = (context: OperatorHandlerContext) => {
   }
 
   const operand = popped.value;
-  if (operand.type !== "name") {
+  if (!PdfName.is(operand)) {
     const error: PdfError = {
       code: "OPERATOR_OPERAND_TYPE_MISMATCH",
       message: `Operator '${OPERATOR_NAME}' expected name operand, got ${operand.type}`,
