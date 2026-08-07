@@ -8,6 +8,7 @@ import {
   LineCap,
   LineJoin,
   Matrix,
+  RenderingIntent,
   TextObject,
   TextState,
 } from "../../index";
@@ -29,6 +30,8 @@ test("createはPDF仕様準拠のデフォルト値を返す", () => {
     fillColorSpace: ColorSpace.deviceGray(),
     textState: TextState.create(),
     textObject: TextObject.inactive(),
+    renderingIntent: RenderingIntent.create("RelativeColorimetric"),
+    flatness: 1.0,
   });
 });
 
@@ -47,6 +50,8 @@ test("updateは未指定フィールドを保持する", () => {
   expect(updated.miterLimit).toBe(state.miterLimit);
   expect(updated.dashPattern).toBe(state.dashPattern);
   expect(updated.currentPath).toBe(state.currentPath);
+  expect(updated.renderingIntent).toBe(state.renderingIntent);
+  expect(updated.flatness).toBe(state.flatness);
 });
 
 test("updateは元のstateを変更しない", () => {
@@ -86,6 +91,11 @@ test.each([
     { textState: TextState.update(TextState.create(), { charSpace: 2 }) },
   ],
   ["textObject", { textObject: TextObject.begin() }],
+  [
+    "renderingIntent",
+    { renderingIntent: RenderingIntent.create("AbsoluteColorimetric") },
+  ],
+  ["flatness", { flatness: 0.5 }],
   ["empty", {}],
 ] as const)("update(state, %s) は該当フィールドだけ書き換える", (_label, partial) => {
   const state = GraphicsState.create();
@@ -126,6 +136,8 @@ test("updateはundefinedの明示指定で既存フィールドを壊さない",
   const fillColorSpace = ColorSpace.deviceCMYK();
   const textState = TextState.update(TextState.create(), { charSpace: 2 });
   const textObject = TextObject.begin();
+  const renderingIntent = RenderingIntent.create("Perceptual");
+  const flatness = 0.8;
   const state = GraphicsState.update(GraphicsState.create(), {
     lineWidth: 2.0,
     miterLimit: 5.0,
@@ -137,6 +149,8 @@ test("updateはundefinedの明示指定で既存フィールドを壊さない",
     fillColorSpace,
     textState,
     textObject,
+    renderingIntent,
+    flatness,
   });
   const updated = GraphicsState.update(state, {
     lineWidth: undefined,
@@ -149,6 +163,8 @@ test("updateはundefinedの明示指定で既存フィールドを壊さない",
     fillColorSpace: undefined,
     textState: undefined,
     textObject: undefined,
+    renderingIntent: undefined,
+    flatness: undefined,
   });
   expect(updated.lineWidth).toBe(2.0);
   expect(updated.miterLimit).toBe(5.0);
@@ -160,4 +176,6 @@ test("updateはundefinedの明示指定で既存フィールドを壊さない",
   expect(updated.fillColorSpace).toBe(fillColorSpace);
   expect(updated.textState).toBe(textState);
   expect(updated.textObject).toBe(textObject);
+  expect(updated.renderingIntent).toBe(renderingIntent);
+  expect(updated.flatness).toBe(0.8);
 });
