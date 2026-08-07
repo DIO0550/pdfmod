@@ -24,9 +24,7 @@ const OPERATOR_NAME = "ri";
  * @param context - 実行コンテキスト (operand stack / graphics state stack)
  * @returns 成功なら更新後コンテキスト、失敗なら PdfError
  */
-export const riHandler: OperatorHandler = (
-  context: OperatorHandlerContext,
-) => {
+export const riHandler: OperatorHandler = (context: OperatorHandlerContext) => {
   const popped = OperandStack.pop(context.operandStack);
   if (!popped.some) {
     const error: PdfError = {
