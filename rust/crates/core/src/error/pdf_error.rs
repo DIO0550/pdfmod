@@ -27,6 +27,7 @@ use crate::error::pdf_error_code::PdfErrorCode;
 /// `code` は必須、`position` と `message` は任意（`Option`）。`Result<T, PdfError>` の
 /// `E` として用いる。`String` を保持するため `Copy` は持たない。
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[must_use]
 pub struct PdfError {
     code: PdfErrorCode,
     position: Option<ByteOffset>,
@@ -63,15 +64,18 @@ impl PdfError {
     }
 
     /// エラー種別を返す（`PdfErrorCode` は `Copy` のため値返し）。
+    #[must_use]
     pub fn code(&self) -> PdfErrorCode {
         self.code
     }
 
     /// 発生位置を返す（未設定なら `None`。`ByteOffset` は `Copy` のため値返し）。
+    #[must_use]
     pub fn position(&self) -> Option<ByteOffset> {
         self.position
     }
 
+    #[must_use]
     /// 補足メッセージを `Option<&str>` として返す（未設定なら `None`）。
     pub fn message(&self) -> Option<&str> {
         self.message.as_deref()
@@ -290,5 +294,17 @@ mod tests {
                 .with_position(ByteOffset::new(3))
                 .to_string()
         );
+    }
+
+    #[test]
+    fn must_use_attribute_is_honored() {
+        // #[must_use] 属性が付与された PdfError およびビルダーメソッドの戻り値を
+        // 破棄せず明示的に使用（受領）できることを確認する。
+        let err = PdfError::new(PdfErrorCode::UnexpectedEof);
+        let err_pos = err.with_position(ByteOffset::new(10));
+        let err_msg = err_pos.with_message("test");
+        assert_eq!(err_msg.code(), PdfErrorCode::UnexpectedEof);
+        assert_eq!(err_msg.position(), Some(ByteOffset::new(10)));
+        assert_eq!(err_msg.message(), Some("test"));
     }
 }
