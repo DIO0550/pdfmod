@@ -44,6 +44,7 @@ pub enum ParseErrorKind {
 
 /// パースエラー。位置情報を必須で保持する。
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[must_use]
 pub struct ParseError {
     /// エラーの種別と付随情報。
     pub kind: ParseErrorKind,
