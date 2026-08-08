@@ -130,4 +130,3 @@ test.each([
   expect(warnings[0].message).toContain(type);
   expect(warnings[0].message).toContain(expectedSubstr);
 });
-

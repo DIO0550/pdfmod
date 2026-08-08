@@ -29,4 +29,3 @@ test("/Trapped 値が未指定（undefined）の場合は none（警告なし）
   expect(result).toEqual(none);
   expect(warnings).toHaveLength(0);
 });
-
