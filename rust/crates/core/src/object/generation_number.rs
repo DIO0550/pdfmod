@@ -13,6 +13,7 @@ use std::fmt;
 /// 一致するため、型自体が仕様範囲を保証する（範囲外値は型レベルで表現不能）。
 /// 値ラッパであり `Copy`。等価・順序・ハッシュは内部 `u16` の自然な振る舞いに従う。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[must_use]
 pub struct GenerationNumber(u16);
 
 impl GenerationNumber {
@@ -24,6 +25,7 @@ impl GenerationNumber {
     }
 
     /// 内部の世代番号を `u16` として取り出す。
+    #[must_use]
     pub fn value(&self) -> u16 {
         self.0
     }

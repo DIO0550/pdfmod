@@ -14,6 +14,7 @@ use crate::object::object_id::ObjectId;
 /// 順序（`PartialOrd`/`Ord`）は付けない（`PdfObject` 自体が `Ord` 非実装で
 /// `Reference` 経由ソートは不可能・単体ソート用途も現状なし。必要時に非破壊で追加可能）。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[must_use]
 pub struct IndirectRef {
     target: ObjectId,
 }
