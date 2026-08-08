@@ -72,6 +72,9 @@ export class LRUCache<K, V> {
    * キーに対応する値を取得する。
    * アクセスされたエントリは最新として更新される。
    *
+   * 【例外規定】JavaScript 標準の Map コンテナインターフェース（Map.prototype.get）に準拠するため、
+   * `Option<V>` ではなく `V | undefined` を返却する規約を採用している。
+   *
    * @param key - 検索するキー
    * @returns 値が存在する場合はその値、存在しない場合は `undefined`
    *

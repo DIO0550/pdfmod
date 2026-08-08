@@ -109,47 +109,47 @@ const getKidsRefs = (entries: Map<string, PdfValue>): KidsRefsResult => {
  * `/Count` を非負整数として取り出す。
  *
  * @param entries - 辞書エントリ
- * @returns 非負整数、または undefined
+ * @returns 非負整数、または Option.none
  */
-const readCount = (entries: Map<string, PdfValue>): number | undefined => {
+const readCount = (entries: Map<string, PdfValue>): Option<number> => {
   const value = entries.get("Count");
   if (value === undefined || value.type !== "integer") {
-    return undefined;
+    return none;
   }
   if (!NumberEx.isSafeIntegerAtLeastZero(value.value)) {
-    return undefined;
+    return none;
   }
-  return value.value;
+  return some(value.value);
 };
 
 /**
  * `/Resources` を取得する。間接参照なら resolveRef で 1 段解決する。
  * 解決失敗 (Err / non-dict) の場合は `RESOURCES_RESOLVE_FAILED` 警告を積み
- * undefined を返す（属性未設定 + 走査継続）。
+ * Option.none を返す（属性未設定 + 走査継続）。
  *
  * @param entries - 辞書エントリ
  * @param resolveRef - 間接参照解決関数
  * @param warnings - 警告蓄積先
- * @returns 解決済み PdfDictionary、または undefined
+ * @returns 解決済み Option.some(PdfDictionary)、または Option.none
  */
 const resolveResources = async (
   entries: Map<string, PdfValue>,
   resolveRef: ResolveRef,
   warnings: PdfWarning[],
-): Promise<PdfDictionary | undefined> => {
+): Promise<Option<PdfDictionary>> => {
   const value = entries.get("Resources");
   if (value === undefined) {
-    return undefined;
+    return none;
   }
   if (value.type === "dictionary") {
-    return value;
+    return some(value);
   }
   if (value.type !== "indirect-ref") {
     warnings.push({
       code: "RESOURCES_RESOLVE_FAILED",
       message: `Failed to resolve /Resources: unexpected direct type=${value.type}`,
     });
-    return undefined;
+    return none;
   }
   const indirectRef = IndirectRef.from(value);
   if (!indirectRef.some) {
@@ -157,7 +157,7 @@ const resolveResources = async (
       code: "RESOURCES_RESOLVE_FAILED",
       message: `Failed to resolve /Resources indirect-ref ${value.objectNumber} ${value.generationNumber}: invalid indirect reference`,
     });
-    return undefined;
+    return none;
   }
   const resolved = await resolveRef(indirectRef.value);
   if (!resolved.ok) {
@@ -165,21 +165,21 @@ const resolveResources = async (
       code: "RESOURCES_RESOLVE_FAILED",
       message: `Failed to resolve /Resources indirect-ref ${value.objectNumber} ${value.generationNumber}: cause=${resolved.error.code}`,
     });
-    return undefined;
+    return none;
   }
   if (resolved.value.type !== "dictionary") {
     warnings.push({
       code: "RESOURCES_RESOLVE_FAILED",
       message: `Failed to resolve /Resources indirect-ref ${value.objectNumber} ${value.generationNumber}: resolved to non-dictionary`,
     });
-    return undefined;
+    return none;
   }
-  return resolved.value;
+  return some(resolved.value);
 };
 
 /**
  * `/Pages` または `/Page` ノードから継承可能 4 属性を読み取る。
- * `/Resources` のみ indirect-ref を 1 段解決する（Resources 解決失敗は警告積み + undefined）。
+ * `/Resources` のみ indirect-ref を 1 段解決する（Resources 解決失敗は警告積み + none）。
  * `/Rotate` はキー存在かつ数値のときだけ生値を詰める（非数値は Resolver 側で判定）。
  *
  * @param entries - 辞書エントリ
@@ -205,9 +205,9 @@ const readInheritableAttrs = async (
   if (rotate.some) {
     attrs.rotate = rotate.value;
   }
-  const resources = await resolveResources(entries, resolveRef, warnings);
-  if (resources !== undefined) {
-    attrs.resources = resources;
+  const resourcesOpt = await resolveResources(entries, resolveRef, warnings);
+  if (resourcesOpt.some) {
+    attrs.resources = resourcesOpt.value;
   }
   return attrs;
 };
@@ -351,11 +351,11 @@ const walkInternal = async (
     actualCount += state.pages.length - before;
   }
 
-  const declared = readCount(dict.entries);
-  if (declared !== undefined && declared !== actualCount) {
+  const declaredOpt = readCount(dict.entries);
+  if (declaredOpt.some && declaredOpt.value !== actualCount) {
     state.warnings.push({
       code: "COUNT_MISMATCH",
-      message: `Pages node ${key}: /Count ${declared} but ${actualCount} pages found`,
+      message: `Pages node ${key}: /Count ${declaredOpt.value} but ${actualCount} pages found`,
     });
   }
 

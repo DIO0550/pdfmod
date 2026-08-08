@@ -1,4 +1,5 @@
 import { expect, test } from "vitest";
+import { none } from "../../../../utils/option";
 import { parsePdfDate } from "../../pdf-date";
 
 test.each([
@@ -29,6 +30,7 @@ test.each([
   ["D:20260431"],
   ["D:20260230000000Z"],
   ["D:20260431000000Z"],
-])("不正な PDF 日時 %s は undefined を返す", (raw) => {
-  expect(parsePdfDate(raw)).toBeUndefined();
+])("不正な PDF 日時 %s は none を返す", (raw) => {
+  expect(parsePdfDate(raw)).toEqual(none);
 });
+

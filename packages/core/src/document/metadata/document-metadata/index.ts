@@ -1,6 +1,8 @@
 import type { PdfWarning } from "../../../pdf/errors/warning/index";
 import type { PdfValue } from "../../../pdf/types/pdf-types/index";
 import type { Brand } from "../../../utils/brand/index";
+import type { Option } from "../../../utils/option";
+import { none, some } from "../../../utils/option";
 import type { Result } from "../../../utils/result/index";
 import { err, ok } from "../../../utils/result/index";
 
@@ -93,27 +95,27 @@ export interface DocumentMetadata {
 /**
  * /Trapped の Name 値を {@link PdfTrapped} リテラルに解釈する。
  *
- * - value が undefined → undefined（警告なし）
- * - value が PdfName で値が "True" / "False" / "Unknown" → 該当 literal
- * - 上記以外 → undefined + TRAPPED_INVALID 警告
+ * - value が undefined → Option.none（警告なし）
+ * - value が PdfName で値が "True" / "False" / "Unknown" → 該当 Option.some(literal)
+ * - 上記以外 → Option.none + TRAPPED_INVALID 警告
  *
  * @param value - /Trapped の値（解決済みの PdfValue または undefined）
  * @param warnings - 警告蓄積先（mutable）
- * @returns PdfTrapped または undefined
+ * @returns Option<PdfTrapped>
  */
 export const parseTrappedName = (
   value: PdfValue | undefined,
   warnings: PdfWarning[],
-): PdfTrapped | undefined => {
+): Option<PdfTrapped> => {
   if (value === undefined) {
-    return undefined;
+    return none;
   }
   if (value.type !== "name") {
     warnings.push({
       code: "TRAPPED_INVALID",
       message: `/Trapped expected Name but got ${value.type} (${summarizePdfValue(value)})`,
     });
-    return undefined;
+    return none;
   }
   const result = PdfTrapped.create(value.value);
   if (!result.ok) {
@@ -121,7 +123,8 @@ export const parseTrappedName = (
       code: "TRAPPED_INVALID",
       message: `/Trapped value '${value.value}' is not in {True, False, Unknown}`,
     });
-    return undefined;
+    return none;
   }
-  return result.value;
+  return some(result.value);
 };
+
