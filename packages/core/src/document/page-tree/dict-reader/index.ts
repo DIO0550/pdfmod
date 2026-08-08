@@ -8,19 +8,19 @@ const BOX_ELEMENT_COUNT = 4;
 const DEFAULT_USER_UNIT = 1.0;
 
 /**
- * PdfValue が integer / real なら数値を返す。その他の型・undefined は undefined。
+ * PdfValue が integer / real なら数値を Option.some(number) で返す。その他の型・undefined は Option.none。
  *
  * @param value - 判定対象
- * @returns 数値、または undefined
+ * @returns Option.some(number)、または Option.none
  */
-const getNumberValue = (value: PdfValue | undefined): number | undefined => {
+export const getNumberValue = (value: PdfValue | undefined): Option<number> => {
   if (value === undefined) {
-    return undefined;
+    return none;
   }
   if (value.type === "integer" || value.type === "real") {
-    return value.value;
+    return some(value.value);
   }
-  return undefined;
+  return none;
 };
 
 /**
@@ -47,11 +47,11 @@ export const DictReader = {
     }
     const nums: number[] = [];
     for (const el of value.elements) {
-      const n = getNumberValue(el);
-      if (n === undefined) {
+      const nOpt = getNumberValue(el);
+      if (!nOpt.some) {
         return none;
       }
-      nums.push(n);
+      nums.push(nOpt.value);
     }
     const [llx, lly, urx, ury] = nums;
     return some([llx, lly, urx, ury] as PdfRectangle);
@@ -65,11 +65,7 @@ export const DictReader = {
    */
   rotate(entries: Map<string, PdfValue>): Option<number> {
     const value = entries.get("Rotate");
-    const n = getNumberValue(value);
-    if (n === undefined) {
-      return none;
-    }
-    return some(n);
+    return getNumberValue(value);
   },
 
   /**
@@ -81,14 +77,14 @@ export const DictReader = {
    */
   userUnit(entries: Map<string, PdfValue>): number {
     const value = entries.get("UserUnit");
-    const n = getNumberValue(value);
-    if (n === undefined) {
+    const nOpt = getNumberValue(value);
+    if (!nOpt.some) {
       return DEFAULT_USER_UNIT;
     }
-    if (!NumberEx.isPositiveFinite(n)) {
+    if (!NumberEx.isPositiveFinite(nOpt.value)) {
       return DEFAULT_USER_UNIT;
     }
-    return n;
+    return nOpt.value;
   },
 
   /**

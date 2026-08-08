@@ -2,12 +2,20 @@ import { expect, test } from "vitest";
 import { GenerationNumber } from "../../../../pdf/types/generation-number/index";
 import { ObjectNumber } from "../../../../pdf/types/object-number/index";
 import type { PdfValue } from "../../../../pdf/types/pdf-types/index";
-import { DictReader } from "../../dict-reader";
+import { none, some } from "../../../../utils/option";
+import { DictReader, getNumberValue } from "../../dict-reader";
 import { indirectRefValue } from "../../page-tree-walker/__tests__/page-tree-walker.test.helpers";
 
 const integerArray = (values: number[]): PdfValue => ({
   type: "array",
   elements: values.map((v) => ({ type: "integer", value: v })),
+});
+
+test("getNumberValue は integer / real で some(number) を返し、非数値・undefined で none を返す", () => {
+  expect(getNumberValue({ type: "integer", value: 42 })).toEqual(some(42));
+  expect(getNumberValue({ type: "real", value: 3.14 })).toEqual(some(3.14));
+  expect(getNumberValue({ type: "name", value: "Foo" })).toEqual(none);
+  expect(getNumberValue(undefined)).toEqual(none);
 });
 
 test("DictReader.box はキーが存在しないとき None を返す", () => {

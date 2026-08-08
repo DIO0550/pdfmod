@@ -1,8 +1,9 @@
 import { expect, test } from "vitest";
+import { none } from "../../../../utils/option";
 import { parsePdfDate } from "../../pdf-date";
 
-test("D: プレフィックスを欠いた文字列は undefined を返す", () => {
-  expect(parsePdfDate("20230101")).toBeUndefined();
+test("D: プレフィックスを欠いた文字列は none を返す", () => {
+  expect(parsePdfDate("20230101")).toEqual(none);
 });
 
 test.each([
@@ -18,13 +19,15 @@ test.each([
   ["D:20230615120530-05'30'", { y: 2023, mo: 5, d: 15, h: 17, mi: 35, s: 30 }],
 ] as const)("TZ 付き日時 %s を UTC として解釈する", (raw, e) => {
   const result = parsePdfDate(raw);
-  expect(result).toBeDefined();
-  expect(result?.getUTCFullYear()).toBe(e.y);
-  expect(result?.getUTCMonth()).toBe(e.mo);
-  expect(result?.getUTCDate()).toBe(e.d);
-  expect(result?.getUTCHours()).toBe(e.h);
-  expect(result?.getUTCMinutes()).toBe(e.mi);
-  expect(result?.getUTCSeconds()).toBe(e.s);
+  expect(result.some).toBe(true);
+  if (result.some) {
+    expect(result.value.getUTCFullYear()).toBe(e.y);
+    expect(result.value.getUTCMonth()).toBe(e.mo);
+    expect(result.value.getUTCDate()).toBe(e.d);
+    expect(result.value.getUTCHours()).toBe(e.h);
+    expect(result.value.getUTCMinutes()).toBe(e.mi);
+    expect(result.value.getUTCSeconds()).toBe(e.s);
+  }
 });
 
 test.each([
@@ -37,11 +40,14 @@ test.each([
   ["D:20240229", { y: 2024, mo: 1, d: 29, h: 0, mi: 0, s: 0 }],
 ] as const)("TZ なし日時 %s をローカル時刻として解釈する", (raw, e) => {
   const result = parsePdfDate(raw);
-  expect(result).toBeDefined();
-  expect(result?.getFullYear()).toBe(e.y);
-  expect(result?.getMonth()).toBe(e.mo);
-  expect(result?.getDate()).toBe(e.d);
-  expect(result?.getHours()).toBe(e.h);
-  expect(result?.getMinutes()).toBe(e.mi);
-  expect(result?.getSeconds()).toBe(e.s);
+  expect(result.some).toBe(true);
+  if (result.some) {
+    expect(result.value.getFullYear()).toBe(e.y);
+    expect(result.value.getMonth()).toBe(e.mo);
+    expect(result.value.getDate()).toBe(e.d);
+    expect(result.value.getHours()).toBe(e.h);
+    expect(result.value.getMinutes()).toBe(e.mi);
+    expect(result.value.getSeconds()).toBe(e.s);
+  }
 });
+
