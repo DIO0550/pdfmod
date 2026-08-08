@@ -297,9 +297,9 @@ mod tests {
     }
 
     #[test]
-    fn must_use_attribute_is_honored() {
-        // #[must_use] 属性が付与された PdfError およびビルダーメソッドの戻り値を
-        // 破棄せず明示的に使用（受領）できることを確認する。
+    fn builder_usage_retains_context() {
+        // with_position / with_message ビルダーメソッドで段階的に構築したエラー値が
+        // 位置とメッセージ文脈を正しく保持することを確認するリグレッションテスト。
         let err = PdfError::new(PdfErrorCode::UnexpectedEof);
         let err_pos = err.with_position(ByteOffset::new(10));
         let err_msg = err_pos.with_message("test");
