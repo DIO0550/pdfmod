@@ -138,7 +138,10 @@ const extractMetadata = (
     keywords: unwrapOr(readStringField(e, "Keywords", warnings), undefined),
     creator: unwrapOr(readStringField(e, "Creator", warnings), undefined),
     producer: unwrapOr(readStringField(e, "Producer", warnings), undefined),
-    creationDate: unwrapOr(readDateField(e, "CreationDate", warnings), undefined),
+    creationDate: unwrapOr(
+      readDateField(e, "CreationDate", warnings),
+      undefined,
+    ),
     modDate: unwrapOr(readDateField(e, "ModDate", warnings), undefined),
     trapped: unwrapOr(parseTrappedName(e.get("Trapped"), warnings), undefined),
   });

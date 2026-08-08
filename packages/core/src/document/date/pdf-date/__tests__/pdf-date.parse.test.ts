@@ -50,4 +50,3 @@ test.each([
     expect(result.value.getSeconds()).toBe(e.s);
   }
 });
-

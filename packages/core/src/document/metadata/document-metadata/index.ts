@@ -127,4 +127,3 @@ export const parseTrappedName = (
   }
   return some(result.value);
 };
-

@@ -98,4 +98,3 @@ test("BOM なし + PDFDocEncoding 未割当バイトは U+FFFD 置換 + 警告 1
   expect(warnings).toHaveLength(1);
   expect(warnings[0].code).toBe("STRING_DECODE_FAILED");
 });
-

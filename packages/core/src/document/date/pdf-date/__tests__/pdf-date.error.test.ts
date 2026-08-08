@@ -33,4 +33,3 @@ test.each([
 ])("不正な PDF 日時 %s は none を返す", (raw) => {
   expect(parsePdfDate(raw)).toEqual(none);
 });
-
