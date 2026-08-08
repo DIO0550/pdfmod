@@ -59,6 +59,7 @@ pub struct Parser<'a> {
 
 impl<'a> Parser<'a> {
     /// 入力バイト列から新しいパーサを構築する。`pos` は 0 で初期化される。
+    #[must_use]
     pub fn new(input: &'a [u8]) -> Self {
         Self {
             lexer: Lexer::new(input),

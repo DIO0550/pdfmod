@@ -16,6 +16,7 @@
 /// 等価・順序・ハッシュは内部 `Vec<u8>` の自然な振る舞い（バイト列の辞書順／
 /// 完全一致）に従う。
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[must_use]
 pub struct PdfName(Vec<u8>);
 
 impl PdfName {
@@ -31,6 +32,7 @@ impl PdfName {
     /// 内部の名前本体を `&[u8]`（バイトスライス）として取り出す。
     ///
     /// バイト列をそのまま返すため、非UTF-8 バイトを含む名前も忠実に扱える。
+    #[must_use]
     pub fn as_bytes(&self) -> &[u8] {
         &self.0
     }
@@ -39,6 +41,7 @@ impl PdfName {
     ///
     /// UTF-8 として解釈できる場合のみ `Some(&str)` を返し、非UTF-8 バイトを含む
     /// 場合は `None` を返す（panic しない）。空名は `Some("")` を返す。
+    #[must_use]
     pub fn as_str(&self) -> Option<&str> {
         std::str::from_utf8(&self.0).ok()
     }
