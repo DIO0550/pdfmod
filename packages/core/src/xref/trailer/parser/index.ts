@@ -11,6 +11,8 @@ import {
 } from "../../../pdf/types/byte-offset/index";
 import type { PdfValue, Token, TrailerDict } from "../../../pdf/types/index";
 import { TokenType } from "../../../pdf/types/index";
+import type { Option } from "../../../utils/option";
+import { none, some } from "../../../utils/option";
 import type { Result } from "../../../utils/result/index";
 import { err, ok } from "../../../utils/result/index";
 import { trailerDictBuilder } from "../dict-builder/index";
@@ -54,9 +56,6 @@ function failTrailer(
 }
 
 // --- 内部ヘルパー ---
-
-import type { Option } from "../../../utils/option";
-import { none, some } from "../../../utils/option";
 
 /**
  * hex 文字列を Uint8Array に変換する。奇数長の場合は末尾に 0 をパディングする。
