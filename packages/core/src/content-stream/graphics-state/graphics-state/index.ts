@@ -6,6 +6,7 @@ import { DashPattern } from "../dash-pattern";
 import { LineCap } from "../line-cap";
 import { LineJoin } from "../line-join";
 import { Matrix } from "../matrix";
+import { RenderingIntent } from "../rendering-intent";
 import { TextObject } from "../text-object";
 import { TextState } from "../text-state";
 
@@ -25,6 +26,8 @@ type GraphicsStateFields = {
   readonly fillColorSpace: ColorSpace;
   readonly textState: TextState;
   readonly textObject: TextObject;
+  readonly renderingIntent: RenderingIntent;
+  readonly flatness: number;
 };
 
 /**
@@ -54,6 +57,8 @@ export const GraphicsState = {
    *   fillColorSpace   = DeviceGray
    *   textState        = TextState.create()
    *   textObject       = TextObject.inactive()
+   *   renderingIntent  = RelativeColorimetric
+   *   flatness         = 1.0
    *
    * @returns デフォルト値で初期化された GraphicsState
    */
@@ -72,6 +77,8 @@ export const GraphicsState = {
       fillColorSpace: ColorSpace.deviceGray(),
       textState: TextState.create(),
       textObject: TextObject.inactive(),
+      renderingIntent: RenderingIntent.create("RelativeColorimetric"),
+      flatness: 1.0,
     } as unknown as GraphicsState;
   },
 
@@ -123,6 +130,12 @@ export const GraphicsState = {
         partial.textObject !== undefined
           ? partial.textObject
           : state.textObject,
+      renderingIntent:
+        partial.renderingIntent !== undefined
+          ? partial.renderingIntent
+          : state.renderingIntent,
+      flatness:
+        partial.flatness !== undefined ? partial.flatness : state.flatness,
     } as unknown as GraphicsState;
   },
 } as const;

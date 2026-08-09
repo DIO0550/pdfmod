@@ -22,6 +22,7 @@ use crate::object::stream::PdfStream;
 /// なく、`PdfErrorCode` 同様に用途上不要）。よって derive は `Debug, Clone,
 /// PartialEq` のみ。
 #[derive(Debug, Clone, PartialEq)]
+#[must_use]
 pub enum PdfObject {
     /// null オブジェクト（値の不在）。
     Null,
@@ -71,11 +72,13 @@ impl PdfObject {
     /// `Null` バリアントかどうかを返す述語。
     ///
     /// `Null` のとき `true`、他バリアントでは `false`。
+    #[must_use]
     pub fn is_null(&self) -> bool {
         matches!(self, Self::Null)
     }
 
     /// `Boolean` のとき内部の `bool` を `Some` で取り出す（他は `None`）。
+    #[must_use]
     pub fn as_bool(&self) -> Option<bool> {
         match self {
             Self::Boolean(b) => Some(*b),
@@ -84,6 +87,7 @@ impl PdfObject {
     }
 
     /// `Integer` のとき内部の `i64` を `Some` で取り出す（他は `None`）。
+    #[must_use]
     pub fn as_integer(&self) -> Option<i64> {
         match self {
             Self::Integer(n) => Some(*n),
@@ -92,6 +96,7 @@ impl PdfObject {
     }
 
     /// `Real` のとき内部の `f64` を `Some` で取り出す（他は `None`）。
+    #[must_use]
     pub fn as_real(&self) -> Option<f64> {
         match self {
             Self::Real(r) => Some(*r),
@@ -102,6 +107,7 @@ impl PdfObject {
     /// `String` のとき内部のバイト列を `&[u8]` として `Some` で取り出す（他は `None`）。
     ///
     /// ヒープ保持のため参照返し（`PdfName::as_bytes` と同方針）。
+    #[must_use]
     pub fn as_string_bytes(&self) -> Option<&[u8]> {
         match self {
             Self::String(bytes) => Some(bytes.as_slice()),
@@ -112,6 +118,7 @@ impl PdfObject {
     /// `Name` のとき内部の `PdfName` を `&PdfName` として `Some` で取り出す（他は `None`）。
     ///
     /// ヒープ保持のため参照返し（`PdfName::as_bytes` と同方針）。
+    #[must_use]
     pub fn as_name(&self) -> Option<&PdfName> {
         match self {
             Self::Name(name) => Some(name),
@@ -122,6 +129,7 @@ impl PdfObject {
     /// `Array` のとき内部の要素列を `&[PdfObject]` として `Some` で取り出す（他は `None`）。
     ///
     /// ヒープ保持のため参照返し（`as_string_bytes` の `as_slice()` と同方針）。
+    #[must_use]
     pub fn as_array(&self) -> Option<&[PdfObject]> {
         match self {
             Self::Array(items) => Some(items.as_slice()),
@@ -132,6 +140,7 @@ impl PdfObject {
     /// `Dictionary` のとき内部の `PdfDictionary` を `&PdfDictionary` として `Some` で取り出す（他は `None`）。
     ///
     /// ヒープ保持のため参照返し（`as_name` の `&PdfName` 返しと同方針）。
+    #[must_use]
     pub fn as_dictionary(&self) -> Option<&PdfDictionary> {
         match self {
             Self::Dictionary(dict) => Some(dict),
@@ -142,6 +151,7 @@ impl PdfObject {
     /// `Stream` のとき内部の `PdfStream` を `&PdfStream` として `Some` で取り出す（他は `None`）。
     ///
     /// ヒープ保持のため参照返し（`as_dictionary` の `&PdfDictionary` 返しと同方針）。
+    #[must_use]
     pub fn as_stream(&self) -> Option<&PdfStream> {
         match self {
             Self::Stream(stream) => Some(stream),
@@ -152,6 +162,7 @@ impl PdfObject {
     /// `Reference` のとき内部の `IndirectRef` を `Some` で取り出す（他は `None`）。
     ///
     /// `IndirectRef` は `Copy` なので値返し（`as_bool`/`as_integer` と同方針）。
+    #[must_use]
     pub fn as_reference(&self) -> Option<IndirectRef> {
         match self {
             Self::Reference(r) => Some(*r),

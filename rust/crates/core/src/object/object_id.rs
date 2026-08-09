@@ -15,6 +15,7 @@ use crate::object::object_number::ObjectNumber;
 /// 「object_number を第 1 キー、generation_number を第 2 キー」とする辞書順になる。
 /// 値ラッパであり `Copy`。等価・順序・ハッシュは両フィールド（内部の `u64`/`u16`）に依存する。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[must_use]
 pub struct ObjectId {
     object_number: ObjectNumber,
     generation_number: GenerationNumber,

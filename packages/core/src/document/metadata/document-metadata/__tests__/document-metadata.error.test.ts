@@ -3,6 +3,7 @@ import type { PdfWarning } from "../../../../pdf/errors/warning/index";
 import { GenerationNumber } from "../../../../pdf/types/generation-number/index";
 import { ObjectNumber } from "../../../../pdf/types/object-number/index";
 import type { PdfValue } from "../../../../pdf/types/pdf-types/index";
+import { none } from "../../../../utils/option";
 import { parseTrappedName, summarizePdfValue } from "../../document-metadata";
 
 const makeName = (value: string): PdfValue => ({ type: "name", value });
@@ -36,10 +37,10 @@ test.each([
   expect(summarizePdfValue(value)).toBe(expected);
 });
 
-test("parseTrappedName: /Trapped Name 'Yes' は undefined + TRAPPED_INVALID", () => {
+test("/Trapped Name 'Yes' は none + TRAPPED_INVALID", () => {
   const warnings: PdfWarning[] = [];
   const result = parseTrappedName(makeName("Yes"), warnings);
-  expect(result).toBeUndefined();
+  expect(result).toEqual(none);
   expect(warnings).toHaveLength(1);
   expect(warnings[0].code).toBe("TRAPPED_INVALID");
 });
@@ -48,23 +49,23 @@ test.each([
   ["true"],
   ["false"],
   ["unknown"],
-])("parseTrappedName: /Trapped Name '%s' (小文字) は undefined + TRAPPED_INVALID（大文字小文字を区別する）", (lowercase) => {
+])("/Trapped Name '%s' (小文字) は none + TRAPPED_INVALID（大文字小文字を区別する）", (lowercase) => {
   const warnings: PdfWarning[] = [];
   const result = parseTrappedName(makeName(lowercase), warnings);
-  expect(result).toBeUndefined();
+  expect(result).toEqual(none);
   expect(warnings).toHaveLength(1);
   expect(warnings[0].code).toBe("TRAPPED_INVALID");
 });
 
-test("parseTrappedName: /Trapped Name '' (空文字) は undefined + TRAPPED_INVALID", () => {
+test("/Trapped Name '' (空文字) は none + TRAPPED_INVALID", () => {
   const warnings: PdfWarning[] = [];
   const result = parseTrappedName(makeName(""), warnings);
-  expect(result).toBeUndefined();
+  expect(result).toEqual(none);
   expect(warnings).toHaveLength(1);
   expect(warnings[0].code).toBe("TRAPPED_INVALID");
 });
 
-test("parseTrappedName: /Trapped が PdfString のとき undefined + TRAPPED_INVALID（メッセージに type と値要約を含む）", () => {
+test("/Trapped が PdfString のとき none + TRAPPED_INVALID（メッセージに type と値要約を含む）", () => {
   const warnings: PdfWarning[] = [];
   const stringValue: PdfValue = {
     type: "string",
@@ -72,7 +73,7 @@ test("parseTrappedName: /Trapped が PdfString のとき undefined + TRAPPED_INV
     encoding: "literal",
   };
   const result = parseTrappedName(stringValue, warnings);
-  expect(result).toBeUndefined();
+  expect(result).toEqual(none);
   expect(warnings).toHaveLength(1);
   expect(warnings[0].code).toBe("TRAPPED_INVALID");
   expect(warnings[0].message).toContain("string");
@@ -80,22 +81,22 @@ test("parseTrappedName: /Trapped が PdfString のとき undefined + TRAPPED_INV
   expect(warnings[0].message).toContain("enc=literal");
 });
 
-test("parseTrappedName: /Trapped が PdfBoolean のとき undefined + TRAPPED_INVALID（メッセージに type と値を含む）", () => {
+test("/Trapped が PdfBoolean のとき none + TRAPPED_INVALID（メッセージに type と値を含む）", () => {
   const warnings: PdfWarning[] = [];
   const boolValue: PdfValue = { type: "boolean", value: true };
   const result = parseTrappedName(boolValue, warnings);
-  expect(result).toBeUndefined();
+  expect(result).toEqual(none);
   expect(warnings).toHaveLength(1);
   expect(warnings[0].code).toBe("TRAPPED_INVALID");
   expect(warnings[0].message).toContain("boolean");
   expect(warnings[0].message).toContain("true");
 });
 
-test("parseTrappedName: /Trapped が PdfInteger のとき undefined + TRAPPED_INVALID（メッセージに type と値を含む）", () => {
+test("/Trapped が PdfInteger のとき none + TRAPPED_INVALID（メッセージに type と値を含む）", () => {
   const warnings: PdfWarning[] = [];
   const intValue: PdfValue = { type: "integer", value: 1 };
   const result = parseTrappedName(intValue, warnings);
-  expect(result).toBeUndefined();
+  expect(result).toEqual(none);
   expect(warnings).toHaveLength(1);
   expect(warnings[0].code).toBe("TRAPPED_INVALID");
   expect(warnings[0].message).toContain("integer");
@@ -120,10 +121,10 @@ test.each([
     } as PdfValue,
     "<ref 1 0>",
   ],
-])("parseTrappedName: /Trapped が %s のとき undefined + TRAPPED_INVALID（メッセージに type と値要約を含む）", (type, value, expectedSubstr) => {
+])("/Trapped が %s のとき none + TRAPPED_INVALID（メッセージに type と値要約を含む）", (type, value, expectedSubstr) => {
   const warnings: PdfWarning[] = [];
   const result = parseTrappedName(value, warnings);
-  expect(result).toBeUndefined();
+  expect(result).toEqual(none);
   expect(warnings).toHaveLength(1);
   expect(warnings[0].code).toBe("TRAPPED_INVALID");
   expect(warnings[0].message).toContain(type);

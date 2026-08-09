@@ -11,6 +11,7 @@ use std::fmt;
 /// 内部表現は `u64`（docs/specs/01_lexical_conventions.md §4.4 の u32 とは意図的に乖離。Issue #255 指定）。
 /// 値ラッパであり `Copy`。等価・順序・ハッシュは内部 `u64` の自然な振る舞いに従う。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[must_use]
 pub struct ObjectNumber(u64);
 
 impl ObjectNumber {
@@ -22,6 +23,7 @@ impl ObjectNumber {
     }
 
     /// 内部のオブジェクト番号を `u64` として取り出す。
+    #[must_use]
     pub fn value(&self) -> u64 {
         self.0
     }
