@@ -12,7 +12,7 @@ import { closeSubpathContext } from "../close-subpath";
  * append した新しい GraphicsState を生成する (ISO 32000-1:2008 §8.5.2)。
  * close 処理そのものは `s` / `b` / `b*` と共通のため `closeSubpathContext`
  * に集約している。`h` は引数を取らないオペレータのため、operand stack に値が
- * pop / 検証 / clear のいずれも行わず、同一参照のまま返す。
+ * 残っていても pop / 検証 / clear のいずれも行わず、同一参照のまま返す。
  *
  * - operand 数: 0 (operand stack を一切参照しない)
  * - current path が空 (current point 未確立) の場合は no-op で同一 context を返す。
