@@ -60,6 +60,9 @@ function failXRefTable(
 /**
  * 固定桁数の10進数をパースする。
  *
+ * 【例外規定】ホットループ（xref テーブル行のパース）内でアロケーションを回避するため、
+ * `Option<number>` ではなく `number | undefined` を返却する規約を採用している。
+ *
  * @param data - PDFバイト配列
  * @param pos - パース開始位置
  * @param digitCount - 読み取る桁数
@@ -86,6 +89,9 @@ function parseDecimalDigits(
 
 /**
  * EOL パターンを検出し消費バイト数を返す。
+ *
+ * 【例外規定】ホットループ（xref テーブル行のパース）内でアロケーションを回避するため、
+ * `Option<number>` ではなく `number | undefined` を返却する規約を採用している。
  *
  * @param data - PDFバイト配列
  * @param pos - EOL 検出開始位置
