@@ -1,3 +1,6 @@
+import type { Option } from "../../../utils/option";
+import { none, some } from "../../../utils/option";
+
 /**
  * `D:YYYY[MM[DD[HH[mm[SS]]]]][TZ]` 形式の PDF 日時文字列の各成分を保持する。
  *
@@ -238,19 +241,19 @@ const tzOffsetMs = (sign: "+" | "-", tzHour: number, tzMin: number): number => {
  *      - `Z` は UTC 時刻として構築
  *      - `±HH'mm'` は UTC へオフセット補正
  *
- * 警告 push は本関数では行わず、戻り値が `undefined` のとき呼び出し側で
+ * 警告 push は本関数では行わず、戻り値が `none` のとき呼び出し側で
  * `DATE_PARSE_FAILED` 警告を push する設計（pure 関数）。
  *
  * @param raw - PDF 日時文字列
- * @returns 成功時は `Date`、構文・範囲・不在日いずれかで失敗した場合は `undefined`
+ * @returns 成功時は Option.some(Date)、構文・範囲・不在日いずれかで失敗した場合は Option.none
  */
-export const parsePdfDate = (raw: string): Date | undefined => {
+export const parsePdfDate = (raw: string): Option<Date> => {
   if (!raw.startsWith("D:")) {
-    return undefined;
+    return none;
   }
   const parsed = extractDateFields(raw);
   if (parsed === undefined) {
-    return undefined;
+    return none;
   }
   const probeMs = Date.UTC(
     parsed.year,
@@ -261,7 +264,7 @@ export const parsePdfDate = (raw: string): Date | undefined => {
     parsed.sec,
   );
   if (!matchesProbe(parsed, new Date(probeMs))) {
-    return undefined;
+    return none;
   }
   if (parsed.tzSign === undefined) {
     const local = new Date(
@@ -273,14 +276,14 @@ export const parsePdfDate = (raw: string): Date | undefined => {
       parsed.sec,
     );
     if (!matchesLocal(parsed, local)) {
-      return undefined;
+      return none;
     }
-    return local;
+    return some(local);
   }
   if (parsed.tzSign === "Z") {
-    return new Date(probeMs);
+    return some(new Date(probeMs));
   }
-  return new Date(
-    probeMs + tzOffsetMs(parsed.tzSign, parsed.tzHour, parsed.tzMin),
+  return some(
+    new Date(probeMs + tzOffsetMs(parsed.tzSign, parsed.tzHour, parsed.tzMin)),
   );
 };
