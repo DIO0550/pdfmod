@@ -123,4 +123,21 @@ export const CurrentPath = {
       segments: [...segments, moveTo],
     } as unknown as CurrentPath;
   },
+  /**
+   * `h` / `s` / `b` / `b*` operator (ISO 32000-1:2008 §8.5.2, §8.5.3) の
+   * subpath close を表す `PathSegment.close()` を末尾に追加する。
+   *
+   * 空 path の場合は close を追加せず `path` をそのまま返す。無条件に append
+   * すると `isEmpty` が false に転じ、後続の `l` / `c` が依拠する
+   * `NO_CURRENT_POINT` 不変条件が崩れるため。
+   *
+   * @param path - 元の `CurrentPath` (変更されない)
+   * @returns close を追加した新規 `CurrentPath`。空 path なら `path` 自身
+   */
+  closeSubpath(path: CurrentPath): CurrentPath {
+    if (CurrentPath.isEmpty(path)) {
+      return path;
+    }
+    return CurrentPath.append(path, PathSegment.close());
+  },
 } as const;
