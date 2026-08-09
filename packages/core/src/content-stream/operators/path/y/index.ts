@@ -13,30 +13,28 @@ import type {
 } from "../../../operator-registry/index";
 import { NumericPdfObject } from "../../graphics-state/numeric-pdf-object";
 
-const OPERATOR_NAME = "c";
-const OPERAND_COUNT = 6;
+const OPERATOR_NAME = "y";
+const OPERAND_COUNT = 4;
 
 /**
- * PDF §8.5.2 `c` operator (cubic Bezier curve) のハンドラ。
+ * PDF §8.5.2.3 `y` operator (第 2 制御点 = 終点の 3 次 Bezier) のハンドラ。
  *
- * operand stack から `x1 y1 x2 y2 x3 y3` の 6 個の数値を pop し、
- * `PathSegment.curveTo(x1, y1, x2, y2, x3, y3)` を current path の末尾に append した
- * 新しい GraphicsState を生成する (ISO 32000-1:2008 §8.5.2)。
- * append 後の current point は追加された curveTo segment の終点 `(x3, y3)` として
- * 後続処理で解釈される (現行データモデルでは明示的 current point フィールドは持たない)。
+ * operand stack から `x1 y1 x3 y3` の 4 個の数値を pop し、
+ * `PathSegment.curveTo(x1, y1, x3, y3, x3, y3)` を current path の末尾に append した
+ * 新しい GraphicsState を生成する。
  *
- * - operand 不足 (< 6) のとき `OPERATOR_OPERAND_MISSING` を返す
- *   `actual` には pop に成功した個数 (0..5) を入れる
+ * current point の座標値は使わないが、§8.5.2.3 上 current point の確立は必須である。
+ *
+ * - operand 不足 (< 4) のとき `OPERATOR_OPERAND_MISSING` を返す
  * - operand に integer / real 以外が混在したとき `OPERATOR_OPERAND_TYPE_MISMATCH` を返す
- * - current point が未確立 (`CurrentPath.lastPoint` が `none`) の場合
- *   `OPERATOR_PATH_NO_CURRENT_POINT` を返す (§8.5.2: `c` は current point から伸ばす)
+ * - current point が未確立の場合 `OPERATOR_PATH_NO_CURRENT_POINT` を返す
  * - 値域 (`NaN` / `Infinity` / 負値 / 0) は本 handler では検証せずそのまま格納する
- * - エラー時に operand stack の部分消費は復元しない (既存 cm / m / l handler 規約)
+ * - エラー時に operand stack の部分消費は復元しない
  *
  * @param context - 実行コンテキスト (operand stack / graphics state stack)
  * @returns 成功なら更新後コンテキスト、失敗なら PdfError
  */
-export const cHandler: OperatorHandler = (context: OperatorHandlerContext) => {
+export const yHandler: OperatorHandler = (context: OperatorHandlerContext) => {
   const popped: NumericPdfObject[] = [];
   for (let i = 0; i < OPERAND_COUNT; i++) {
     const result = OperandStack.pop(context.operandStack);
@@ -64,8 +62,8 @@ export const cHandler: OperatorHandler = (context: OperatorHandlerContext) => {
     popped.push(operand);
   }
 
-  // popped は LIFO 順 [y3, x3, y2, x2, y1, x1]。reverse して PDF 順 [x1, y1, x2, y2, x3, y3] に戻す
-  const [x1, y1, x2, y2, x3, y3] = popped
+  // popped は LIFO 順 [y3, x3, y1, x1]。reverse して PDF 順に戻す
+  const [x1, y1, x3, y3] = popped
     .slice()
     .reverse()
     .map((operand) => operand.value);
@@ -82,7 +80,7 @@ export const cHandler: OperatorHandler = (context: OperatorHandlerContext) => {
   }
   const nextPath = CurrentPath.append(
     current.currentPath,
-    PathSegment.curveTo(x1, y1, x2, y2, x3, y3),
+    PathSegment.curveTo(x1, y1, x3, y3, x3, y3),
   );
   const next = GraphicsState.update(current, { currentPath: nextPath });
   const graphicsStateStack = GraphicsStateStack.replaceCurrent(

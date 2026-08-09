@@ -1,6 +1,7 @@
 import { NumberEx } from "../../../ext/number/index";
 import type { Brand } from "../../../utils/brand/index";
-import type { MoveToSegment, PathSegment } from "../path-segment";
+import { none, type Option, some } from "../../../utils/option/index";
+import { type MoveToSegment, PathSegment } from "../path-segment";
 
 declare const CurrentPathBrand: unique symbol;
 
@@ -14,6 +15,27 @@ type CurrentPathFields = {
  * append は元 path を変更せず、新しい `CurrentPath` を返す。
  */
 export type CurrentPath = Brand<CurrentPathFields, typeof CurrentPathBrand>;
+
+/**
+ * `close` segment の直前まで後方走査し、その subpath を開始した
+ * `moveTo` / `rect` の座標を返す。
+ *
+ * @param segments - 走査対象の segment 列
+ * @param closeIndex - 起点となる `close` segment の index
+ * @returns subpath 開始点。開始 segment が見つからなければ `none`
+ */
+const subpathStartPoint = (
+  segments: ReadonlyArray<PathSegment>,
+  closeIndex: number,
+): Option<{ x: number; y: number }> => {
+  for (let i = closeIndex - 1; i >= 0; i--) {
+    const segment = segments[i];
+    if (PathSegment.isMoveTo(segment) || PathSegment.isRect(segment)) {
+      return some({ x: segment.x, y: segment.y });
+    }
+  }
+  return none;
+};
 
 export const CurrentPath = {
   /**
@@ -46,6 +68,36 @@ export const CurrentPath = {
    */
   isEmpty(path: CurrentPath): boolean {
     return path.segments.length === 0;
+  },
+  /**
+   * current point (末尾 segment の終点) を返す。
+   *
+   * `close` の場合は直近の subpath 開始 segment (`moveTo` / `rect`) まで遡る。
+   *
+   * @param path - 対象の `CurrentPath`
+   * @returns current point。未確立なら `none`
+   */
+  lastPoint(path: CurrentPath): Option<{ x: number; y: number }> {
+    const segments = path.segments;
+    const lastIndex = segments.length - 1;
+    if (!NumberEx.isSafeIntegerAtLeastZero(lastIndex)) {
+      return none;
+    }
+    const last = segments[lastIndex];
+    switch (last.kind) {
+      case "moveTo":
+      case "lineTo":
+      case "rect":
+        return some({ x: last.x, y: last.y });
+      case "curveTo":
+        return some({ x: last.x3, y: last.y3 });
+      case "close":
+        return subpathStartPoint(segments, lastIndex);
+      default: {
+        const unreachable: never = last;
+        return unreachable;
+      }
+    }
   },
   /**
    * `m` operator (ISO 32000-1:2008 §8.5.2) で新しい subpath を開始する。
