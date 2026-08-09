@@ -13,12 +13,16 @@ import {
   registerPathOperators,
   reHandler,
   strokeHandler,
+  vHandler,
+  yHandler,
 } from "../../path-operators";
 
 test.each<readonly [string, OperatorHandler]>([
   ["m", mHandler],
   ["l", lHandler],
   ["c", cHandler],
+  ["v", vHandler],
+  ["y", yHandler],
   ["h", hHandler],
   ["re", reHandler],
   ["S", strokeHandler],

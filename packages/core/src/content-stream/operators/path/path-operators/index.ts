@@ -11,6 +11,8 @@ import { lHandler } from "../l";
 import { mHandler } from "../m";
 import { reHandler } from "../re";
 import { strokeHandler } from "../stroke";
+import { vHandler } from "../v";
+import { yHandler } from "../y";
 
 export { cHandler } from "../c";
 export { fillHandler } from "../fill";
@@ -20,11 +22,15 @@ export { lHandler } from "../l";
 export { mHandler } from "../m";
 export { reHandler } from "../re";
 export { strokeHandler } from "../stroke";
+export { vHandler } from "../v";
+export { yHandler } from "../y";
 
 const PATH_OPERATORS: ReadonlyArray<readonly [string, OperatorHandler]> = [
   ["m", mHandler],
   ["l", lHandler],
   ["c", cHandler],
+  ["v", vHandler],
+  ["y", yHandler],
   ["h", hHandler],
   ["re", reHandler],
   ["S", strokeHandler],
@@ -33,7 +39,7 @@ const PATH_OPERATORS: ReadonlyArray<readonly [string, OperatorHandler]> = [
 ];
 
 /**
- * Path operator (m / l / c / h / re / S / f / B) を OperatorRegistry に
+ * Path operator (m / l / c / v / y / h / re / S / f / B) を OperatorRegistry に
  * 一括登録するヘルパ。
  *
  * fail-fast: いずれかの register が Err を返した時点で reduce 内 flatMap が
