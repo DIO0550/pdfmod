@@ -1,4 +1,3 @@
-import { expect } from "vitest";
 import type { PdfError } from "../../../../pdf/errors/error/index";
 import { GenerationNumber } from "../../../../pdf/types/generation-number/index";
 import { ObjectNumber } from "../../../../pdf/types/object-number/index";
@@ -17,17 +16,6 @@ const BOM_BYTE_1 = 0xff;
 const BYTES_PER_CHAR_CODE = 2;
 const HIGH_BYTE_SHIFT = 8;
 const BYTE_MASK = 0xff;
-
-/**
- * Result が Ok であることを `expect` で保証し、値を返す（テスト専用ヘルパ）。
- *
- * @param result - 検査対象
- * @returns 成功値
- */
-export const unwrapOk = <T>(result: Result<T, unknown>): T => {
-  expect(result.ok).toBe(true);
-  return (result as { ok: true; value: T }).value;
-};
 
 /**
  * ブランド付き `IndirectRef` を手軽に作るヘルパ。
