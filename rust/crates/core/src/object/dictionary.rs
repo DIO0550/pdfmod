@@ -20,6 +20,7 @@ use crate::object::{name::PdfName, pdf_object::PdfObject};
 /// `Eq` は値型 `PdfObject` が `Real(f64)`（`NaN != NaN`）のため `Eq` を実装しておらず、
 /// `PdfDictionary` にも `Eq` は付与できない。等価比較は `PartialEq` で行う。
 #[derive(Debug, Clone, PartialEq, Default)]
+#[must_use]
 pub struct PdfDictionary(BTreeMap<PdfName, PdfObject>);
 
 impl PdfDictionary {
@@ -29,6 +30,7 @@ impl PdfDictionary {
     }
 
     /// キーに対応する値への参照を取り出す。未登録なら `None`（`Result` ではなく `Option`）。
+    #[must_use]
     pub fn get(&self, key: &PdfName) -> Option<&PdfObject> {
         self.0.get(key)
     }
@@ -40,16 +42,19 @@ impl PdfDictionary {
     }
 
     /// 登録エントリ件数を返す。
+    #[must_use]
     pub fn len(&self) -> usize {
         self.0.len()
     }
 
     /// 辞書が空（件数 0）かどうかを返す。
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
 
     /// 指定キーが登録済みかどうかを返す。
+    #[must_use]
     pub fn contains_key(&self, key: &PdfName) -> bool {
         self.0.contains_key(key)
     }

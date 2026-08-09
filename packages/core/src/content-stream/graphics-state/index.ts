@@ -12,6 +12,7 @@ export { GraphicsState } from "./graphics-state";
 export { LineCap } from "./line-cap";
 export { LineJoin } from "./line-join";
 export { Matrix } from "./matrix";
+export { RenderingIntent } from "./rendering-intent";
 export { GraphicsStateStack } from "./stack";
 export { TextObject } from "./text-object";
 export { TextRenderingMode } from "./text-rendering-mode";

@@ -17,6 +17,7 @@ use crate::object::dictionary::PdfDictionary;
 /// 薄いため `Default` も付けない（複合 struct の前例 `ObjectId`/`IndirectRef` と
 /// 同方針）。よって derive は `Debug, Clone, PartialEq` のみ。
 #[derive(Debug, Clone, PartialEq)]
+#[must_use]
 pub struct PdfStream {
     dictionary: PdfDictionary,
     data: Vec<u8>,
@@ -47,6 +48,7 @@ impl PdfStream {
     /// 生バイト列（復号前）への参照を取り出す。
     ///
     /// ヒープ保持のため参照返し（`PdfName::as_bytes` と同方針）。
+    #[must_use]
     pub fn data(&self) -> &[u8] {
         &self.data
     }

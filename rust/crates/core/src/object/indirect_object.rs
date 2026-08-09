@@ -17,6 +17,7 @@ use crate::object::pdf_object::PdfObject;
 /// 同型テンプレートは `stream.rs` の `PdfStream`（非 Copy・2 フィールド・ヒープ保持・
 /// 同一 derive・参照返しアクセサ）。`IndirectRef` は単一フィールド・`Copy` 付きで構造が遠い。
 #[derive(Debug, Clone, PartialEq)]
+#[must_use]
 pub struct IndirectObject {
     id: ObjectId,
     object: PdfObject,

@@ -11,6 +11,8 @@ import {
 } from "../../../pdf/types/byte-offset/index";
 import type { PdfValue, Token, TrailerDict } from "../../../pdf/types/index";
 import { TokenType } from "../../../pdf/types/index";
+import type { Option } from "../../../utils/option";
+import { none, some } from "../../../utils/option";
 import type { Result } from "../../../utils/result/index";
 import { err, ok } from "../../../utils/result/index";
 import { trailerDictBuilder } from "../dict-builder/index";
@@ -59,11 +61,11 @@ function failTrailer(
  * hex 文字列を Uint8Array に変換する。奇数長の場合は末尾に 0 をパディングする。
  *
  * @param hex - 16進文字列
- * @returns 変換されたバイト配列、または不正文字を含む場合は `undefined`
+ * @returns 変換されたバイト配列、または不正文字を含む場合は Option.none
  */
-function hexStringToBytes(hex: string): Uint8Array | undefined {
+function hexStringToBytes(hex: string): Option<Uint8Array> {
   if (!/^[0-9A-Fa-f]*$/.test(hex)) {
-    return undefined;
+    return none;
   }
 
   const padded = hex.length % 2 === 1 ? `${hex}0` : hex;
@@ -72,26 +74,26 @@ function hexStringToBytes(hex: string): Uint8Array | undefined {
     bytes[i / 2] = parseInt(padded.substring(i, i + 2), 16);
   }
 
-  return bytes;
+  return some(bytes);
 }
 
 /**
  * リテラル文字列の各文字をバイト値として Uint8Array に変換する。
  *
  * @param str - リテラル文字列
- * @returns 変換されたバイト配列、または範囲外の code unit を含む場合は `undefined`
+ * @returns 変換されたバイト配列、または範囲外の code unit を含む場合は Option.none
  */
-function literalStringToBytes(str: string): Uint8Array | undefined {
+function literalStringToBytes(str: string): Option<Uint8Array> {
   const bytes = new Uint8Array(str.length);
   for (let i = 0; i < str.length; i++) {
     const codeUnit = str.charCodeAt(i);
     if (codeUnit > MAX_BYTE_VALUE) {
-      return undefined;
+      return none;
     }
     bytes[i] = codeUnit;
   }
 
-  return bytes;
+  return some(bytes);
 }
 
 /**
@@ -332,8 +334,8 @@ function readValue(
         offset,
       });
     case TokenType.HexString: {
-      const hexBytes = hexStringToBytes(firstToken.value);
-      if (!hexBytes) {
+      const hexBytesOpt = hexStringToBytes(firstToken.value);
+      if (!hexBytesOpt.some) {
         return err({
           code: "XREF_TABLE_INVALID",
           message: "invalid hex string: contains non-hex characters",
@@ -343,15 +345,15 @@ function readValue(
       return ok({
         value: {
           type: "string",
-          value: hexBytes,
+          value: hexBytesOpt.value,
           encoding: "hex" as const,
         },
         offset,
       });
     }
     case TokenType.LiteralString: {
-      const litBytes = literalStringToBytes(firstToken.value);
-      if (!litBytes) {
+      const litBytesOpt = literalStringToBytes(firstToken.value);
+      if (!litBytesOpt.some) {
         return err({
           code: "XREF_TABLE_INVALID",
           message:
@@ -362,7 +364,7 @@ function readValue(
       return ok({
         value: {
           type: "string",
-          value: litBytes,
+          value: litBytesOpt.value,
           encoding: "literal" as const,
         },
         offset,

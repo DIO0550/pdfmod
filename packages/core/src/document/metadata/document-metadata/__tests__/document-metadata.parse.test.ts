@@ -1,6 +1,7 @@
 import { expect, test } from "vitest";
 import type { PdfWarning } from "../../../../pdf/errors/warning/index";
 import type { PdfValue } from "../../../../pdf/types/pdf-types/index";
+import { none } from "../../../../utils/option";
 import { PdfTrapped, parseTrappedName } from "../../document-metadata";
 
 const makeName = (value: string): PdfValue => ({ type: "name", value });
@@ -12,16 +13,19 @@ test.each([
 ])("/Trapped Name '%s' は PdfTrapped '%s' に解釈される", (literal) => {
   const warnings: PdfWarning[] = [];
   const result = parseTrappedName(makeName(literal), warnings);
-  expect(PdfTrapped.create(literal)).toStrictEqual({
-    ok: true,
-    value: result,
-  });
+  expect(result.some).toBe(true);
+  if (result.some) {
+    expect(PdfTrapped.create(literal)).toStrictEqual({
+      ok: true,
+      value: result.value,
+    });
+  }
   expect(warnings).toHaveLength(0);
 });
 
-test("/Trapped 値が未指定（undefined）の場合は undefined（警告なし）", () => {
+test("/Trapped 値が未指定（undefined）の場合は none（警告なし）", () => {
   const warnings: PdfWarning[] = [];
   const result = parseTrappedName(undefined, warnings);
-  expect(result).toBeUndefined();
+  expect(result).toEqual(none);
   expect(warnings).toHaveLength(0);
 });

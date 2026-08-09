@@ -5,6 +5,8 @@ import type {
   TrailerDict,
 } from "../../../pdf/types/pdf-types/index";
 import { stripUndefined } from "../../../utils/object";
+import type { Option } from "../../../utils/option";
+import { none, unwrapOr } from "../../../utils/option";
 import type { ResolveRef } from "../../catalog/catalog-parser";
 import { parsePdfDate } from "../../date/pdf-date";
 import { decodePdfString } from "../../encoding/decode-pdf-string";
@@ -33,30 +35,30 @@ const EMPTY_METADATA: DocumentMetadata = Object.freeze({});
  * テキストフィールド共通リーダ。値の型チェックと {@link decodePdfString} 呼び出しを束ねる。
  *
  * 分岐:
- *  - 値が `undefined` → `undefined`（警告なし、未指定扱い）
- *  - 値が PdfString 以外 → `undefined` + `STRING_DECODE_FAILED` 警告
- *  - 値が PdfString → `decodePdfString` に委譲
+ *  - 値が `undefined` → `none`（警告なし、未指定扱い）
+ *  - 値が PdfString 以外 → `none` + `STRING_DECODE_FAILED` 警告
+ *  - 値が PdfString → `decodePdfString` に委譲 (Option<string>)
  *
  * @param entries - /Info 辞書のエントリ
  * @param key - 取得するキー（例: `"Title"`）
  * @param warnings - 警告蓄積先（mutable）
- * @returns 復号成功時は文字列、それ以外は `undefined`
+ * @returns 復号成功時は Option.some(string)、それ以外は Option.none
  */
 const readStringField = (
   entries: Map<string, PdfValue>,
   key: string,
   warnings: PdfWarning[],
-): string | undefined => {
+): Option<string> => {
   const value = entries.get(key);
   if (value === undefined) {
-    return undefined;
+    return none;
   }
   if (value.type !== "string") {
     warnings.push({
       code: "STRING_DECODE_FAILED",
       message: `/${key} expected PdfString but got ${value.type}`,
     });
-    return undefined;
+    return none;
   }
   return decodePdfString(value, key, warnings);
 };
@@ -64,57 +66,57 @@ const readStringField = (
 /**
  * 日時フィールド共通リーダ。値の型チェック → 文字列復号 → {@link parsePdfDate} を束ねる。
  *
- * `parsePdfDate` は警告 push を行わない pure 関数なので、`undefined` を検出した時点で
+ * `parsePdfDate` は警告 push を行わない pure 関数なので、`none` を検出した時点で
  * 本リーダ（caller）が `DATE_PARSE_FAILED` 警告を push する（review-002 反映）。
  *
  * 分岐:
- *  - 値が `undefined` → `undefined`（警告なし、未指定扱い）
- *  - 値が PdfString 以外 → `undefined` + `DATE_PARSE_FAILED` 警告
- *  - 文字列復号失敗 → `undefined`（警告は decodePdfString 側で push 済み）
- *  - 日時パース失敗 → `undefined` + `DATE_PARSE_FAILED` 警告
+ *  - 値が `undefined` → `none`（警告なし、未指定扱い）
+ *  - 値が PdfString 以外 → `none` + `DATE_PARSE_FAILED` 警告
+ *  - 文字列復号失敗 → `none`（警告は decodePdfString 側で push 済み）
+ *  - 日時パース失敗 → `none` + `DATE_PARSE_FAILED` 警告
  *
  * @param entries - /Info 辞書のエントリ
  * @param key - 取得するキー（例: `"CreationDate"`）
  * @param warnings - 警告蓄積先（mutable）
- * @returns パース成功時は `Date`、それ以外は `undefined`
+ * @returns パース成功時は Option.some(Date)、それ以外は Option.none
  */
 const readDateField = (
   entries: Map<string, PdfValue>,
   key: string,
   warnings: PdfWarning[],
-): Date | undefined => {
+): Option<Date> => {
   const value = entries.get(key);
   if (value === undefined) {
-    return undefined;
+    return none;
   }
   if (value.type !== "string") {
     warnings.push({
       code: "DATE_PARSE_FAILED",
       message: `/${key} expected PdfString but got ${value.type}`,
     });
-    return undefined;
+    return none;
   }
-  const raw = decodePdfString(value, key, warnings);
-  if (raw === undefined) {
-    return undefined;
+  const rawOpt = decodePdfString(value, key, warnings);
+  if (!rawOpt.some) {
+    return none;
   }
-  const parsed = parsePdfDate(raw);
-  if (parsed === undefined) {
+  const parsedOpt = parsePdfDate(rawOpt.value);
+  if (!parsedOpt.some) {
     warnings.push({
       code: "DATE_PARSE_FAILED",
-      message: `/${key} failed to parse PDF date ${JSON.stringify(raw)}; expected pattern D:YYYYMMDDHHmmSSOHH'mm'`,
+      message: `/${key} failed to parse PDF date ${JSON.stringify(rawOpt.value)}; expected pattern D:YYYYMMDDHHmmSSOHH'mm'`,
     });
-    return undefined;
+    return none;
   }
-  return parsed;
+  return parsedOpt;
 };
 
 /**
  * `/Info` 辞書から 9 フィールドを抽出して {@link DocumentMetadata} に詰め直す。
  *
  * テキスト 6 フィールド・日時 2 フィールド・Trapped を、それぞれ
- * `readStringField` / `readDateField` / `parseTrappedName` に委譲する。
- * 値が `undefined` のフィールドはオブジェクトに含めない（PR #98 review 反映）。
+ * `readStringField` / `readDateField` / `parseTrappedName` に委譲し、
+ * `unwrapOr(opt, undefined)` で展開後、`stripUndefined` でプロパティ非存在化する。
  *
  * @param dict - 解決済みの `/Info` 辞書
  * @param warnings - 警告蓄積先（mutable）
@@ -126,15 +128,18 @@ const extractMetadata = (
 ): DocumentMetadata => {
   const e = dict.entries;
   return stripUndefined<DocumentMetadata>({
-    title: readStringField(e, "Title", warnings),
-    author: readStringField(e, "Author", warnings),
-    subject: readStringField(e, "Subject", warnings),
-    keywords: readStringField(e, "Keywords", warnings),
-    creator: readStringField(e, "Creator", warnings),
-    producer: readStringField(e, "Producer", warnings),
-    creationDate: readDateField(e, "CreationDate", warnings),
-    modDate: readDateField(e, "ModDate", warnings),
-    trapped: parseTrappedName(e.get("Trapped"), warnings),
+    title: unwrapOr(readStringField(e, "Title", warnings), undefined),
+    author: unwrapOr(readStringField(e, "Author", warnings), undefined),
+    subject: unwrapOr(readStringField(e, "Subject", warnings), undefined),
+    keywords: unwrapOr(readStringField(e, "Keywords", warnings), undefined),
+    creator: unwrapOr(readStringField(e, "Creator", warnings), undefined),
+    producer: unwrapOr(readStringField(e, "Producer", warnings), undefined),
+    creationDate: unwrapOr(
+      readDateField(e, "CreationDate", warnings),
+      undefined,
+    ),
+    modDate: unwrapOr(readDateField(e, "ModDate", warnings), undefined),
+    trapped: unwrapOr(parseTrappedName(e.get("Trapped"), warnings), undefined),
   });
 };
 
