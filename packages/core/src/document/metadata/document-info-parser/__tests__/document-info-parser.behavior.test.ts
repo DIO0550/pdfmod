@@ -15,7 +15,6 @@ import {
   makeResolverWithInfo,
   makeTrailerNoInfo,
   makeTrailerWithInfo,
-  unwrapOk,
   utf16BeString,
 } from "./document-info-parser.test.helpers";
 
@@ -28,7 +27,7 @@ const failingResolver = (
 test("/Info が trailer に無い場合は空 metadata と空 warnings を返し resolver を呼ばない", async () => {
   const resolver = vi.fn();
   const result = await DocumentInfoParser.parse(makeTrailerNoInfo(), resolver);
-  const { metadata, warnings } = unwrapOk(result);
+  const { metadata, warnings } = result;
   expect(metadata).toEqual({});
   expect(warnings).toHaveLength(0);
   expect(resolver).not.toHaveBeenCalled();
@@ -41,7 +40,7 @@ test("/Info に ASCII Title のみがある場合 metadata.title が抽出され
     makeTrailerWithInfo(makeRef(2)),
     resolver,
   );
-  const { metadata, warnings } = unwrapOk(result);
+  const { metadata, warnings } = result;
   expect(metadata.title).toBe("Hello");
   expect(warnings).toHaveLength(0);
 });
@@ -59,7 +58,7 @@ test("/Info の Title / Author / Subject / Keywords / Creator / Producer が全�
     makeTrailerWithInfo(makeRef(2)),
     makeResolverWithInfo(dict),
   );
-  const { metadata, warnings } = unwrapOk(result);
+  const { metadata, warnings } = result;
   expect(metadata.title).toBe("MyTitle");
   expect(metadata.author).toBe("Alice");
   expect(metadata.subject).toBe("Subject1");
@@ -75,7 +74,7 @@ test("/Title が UTF-16BE BOM 付き多言語文字列の場合に正しくデ�
     makeTrailerWithInfo(makeRef(2)),
     makeResolverWithInfo(dict),
   );
-  const { metadata } = unwrapOk(result);
+  const { metadata } = result;
   expect(metadata.title).toBe("日本語");
 });
 
@@ -85,7 +84,7 @@ test("/Title が UTF-16BE 補助平面 🚀 を含む場合に正しくデコー
     makeTrailerWithInfo(makeRef(2)),
     makeResolverWithInfo(dict),
   );
-  const { metadata } = unwrapOk(result);
+  const { metadata } = result;
   expect(metadata.title).toBe("🚀 Launch");
 });
 
@@ -107,7 +106,7 @@ test.each(
     makeTrailerWithInfo(makeRef(2)),
     makeResolverWithInfo(dict),
   );
-  const { metadata, warnings } = unwrapOk(result);
+  const { metadata, warnings } = result;
   expect(metadata[prop]).toBeUndefined();
   expect(warnings).toHaveLength(1);
   expect(warnings[0].code).toBe("STRING_DECODE_FAILED");
@@ -123,7 +122,7 @@ test("/CreationDate が D:20230615120530+09'00' の場合 UTC 換算 Date が抽
     makeTrailerWithInfo(makeRef(2)),
     makeResolverWithInfo(dict),
   );
-  const { metadata, warnings } = unwrapOk(result);
+  const { metadata, warnings } = result;
   expect(metadata.creationDate).toBeDefined();
   expect((metadata.creationDate as Date).getUTCHours()).toBe(3);
   expect((metadata.creationDate as Date).getUTCMinutes()).toBe(5);
@@ -137,7 +136,7 @@ test("/ModDate が D:20240101000000Z の場合 UTC Date が抽出される", asy
     makeTrailerWithInfo(makeRef(2)),
     makeResolverWithInfo(dict),
   );
-  const { metadata, warnings } = unwrapOk(result);
+  const { metadata, warnings } = result;
   expect(metadata.modDate).toBeDefined();
   expect((metadata.modDate as Date).getUTCFullYear()).toBe(2024);
   expect(warnings).toHaveLength(0);
@@ -149,7 +148,7 @@ test("/CreationDate が不正フォーマット D:abcd の場合 undefined + DAT
     makeTrailerWithInfo(makeRef(2)),
     makeResolverWithInfo(dict),
   );
-  const { metadata, warnings } = unwrapOk(result);
+  const { metadata, warnings } = result;
   expect(metadata.creationDate).toBeUndefined();
   expect(warnings).toHaveLength(1);
   expect(warnings[0].code).toBe("DATE_PARSE_FAILED");
@@ -170,7 +169,7 @@ test.each(
     makeTrailerWithInfo(makeRef(2)),
     makeResolverWithInfo(dict),
   );
-  const { metadata, warnings } = unwrapOk(result);
+  const { metadata, warnings } = result;
   expect(metadata[prop]).toBeUndefined();
   expect(warnings).toHaveLength(1);
   expect(warnings[0].code).toBe("DATE_PARSE_FAILED");
@@ -192,7 +191,7 @@ test.each(
     makeTrailerWithInfo(makeRef(2)),
     makeResolverWithInfo(dict),
   );
-  const { metadata, warnings } = unwrapOk(result);
+  const { metadata, warnings } = result;
   expect(metadata.trapped).toBe(name);
   expect(warnings).toHaveLength(0);
 });
@@ -204,7 +203,7 @@ test("/Trapped が未知 Name 'Yes' の場合 undefined + TRAPPED_INVALID", asyn
     makeTrailerWithInfo(makeRef(2)),
     makeResolverWithInfo(dict),
   );
-  const { metadata, warnings } = unwrapOk(result);
+  const { metadata, warnings } = result;
   expect(metadata.trapped).toBeUndefined();
   expect(warnings).toHaveLength(1);
   expect(warnings[0].code).toBe("TRAPPED_INVALID");
@@ -220,7 +219,7 @@ test("resolver が err を返した場合 INFO_RESOLVE_FAILED + 空 metadata", a
     makeTrailerWithInfo(infoRef),
     resolver,
   );
-  const { metadata, warnings } = unwrapOk(result);
+  const { metadata, warnings } = result;
   expect(metadata).toEqual({});
   expect(warnings).toHaveLength(1);
   expect(warnings[0].code).toBe("INFO_RESOLVE_FAILED");
@@ -238,7 +237,7 @@ test("/Info が dictionary 以外 (stream) に解決された場合 INFO_NOT_DIC
     makeTrailerWithInfo(makeRef(2)),
     makeResolverWithInfo(stream),
   );
-  const { metadata, warnings } = unwrapOk(result);
+  const { metadata, warnings } = result;
   expect(metadata).toEqual({});
   expect(warnings).toHaveLength(1);
   expect(warnings[0].code).toBe("INFO_NOT_DICTIONARY");
@@ -262,7 +261,7 @@ test("/Info に全フィールド（9 件）が揃った場合の統合抽出", 
     makeTrailerWithInfo(makeRef(2)),
     makeResolverWithInfo(dict),
   );
-  const { metadata, warnings } = unwrapOk(result);
+  const { metadata, warnings } = result;
   expect(metadata.title).toBe("MyDoc");
   expect(metadata.author).toBe("Alice");
   expect(metadata.subject).toBe("Sample");
