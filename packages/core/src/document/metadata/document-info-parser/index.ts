@@ -6,6 +6,8 @@ import type {
   TrailerDict,
 } from "../../../pdf/types/pdf-types/index";
 import { stripUndefined } from "../../../utils/object";
+import type { Option } from "../../../utils/option";
+import { none, unwrapOr } from "../../../utils/option";
 import type { Result } from "../../../utils/result/index";
 import { ok } from "../../../utils/result/index";
 import type { ResolveRef } from "../../catalog/catalog-parser";
@@ -31,9 +33,6 @@ export interface ParsedDocumentInfo {
  * 返しても呼び出し側のミューテーションが他の結果に波及しないことを保証する。
  */
 const EMPTY_METADATA: DocumentMetadata = Object.freeze({});
-
-import type { Option } from "../../../utils/option";
-import { none, unwrapOr } from "../../../utils/option";
 
 /**
  * テキストフィールド共通リーダ。値の型チェックと {@link decodePdfString} 呼び出しを束ねる。
