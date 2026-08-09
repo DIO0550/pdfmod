@@ -1,21 +1,17 @@
 import { ok } from "../../../../utils/result/index";
-import {
-  CurrentPath,
-  GraphicsState,
-  GraphicsStateStack,
-} from "../../../graphics-state/index";
-import { PathSegment } from "../../../graphics-state/path-segment";
 import type {
   OperatorHandler,
   OperatorHandlerContext,
 } from "../../../operator-registry/index";
+import { closeSubpathContext } from "../close-subpath";
 
 /**
  * PDF §8.5.2 `h` operator (close subpath) のハンドラ。
  *
  * operand を pop せず、current path の末尾に `PathSegment.close()` を
  * append した新しい GraphicsState を生成する (ISO 32000-1:2008 §8.5.2)。
- * `h` は引数を取らないオペレータのため、operand stack に値が残っていても
+ * close 処理そのものは `s` / `b` / `b*` と共通のため `closeSubpathContext`
+ * に集約している。`h` は引数を取らないオペレータのため、operand stack に値が
  * pop / 検証 / clear のいずれも行わず、同一参照のまま返す。
  *
  * - operand 数: 0 (operand stack を一切参照しない)
@@ -30,23 +26,10 @@ import type {
  * @returns 更新後コンテキスト (常に ok)
  */
 export const hHandler: OperatorHandler = (context: OperatorHandlerContext) => {
-  const current = GraphicsStateStack.current(context.graphicsStateStack);
-  if (CurrentPath.isEmpty(current.currentPath)) {
-    return ok({
-      operandStack: context.operandStack,
-      graphicsStateStack: context.graphicsStateStack,
-      markedContentStack: context.markedContentStack,
-    });
-  }
-  const nextPath = CurrentPath.append(current.currentPath, PathSegment.close());
-  const next = GraphicsState.update(current, { currentPath: nextPath });
-  const graphicsStateStack = GraphicsStateStack.replaceCurrent(
-    context.graphicsStateStack,
-    next,
-  );
+  const closed = closeSubpathContext(context);
   return ok({
-    operandStack: context.operandStack,
-    graphicsStateStack,
-    markedContentStack: context.markedContentStack,
+    operandStack: closed.operandStack,
+    graphicsStateStack: closed.graphicsStateStack,
+    markedContentStack: closed.markedContentStack,
   });
 };
