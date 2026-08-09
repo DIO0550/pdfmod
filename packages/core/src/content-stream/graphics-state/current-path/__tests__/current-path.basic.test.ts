@@ -1,4 +1,4 @@
-import { expect, test } from "vitest";
+import { assert, expect, test } from "vitest";
 import { CurrentPath } from "../../current-path";
 import { PathSegment } from "../../path-segment";
 
@@ -45,6 +45,91 @@ test("CurrentPath.isEmpty(append(empty, seg)) は false を返す", () => {
   expect(CurrentPath.isEmpty(next)).toBe(false);
 });
 
+test("moveTo 済み path に closeSubpath を適用すると close segment が付く", () => {
+  const path = CurrentPath.append(
+    CurrentPath.empty(),
+    PathSegment.moveTo(0, 0),
+  );
+
+  const closed = CurrentPath.closeSubpath(path);
+
+  expect(closed.segments).toEqual([
+    PathSegment.moveTo(0, 0),
+    PathSegment.close(),
+  ]);
+});
+
+test("moveTo → lineTo 済み path に closeSubpath を適用できる", () => {
+  const path = CurrentPath.append(
+    CurrentPath.append(CurrentPath.empty(), PathSegment.moveTo(0, 0)),
+    PathSegment.lineTo(10, 10),
+  );
+  const closed = CurrentPath.closeSubpath(path);
+
+  expect(closed.segments).toEqual([
+    PathSegment.moveTo(0, 0),
+    PathSegment.lineTo(10, 10),
+    PathSegment.close(),
+  ]);
+});
+test("rect 済み path に closeSubpath を適用できる", () => {
+  const path = CurrentPath.append(
+    CurrentPath.empty(),
+    PathSegment.rect(10, 10, 100, 50),
+  );
+  const closed = CurrentPath.closeSubpath(path);
+
+  expect(closed.segments).toEqual([
+    PathSegment.rect(10, 10, 100, 50),
+    PathSegment.close(),
+  ]);
+});
+
+test("closeSubpath を適用しても元の path は mutate されない", () => {
+  const path = CurrentPath.append(
+    CurrentPath.empty(),
+    PathSegment.moveTo(0, 0),
+  );
+  const beforeSegments = path.segments;
+  const closed = CurrentPath.closeSubpath(path);
+
+  expect(path.segments).toEqual([PathSegment.moveTo(0, 0)]);
+  expect(closed.segments).not.toBe(beforeSegments);
+});
+
+test("空 path に closeSubpath を適用しても close は追加されない", () => {
+  const path = CurrentPath.empty();
+  const closed = CurrentPath.closeSubpath(path);
+
+  expect(closed).toBe(path);
+  expect(closed.segments).toEqual([]);
+  expect(CurrentPath.isEmpty(closed)).toBe(true);
+});
+test("closeSubpath を連続適用すると close segment が 2 つ並ぶ", () => {
+  const path = CurrentPath.append(
+    CurrentPath.empty(),
+    PathSegment.moveTo(0, 0),
+  );
+  const firstClosed = CurrentPath.closeSubpath(path);
+  const secondClosed = CurrentPath.closeSubpath(firstClosed);
+
+  expect(secondClosed.segments).toEqual([
+    PathSegment.moveTo(0, 0),
+    PathSegment.close(),
+    PathSegment.close(),
+  ]);
+});
+test("closeSubpath 後も lastPoint は subpath 開始点を返す", () => {
+  const path = CurrentPath.append(
+    CurrentPath.empty(),
+    PathSegment.rect(10, 10, 100, 50),
+  );
+  const closed = CurrentPath.closeSubpath(path);
+  const lastPoint = CurrentPath.lastPoint(closed);
+
+  assert(lastPoint.some);
+  expect(lastPoint.value).toEqual({ x: 10, y: 10 });
+});
 test("連続 append は順序を保持する", () => {
   const moveTo = PathSegment.moveTo(1, 2);
   const lineTo = PathSegment.lineTo(3, 4);
