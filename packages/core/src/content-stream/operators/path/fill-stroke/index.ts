@@ -18,12 +18,14 @@ import type {
  * operand stack に値が残っていても pop / 検証 / clear のいずれも行わず、
  * 同一参照のまま返す。
  *
- * fill rule (nonzero winding / even-odd) と close 動作は operator 種別
- * (`B` / `B*` / `b` / `b*`) で表現するため state には書き込まない。
- * また fill と stroke の合成順序 (`B` では fill → stroke) も renderer 側の
+ * fill rule (nonzero winding / even-odd) は operator 種別 (`B` / `B*`) で
+ * 表現するため state には書き込まない。一方 close 動作 (`b` / `b*`) は
+ * 呼び出し側の handler が `closeSubpathContext` で current path に
+ * `PathSegment.close()` を append してから本 handler に委譲する形で表現する。
+ * また fill と stroke の合成順序 (`B` では fill → stroke) は renderer 側の
  * 責務であり、本 handler は path リセットのみを担当する。実際のラスタライズは
  * ライブラリのスコープ外で、ピクセル描画は将来 renderer 側が operator 種別から
- * fill rule / close 動作 / fill+stroke の合成順序を解釈する。
+ * fill rule / fill+stroke の合成順序を解釈する。
  *
  * 命名: PDF 仕様上の大文字 `B` (fill+stroke) と小文字 `b` (close-and-fill-stroke)
  * は別 operator のため、letter ディレクトリではなく semantic 名 `fill-stroke` を使う。
