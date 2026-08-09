@@ -28,7 +28,7 @@ const OPERAND_COUNT = 6;
  * - operand 不足 (< 6) のとき `OPERATOR_OPERAND_MISSING` を返す
  *   `actual` には pop に成功した個数 (0..5) を入れる
  * - operand に integer / real 以外が混在したとき `OPERATOR_OPERAND_TYPE_MISMATCH` を返す
- * - current point が未確立 (先行する `m` / `re` がない / `currentPath` が空) の場合
+ * - current point が未確立 (`CurrentPath.lastPoint` が `none`) の場合
  *   `OPERATOR_PATH_NO_CURRENT_POINT` を返す (§8.5.2: `c` は current point から伸ばす)
  * - 値域 (`NaN` / `Infinity` / 負値 / 0) は本 handler では検証せずそのまま格納する
  * - エラー時に operand stack の部分消費は復元しない (既存 cm / m / l handler 規約)
@@ -71,7 +71,8 @@ export const cHandler: OperatorHandler = (context: OperatorHandlerContext) => {
     .map((operand) => operand.value);
 
   const current = GraphicsStateStack.current(context.graphicsStateStack);
-  if (CurrentPath.isEmpty(current.currentPath)) {
+  const currentPoint = CurrentPath.lastPoint(current.currentPath);
+  if (!currentPoint.some) {
     const error: PdfError = {
       code: "OPERATOR_PATH_NO_CURRENT_POINT",
       message: `Operator '${OPERATOR_NAME}' requires a current point established by a prior 'm' or 're'`,
