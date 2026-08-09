@@ -200,18 +200,15 @@ const resolveXRefStructure = async (
   const startXRefResult = scanStartXRef(data);
   if (!startXRefResult.ok) {
     const fb = scanFallback(data);
-    if (!fb.ok) {
-      return fb;
-    }
-    if (!fb.value.trailer.some) {
+    if (!fb.trailer.some) {
       return err({
         code: "ROOT_NOT_FOUND",
         message: "fallback xref scan could not reconstruct trailer",
         offset: ByteOffset.of(0),
       });
     }
-    emitWarnings(fb.value.warnings);
-    return ok({ xref: fb.value.xrefTable, trailer: fb.value.trailer.value });
+    emitWarnings(fb.warnings);
+    return ok({ xref: fb.xrefTable, trailer: fb.trailer.value });
   }
 
   const mergeResult = await mergeXRefChain(startXRefResult.value, (off) =>
@@ -225,14 +222,11 @@ const resolveXRefStructure = async (
   }
 
   const fb = scanFallback(data);
-  if (!fb.ok) {
-    return fb;
-  }
-  if (!fb.value.trailer.some) {
+  if (!fb.trailer.some) {
     return mergeResult;
   }
-  emitWarnings(fb.value.warnings);
-  return ok({ xref: fb.value.xrefTable, trailer: fb.value.trailer.value });
+  emitWarnings(fb.warnings);
+  return ok({ xref: fb.xrefTable, trailer: fb.trailer.value });
 };
 
 /**
@@ -365,20 +359,14 @@ export class PdfDocument {
     }
     emitWarnings(walkResult.value.warnings);
 
-    const infoResult = await DocumentInfoParser.parse(
-      latestTrailer,
-      resolveRef,
-    );
-    if (!infoResult.ok) {
-      return infoResult;
-    }
-    emitWarnings(infoResult.value.warnings);
+    const info = await DocumentInfoParser.parse(latestTrailer, resolveRef);
+    emitWarnings(info.warnings);
 
     return ok(
       new PdfDocument({
         version: catalogResult.value.version,
         pages: walkResult.value.pages,
-        metadata: infoResult.value.metadata,
+        metadata: info.metadata,
         resolver: store,
       }),
     );

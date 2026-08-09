@@ -1,4 +1,4 @@
-import { expect, test } from "vitest";
+import { assert, expect, test } from "vitest";
 import type { PdfWarning } from "../../../../pdf/errors/warning/index";
 import type { PdfValue } from "../../../../pdf/types/pdf-types/index";
 import { none } from "../../../../utils/option";
@@ -13,13 +13,11 @@ test.each([
 ])("/Trapped Name '%s' は PdfTrapped '%s' に解釈される", (literal) => {
   const warnings: PdfWarning[] = [];
   const result = parseTrappedName(makeName(literal), warnings);
-  expect(result.some).toBe(true);
-  if (result.some) {
-    expect(PdfTrapped.create(literal)).toStrictEqual({
-      ok: true,
-      value: result.value,
-    });
-  }
+  assert(result.some);
+  expect(PdfTrapped.create(literal)).toStrictEqual({
+    ok: true,
+    value: result.value,
+  });
   expect(warnings).toHaveLength(0);
 });
 

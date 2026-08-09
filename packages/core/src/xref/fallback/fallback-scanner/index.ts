@@ -1,5 +1,5 @@
 import { isPdfTokenBoundary, matchesBytesAt } from "../../../lexer/bytes/index";
-import type { PdfError, PdfWarning } from "../../../pdf/errors/index";
+import type { PdfWarning } from "../../../pdf/errors/index";
 import { ByteOffset } from "../../../pdf/types/byte-offset/index";
 import type {
   ObjectNumber,
@@ -9,8 +9,6 @@ import type {
 } from "../../../pdf/types/index";
 import type { Option } from "../../../utils/option/index";
 import { none, some } from "../../../utils/option/index";
-import type { Result } from "../../../utils/result/index";
-import { ok } from "../../../utils/result/index";
 import { parseTrailer } from "../../trailer/index";
 import {
   type ObjectHit,
@@ -684,9 +682,7 @@ function withXRefStreamEncrypt(
  * @param data - PDF ファイル全体のバイト配列
  * @returns 復元した XRef テーブル / trailer / `XREF_REBUILD` warning 1 件
  */
-export function scanFallback(
-  data: Uint8Array,
-): Result<FallbackScanResult, PdfError> {
+export function scanFallback(data: Uint8Array): FallbackScanResult {
   const report = scanObjectHeaders(data);
   const { xrefTable, sizeOverflowCount } = rebuildXRefTable(report.hits);
   const warning = formatRebuildWarning(report, sizeOverflowCount);
@@ -694,13 +690,13 @@ export function scanFallback(
   const scopes = buildObjectScopes(data, report.hits, streamRegions);
   const directTrailer = findValidTrailer(data, scopes);
   if (directTrailer.some) {
-    return ok({
+    return {
       xrefTable,
       trailer: some(
         withXRefStreamEncrypt(directTrailer.value, data, scopes, streamRegions),
       ),
       warnings: [warning],
-    });
+    };
   }
   const synthTrailer = inferCatalogRoot(
     data,
@@ -709,13 +705,13 @@ export function scanFallback(
     xrefTable.size,
   );
   if (!synthTrailer.some) {
-    return ok({ xrefTable, trailer: synthTrailer, warnings: [warning] });
+    return { xrefTable, trailer: synthTrailer, warnings: [warning] };
   }
-  return ok({
+  return {
     xrefTable,
     trailer: some(
       withXRefStreamEncrypt(synthTrailer.value, data, scopes, streamRegions),
     ),
     warnings: [warning],
-  });
+  };
 }

@@ -1,4 +1,3 @@
-import type { PdfError } from "../../../pdf/errors/error/index";
 import type { PdfWarning } from "../../../pdf/errors/warning/index";
 import type {
   PdfDictionary,
@@ -8,8 +7,6 @@ import type {
 import { stripUndefined } from "../../../utils/object";
 import type { Option } from "../../../utils/option";
 import { none, unwrapOr } from "../../../utils/option";
-import type { Result } from "../../../utils/result/index";
-import { ok } from "../../../utils/result/index";
 import type { ResolveRef } from "../../catalog/catalog-parser";
 import { parsePdfDate } from "../../date/pdf-date";
 import { decodePdfString } from "../../encoding/decode-pdf-string";
@@ -150,14 +147,13 @@ const extractMetadata = (
  * トレーラ辞書の `/Info` 間接参照を解決し、{@link DocumentMetadata} を抽出する
  * companion object。ISO 32000-2:2020 § 14.3.3 (Document Information Dictionary) 準拠。
  *
+ * すべての失敗は warning に降格されるため、この companion object は失敗しない。
+ *
  * 分岐:
- *  - `/Info` 不在 → 空 metadata + 空 warnings の Ok
+ *  - `/Info` 不在 → 空 metadata + 空 warnings
  *  - resolver 失敗 → `INFO_RESOLVE_FAILED` 警告 + 空 metadata
  *  - 解決値が dictionary 以外 → `INFO_NOT_DICTIONARY` 警告 + 空 metadata
  *  - 辞書あり → 9 フィールドを抽出して返す
- *
- * 現状 `Result.err` 経路は使用していない（resolver は契約上 Promise を reject せず
- * `err` を `Result.ok` に正規化して戻す）。
  */
 export const DocumentInfoParser = {
   /**
@@ -165,15 +161,15 @@ export const DocumentInfoParser = {
    *
    * @param trailerDict - trailer parser 出力（`info` は IndirectRef または undefined）
    * @param resolveRef - 間接参照を解決する関数
-   * @returns 抽出結果と警告を含む `Ok`
+   * @returns 抽出したメタデータと、抽出中に蓄積された警告
    */
   async parse(
     trailerDict: TrailerDict,
     resolveRef: ResolveRef,
-  ): Promise<Result<ParsedDocumentInfo, PdfError>> {
+  ): Promise<ParsedDocumentInfo> {
     const warnings: PdfWarning[] = [];
     if (trailerDict.info === undefined) {
-      return ok({ metadata: EMPTY_METADATA, warnings });
+      return { metadata: EMPTY_METADATA, warnings };
     }
     const resolved = await resolveRef(trailerDict.info);
     if (!resolved.ok) {
@@ -181,16 +177,16 @@ export const DocumentInfoParser = {
         code: "INFO_RESOLVE_FAILED",
         message: `Failed to resolve /Info ${trailerDict.info.objectNumber} ${trailerDict.info.generationNumber}: cause=${resolved.error.code}, message=${resolved.error.message}`,
       });
-      return ok({ metadata: EMPTY_METADATA, warnings });
+      return { metadata: EMPTY_METADATA, warnings };
     }
     if (resolved.value.type !== "dictionary") {
       warnings.push({
         code: "INFO_NOT_DICTIONARY",
         message: `Trailer /Info did not resolve to a dictionary (got: ${resolved.value.type})`,
       });
-      return ok({ metadata: EMPTY_METADATA, warnings });
+      return { metadata: EMPTY_METADATA, warnings };
     }
     const metadata = extractMetadata(resolved.value, warnings);
-    return ok({ metadata, warnings });
+    return { metadata, warnings };
   },
 } as const;

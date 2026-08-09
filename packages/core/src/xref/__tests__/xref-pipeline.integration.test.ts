@@ -331,31 +331,26 @@ test("scanStartXRef -> parseXRefTable失敗 -> scanFallbackでend-to-endにtrail
   expect(tableResult.error.code).toBe("XREF_TABLE_INVALID");
 
   const fallbackResult = scanFallback(data);
-  assert(fallbackResult.ok);
 
-  expect(fallbackResult.value.trailer.some).toBe(true);
-  assert(fallbackResult.value.trailer.some);
-  expect(fallbackResult.value.trailer.value.root).toEqual({
+  expect(fallbackResult.trailer.some).toBe(true);
+  assert(fallbackResult.trailer.some);
+  expect(fallbackResult.trailer.value.root).toEqual({
     objectNumber: ObjectNumber.of(1),
     generationNumber: GenerationNumber.of(0),
   });
-  expect(fallbackResult.value.trailer.value.size).toBe(3);
+  expect(fallbackResult.trailer.value.size).toBe(3);
 
-  expect(
-    fallbackResult.value.xrefTable.entries.get(ObjectNumber.of(1)),
-  ).toEqual({
+  expect(fallbackResult.xrefTable.entries.get(ObjectNumber.of(1))).toEqual({
     type: 1,
     offset: ByteOffset.of(obj1Offset),
     generationNumber: GenerationNumber.of(0),
   });
-  expect(
-    fallbackResult.value.xrefTable.entries.get(ObjectNumber.of(2)),
-  ).toEqual({
+  expect(fallbackResult.xrefTable.entries.get(ObjectNumber.of(2))).toEqual({
     type: 1,
     offset: ByteOffset.of(obj2Offset),
     generationNumber: GenerationNumber.of(0),
   });
 
-  expect(fallbackResult.value.warnings).toHaveLength(1);
-  expect(fallbackResult.value.warnings[0].code).toBe("XREF_REBUILD");
+  expect(fallbackResult.warnings).toHaveLength(1);
+  expect(fallbackResult.warnings[0].code).toBe("XREF_REBUILD");
 });
