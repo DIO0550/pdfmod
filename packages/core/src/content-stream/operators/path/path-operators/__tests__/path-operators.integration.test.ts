@@ -117,3 +117,213 @@ test("re h の後の v は rect の subpath 開始点を第1制御点にする",
     PathSegment.curveTo(10, 10, 120, 60, 140, 80),
   ]);
 });
+
+test("100 100 m 200 200 l s が warning なく完走する", () => {
+  const registered = registerPathOperators(OperatorRegistry.create());
+  assert(registered.ok);
+
+  const result = ContentStreamInterpreter.execute({
+    data: encode("100 100 m 200 200 l s"),
+    registry: registered.value,
+  });
+
+  assert(result.ok);
+  expect(result.value.warnings).toEqual([]);
+  const current = GraphicsStateStack.current(
+    result.value.context.graphicsStateStack,
+  );
+  expect(CurrentPath.isEmpty(current.currentPath)).toBe(true);
+});
+
+test("100 100 300 400 re f* が warning なく完走する", () => {
+  const registered = registerPathOperators(OperatorRegistry.create());
+  assert(registered.ok);
+
+  const result = ContentStreamInterpreter.execute({
+    data: encode("100 100 300 400 re f*"),
+    registry: registered.value,
+  });
+
+  assert(result.ok);
+  expect(result.value.warnings).toEqual([]);
+  expect(
+    CurrentPath.isEmpty(
+      GraphicsStateStack.current(result.value.context.graphicsStateStack)
+        .currentPath,
+    ),
+  ).toBe(true);
+});
+
+test("100 100 300 400 re F が warning なく完走する", () => {
+  const registered = registerPathOperators(OperatorRegistry.create());
+  assert(registered.ok);
+
+  const result = ContentStreamInterpreter.execute({
+    data: encode("100 100 300 400 re F"),
+    registry: registered.value,
+  });
+
+  assert(result.ok);
+  expect(result.value.warnings).toEqual([]);
+  expect(
+    CurrentPath.isEmpty(
+      GraphicsStateStack.current(result.value.context.graphicsStateStack)
+        .currentPath,
+    ),
+  ).toBe(true);
+});
+
+test("100 100 300 400 re B* が warning なく完走する", () => {
+  const registered = registerPathOperators(OperatorRegistry.create());
+  assert(registered.ok);
+
+  const result = ContentStreamInterpreter.execute({
+    data: encode("100 100 300 400 re B*"),
+    registry: registered.value,
+  });
+
+  assert(result.ok);
+  expect(result.value.warnings).toEqual([]);
+  expect(
+    CurrentPath.isEmpty(
+      GraphicsStateStack.current(result.value.context.graphicsStateStack)
+        .currentPath,
+    ),
+  ).toBe(true);
+});
+
+test("100 100 m 200 200 l b が warning なく完走する", () => {
+  const registered = registerPathOperators(OperatorRegistry.create());
+  assert(registered.ok);
+
+  const result = ContentStreamInterpreter.execute({
+    data: encode("100 100 m 200 200 l b"),
+    registry: registered.value,
+  });
+
+  assert(result.ok);
+  expect(result.value.warnings).toEqual([]);
+  expect(
+    CurrentPath.isEmpty(
+      GraphicsStateStack.current(result.value.context.graphicsStateStack)
+        .currentPath,
+    ),
+  ).toBe(true);
+});
+
+test("100 100 m 200 200 l b* が warning なく完走する", () => {
+  const registered = registerPathOperators(OperatorRegistry.create());
+  assert(registered.ok);
+
+  const result = ContentStreamInterpreter.execute({
+    data: encode("100 100 m 200 200 l b*"),
+    registry: registered.value,
+  });
+
+  assert(result.ok);
+  expect(result.value.warnings).toEqual([]);
+  expect(
+    CurrentPath.isEmpty(
+      GraphicsStateStack.current(result.value.context.graphicsStateStack)
+        .currentPath,
+    ),
+  ).toBe(true);
+});
+
+test("100 100 300 400 re n が warning なく完走する", () => {
+  const registered = registerPathOperators(OperatorRegistry.create());
+  assert(registered.ok);
+
+  const result = ContentStreamInterpreter.execute({
+    data: encode("100 100 300 400 re n"),
+    registry: registered.value,
+  });
+
+  assert(result.ok);
+  expect(result.value.warnings).toEqual([]);
+  expect(
+    CurrentPath.isEmpty(
+      GraphicsStateStack.current(result.value.context.graphicsStateStack)
+        .currentPath,
+    ),
+  ).toBe(true);
+});
+
+test("s と h S が同じ GraphicsState になる", () => {
+  const registered = registerPathOperators(OperatorRegistry.create());
+  assert(registered.ok);
+
+  const closeStrokeResult = ContentStreamInterpreter.execute({
+    data: encode("100 100 m 200 200 l s"),
+    registry: registered.value,
+  });
+  const closeThenStrokeResult = ContentStreamInterpreter.execute({
+    data: encode("100 100 m 200 200 l h S"),
+    registry: registered.value,
+  });
+
+  assert(closeStrokeResult.ok);
+  assert(closeThenStrokeResult.ok);
+  expect(
+    GraphicsStateStack.current(
+      closeStrokeResult.value.context.graphicsStateStack,
+    ),
+  ).toEqual(
+    GraphicsStateStack.current(
+      closeThenStrokeResult.value.context.graphicsStateStack,
+    ),
+  );
+});
+
+test("f* / B* / b* が 1 token として読まれる", () => {
+  const registered = registerPathOperators(OperatorRegistry.create());
+  assert(registered.ok);
+
+  const result = ContentStreamInterpreter.execute({
+    data: encode(
+      "100 100 300 400 re f* 100 100 300 400 re B* 100 100 m 200 200 l b*",
+    ),
+    registry: registered.value,
+  });
+
+  assert(result.ok);
+  expect(result.value.warnings).toEqual([]);
+  expect(
+    CurrentPath.isEmpty(
+      GraphicsStateStack.current(result.value.context.graphicsStateStack)
+        .currentPath,
+    ),
+  ).toBe(true);
+});
+
+test("paint 後に path 構築を再開できる", () => {
+  const registered = registerPathOperators(OperatorRegistry.create());
+  assert(registered.ok);
+
+  const result = ContentStreamInterpreter.execute({
+    data: encode("100 100 m n 300 300 m 400 400 l f"),
+    registry: registered.value,
+  });
+
+  assert(result.ok);
+  expect(result.value.warnings).toEqual([]);
+  expect(
+    CurrentPath.isEmpty(
+      GraphicsStateStack.current(result.value.context.graphicsStateStack)
+        .currentPath,
+    ),
+  ).toBe(true);
+});
+
+test("7つのpaint variantsを並べても UNKNOWN_OPERATOR warning が出ない", () => {
+  const registered = registerPathOperators(OperatorRegistry.create());
+  assert(registered.ok);
+
+  const result = ContentStreamInterpreter.execute({
+    data: encode("100 100 m 200 200 l s f* F B* b b* n"),
+    registry: registered.value,
+  });
+
+  assert(result.ok);
+  expect(result.value.warnings).toEqual([]);
+});

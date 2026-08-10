@@ -1,6 +1,7 @@
 import { afterEach, assert, expect, test, vi } from "vitest";
 import { OperatorRegistry } from "../../../../operator-registry/index";
 import {
+  endPathHandler,
   lHandler,
   mHandler,
   registerPathOperators,
@@ -58,7 +59,7 @@ test("l のみ事前登録済みなら配列順序で l に到達した時点で
   expect(result.error.operatorName).toBe("l");
 });
 
-test("m 重複時、後続 operator (l/c/h/re/S/f/B) への register は呼ばれない", () => {
+test("m 重複時、後続 operator (l/c/v/y/h/re/S/s/f/F/f*/B/B*/b/b*/n) への register は呼ばれない", () => {
   const seed = OperatorRegistry.register(
     OperatorRegistry.create(),
     "m",
@@ -75,7 +76,7 @@ test("m 重複時、後続 operator (l/c/h/re/S/f/B) への register は呼ば�
   expect(calledNames).toEqual(["m"]);
 });
 
-test("l 重複時、配列順で m は成功 → l で短絡し c/h/re/S/f/B は呼ばれない", () => {
+test("l 重複時、配列順で m は成功 → l で短絡し c/v/y/h/re/S/s/f/F/f*/B/B*/b/b*/n は呼ばれない", () => {
   const seed = OperatorRegistry.register(
     OperatorRegistry.create(),
     "l",
@@ -90,4 +91,19 @@ test("l 重複時、配列順で m は成功 → l で短絡し c/h/re/S/f/B は
 
   const calledNames = registerSpy.mock.calls.map((call) => call[1]);
   expect(calledNames).toEqual(["m", "l"]);
+});
+
+test("n が登録済みなら OPERATOR_ALREADY_REGISTERED の Err を返す", () => {
+  const seed = OperatorRegistry.register(
+    OperatorRegistry.create(),
+    "n",
+    endPathHandler,
+  );
+  assert(seed.ok);
+
+  const result = registerPathOperators(seed.value);
+
+  assert(!result.ok);
+  assert(result.error.code === "OPERATOR_ALREADY_REGISTERED");
+  expect(result.error.operatorName).toBe("n");
 });
