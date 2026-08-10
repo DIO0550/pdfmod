@@ -86,6 +86,31 @@ mod tests {
     use std::collections::HashSet;
 
     #[test]
+    fn checked_add_values_in_range_returns_sum() {
+        // 通常範囲の 2 オフセットを加算すると合計値を返すことを確認する
+        assert_eq!(
+            ByteOffset::new(37).checked_add(ByteOffset::new(500)),
+            Some(ByteOffset::new(537))
+        );
+    }
+
+    #[test]
+    fn checked_add_boundary_values_returns_expected_option() {
+        // 境界値の加算とオーバーフローを安全に判定できることを確認する
+        let cases = [
+            (0, 0, Some(ByteOffset::new(0))),
+            (u64::MAX, 0, Some(ByteOffset::new(u64::MAX))),
+            (u64::MAX, 1, None),
+        ];
+        for (left, right, expected) in cases {
+            assert_eq!(
+                ByteOffset::new(left).checked_add(ByteOffset::new(right)),
+                expected
+            );
+        }
+    }
+
+    #[test]
     fn new_then_value_roundtrips() {
         // 代表値（0 / 1 / 42 / u64::MAX）を new で包んで value で取り出すと、生成時の値と一致することを確認する
         for n in [0, 1, 42, u64::MAX] {
