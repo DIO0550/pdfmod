@@ -27,6 +27,14 @@ impl ByteOffset {
     pub fn value(&self) -> u64 {
         self.0
     }
+
+    /// 2 つのオフセットを加算する。オーバーフローする場合は `None`。
+    ///
+    /// ヘッダがファイル先頭にない PDF で、xref の記録値を実位置へ補正する用途を想定する。
+    #[must_use]
+    pub fn checked_add(self, other: ByteOffset) -> Option<ByteOffset> {
+        self.0.checked_add(other.0).map(ByteOffset::new)
+    }
 }
 
 impl From<u64> for ByteOffset {
