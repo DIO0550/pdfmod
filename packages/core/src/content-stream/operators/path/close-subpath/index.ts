@@ -13,7 +13,7 @@ import type { OperatorHandlerContext } from "../../../operator-registry/index";
  *
  * - current path が空の場合は `context` をそのまま返す (graphicsStateStack も同一参照)。
  *   空 path に close を append すると `CurrentPath.isEmpty` が false に転じ、
- *   後続の `l` / `c` が依拠する `NO_CURRENT_POINT` 不変条件が崩れるため
+ *   後続の `l` / `c` が依拠する `NO_CURRENT_POINT` 不変条件が崩れるため。
  * - operandStack / markedContentStack は常に同一参照を引き継ぐ
  * - currentPath 以外の graphics state は変更しない
  * - 失敗しないため `Result` は返さない
