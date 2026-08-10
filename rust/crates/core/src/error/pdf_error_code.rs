@@ -67,12 +67,14 @@ mod tests {
 
     #[test]
     fn all_distinct_variants_are_mutually_not_equal() {
-        // 4 バリアントを総当たりで比較し、同一インデックスのみ等価・他は非等価であることを確認する
+        // 6 バリアントを総当たりで比較し、同一インデックスのみ等価・他は非等価であることを確認する
         let variants = [
             PdfErrorCode::UnexpectedEof,
             PdfErrorCode::UnexpectedToken,
             PdfErrorCode::InvalidNumber,
             PdfErrorCode::InvalidSyntax,
+            PdfErrorCode::InvalidHeader,
+            PdfErrorCode::UnsupportedVersion,
         ];
         for (i, a) in variants.iter().enumerate() {
             for (j, b) in variants.iter().enumerate() {
@@ -101,6 +103,8 @@ mod tests {
         assert!(format!("{:?}", PdfErrorCode::UnexpectedToken).contains("UnexpectedToken"));
         assert!(format!("{:?}", PdfErrorCode::InvalidNumber).contains("InvalidNumber"));
         assert!(format!("{:?}", PdfErrorCode::InvalidSyntax).contains("InvalidSyntax"));
+        assert!(format!("{:?}", PdfErrorCode::InvalidHeader).contains("InvalidHeader"));
+        assert!(format!("{:?}", PdfErrorCode::UnsupportedVersion).contains("UnsupportedVersion"));
     }
 
     #[test]
@@ -131,5 +135,20 @@ mod tests {
     fn display_invalid_syntax() {
         // InvalidSyntax の Display 出力が "invalid syntax" になることを確認する
         assert_eq!(format!("{}", PdfErrorCode::InvalidSyntax), "invalid syntax");
+    }
+
+    #[test]
+    fn display_invalid_header() {
+        // InvalidHeader の Display 出力が期待する短文になることを確認する
+        assert_eq!(format!("{}", PdfErrorCode::InvalidHeader), "invalid header");
+    }
+
+    #[test]
+    fn display_unsupported_version() {
+        // UnsupportedVersion の Display 出力が期待する短文になることを確認する
+        assert_eq!(
+            format!("{}", PdfErrorCode::UnsupportedVersion),
+            "unsupported version"
+        );
     }
 }
