@@ -1,3 +1,4 @@
+use super::super::SCAN_LIMIT;
 use crate::byte_offset::ByteOffset;
 use crate::error::pdf_error_code::PdfErrorCode;
 use crate::file::header::PdfHeader;
@@ -74,11 +75,10 @@ fn parse_missing_version_returns_version_start_position() {
 
 #[test]
 fn parse_missing_signature_message_mentions_scan_limit() {
-    // シグネチャ未検出のメッセージが走査上限 1024 に言及することを確認する
+    // シグネチャ未検出のメッセージが設定された走査上限に言及することを確認する
     let error = PdfHeader::parse(b"not a pdf").expect_err("not a pdf");
-    assert!(error
-        .message()
-        .is_some_and(|message| message.contains("1024")));
+    let expected = format!("%PDF- signature not found within the first {SCAN_LIMIT} bytes");
+    assert_eq!(error.message(), Some(expected.as_str()));
 }
 
 #[test]

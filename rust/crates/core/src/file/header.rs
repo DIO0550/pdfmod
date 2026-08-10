@@ -51,8 +51,9 @@ impl PdfHeader {
     /// - `UnsupportedVersion`: 版表記が形式不正、または ISO 未規定
     pub fn parse(input: &[u8]) -> Result<PdfHeader, PdfError> {
         let origin = find_signature(input).ok_or_else(|| {
-            PdfError::new(PdfErrorCode::InvalidHeader)
-                .with_message("%PDF- signature not found within the first 1024 bytes")
+            PdfError::new(PdfErrorCode::InvalidHeader).with_message(format!(
+                "%PDF- signature not found within the first {SCAN_LIMIT} bytes"
+            ))
         })?;
         let version_start = origin + SIGNATURE.len();
         let version_bytes = read_version_bytes(input, version_start);
