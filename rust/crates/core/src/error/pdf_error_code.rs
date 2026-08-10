@@ -24,6 +24,10 @@ pub enum PdfErrorCode {
     InvalidNumber,
     /// PDF の構文規則に違反する入力を検出した。
     InvalidSyntax,
+    /// ファイルヘッダ `%PDF-x.y` が期待どおりに見つからない。
+    InvalidHeader,
+    /// ヘッダの版表記が ISO 32000 の規定する版ではない。
+    UnsupportedVersion,
 }
 
 /// バリアントごとに人間可読な英語短文を返す。文言は `std::io::ErrorKind` の
@@ -38,6 +42,8 @@ impl fmt::Display for PdfErrorCode {
             PdfErrorCode::UnexpectedToken => "unexpected token",
             PdfErrorCode::InvalidNumber => "invalid number",
             PdfErrorCode::InvalidSyntax => "invalid syntax",
+            PdfErrorCode::InvalidHeader => "invalid header",
+            PdfErrorCode::UnsupportedVersion => "unsupported version",
         };
         f.write_str(text)
     }
