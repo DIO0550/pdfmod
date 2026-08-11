@@ -120,8 +120,17 @@ impl Borrow<[u8]> for PdfName {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::hash_map::DefaultHasher;
     use std::collections::HashMap;
     use std::collections::HashSet;
+    use std::hash::{Hash, Hasher};
+
+    #[test]
+    fn borrow_returns_name_bytes() {
+        // PdfName を Borrow<[u8]> で借用すると名前本体のバイト列を返すことを確認する
+        let name = PdfName::from("Type");
+        assert_eq!(Borrow::<[u8]>::borrow(&name), b"Type");
+    }
 
     #[test]
     fn new_then_as_bytes_roundtrips() {
@@ -362,5 +371,71 @@ mod tests {
         set.insert(PdfName::from("Type"));
         set.insert(PdfName::from("Type"));
         assert_eq!(set.len(), 1);
+    }
+
+    #[test]
+    fn borrow_matches_as_bytes() {
+        // 同じ PdfName の borrow と as_bytes が同じバイト列を返すことを確認する
+        let name = PdfName::from("Type");
+        assert_eq!(Borrow::<[u8]>::borrow(&name), name.as_bytes());
+    }
+
+    #[test]
+    fn borrowed_equality_matches_name_equality() {
+        // 等しい名前と異なる名前の両方で PdfName と借用後バイト列の等価性が一致することを確認する
+        let left = PdfName::from("Type");
+        let equal = PdfName::from("Type");
+        let different = PdfName::from("Page");
+        assert_eq!(
+            left == equal,
+            Borrow::<[u8]>::borrow(&left) == Borrow::<[u8]>::borrow(&equal)
+        );
+        assert_eq!(
+            left == different,
+            Borrow::<[u8]>::borrow(&left) == Borrow::<[u8]>::borrow(&different)
+        );
+    }
+
+    #[test]
+    fn borrowed_ordering_matches_name_ordering() {
+        // 借用前後の名前を昇順の隣接ペアで比較し Ord の結果が一致することを確認する
+        let names = [
+            PdfName::from(""),
+            PdfName::from("A"),
+            PdfName::from("AB"),
+            PdfName::from("B"),
+        ];
+        for pair in names.windows(2) {
+            assert_eq!(
+                pair[0].cmp(&pair[1]),
+                Borrow::<[u8]>::borrow(&pair[0]).cmp(Borrow::<[u8]>::borrow(&pair[1]))
+            );
+        }
+    }
+
+    #[test]
+    fn borrowed_hash_matches_name_hash() {
+        // PdfName と借用後バイト列を同じ方式でハッシュすると同じ値になることを確認する
+        let name = PdfName::from("Type");
+        let mut name_hasher = DefaultHasher::new();
+        name.hash(&mut name_hasher);
+        let mut borrowed_hasher = DefaultHasher::new();
+        Borrow::<[u8]>::borrow(&name).hash(&mut borrowed_hasher);
+        assert_eq!(name_hasher.finish(), borrowed_hasher.finish());
+    }
+
+    #[test]
+    fn borrow_returns_empty_slice_for_empty_name() {
+        // 空の PdfName を借用すると空のバイトスライスを返すことを確認する
+        let name = PdfName::from("");
+        assert_eq!(Borrow::<[u8]>::borrow(&name), b"");
+    }
+
+    #[test]
+    fn borrow_preserves_non_utf8_bytes() {
+        // NUL と非 UTF-8 を含む PdfName を借用しても全バイトがそのまま保持されることを確認する
+        let bytes = vec![0x00, 0x80, 0xFF];
+        let name = PdfName::new(bytes.clone());
+        assert_eq!(Borrow::<[u8]>::borrow(&name), bytes.as_slice());
     }
 }
