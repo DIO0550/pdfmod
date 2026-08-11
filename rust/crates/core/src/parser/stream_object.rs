@@ -15,7 +15,6 @@ use crate::byte_offset::ByteOffset;
 use crate::lexer::eol::EolKind;
 use crate::lexer::token::Token;
 use crate::object::dictionary::PdfDictionary;
-use crate::object::name::PdfName;
 use crate::object::pdf_object::PdfObject;
 use crate::object::stream::PdfStream;
 use crate::parser::error::ParseError;
@@ -67,9 +66,9 @@ impl<'a> Parser<'a> {
         dictionary: &PdfDictionary,
         dict_start: ByteOffset,
     ) -> Result<usize, ParseError> {
-        let key = PdfName::new(b"Length".to_vec());
+        // 一時 PdfName のヒープ確保を避け、静的な名前をバイトスライスのまま引く。
         let value = dictionary
-            .get(&key)
+            .get(b"Length".as_slice())
             .ok_or_else(|| ParseError::missing_length_at(dict_start))?;
 
         match value {

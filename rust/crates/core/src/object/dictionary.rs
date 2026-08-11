@@ -8,8 +8,13 @@
 //! 生成・挿入は無検証（infallible）。null エントリの正規化や妥当性検証は
 //! 上位（lexer/parser）の責務であり、本型はストレージ + アクセサのみを担う。
 //!
+//! `get` / `contains_key` / `remove` は `PdfName` に加えてバイトスライスでもキーを
+//! 指定できる。静的な名前で引く際に一時 `PdfName` を作らず、内部 `Vec<u8>` の
+//! ヒープ確保を避けるためである。
+//!
 //! 本モジュールは Issue #264（Phase R0）で追加された PDF オブジェクト層の基盤型。
 
+use std::borrow::Borrow;
 use std::collections::BTreeMap;
 
 use crate::object::{name::PdfName, pdf_object::PdfObject};
@@ -30,8 +35,18 @@ impl PdfDictionary {
     }
 
     /// キーに対応する値への参照を取り出す。未登録なら `None`（`Result` ではなく `Option`）。
+    ///
+    /// キーは `&PdfName` でも、`PdfName` が借用できる型（`&[u8]`）でも渡せる
+    /// （std の `BTreeMap::get` と同形）。静的なバイト列で引く場合は
+    /// `dict.get(b"Length".as_slice())` と書けば一時 `PdfName` のヒープ確保が
+    /// 発生しない（#386）。`b"Length"` は `&[u8; 6]` のため、`.as_slice()` で
+    /// `&[u8]` へ落とす必要がある。
     #[must_use]
-    pub fn get(&self, key: &PdfName) -> Option<&PdfObject> {
+    pub fn get<Q>(&self, key: &Q) -> Option<&PdfObject>
+    where
+        PdfName: Borrow<Q>,
+        Q: ?Sized + Ord,
+    {
         self.0.get(key)
     }
 
@@ -53,15 +68,24 @@ impl PdfDictionary {
         self.0.is_empty()
     }
 
-    /// 指定キーが登録済みかどうかを返す。
+    /// 指定キーが登録済みかどうかを返す。キーの渡し方は [`PdfDictionary::get`] と同じ。
     #[must_use]
-    pub fn contains_key(&self, key: &PdfName) -> bool {
+    pub fn contains_key<Q>(&self, key: &Q) -> bool
+    where
+        PdfName: Borrow<Q>,
+        Q: ?Sized + Ord,
+    {
         self.0.contains_key(key)
     }
 
     /// キーに対応するエントリを削除し、削除した値を返す。
     /// 未登録なら `None`（`Result` ではなく `Option`。std `BTreeMap::remove` と同セマンティクス）。
-    pub fn remove(&mut self, key: &PdfName) -> Option<PdfObject> {
+    /// キーの渡し方は [`PdfDictionary::get`] と同じ。
+    pub fn remove<Q>(&mut self, key: &Q) -> Option<PdfObject>
+    where
+        PdfName: Borrow<Q>,
+        Q: ?Sized + Ord,
+    {
         self.0.remove(key)
     }
 
