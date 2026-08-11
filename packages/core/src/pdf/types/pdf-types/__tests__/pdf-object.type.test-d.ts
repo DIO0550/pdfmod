@@ -7,6 +7,7 @@ import type {
   IndirectRef,
   ObjectNumber,
   PdfDictionary,
+  PdfIndirectObject,
   PdfObject,
   PdfStream,
   PdfValue,
@@ -52,6 +53,10 @@ test("PdfDictionary の entries の値型は PdfValue に限定され PdfStream 
     Map<string, PdfValue>
   >();
   expectTypeOf<PdfStream>().not.toExtend<PdfValue>();
+});
+
+test("PdfIndirectObject の body には PdfStream を入れられる", () => {
+  expectTypeOf<PdfStream>().toExtend<PdfIndirectObject["body"]>();
 });
 
 test("XRefFreeEntry のフィールドが Brand 型で定義されている", () => {
