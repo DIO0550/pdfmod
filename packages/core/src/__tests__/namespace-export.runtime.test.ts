@@ -68,6 +68,11 @@ test.each([
   { name: "PdfTrapped.create", value: PdfTrapped.create },
   { name: "PdfPage.from", value: PdfPage.from },
   { name: "PdfDocument.load", value: PdfDocument.load },
+  { name: "Result.ok", value: Result.ok },
+  { name: "Result.err", value: Result.err },
+  { name: "Result.map", value: Result.map },
+  { name: "Option.some", value: Option.some },
+  { name: "Option.map", value: Option.map },
 ])("$nameがルートからexportされている", ({ value }) => {
   expect(typeof value).toBe("function");
 });
@@ -140,4 +145,14 @@ test("Interop.toResultがルートからexportされている", () => {
     ok: false,
     error: "missing",
   });
+});
+
+test("Option.noneがルートからexportされている", () => {
+  // none は関数ではなく freeze 済みシングルトンなので test.each の typeof 検査に載せられない。
+  expect(Option.none).toEqual({ some: false });
+});
+
+test("ContentStreamTokenizerの初期positionが0である", () => {
+  const tokenizer = new ContentStreamTokenizer(new Uint8Array());
+  expect(tokenizer.position).toBe(0);
 });
