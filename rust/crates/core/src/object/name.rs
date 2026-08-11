@@ -7,6 +7,8 @@
 //! NUL・非UTF-8 を含む任意のバイト列も無条件に受理する。名前の妥当性検証は
 //! 上位レイヤ（パーサ／オブジェクト層）に委譲する。
 
+use std::borrow::Borrow;
+
 /// PDF 名前オブジェクト。名前本体のバイト列を保持するラッパ。
 ///
 /// 内部表現は `Vec<u8>`（Issue #261 指定）。`#XX` デコード後は NUL (`0x00`) や
@@ -90,6 +92,28 @@ impl From<&[u8]> for PdfName {
     /// `From<&[u8; N]>` は今回実装しないが、後から非破壊で追加できる。
     fn from(bytes: &[u8]) -> PdfName {
         PdfName(bytes.to_vec())
+    }
+}
+
+impl Borrow<[u8]> for PdfName {
+    /// 名前本体を `&[u8]` として借用し、`BTreeMap` / `HashMap` のキー引きを
+    /// バイト列で行えるようにする。
+    ///
+    /// これにより `PdfDictionary::get` 等が `dict.get(b"Length".as_slice())` の形で
+    /// 呼べるようになり、ルックアップのたびに一時 `PdfName`（`Vec<u8>`）を確保する
+    /// 必要がなくなる（#386）。
+    ///
+    /// `Borrow` は「借用の前後で `Eq` / `Ord` / `Hash` が一致する」ことを実装者の
+    /// 責務として要求する。`PdfName` の `Eq` / `Ord` / `Hash` はいずれも derive による
+    /// 単一フィールドへの委譲であり、`Vec<u8>` はさらに `[u8]` へ委譲するため、
+    /// この契約は定義上満たされる。`BTreeMap` は `Ord` が食い違ってもエラーにならず
+    /// 静かに誤った結果を返すため、この一致が正しさの前提になる。
+    ///
+    /// なお `b"Length"` は `&[u8; 6]` であり、`Borrow<[u8; N]>` は `&self` から
+    /// 固定長配列参照を返せないため実装できない。呼び出し側は
+    /// `b"Length".as_slice()` のように `&[u8]` へ明示的に落とすこと。
+    fn borrow(&self) -> &[u8] {
+        self.as_bytes()
     }
 }
 
