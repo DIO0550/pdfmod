@@ -27,6 +27,14 @@ impl ByteOffset {
     pub fn value(&self) -> u64 {
         self.0
     }
+
+    /// 2 つのオフセットを加算する。オーバーフローする場合は `None`。
+    ///
+    /// ヘッダがファイル先頭にない PDF で、xref の記録値を実位置へ補正する用途を想定する。
+    #[must_use]
+    pub fn checked_add(self, other: ByteOffset) -> Option<ByteOffset> {
+        self.0.checked_add(other.0).map(ByteOffset::new)
+    }
 }
 
 impl From<u64> for ByteOffset {
@@ -76,6 +84,31 @@ mod tests {
     use super::*;
     use std::collections::HashMap;
     use std::collections::HashSet;
+
+    #[test]
+    fn checked_add_values_in_range_returns_sum() {
+        // 通常範囲の 2 オフセットを加算すると合計値を返すことを確認する
+        assert_eq!(
+            ByteOffset::new(37).checked_add(ByteOffset::new(500)),
+            Some(ByteOffset::new(537))
+        );
+    }
+
+    #[test]
+    fn checked_add_boundary_values_returns_expected_option() {
+        // 境界値の加算とオーバーフローを安全に判定できることを確認する
+        let cases = [
+            (0, 0, Some(ByteOffset::new(0))),
+            (u64::MAX, 0, Some(ByteOffset::new(u64::MAX))),
+            (u64::MAX, 1, None),
+        ];
+        for (left, right, expected) in cases {
+            assert_eq!(
+                ByteOffset::new(left).checked_add(ByteOffset::new(right)),
+                expected
+            );
+        }
+    }
 
     #[test]
     fn new_then_value_roundtrips() {
