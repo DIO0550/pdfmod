@@ -9,6 +9,7 @@
     "build": "pnpm -r run build",
     "test": "vitest",
     "test:run": "vitest run",
+    "test:types": "VITEST_TYPECHECK=1 vitest run --project=core",
     "lint": "biome check . && oxlint .",
     "lint:fix": "biome check --fix . && oxlint --fix .",
     "format": "biome format --write .",
