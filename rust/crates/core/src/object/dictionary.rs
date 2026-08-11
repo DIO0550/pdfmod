@@ -8,8 +8,18 @@
 //! 生成・挿入は無検証（infallible）。null エントリの正規化や妥当性検証は
 //! 上位（lexer/parser）の責務であり、本型はストレージ + アクセサのみを担う。
 //!
+//! `get` / `contains_key` / `remove` は `PdfName` に加えてバイトスライスでもキーを
+//! 指定できる。静的な名前で引く際に一時 `PdfName` を作らず、内部 `Vec<u8>` の
+//! ヒープ確保を避けるためである。
+//!
+//! `&PdfName` を渡す通常のメソッド呼び出しは `Borrow` の blanket impl により
+//! ソース互換だが、これらのメソッド項目を旧シグネチャの具体的な関数ポインタ型へ
+//! 束縛するコードは、ジェネリック化により型が変わるため互換ではない。公開 API の
+//! 利用者が移行時に見落とさないよう、この限定的な非互換性を明示する。
+//!
 //! 本モジュールは Issue #264（Phase R0）で追加された PDF オブジェクト層の基盤型。
 
+use std::borrow::Borrow;
 use std::collections::BTreeMap;
 
 use crate::object::{name::PdfName, pdf_object::PdfObject};
@@ -30,8 +40,18 @@ impl PdfDictionary {
     }
 
     /// キーに対応する値への参照を取り出す。未登録なら `None`（`Result` ではなく `Option`）。
+    ///
+    /// キーは `&PdfName` でも、`PdfName` が借用できる型（`&[u8]`）でも渡せる
+    /// （std の `BTreeMap::get` と同形）。静的なバイト列で引く場合は
+    /// `dict.get(b"Length".as_slice())` と書けば一時 `PdfName` のヒープ確保が
+    /// 発生しない（#386）。`b"Length"` は `&[u8; 6]` のため、`.as_slice()` で
+    /// `&[u8]` へ落とす必要がある。
     #[must_use]
-    pub fn get(&self, key: &PdfName) -> Option<&PdfObject> {
+    pub fn get<Q>(&self, key: &Q) -> Option<&PdfObject>
+    where
+        PdfName: Borrow<Q>,
+        Q: ?Sized + Ord,
+    {
         self.0.get(key)
     }
 
@@ -53,15 +73,24 @@ impl PdfDictionary {
         self.0.is_empty()
     }
 
-    /// 指定キーが登録済みかどうかを返す。
+    /// 指定キーが登録済みかどうかを返す。キーの渡し方は [`PdfDictionary::get`] と同じ。
     #[must_use]
-    pub fn contains_key(&self, key: &PdfName) -> bool {
+    pub fn contains_key<Q>(&self, key: &Q) -> bool
+    where
+        PdfName: Borrow<Q>,
+        Q: ?Sized + Ord,
+    {
         self.0.contains_key(key)
     }
 
     /// キーに対応するエントリを削除し、削除した値を返す。
     /// 未登録なら `None`（`Result` ではなく `Option`。std `BTreeMap::remove` と同セマンティクス）。
-    pub fn remove(&mut self, key: &PdfName) -> Option<PdfObject> {
+    /// キーの渡し方は [`PdfDictionary::get`] と同じ。
+    pub fn remove<Q>(&mut self, key: &Q) -> Option<PdfObject>
+    where
+        PdfName: Borrow<Q>,
+        Q: ?Sized + Ord,
+    {
         self.0.remove(key)
     }
 
@@ -79,6 +108,36 @@ impl PdfDictionary {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn get_by_byte_slice_returns_inserted_value() {
+        // バイトスライスで get すると同じバイト列の PdfName に挿入した値を返すことを確認する
+        let mut dict = PdfDictionary::new();
+        dict.insert(PdfName::from("Type"), PdfObject::Integer(42));
+        assert_eq!(dict.get(b"Type".as_slice()), Some(&PdfObject::Integer(42)));
+    }
+
+    #[test]
+    fn contains_key_by_byte_slice_returns_true_for_existing_key() {
+        // 挿入済みキーをバイトスライスで contains_key すると true を返すことを確認する
+        let mut dict = PdfDictionary::new();
+        dict.insert(PdfName::from("Type"), PdfObject::Integer(42));
+        assert!(dict.contains_key(b"Type".as_slice()));
+    }
+
+    #[test]
+    fn remove_by_byte_slice_removes_entry() {
+        // バイトスライスで remove すると値を返し、件数を減らしてエントリを削除することを確認する
+        let mut dict = PdfDictionary::new();
+        dict.insert(PdfName::from("Type"), PdfObject::Integer(42));
+        dict.insert(PdfName::from("Other"), PdfObject::Integer(7));
+        assert_eq!(
+            dict.remove(b"Type".as_slice()),
+            Some(PdfObject::Integer(42))
+        );
+        assert_eq!(dict.len(), 1);
+        assert_eq!(dict.get(b"Type".as_slice()), None);
+    }
 
     #[test]
     fn new_creates_empty_dictionary() {
@@ -343,5 +402,75 @@ mod tests {
         // 空辞書では iter() が 1 件も列挙しない（count()==0）ことを確認する
         let dict = PdfDictionary::new();
         assert_eq!(dict.iter().count(), 0);
+    }
+
+    #[test]
+    fn get_by_byte_slice_matches_get_by_name() {
+        // 同じキーをバイトスライスと PdfName で get すると同じ値を返すことを確認する
+        let mut dict = PdfDictionary::new();
+        let name = PdfName::from("Type");
+        dict.insert(name.clone(), PdfObject::Integer(42));
+        assert_eq!(dict.get(b"Type".as_slice()), dict.get(&name));
+    }
+
+    #[test]
+    fn get_by_name_reference_still_compiles() {
+        // 既存の PdfName 参照による get が変更後もコンパイルでき値を返すことを確認する
+        let mut dict = PdfDictionary::new();
+        let name = PdfName::from("Type");
+        dict.insert(name.clone(), PdfObject::Integer(42));
+        assert_eq!(dict.get(&name), Some(&PdfObject::Integer(42)));
+    }
+
+    #[test]
+    fn get_by_byte_slice_returns_none_for_missing_key() {
+        // 未登録キーをバイトスライスで get すると None を返すことを確認する
+        let dict = PdfDictionary::new();
+        assert_eq!(dict.get(b"Missing".as_slice()), None);
+    }
+
+    #[test]
+    fn contains_key_by_byte_slice_returns_false_for_missing_key() {
+        // 未登録キーをバイトスライスで contains_key すると false を返すことを確認する
+        let dict = PdfDictionary::new();
+        assert!(!dict.contains_key(b"Missing".as_slice()));
+    }
+
+    #[test]
+    fn remove_by_byte_slice_returns_none_for_missing_key() {
+        // 未登録キーをバイトスライスで remove すると None を返し件数を維持することを確認する
+        let mut dict = PdfDictionary::new();
+        dict.insert(PdfName::from("Type"), PdfObject::Integer(42));
+        assert_eq!(dict.remove(b"Missing".as_slice()), None);
+        assert_eq!(dict.len(), 1);
+    }
+
+    #[test]
+    fn get_by_empty_byte_slice_returns_value_for_empty_name() {
+        // 空バイトスライスで get すると空の PdfName に挿入した値を返すことを確認する
+        let mut dict = PdfDictionary::new();
+        dict.insert(PdfName::from(""), PdfObject::Integer(42));
+        assert_eq!(dict.get(b"".as_slice()), Some(&PdfObject::Integer(42)));
+    }
+
+    #[test]
+    fn get_by_byte_slice_distinguishes_prefix_keys() {
+        // 前方一致する A と AB の両方があってもバイトスライスと完全一致する値だけを返すことを確認する
+        let mut dict = PdfDictionary::new();
+        dict.insert(PdfName::from("A"), PdfObject::Integer(1));
+        dict.insert(PdfName::from("AB"), PdfObject::Integer(2));
+        assert_eq!(dict.get(b"A".as_slice()), Some(&PdfObject::Integer(1)));
+        assert_eq!(dict.get(b"AB".as_slice()), Some(&PdfObject::Integer(2)));
+    }
+
+    #[test]
+    fn get_by_byte_slice_matches_non_utf8_key() {
+        // NUL と非 UTF-8 を含むバイトスライスでも同じ PdfName の値を返すことを確認する
+        let mut dict = PdfDictionary::new();
+        dict.insert(PdfName::new(vec![0x00, 0x80]), PdfObject::Integer(42));
+        assert_eq!(
+            dict.get([0x00, 0x80].as_slice()),
+            Some(&PdfObject::Integer(42))
+        );
     }
 }
