@@ -60,6 +60,15 @@ impl ByteKind {
     pub fn is_regular(byte: u8) -> bool {
         ByteKind::from(byte) == ByteKind::Regular
     }
+
+    /// トークンを終端するバイト（whitespace または delimiter）かどうかを返す述語（関連関数）。
+    ///
+    /// 3 分類は排他のため「regular でない」と厳密に等価であり、その形で書く。
+    /// `is_whitespace(b) || is_delimiter(b)` と書くと分類の単一情報源から離れ、
+    /// whitespace / delimiter の定義が動いたときに追従漏れを起こす。
+    pub fn is_token_boundary(byte: u8) -> bool {
+        !ByteKind::is_regular(byte)
+    }
 }
 
 impl From<u8> for ByteKind {
@@ -178,6 +187,31 @@ mod tests {
             assert_eq!(
                 predicates, expected,
                 "0x{byte:02X}: predicates should agree with ByteKind::from"
+            );
+        }
+    }
+
+    #[test]
+    fn is_token_boundary_agrees_with_non_regular_for_all_256_bytes() {
+        // 全 256 バイトで「トークン境界」が「regular でない」と厳密に一致することを確認する
+        for byte in 0x00..=0xFFu8 {
+            assert_eq!(
+                ByteKind::is_token_boundary(byte),
+                !ByteKind::is_regular(byte),
+                "0x{byte:02X}: token boundary should be the complement of regular"
+            );
+        }
+    }
+
+    #[test]
+    fn is_token_boundary_accepts_whitespace_and_delimiter() {
+        // whitespace と delimiter がトークンを終端し、regular が終端しないことを確認する
+        let cases: [(u8, bool); 3] = [(0x20, true), (0x2F, true), (b'A', false)];
+        for (byte, expected) in cases {
+            assert_eq!(
+                ByteKind::is_token_boundary(byte),
+                expected,
+                "0x{byte:02X} token boundary mismatch"
             );
         }
     }

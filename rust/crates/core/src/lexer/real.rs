@@ -91,7 +91,7 @@ impl<'a> Lexer<'a> {
         // 後続が whitespace / delimiter / EOF 以外なら拒否（'1.2abc' / '1.2.3' / '1.2e3' 等）
         match self.peek() {
             None => {}
-            Some(b) if ByteKind::is_whitespace(b) || ByteKind::is_delimiter(b) => {}
+            Some(b) if ByteKind::is_token_boundary(b) => {}
             _ => {
                 self.pos = start;
                 return None;
