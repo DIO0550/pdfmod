@@ -26,7 +26,7 @@ mod keyword;
 mod lookahead;
 mod name;
 mod real;
-mod skip;
+pub(crate) mod skip;
 
 // extern prelude の `core`（libcore）との曖昧性（E0659）を避けるため self 修飾で再 export する
 pub use self::core::Lexer;

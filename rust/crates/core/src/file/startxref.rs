@@ -15,6 +15,7 @@ use crate::error::pdf_error::PdfError;
 use crate::error::pdf_error_code::PdfErrorCode;
 use crate::lexer::byte_kind::ByteKind;
 use crate::lexer::eol::EolKind;
+use crate::lexer::skip::skip_whitespace_and_comments;
 
 /// ファイル終端マーカー。この直前に `startxref` 行が置かれる。
 const EOF_MARKER: &[u8] = b"%%EOF";
@@ -110,23 +111,20 @@ fn find_last_marker(
 /// 入力の先頭・末尾に接している側は境界とみなす。
 fn has_token_boundary(input: &[u8], pos: usize, len: usize) -> bool {
     let before_is_boundary = match pos.checked_sub(1) {
-        Some(before) => input.get(before).copied().is_some_and(is_token_boundary),
+        Some(before) => input
+            .get(before)
+            .copied()
+            .is_some_and(ByteKind::is_token_boundary),
         None => true,
     };
     if !before_is_boundary {
         return false;
     }
     let after = pos.saturating_add(len);
-    input.get(after).copied().is_none_or(is_token_boundary)
-}
-
-/// トークンの区切りになるバイト（ホワイトスペースまたはデリミタ）かを返す。
-///
-/// `ByteKind` は全バイトを whitespace / delimiter / regular のいずれかちょうど 1 つに
-/// 排他分類するため、「regular でない」が「whitespace または delimiter」と等価になる。
-/// 分類の単一情報源である `ByteKind` に判定を委ねるため否定形で書く。
-fn is_token_boundary(byte: u8) -> bool {
-    !ByteKind::is_regular(byte)
+    input
+        .get(after)
+        .copied()
+        .is_none_or(ByteKind::is_token_boundary)
 }
 
 /// `pos` が PDF コメント（`%` から行末まで）の内側にあるかを返す。
@@ -192,39 +190,6 @@ fn parse_offset_value(input: &[u8], start: usize, end: usize) -> Result<ByteOffs
             )));
     }
     Ok(ByteOffset::new(value))
-}
-
-/// `pos` から `end` までのホワイトスペースとコメントを読み飛ばした位置を返す。
-fn skip_whitespace_and_comments(input: &[u8], pos: usize, end: usize) -> usize {
-    let mut cursor = pos;
-    while cursor < end {
-        let Some(&byte) = input.get(cursor) else {
-            break;
-        };
-        if ByteKind::is_whitespace(byte) {
-            cursor = cursor.saturating_add(1);
-            continue;
-        }
-        if byte != PERCENT {
-            break;
-        }
-        cursor = skip_comment(input, cursor, end);
-    }
-    cursor
-}
-
-/// `%` から始まるコメントを、行末（EOL の直前）または `end` まで読み飛ばす。
-///
-/// EOL 自体は呼び出し側がホワイトスペースとして読み飛ばす。
-fn skip_comment(input: &[u8], pos: usize, end: usize) -> usize {
-    let mut cursor = pos;
-    while cursor < end {
-        if EolKind::at(input, cursor).is_some() {
-            break;
-        }
-        cursor = cursor.saturating_add(1);
-    }
-    cursor
 }
 
 #[cfg(test)]
