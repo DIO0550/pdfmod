@@ -55,7 +55,7 @@ impl<'a> Lexer<'a> {
         loop {
             let Some(b) = self.peek() else { break };
 
-            if ByteKind::is_whitespace(b) || ByteKind::is_delimiter(b) {
+            if ByteKind::is_token_boundary(b) {
                 break;
             }
             if !b.is_ascii_digit() {
