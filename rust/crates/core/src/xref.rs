@@ -4,9 +4,11 @@
 //! `docs/specs/02_file_structure.md` §4 / `docs/specs/02a_object_resolution.md` §2
 //! に対応する。
 //! 本ファイルはサブモジュールの mod 宣言のみを持つファサード。
-//! 現時点では xref エントリの表現（`entry`）とテーブルの表現（`table`）を提供し、
-//! 従来型 xref テーブルの解析（#584）・xref ストリームの解析（#588）・トレイラは
+//! xref エントリの表現（`entry`）・テーブルの表現（`table`）・従来型 xref テーブルの
+//! 解析（`table::parse`）・xref 解析専用のエラー型（`error`）を提供する。
+//! xref ストリームの解析（#588）・トレイラ・`/Prev` を辿るチェーン走査は
 //! 後続の Issue で追加する。
 
 pub mod entry;
+pub mod error;
 pub mod table;
