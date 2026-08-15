@@ -167,7 +167,11 @@ fn parse_subsection(input: &[u8], pos: usize, table: &mut XRefTable) -> Result<u
         .ok_or_else(|| XRefError::invalid_subsection_header_at(offset_of(count_start)))?;
 
     // 番号範囲が u64 に収まらないヘッダは表現できないため不正とみなす。
-    if first_object.checked_add(count).is_none() {
+    // 検査対象は採番される最大値 `first_object + (count - 1)`。素直に見える
+    // `checked_add(count)` は 1 件ぶん厳しく、`first_object = u64::MAX, count = 1`
+    // のような表現可能なヘッダまで弾く（PR #602 のレビュー指摘）。
+    // `count = 0` では saturating_sub が 0 を返し、first_object 自身の検査に落ちる。
+    if first_object.checked_add(count.saturating_sub(1)).is_none() {
         return Err(XRefError::invalid_subsection_header_at(offset_of(pos)));
     }
 
