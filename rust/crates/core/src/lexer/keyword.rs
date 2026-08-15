@@ -40,7 +40,7 @@ impl<'a> Lexer<'a> {
         #[allow(clippy::while_let_loop)]
         loop {
             let Some(b) = self.peek() else { break };
-            if ByteKind::is_whitespace(b) || ByteKind::is_delimiter(b) {
+            if ByteKind::is_token_boundary(b) {
                 break;
             }
             bytes.push(b);
