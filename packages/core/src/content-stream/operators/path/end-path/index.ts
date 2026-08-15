@@ -8,6 +8,7 @@ import type {
   OperatorHandler,
   OperatorHandlerContext,
 } from "../../../operator-registry/index";
+import { consumePendingClipContext } from "../consume-pending-clip";
 
 /**
  * PDF §8.5.3 `n` operator (end the path object without filling or stroking) の
@@ -22,9 +23,9 @@ import type {
  * state には書き込まない。`n` は paint を行わないため fill rule を持たない。
  * clipping: 主用途は `W n` / `W* n` によるクリッピングパスの確定
  * (ISO 32000-1:2008 §8.5.4, `docs/specs/05_content_streams.md` §4.3)。
- * pendingClip の適用ロジックは別 issue (W/W*) で、本 handler を含む path
- * finalization operator (`S` / `s` / `f` / `F` / `f*` / `B` / `B*` / `b` /
- * `b*` / `n`) に注入する。本 issue では path の消費のみを行う。
+ * pendingClip が some の場合は consumePendingClipContext で消費して none に
+ * 戻す。current path が空でも消費する。クリッピング領域自体は保持しない
+ * (領域の集合演算は renderer 層の責務)。
  *
  * - operand 数: 0 (operand stack を一切参照しない)
  * - current path が空の場合は no-op で同一 operandStack / graphicsStateStack
@@ -39,24 +40,28 @@ import type {
 export const endPathHandler: OperatorHandler = (
   context: OperatorHandlerContext,
 ) => {
-  const current = GraphicsStateStack.current(context.graphicsStateStack);
+  // §8.5.4: pending 中のクリッピングは paint operator で確定する。
+  // current path の空判定より前に消費することで、空 path の `W n` でも
+  // pendingClip が残らない。pendingClip が none なら同一参照が返る。
+  const clipped = consumePendingClipContext(context);
+  const current = GraphicsStateStack.current(clipped.graphicsStateStack);
   if (CurrentPath.isEmpty(current.currentPath)) {
     return ok({
-      operandStack: context.operandStack,
-      graphicsStateStack: context.graphicsStateStack,
-      markedContentStack: context.markedContentStack,
+      operandStack: clipped.operandStack,
+      graphicsStateStack: clipped.graphicsStateStack,
+      markedContentStack: clipped.markedContentStack,
     });
   }
   const next = GraphicsState.update(current, {
     currentPath: CurrentPath.empty(),
   });
   const graphicsStateStack = GraphicsStateStack.replaceCurrent(
-    context.graphicsStateStack,
+    clipped.graphicsStateStack,
     next,
   );
   return ok({
-    operandStack: context.operandStack,
+    operandStack: clipped.operandStack,
     graphicsStateStack,
-    markedContentStack: context.markedContentStack,
+    markedContentStack: clipped.markedContentStack,
   });
 };
