@@ -4,6 +4,7 @@
  * @module
  */
 
+export { ClippingRule } from "./clipping-rule";
 export { Color } from "./color";
 export { ColorSpace } from "./color-space";
 export { CurrentPath } from "./current-path";
