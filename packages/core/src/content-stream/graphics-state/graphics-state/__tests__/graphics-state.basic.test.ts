@@ -1,4 +1,5 @@
 import { expect, test } from "vitest";
+import { none } from "../../../../utils/option/index";
 import {
   Color,
   ColorSpace,
@@ -32,6 +33,7 @@ test("createはPDF仕様準拠のデフォルト値を返す", () => {
     textObject: TextObject.inactive(),
     renderingIntent: RenderingIntent.create("RelativeColorimetric"),
     flatness: 1.0,
+    pendingClip: none,
   });
 });
 
