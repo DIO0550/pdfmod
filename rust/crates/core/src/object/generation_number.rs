@@ -20,8 +20,8 @@ impl GenerationNumber {
     /// 与えられた `u16` から `GenerationNumber` を生成する。
     ///
     /// 無検証（infallible）。0 や `u16::MAX`（= 65535）を含む任意の値を受理する。
-    pub fn new(n: u16) -> GenerationNumber {
-        GenerationNumber(n)
+    pub fn new(n: u16) -> Self {
+        Self(n)
     }
 
     /// 内部の世代番号を `u16` として取り出す。
@@ -39,8 +39,8 @@ impl From<u16> for GenerationNumber {
     /// 既存の `new` は非破壊で残しており本変換は唯一の構築経路ではないが、`42u16.into()` /
     /// `GenerationNumber::from(42)` という標準的な書き方と、`impl Into<GenerationNumber>` を
     /// 受け取るジェネリック API を可能にする目的で併設する。
-    fn from(n: u16) -> GenerationNumber {
-        GenerationNumber(n)
+    fn from(n: u16) -> Self {
+        Self(n)
     }
 }
 
@@ -52,7 +52,7 @@ impl From<GenerationNumber> for u16 {
     /// 本型は `Copy` なので本変換に渡したあとも元の値は使い続けられる。`value()` は
     /// `&GenerationNumber` しか手元にない場面で自動参照外しにより値だけ取り出せる経路として
     /// 引き続き提供する（どちらも残す）。
-    fn from(number: GenerationNumber) -> u16 {
+    fn from(number: GenerationNumber) -> Self {
         number.0
     }
 }
