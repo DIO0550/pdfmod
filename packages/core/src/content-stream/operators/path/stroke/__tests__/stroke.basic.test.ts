@@ -1,6 +1,8 @@
 import { assert, expect, test } from "vitest";
 import type { PdfObject } from "../../../../../pdf/types/pdf-types/index";
+import { none, type Option, some } from "../../../../../utils/option/index";
 import {
+  ClippingRule,
   CurrentPath,
   GraphicsState,
   GraphicsStateStack,
@@ -238,5 +240,68 @@ test("空 path 早期 return 分岐で `result.value.operandStack` / `graphicsSt
 
   assert(result.ok);
   expect(result.value.operandStack).toBe(ctx.operandStack);
+  expect(result.value.graphicsStateStack).toBe(ctx.graphicsStateStack);
+});
+
+const stateWith = (
+  pendingClip: Option<ClippingRule>,
+  segments: PathSegment[],
+): GraphicsState => {
+  const initial = GraphicsState.create();
+  let path = initial.currentPath;
+  for (const segment of segments) {
+    path = CurrentPath.append(path, segment);
+  }
+  return GraphicsState.update(initial, { pendingClip, currentPath: path });
+};
+
+test("pendingClip が some のとき `S` は消費して none に戻す", () => {
+  const ctx = buildContextWithGraphicsState(
+    stateWith(some(ClippingRule.nonzero()), [PathSegment.moveTo(0, 0)]),
+  );
+
+  const result = strokeHandler(ctx);
+
+  assert(result.ok);
+  const state = GraphicsStateStack.current(result.value.graphicsStateStack);
+  expect(state.pendingClip.some).toBe(false);
+  expect(CurrentPath.isEmpty(state.currentPath)).toBe(true);
+});
+
+test("pendingClip が none のとき `S` は従来どおり path だけをリセットする", () => {
+  const ctx = buildContextWithGraphicsState(
+    stateWith(none, [PathSegment.moveTo(0, 0)]),
+  );
+
+  const result = strokeHandler(ctx);
+
+  assert(result.ok);
+  const state = GraphicsStateStack.current(result.value.graphicsStateStack);
+  expect(CurrentPath.isEmpty(state.currentPath)).toBe(true);
+  expect(state.pendingClip.some).toBe(false);
+  expect(result.value.operandStack).toBe(ctx.operandStack);
+});
+
+test("空 path でも pendingClip が some なら `S` は消費する", () => {
+  const ctx = buildContextWithGraphicsState(
+    stateWith(some(ClippingRule.evenOdd()), []),
+  );
+
+  const result = strokeHandler(ctx);
+
+  assert(result.ok);
+  expect(
+    GraphicsStateStack.current(result.value.graphicsStateStack).pendingClip
+      .some,
+  ).toBe(false);
+  expect(result.value.graphicsStateStack).not.toBe(ctx.graphicsStateStack);
+});
+
+test("空 path かつ pendingClip が none なら `S` は完全な no-op になる", () => {
+  const ctx = buildContextWithGraphicsState(stateWith(none, []));
+
+  const result = strokeHandler(ctx);
+
+  assert(result.ok);
   expect(result.value.graphicsStateStack).toBe(ctx.graphicsStateStack);
 });

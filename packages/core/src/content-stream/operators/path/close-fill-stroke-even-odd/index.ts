@@ -14,11 +14,9 @@ import { fillStrokeEvenOddHandler } from "../fill-stroke-even-odd";
  * なく even-odd 版にすることで、委譲チェーン上も fill rule が一貫する。
  * fill rule は operator 種別で表現するため state には書き込まない。
  *
- * clipping: 将来 `W` / `W*` が設定する pendingClip の適用は本 handler では
- * 行わない。pendingClip の適用ロジックは別 issue (W/W*) で、本 handler を含む
- * path finalization operator (`S` / `s` / `f` / `F` / `f*` / `B` / `B*` / `b` /
- * `b*` / `n`) に注入する。`n` は paint しないが `W n` で clip を確定させるため
- * 対象に含む。
+ * clipping: pendingClip の消費は委譲先の handler が行う
+ * (ISO 32000-1:2008 §8.5.4)。本ラッパー自身は clipping に関与しないため、
+ * 委譲先を経由すれば `W` / `W*` の指定は自動的に確定する。
  *
  * - operand 数: 0 (operand stack を一切参照しない)
  * - current path が空の場合は close を append せず、委譲先が no-op で返す

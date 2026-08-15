@@ -4,6 +4,8 @@ import { flatMap, ok } from "../../../../utils/result/index";
 import type { OperatorHandler } from "../../../operator-registry/index";
 import { OperatorRegistry } from "../../../operator-registry/index";
 import { cHandler } from "../c";
+import { clipHandler } from "../clip";
+import { clipEvenOddHandler } from "../clip-even-odd";
 import { closeFillStrokeHandler } from "../close-fill-stroke";
 import { closeFillStrokeEvenOddHandler } from "../close-fill-stroke-even-odd";
 import { closeStrokeHandler } from "../close-stroke";
@@ -21,6 +23,8 @@ import { vHandler } from "../v";
 import { yHandler } from "../y";
 
 export { cHandler } from "../c";
+export { clipHandler } from "../clip";
+export { clipEvenOddHandler } from "../clip-even-odd";
 export { closeFillStrokeHandler } from "../close-fill-stroke";
 export { closeFillStrokeEvenOddHandler } from "../close-fill-stroke-even-odd";
 export { closeStrokeHandler } from "../close-stroke";
@@ -45,6 +49,8 @@ const PATH_OPERATORS: ReadonlyArray<readonly [string, OperatorHandler]> = [
   ["y", yHandler],
   ["h", hHandler],
   ["re", reHandler],
+  ["W", clipHandler],
+  ["W*", clipEvenOddHandler],
   ["S", strokeHandler],
   ["s", closeStrokeHandler],
   ["f", fillHandler],
@@ -58,8 +64,8 @@ const PATH_OPERATORS: ReadonlyArray<readonly [string, OperatorHandler]> = [
 ];
 
 /**
- * Path operator (m / l / c / v / y / h / re / S / s / f / F / f* / B / B* /
- * b / b* / n) を OperatorRegistry に一括登録するヘルパ。
+ * Path operator (m / l / c / v / y / h / re / W / W* / S / s / f / F / f* /
+ * B / B* / b / b* / n) を OperatorRegistry に一括登録するヘルパ。
  *
  * `F` は `f` の互換 alias (ISO 32000-1:2008 §8.5.3) のため、専用 handler を
  * 作らず `fillHandler` を 2 つの名前で登録する。
