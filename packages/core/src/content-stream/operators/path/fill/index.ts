@@ -8,6 +8,7 @@ import type {
   OperatorHandler,
   OperatorHandlerContext,
 } from "../../../operator-registry/index";
+import { consumePendingClipContext } from "../consume-pending-clip";
 
 /**
  * PDF §8.5.3 `f` operator (fill the path, nonzero winding number rule) のハンドラ。
@@ -28,6 +29,8 @@ import type {
  *   参照を含む新 context を返す
  * - ctm / lineWidth / lineCap / lineJoin / miterLimit など
  *   currentPath 以外の graphics state は変更しない
+ * - `pendingClip` が some の場合は消費して none に戻す (§8.5.4)。current path が
+ *   空でも消費する。クリッピング領域自体は保持しない (renderer 層の責務)
  * - 本 handler では PdfError を返さない (常に ok)
  *
  * @param context - 実行コンテキスト (operand stack / graphics state stack)
@@ -36,24 +39,28 @@ import type {
 export const fillHandler: OperatorHandler = (
   context: OperatorHandlerContext,
 ) => {
-  const current = GraphicsStateStack.current(context.graphicsStateStack);
+  // §8.5.4: pending 中のクリッピングは paint operator で確定する。
+  // current path の空判定より前に消費することで、空 path の `W f` でも
+  // pendingClip が残らない。pendingClip が none なら同一参照が返る。
+  const clipped = consumePendingClipContext(context);
+  const current = GraphicsStateStack.current(clipped.graphicsStateStack);
   if (CurrentPath.isEmpty(current.currentPath)) {
     return ok({
-      operandStack: context.operandStack,
-      graphicsStateStack: context.graphicsStateStack,
-      markedContentStack: context.markedContentStack,
+      operandStack: clipped.operandStack,
+      graphicsStateStack: clipped.graphicsStateStack,
+      markedContentStack: clipped.markedContentStack,
     });
   }
   const next = GraphicsState.update(current, {
     currentPath: CurrentPath.empty(),
   });
   const graphicsStateStack = GraphicsStateStack.replaceCurrent(
-    context.graphicsStateStack,
+    clipped.graphicsStateStack,
     next,
   );
   return ok({
-    operandStack: context.operandStack,
+    operandStack: clipped.operandStack,
     graphicsStateStack,
-    markedContentStack: context.markedContentStack,
+    markedContentStack: clipped.markedContentStack,
   });
 };
