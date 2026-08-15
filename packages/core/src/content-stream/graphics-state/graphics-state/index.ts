@@ -1,4 +1,6 @@
 import type { Brand } from "../../../utils/brand/index";
+import { none, type Option } from "../../../utils/option/index";
+import type { ClippingRule } from "../clipping-rule";
 import { Color } from "../color";
 import { ColorSpace } from "../color-space";
 import { CurrentPath } from "../current-path";
@@ -28,6 +30,7 @@ type GraphicsStateFields = {
   readonly textObject: TextObject;
   readonly renderingIntent: RenderingIntent;
   readonly flatness: number;
+  readonly pendingClip: Option<ClippingRule>;
 };
 
 /**
@@ -59,6 +62,7 @@ export const GraphicsState = {
    *   textObject       = TextObject.inactive()
    *   renderingIntent  = RelativeColorimetric
    *   flatness         = 1.0
+   *   pendingClip      = none (ISO 32000-1:2008 §8.5.4)
    *
    * @returns デフォルト値で初期化された GraphicsState
    */
@@ -79,6 +83,7 @@ export const GraphicsState = {
       textObject: TextObject.inactive(),
       renderingIntent: RenderingIntent.create("RelativeColorimetric"),
       flatness: 1.0,
+      pendingClip: none,
     } as unknown as GraphicsState;
   },
 
@@ -136,6 +141,10 @@ export const GraphicsState = {
           : state.renderingIntent,
       flatness:
         partial.flatness !== undefined ? partial.flatness : state.flatness,
+      pendingClip:
+        partial.pendingClip !== undefined
+          ? partial.pendingClip
+          : state.pendingClip,
     } as unknown as GraphicsState;
   },
 } as const;
