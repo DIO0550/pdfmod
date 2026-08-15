@@ -38,8 +38,8 @@ impl PdfError {
     /// エラー種別 `code` のみを持つ `PdfError` を生成する。
     ///
     /// 位置・メッセージは `None`。必要に応じて `with_position` / `with_message` で付与する。
-    pub fn new(code: PdfErrorCode) -> PdfError {
-        PdfError {
+    pub fn new(code: PdfErrorCode) -> Self {
+        Self {
             code,
             position: None,
             message: None,
@@ -49,7 +49,7 @@ impl PdfError {
     /// 発生位置 `position` を付与した `PdfError` を返す（ビルダー風、self を消費）。
     ///
     /// 複数回呼び出した場合は**後勝ち**で上書きする（最後に渡した値が残る）。
-    pub fn with_position(mut self, position: ByteOffset) -> PdfError {
+    pub fn with_position(mut self, position: ByteOffset) -> Self {
         self.position = Some(position);
         self
     }
@@ -58,7 +58,7 @@ impl PdfError {
     ///
     /// `impl Into<String>` を受け、`&str` / `String` / `format!` の結果をそのまま渡せる。
     /// 無検証（空文字列もそのまま受理する）。複数回呼び出した場合は**後勝ち**で上書きする。
-    pub fn with_message(mut self, message: impl Into<String>) -> PdfError {
+    pub fn with_message(mut self, message: impl Into<String>) -> Self {
         self.message = Some(message.into());
         self
     }
