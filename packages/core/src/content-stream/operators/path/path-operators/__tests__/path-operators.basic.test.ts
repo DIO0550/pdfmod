@@ -5,6 +5,8 @@ import {
 } from "../../../../operator-registry/index";
 import {
   cHandler,
+  clipEvenOddHandler,
+  clipHandler,
   closeFillStrokeEvenOddHandler,
   closeFillStrokeHandler,
   closeStrokeHandler,
@@ -31,6 +33,8 @@ test.each<readonly [string, OperatorHandler]>([
   ["y", yHandler],
   ["h", hHandler],
   ["re", reHandler],
+  ["W", clipHandler],
+  ["W*", clipEvenOddHandler],
   ["S", strokeHandler],
   ["s", closeStrokeHandler],
   ["f", fillHandler],
@@ -90,6 +94,30 @@ test("closeSubpathContext は operator 名として登録されない", () => {
 
   const kebab = OperatorRegistry.lookup(result.value, "close-subpath");
   const camel = OperatorRegistry.lookup(result.value, "closeSubpath");
+  expect(kebab.some).toBe(false);
+  expect(camel.some).toBe(false);
+});
+
+test("W と W* は lookup の value が別 handler 実体である", () => {
+  const result = registerPathOperators(OperatorRegistry.create());
+  assert(result.ok);
+
+  const nonzero = OperatorRegistry.lookup(result.value, "W");
+  const evenOdd = OperatorRegistry.lookup(result.value, "W*");
+  assert(nonzero.some);
+  assert(evenOdd.some);
+  expect(nonzero.value).not.toBe(evenOdd.value);
+});
+
+test("consumePendingClipContext は operator 名として登録されない", () => {
+  const result = registerPathOperators(OperatorRegistry.create());
+  assert(result.ok);
+
+  const kebab = OperatorRegistry.lookup(result.value, "consume-pending-clip");
+  const camel = OperatorRegistry.lookup(
+    result.value,
+    "consumePendingClipContext",
+  );
   expect(kebab.some).toBe(false);
   expect(camel.some).toBe(false);
 });
