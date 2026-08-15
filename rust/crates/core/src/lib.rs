@@ -9,7 +9,8 @@
 //! - **`Result` / `Option` は std のものをそのまま使う**（自作しない）。
 //!
 //! byte_offset / error / file / lexer / object / parser の各モジュールは実装済み。
-//! `file` は現時点でヘッダ解析のみを提供し、xref / trailer など残りの構造は後続 PR で追加する。
+//! `file` はヘッダ解析と startxref の末尾スキャンを提供し、xref テーブル / trailer など
+//! 残りの構造は後続 PR で追加する。
 
 pub mod byte_offset;
 pub mod error;
