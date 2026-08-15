@@ -37,12 +37,12 @@ impl EolKind {
     /// 意図をコード上で明示する（`data.get(pos)?` の先行ガードでも到達はしないが、
     /// 「任意 pos で panic しない」契約を局所的に自明にする）。
     /// 本関数は位置を進めない（消費しない）。進める量は戻り値の `byte_len` で得る。
-    pub fn at(data: &[u8], pos: usize) -> Option<EolKind> {
+    pub fn at(data: &[u8], pos: usize) -> Option<Self> {
         match *data.get(pos)? {
-            LF => Some(EolKind::Lf),
+            LF => Some(Self::Lf),
             CR => match pos.checked_add(1).and_then(|next| data.get(next)) {
-                Some(&LF) => Some(EolKind::CrLf),
-                _ => Some(EolKind::Cr),
+                Some(&LF) => Some(Self::CrLf),
+                _ => Some(Self::Cr),
             },
             _ => None,
         }
@@ -55,8 +55,8 @@ impl EolKind {
     /// `byte_len` とする（clippy `len_without_is_empty` の誤検知も回避）。
     pub fn byte_len(&self) -> usize {
         match self {
-            EolKind::CrLf => 2,
-            EolKind::Lf | EolKind::Cr => 1,
+            Self::CrLf => 2,
+            Self::Lf | Self::Cr => 1,
         }
     }
 }
