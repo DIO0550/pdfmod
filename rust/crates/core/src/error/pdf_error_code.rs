@@ -38,12 +38,12 @@ pub enum PdfErrorCode {
 impl fmt::Display for PdfErrorCode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let text = match self {
-            PdfErrorCode::UnexpectedEof => "unexpected end of file",
-            PdfErrorCode::UnexpectedToken => "unexpected token",
-            PdfErrorCode::InvalidNumber => "invalid number",
-            PdfErrorCode::InvalidSyntax => "invalid syntax",
-            PdfErrorCode::InvalidHeader => "invalid header",
-            PdfErrorCode::UnsupportedVersion => "unsupported version",
+            Self::UnexpectedEof => "unexpected end of file",
+            Self::UnexpectedToken => "unexpected token",
+            Self::InvalidNumber => "invalid number",
+            Self::InvalidSyntax => "invalid syntax",
+            Self::InvalidHeader => "invalid header",
+            Self::UnsupportedVersion => "unsupported version",
         };
         f.write_str(text)
     }
