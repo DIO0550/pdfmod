@@ -131,3 +131,19 @@ fn large_first_object_number_does_not_overflow() {
         .get(ObjectNumber::new(18446744073709551611))
         .is_some());
 }
+
+// 番号 u64::MAX ちょうど 1 件を宣言するヘッダが、表現可能なので受理されることを確認する
+#[test]
+fn subsection_ending_exactly_at_u64_max_is_accepted() {
+    let input = table(&[(u64::MAX, &["0000000017 00000 n"])], " \r\n", "trailer");
+    let parsed = parse_classic_xref_table(&input, ByteOffset::new(0))
+        .expect("subsection covering only object u64::MAX should parse");
+    assert_eq!(parsed.table().len(), 1);
+    assert_eq!(
+        parsed.table().get(ObjectNumber::new(u64::MAX)),
+        Some(&XRefEntry::InUse {
+            offset: ByteOffset::new(17),
+            generation: GenerationNumber::new(0),
+        })
+    );
+}
