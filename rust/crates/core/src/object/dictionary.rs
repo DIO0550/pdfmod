@@ -35,8 +35,8 @@ pub struct PdfDictionary(BTreeMap<PdfName, PdfObject>);
 
 impl PdfDictionary {
     /// 空の辞書を生成する（`Default` と同じ。明示構築用に併設）。
-    pub fn new() -> PdfDictionary {
-        PdfDictionary(BTreeMap::new())
+    pub fn new() -> Self {
+        Self(BTreeMap::new())
     }
 
     /// キーに対応する値への参照を取り出す。未登録なら `None`（`Result` ではなく `Option`）。

@@ -27,8 +27,8 @@ impl IndirectObject {
     /// `ObjectId` と content `PdfObject` から `IndirectObject` を生成する。
     ///
     /// 無検証（infallible）。`object` は所有ムーブで受け取り clone しない。
-    pub fn new(id: ObjectId, object: PdfObject) -> IndirectObject {
-        IndirectObject { id, object }
+    pub fn new(id: ObjectId, object: PdfObject) -> Self {
+        Self { id, object }
     }
 
     /// ヘッダの `ObjectId` を `Copy` で取り出す。
