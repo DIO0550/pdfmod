@@ -1,6 +1,7 @@
 import { expect, test } from "vitest";
-import { none } from "../../../../utils/option/index";
+import { none, some } from "../../../../utils/option/index";
 import {
+  ClippingRule,
   Color,
   ColorSpace,
   CurrentPath,
@@ -35,6 +36,46 @@ test("createはPDF仕様準拠のデフォルト値を返す", () => {
     flatness: 1.0,
     pendingClip: none,
   });
+});
+
+test("update で pendingClip を some に設定できる", () => {
+  const state = GraphicsState.create();
+  const updated = GraphicsState.update(state, {
+    pendingClip: some(ClippingRule.nonzero()),
+  });
+  expect(updated.pendingClip).toEqual(some(ClippingRule.nonzero()));
+});
+
+test("update で pendingClip を none に戻せる", () => {
+  const state = GraphicsState.update(GraphicsState.create(), {
+    pendingClip: some(ClippingRule.nonzero()),
+  });
+  const updated = GraphicsState.update(state, { pendingClip: none });
+  expect(updated.pendingClip.some).toBe(false);
+});
+
+test("pendingClip を指定しない update では元の pendingClip が保たれる", () => {
+  const state = GraphicsState.update(GraphicsState.create(), {
+    pendingClip: some(ClippingRule.evenOdd()),
+  });
+  const updated = GraphicsState.update(state, { lineWidth: 5.0 });
+  expect(updated.pendingClip).toEqual(some(ClippingRule.evenOdd()));
+  expect(updated.lineWidth).toBe(5.0);
+});
+
+test("pendingClip の更新は他のフィールドを変更しない", () => {
+  const state = GraphicsState.create();
+  const updated = GraphicsState.update(state, {
+    pendingClip: some(ClippingRule.nonzero()),
+  });
+  expect(updated.ctm).toEqual(state.ctm);
+  expect(updated.lineWidth).toBe(state.lineWidth);
+  expect(updated.currentPath).toEqual(state.currentPath);
+  expect(updated.strokeColor).toEqual(state.strokeColor);
+  expect(updated.fillColor).toEqual(state.fillColor);
+  expect(updated.textState).toEqual(state.textState);
+  expect(updated.renderingIntent).toBe(state.renderingIntent);
+  expect(updated.flatness).toBe(state.flatness);
 });
 
 test("updateは指定したフィールドだけを書き換える", () => {
