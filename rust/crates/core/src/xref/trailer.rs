@@ -77,7 +77,7 @@ impl Trailer {
     pub fn from_dictionary(
         mut dictionary: PdfDictionary,
         position: ByteOffset,
-    ) -> Result<Trailer, TrailerError> {
+    ) -> Result<Self, TrailerError> {
         let size = take_required_size(&mut dictionary, position)?;
         let root = take_required_reference(&mut dictionary, TrailerKey::Root, position)?;
         let prev = take_optional_offset(&mut dictionary, TrailerKey::Prev, position)?;
@@ -86,7 +86,7 @@ impl Trailer {
         let id = take_optional_id(&mut dictionary, position)?;
         let encrypt = take_optional_encrypt(&mut dictionary, position)?;
 
-        Ok(Trailer {
+        Ok(Self {
             size,
             root,
             prev,

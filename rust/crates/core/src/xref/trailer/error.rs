@@ -72,28 +72,28 @@ pub struct TrailerError {
 
 impl TrailerError {
     /// 任意の `kind` + `position` でエラーを構築する。
-    pub fn new(kind: TrailerErrorKind, position: ByteOffset) -> TrailerError {
-        TrailerError { kind, position }
+    pub fn new(kind: TrailerErrorKind, position: ByteOffset) -> Self {
+        Self { kind, position }
     }
 
     /// [`TrailerErrorKind::MissingTrailerKeyword`] を指定位置で構築する。
-    pub fn missing_trailer_keyword_at(position: ByteOffset) -> TrailerError {
-        TrailerError::new(TrailerErrorKind::MissingTrailerKeyword, position)
+    pub fn missing_trailer_keyword_at(position: ByteOffset) -> Self {
+        Self::new(TrailerErrorKind::MissingTrailerKeyword, position)
     }
 
     /// [`TrailerErrorKind::ObjectParseFailed`] を指定位置・委譲先エラー種別で構築する。
-    pub fn object_parse_failed_at(position: ByteOffset, kind: ParseErrorKind) -> TrailerError {
-        TrailerError::new(TrailerErrorKind::ObjectParseFailed { kind }, position)
+    pub fn object_parse_failed_at(position: ByteOffset, kind: ParseErrorKind) -> Self {
+        Self::new(TrailerErrorKind::ObjectParseFailed { kind }, position)
     }
 
     /// [`TrailerErrorKind::NotADictionary`] を指定位置・実種別で構築する。
-    pub fn not_a_dictionary_at(position: ByteOffset, actual_kind: &'static str) -> TrailerError {
-        TrailerError::new(TrailerErrorKind::NotADictionary { actual_kind }, position)
+    pub fn not_a_dictionary_at(position: ByteOffset, actual_kind: &'static str) -> Self {
+        Self::new(TrailerErrorKind::NotADictionary { actual_kind }, position)
     }
 
     /// [`TrailerErrorKind::MissingRequiredKey`] を指定位置・キーで構築する。
-    pub fn missing_required_key_at(position: ByteOffset, key: TrailerKey) -> TrailerError {
-        TrailerError::new(TrailerErrorKind::MissingRequiredKey { key }, position)
+    pub fn missing_required_key_at(position: ByteOffset, key: TrailerKey) -> Self {
+        Self::new(TrailerErrorKind::MissingRequiredKey { key }, position)
     }
 
     /// [`TrailerErrorKind::InvalidKeyType`] を指定位置・キー・実種別で構築する。
@@ -101,21 +101,21 @@ impl TrailerError {
         position: ByteOffset,
         key: TrailerKey,
         actual_kind: &'static str,
-    ) -> TrailerError {
-        TrailerError::new(
+    ) -> Self {
+        Self::new(
             TrailerErrorKind::InvalidKeyType { key, actual_kind },
             position,
         )
     }
 
     /// [`TrailerErrorKind::NegativeValue`] を指定位置・キーで構築する。
-    pub fn negative_value_at(position: ByteOffset, key: TrailerKey) -> TrailerError {
-        TrailerError::new(TrailerErrorKind::NegativeValue { key }, position)
+    pub fn negative_value_at(position: ByteOffset, key: TrailerKey) -> Self {
+        Self::new(TrailerErrorKind::NegativeValue { key }, position)
     }
 
     /// [`TrailerErrorKind::InvalidIdArray`] を指定位置で構築する。
-    pub fn invalid_id_array_at(position: ByteOffset) -> TrailerError {
-        TrailerError::new(TrailerErrorKind::InvalidIdArray, position)
+    pub fn invalid_id_array_at(position: ByteOffset) -> Self {
+        Self::new(TrailerErrorKind::InvalidIdArray, position)
     }
 }
 
