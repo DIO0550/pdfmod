@@ -80,7 +80,7 @@ impl<'a> Parser<'a> {
             }
             other => Err(ParseError::invalid_length_type_at(
                 dict_start,
-                Self::pdf_object_kind_label(other),
+                other.kind_label(),
             )),
         }
     }
@@ -189,23 +189,6 @@ impl<'a> Parser<'a> {
                     Err(ParseError::lexer_error_at(here))
                 }
             }
-        }
-    }
-
-    /// [`PdfObject`] のバリアント名を [`ParseErrorKind::InvalidLengthType`](super::error::ParseErrorKind::InvalidLengthType) の
-    /// `actual_kind` フィールドに載せるための短い `'static` 識別子にマップする。
-    fn pdf_object_kind_label(object: &PdfObject) -> &'static str {
-        match object {
-            PdfObject::Null => "Null",
-            PdfObject::Boolean(_) => "Boolean",
-            PdfObject::Integer(_) => "Integer",
-            PdfObject::Real(_) => "Real",
-            PdfObject::String(_) => "String",
-            PdfObject::Name(_) => "Name",
-            PdfObject::Array(_) => "Array",
-            PdfObject::Dictionary(_) => "Dictionary",
-            PdfObject::Stream(_) => "Stream",
-            PdfObject::Reference(_) => "Reference",
         }
     }
 }

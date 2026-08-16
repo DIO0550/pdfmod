@@ -66,6 +66,19 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// 入力バイト列と開始位置から新しいパーサを構築する。
+    ///
+    /// 入力をスライスせずに `pos` から読み始めるため、[`Self::position`] と
+    /// [`ParseError`] の `position` は入力先頭起点の絶対オフセットのままになる。
+    /// ファイル中間の構造（トレイラ辞書など）を読む用途で使う。
+    /// `pos` が `input.len()` を超える場合は [`Lexer::new_at`] が末尾にクランプする。
+    #[must_use]
+    pub fn new_at(input: &'a [u8], pos: usize) -> Self {
+        Self {
+            lexer: Lexer::new_at(input, pos),
+        }
+    }
+
     /// 現在の論理カーソル位置をバイトオフセットで返す。
     ///
     /// [`Lexer::position`] が返す論理カーソル位置（lookahead バッファに peek 済みの
@@ -438,6 +451,9 @@ mod indirect_reference_tests;
 
 #[cfg(test)]
 mod stream_object_tests;
+
+#[cfg(test)]
+mod new_at_tests;
 
 #[cfg(test)]
 mod tests {

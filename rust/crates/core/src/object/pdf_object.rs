@@ -169,6 +169,28 @@ impl PdfObject {
             _ => None,
         }
     }
+
+    /// バリアント名を、エラーの `actual_kind` フィールドに載せるための短い
+    /// `'static` 識別子にマップする。
+    ///
+    /// 「期待した型と違う値が来た」ことを報告する各層（`ParseError` /
+    /// `TrailerError`）で共通に使う。バリアントを追加した際の更新漏れを
+    /// 防ぐため、複製せずここに集約する。
+    #[must_use]
+    pub(crate) fn kind_label(&self) -> &'static str {
+        match self {
+            Self::Null => "Null",
+            Self::Boolean(_) => "Boolean",
+            Self::Integer(_) => "Integer",
+            Self::Real(_) => "Real",
+            Self::String(_) => "String",
+            Self::Name(_) => "Name",
+            Self::Array(_) => "Array",
+            Self::Dictionary(_) => "Dictionary",
+            Self::Stream(_) => "Stream",
+            Self::Reference(_) => "Reference",
+        }
+    }
 }
 
 impl From<bool> for PdfObject {
