@@ -32,9 +32,23 @@ pub struct Lexer<'a> {
 impl<'a> Lexer<'a> {
     /// 入力バイト列を借用して新しい `Lexer` を生成する。`pos` は 0 で初期化される。
     pub fn new(input: &'a [u8]) -> Self {
+        Self::new_at(input, 0)
+    }
+
+    /// 入力バイト列を借用し、`pos` を指定して新しい `Lexer` を生成する。
+    ///
+    /// ファイル中間の構造（トレイラ辞書・間接オブジェクト本体など）を、入力を
+    /// スライスせずに絶対オフセットのまま読むために使う。スライスしないので
+    /// [`Self::position`] や [`Self::cursor_position`] が返す値は入力先頭起点の
+    /// 絶対オフセットのままであり、エラー位置の足し戻しが不要になる。
+    ///
+    /// `pos` が `input.len()` を超える場合は `input.len()` にクランプする。
+    /// 構造体の不変条件 `0 ≦ pos ≦ input.len()` を維持するためで、
+    /// クランプ後は即 EOF として振る舞う（panic せず、`None` / EOF エラーになる）。
+    pub fn new_at(input: &'a [u8], pos: usize) -> Self {
         Self {
             input,
-            pos: 0,
+            pos: pos.min(input.len()),
             buffer: VecDeque::new(),
         }
     }
