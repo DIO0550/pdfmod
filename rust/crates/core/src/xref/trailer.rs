@@ -47,7 +47,15 @@ pub enum EncryptValue {
 /// 従来形式トレイラから取り出した主要キー。
 ///
 /// 必須キー（`/Size` `/Root`）は値型、任意キーは `Option<T>` で保持する。
-/// 生の `PdfDictionary` は保持しない（未知キーへのアクセスが必要になったら追加する）。
+///
+/// 保持しないのは**トレイラ辞書そのもの**（未知キーを含む辞書全体）であり、
+/// 未知キーへのアクセスが必要になった時点で追加する。ただし `Trailer` が
+/// `PdfDictionary` を一切内包しないという意味ではない。`/Encrypt` は辞書を
+/// 直接書ける唯一のキーで（ISO 32000-1 §7.6.1）、その形態では
+/// [`EncryptValue::Dictionary`] が値として辞書を保持する。
+///
+/// この内包があるため `Eq` は derive できない（`PdfDictionary` は値に
+/// `Real(f64)` を持ちうる）。`PartialEq` のみに留めている理由がこれ。
 #[derive(Debug, Clone, PartialEq)]
 #[must_use]
 pub struct Trailer {
