@@ -59,7 +59,7 @@ impl ParsedTrailer {
     ///   — キーの検証に失敗した（[`Trailer::from_dictionary`] を参照）
     ///
     /// [`ParsedXRefTable::end`]: crate::xref::table::parse::ParsedXRefTable::end
-    pub fn parse(input: &[u8], start: ByteOffset) -> Result<ParsedTrailer, TrailerError> {
+    pub fn parse(input: &[u8], start: ByteOffset) -> Result<Self, TrailerError> {
         // ByteOffset(u64) → usize。入力範囲外なら、その位置に trailer キーワードは無い。
         let Ok(begin) = usize::try_from(start.value()) else {
             return Err(TrailerError::missing_trailer_keyword_at(start));
@@ -91,7 +91,7 @@ impl ParsedTrailer {
 
         let trailer = Trailer::from_dictionary(dictionary, dictionary_start)?;
 
-        Ok(ParsedTrailer {
+        Ok(Self {
             trailer,
             end: parser.position(),
         })

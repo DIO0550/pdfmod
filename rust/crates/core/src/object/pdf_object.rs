@@ -179,16 +179,16 @@ impl PdfObject {
     #[must_use]
     pub(crate) fn kind_label(&self) -> &'static str {
         match self {
-            PdfObject::Null => "Null",
-            PdfObject::Boolean(_) => "Boolean",
-            PdfObject::Integer(_) => "Integer",
-            PdfObject::Real(_) => "Real",
-            PdfObject::String(_) => "String",
-            PdfObject::Name(_) => "Name",
-            PdfObject::Array(_) => "Array",
-            PdfObject::Dictionary(_) => "Dictionary",
-            PdfObject::Stream(_) => "Stream",
-            PdfObject::Reference(_) => "Reference",
+            Self::Null => "Null",
+            Self::Boolean(_) => "Boolean",
+            Self::Integer(_) => "Integer",
+            Self::Real(_) => "Real",
+            Self::String(_) => "String",
+            Self::Name(_) => "Name",
+            Self::Array(_) => "Array",
+            Self::Dictionary(_) => "Dictionary",
+            Self::Stream(_) => "Stream",
+            Self::Reference(_) => "Reference",
         }
     }
 }

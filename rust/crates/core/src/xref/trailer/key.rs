@@ -38,13 +38,13 @@ impl TrailerKey {
     #[must_use]
     pub fn as_str(self) -> &'static str {
         match self {
-            TrailerKey::Size => "Size",
-            TrailerKey::Root => "Root",
-            TrailerKey::Prev => "Prev",
-            TrailerKey::XRefStm => "XRefStm",
-            TrailerKey::Info => "Info",
-            TrailerKey::Id => "ID",
-            TrailerKey::Encrypt => "Encrypt",
+            Self::Size => "Size",
+            Self::Root => "Root",
+            Self::Prev => "Prev",
+            Self::XRefStm => "XRefStm",
+            Self::Info => "Info",
+            Self::Id => "ID",
+            Self::Encrypt => "Encrypt",
         }
     }
 
