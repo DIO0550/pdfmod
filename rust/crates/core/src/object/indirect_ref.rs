@@ -23,8 +23,8 @@ impl IndirectRef {
     /// 参照先 `ObjectId` から `IndirectRef` を生成する。
     ///
     /// 無検証（infallible）。任意の `ObjectId` を受理する。
-    pub fn new(target: ObjectId) -> IndirectRef {
-        IndirectRef { target }
+    pub fn new(target: ObjectId) -> Self {
+        Self { target }
     }
 
     /// 参照先 `ObjectId` を `Copy` で取り出す。

@@ -18,8 +18,8 @@ impl ObjectNumber {
     /// 与えられた `u64` から `ObjectNumber` を生成する。
     ///
     /// 無検証（infallible）。0 や `u64::MAX` を含む任意の値を受理する。
-    pub fn new(n: u64) -> ObjectNumber {
-        ObjectNumber(n)
+    pub fn new(n: u64) -> Self {
+        Self(n)
     }
 
     /// 内部のオブジェクト番号を `u64` として取り出す。
@@ -37,8 +37,8 @@ impl From<u64> for ObjectNumber {
     /// 非破壊で残しており本変換は唯一の構築経路ではないが、`42u64.into()` /
     /// `ObjectNumber::from(42)` という標準的な書き方と、`impl Into<ObjectNumber>` を
     /// 受け取るジェネリック API を可能にする目的で併設する。
-    fn from(n: u64) -> ObjectNumber {
-        ObjectNumber(n)
+    fn from(n: u64) -> Self {
+        Self(n)
     }
 }
 
@@ -50,7 +50,7 @@ impl From<ObjectNumber> for u64 {
     /// 本型は `Copy` なので本変換に渡したあとも元の値は使い続けられる。`value()` は
     /// `&ObjectNumber` しか手元にない場面で自動参照外しにより値だけ取り出せる経路として
     /// 引き続き提供する（どちらも残す）。
-    fn from(number: ObjectNumber) -> u64 {
+    fn from(number: ObjectNumber) -> Self {
         number.0
     }
 }

@@ -49,7 +49,7 @@ impl PdfHeader {
     /// - `InvalidHeader`: 走査範囲内に `%PDF-` が見つからない
     /// - `UnexpectedEof`: `%PDF-` の直後で版表記が読めない
     /// - `UnsupportedVersion`: 版表記が形式不正、または ISO 未規定
-    pub fn parse(input: &[u8]) -> Result<PdfHeader, PdfError> {
+    pub fn parse(input: &[u8]) -> Result<Self, PdfError> {
         let origin = find_signature(input).ok_or_else(|| {
             PdfError::new(PdfErrorCode::InvalidHeader).with_message(format!(
                 "%PDF- signature not found within the first {SCAN_LIMIT} bytes"
@@ -72,7 +72,7 @@ impl PdfHeader {
                 ))
         })?;
         let after_version = version_start + version_bytes.len();
-        Ok(PdfHeader {
+        Ok(Self {
             version,
             origin: ByteOffset::new(origin as u64),
             has_binary_indicator: has_binary_indicator(input, after_version),
