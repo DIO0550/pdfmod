@@ -18,8 +18,8 @@ impl ByteOffset {
     /// 与えられた `u64` から `ByteOffset` を生成する。
     ///
     /// 無検証（infallible）。0 や `u64::MAX` を含む任意の値を受理する。
-    pub fn new(n: u64) -> ByteOffset {
-        ByteOffset(n)
+    pub fn new(n: u64) -> Self {
+        Self(n)
     }
 
     /// 内部のバイトオフセットを `u64` として取り出す。
@@ -32,8 +32,8 @@ impl ByteOffset {
     ///
     /// ヘッダがファイル先頭にない PDF で、xref の記録値を実位置へ補正する用途を想定する。
     #[must_use]
-    pub fn checked_add(self, other: ByteOffset) -> Option<ByteOffset> {
-        self.0.checked_add(other.0).map(ByteOffset::new)
+    pub fn checked_add(self, other: Self) -> Option<Self> {
+        self.0.checked_add(other.0).map(Self::new)
     }
 }
 
@@ -45,8 +45,8 @@ impl From<u64> for ByteOffset {
     /// `new` は非破壊で残しており本変換は唯一の構築経路ではないが、`42u64.into()` /
     /// `ByteOffset::from(42)` という標準的な書き方と、`impl Into<ByteOffset>` を
     /// 受け取るジェネリック API を可能にする目的で併設する。
-    fn from(n: u64) -> ByteOffset {
-        ByteOffset(n)
+    fn from(n: u64) -> Self {
+        Self(n)
     }
 }
 
@@ -58,7 +58,7 @@ impl From<ByteOffset> for u64 {
     /// 本型は `Copy` なので本変換に渡したあとも元の値は使い続けられる。`value()` は
     /// `&ByteOffset` しか手元にない場面で自動参照外しにより値だけ取り出せる経路として
     /// 引き続き提供する（どちらも残す）。
-    fn from(offset: ByteOffset) -> u64 {
+    fn from(offset: ByteOffset) -> Self {
         offset.0
     }
 }

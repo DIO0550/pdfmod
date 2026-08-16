@@ -54,7 +54,7 @@ impl StartXref {
     ///   オフセット値と `%%EOF` の間に空白・コメント以外のバイトが残っている /
     ///   オフセット値がファイル長以上
     /// - `InvalidNumber`: `startxref` の後に 10 進数字が 1 桁も無い / 数値が `u64` を溢れる
-    pub fn parse(input: &[u8]) -> Result<StartXref, PdfError> {
+    pub fn parse(input: &[u8]) -> Result<Self, PdfError> {
         let scan_start = input.len().saturating_sub(SCAN_LIMIT);
         let eof_pos =
             find_last_marker(input, EOF_MARKER, scan_start, input.len()).ok_or_else(|| {
@@ -70,7 +70,7 @@ impl StartXref {
             })?;
         let value_start = keyword_pos.saturating_add(STARTXREF_KEYWORD.len());
         let offset = parse_offset_value(input, value_start, eof_pos)?;
-        Ok(StartXref { offset })
+        Ok(Self { offset })
     }
 
     /// xref テーブルの開始バイトオフセットを返す。

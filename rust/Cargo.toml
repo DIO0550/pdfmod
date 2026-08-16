@@ -11,5 +11,14 @@ members = ["crates/core"]
 # priority = -1 を指定し、この個別 allow が優先される状態を維持すること。
 # 新規メンバー crate を追加する際は、その crate の Cargo.toml に
 # [lints] workspace = true を指定すること（指定しないとこの設定が適用されない）。
+#
+# use_self: impl ブロック内の自己型参照は常に `Self` に統一する（#389）。
+# 型名のべた書きと `Self` がファイル単位・impl 単位で混在していたため deny で固定する。
+# `Self` に寄せることで型のリネーム時に impl 内へ差分が波及しない利点もある。
+# 本 lint は nursery グループだが、グループ全体ではなく個別に 1 つだけ有効化しているため
+# priority の指定は不要（上記の priority = -1 が必要になるのはグループ有効化時のみ）。
+# 逆方向 From（例: `impl From<ByteOffset> for u64`）では `Self` が primitive に解決されるが、
+# 例外を作らず統一する方針。どうしても型名を明示したい箇所は #[allow(clippy::use_self)] で個別に逸脱する。
 [workspace.lints.clippy]
 missing_const_for_fn = "allow"
+use_self = "deny"

@@ -36,17 +36,17 @@ impl PdfVersion {
     /// バージョン表記のバイト列（`b"1.7"` など）から `PdfVersion` を得る。
     ///
     /// ISO が規定しない版・形式不正は `None` を返す。
-    pub fn from_bytes(bytes: &[u8]) -> Option<PdfVersion> {
+    pub fn from_bytes(bytes: &[u8]) -> Option<Self> {
         match bytes {
-            b"1.0" => Some(PdfVersion::V1_0),
-            b"1.1" => Some(PdfVersion::V1_1),
-            b"1.2" => Some(PdfVersion::V1_2),
-            b"1.3" => Some(PdfVersion::V1_3),
-            b"1.4" => Some(PdfVersion::V1_4),
-            b"1.5" => Some(PdfVersion::V1_5),
-            b"1.6" => Some(PdfVersion::V1_6),
-            b"1.7" => Some(PdfVersion::V1_7),
-            b"2.0" => Some(PdfVersion::V2_0),
+            b"1.0" => Some(Self::V1_0),
+            b"1.1" => Some(Self::V1_1),
+            b"1.2" => Some(Self::V1_2),
+            b"1.3" => Some(Self::V1_3),
+            b"1.4" => Some(Self::V1_4),
+            b"1.5" => Some(Self::V1_5),
+            b"1.6" => Some(Self::V1_6),
+            b"1.7" => Some(Self::V1_7),
+            b"2.0" => Some(Self::V2_0),
             _ => None,
         }
     }
@@ -55,15 +55,15 @@ impl PdfVersion {
     #[must_use]
     pub fn as_str(&self) -> &'static str {
         match self {
-            PdfVersion::V1_0 => "1.0",
-            PdfVersion::V1_1 => "1.1",
-            PdfVersion::V1_2 => "1.2",
-            PdfVersion::V1_3 => "1.3",
-            PdfVersion::V1_4 => "1.4",
-            PdfVersion::V1_5 => "1.5",
-            PdfVersion::V1_6 => "1.6",
-            PdfVersion::V1_7 => "1.7",
-            PdfVersion::V2_0 => "2.0",
+            Self::V1_0 => "1.0",
+            Self::V1_1 => "1.1",
+            Self::V1_2 => "1.2",
+            Self::V1_3 => "1.3",
+            Self::V1_4 => "1.4",
+            Self::V1_5 => "1.5",
+            Self::V1_6 => "1.6",
+            Self::V1_7 => "1.7",
+            Self::V2_0 => "2.0",
         }
     }
 }

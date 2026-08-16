@@ -25,8 +25,8 @@ impl ObjectId {
     /// オブジェクト番号と世代番号から `ObjectId` を生成する。
     ///
     /// 無検証（infallible）。任意の `(ObjectNumber, GenerationNumber)` の組を受理する。
-    pub fn new(object_number: ObjectNumber, generation_number: GenerationNumber) -> ObjectId {
-        ObjectId {
+    pub fn new(object_number: ObjectNumber, generation_number: GenerationNumber) -> Self {
+        Self {
             object_number,
             generation_number,
         }
