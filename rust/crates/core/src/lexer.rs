@@ -10,7 +10,7 @@
 
 // 既存モジュール（別ファイル分離済み）
 pub mod byte_kind;
-mod byte_ops;
+pub(crate) mod byte_ops;
 mod core;
 pub mod eol;
 mod hex_string;
