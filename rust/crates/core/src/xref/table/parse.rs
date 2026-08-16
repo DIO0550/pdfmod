@@ -23,10 +23,12 @@
 //!
 //! trailer 辞書の解析・xref ストリーム（#588）・`/Prev` を辿るチェーン走査は
 //! 本モジュールの責務ではない。サブセクションを読み終えた位置は
-//! [`ParsedXRefTable::end`] で返し、後続の trailer 解析に引き渡す。
+//! [`ParsedXRefTable::end`] で返し、trailer 解析
+//! （[`ParsedTrailer::parse`](crate::xref::trailer::parse::ParsedTrailer::parse)）に引き渡す。
 
 use crate::byte_offset::ByteOffset;
 use crate::lexer::byte_kind::ByteKind;
+use crate::lexer::byte_ops::keyword_end_at;
 use crate::lexer::skip::skip_whitespace_and_comments;
 use crate::object::generation_number::GenerationNumber;
 use crate::object::object_number::ObjectNumber;
@@ -135,21 +137,9 @@ impl ParsedXRefTable {
 /// キーワード直後はトークン境界（または EOF）でなければならない（`xrefs` を弾く）。
 fn expect_xref_keyword(input: &[u8], pos: usize) -> Result<usize, XRefError> {
     let keyword_start = skip_blanks(input, pos);
-    let keyword_end = keyword_start.saturating_add(XREF_KEYWORD.len());
 
-    let matches_keyword = input
-        .get(keyword_start..keyword_end)
-        .is_some_and(|slice| slice == XREF_KEYWORD);
-    let ends_at_boundary = match input.get(keyword_end) {
-        Some(&byte) => ByteKind::is_token_boundary(byte),
-        None => true,
-    };
-
-    if matches_keyword && ends_at_boundary {
-        Ok(keyword_end)
-    } else {
-        Err(XRefError::missing_xref_keyword_at(offset_of(keyword_start)))
-    }
+    keyword_end_at(input, keyword_start, XREF_KEYWORD)
+        .ok_or_else(|| XRefError::missing_xref_keyword_at(offset_of(keyword_start)))
 }
 
 /// サブセクション 1 つ（ヘッダ ＋ 宣言件数ぶんのエントリ）を読み、読み終わり位置を返す。
