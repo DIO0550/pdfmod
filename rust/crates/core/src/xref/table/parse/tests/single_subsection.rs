@@ -1,4 +1,4 @@
-use super::super::parse_classic_xref_table;
+use super::super::ParsedXRefTable;
 use super::table;
 use crate::byte_offset::ByteOffset;
 use crate::object::generation_number::GenerationNumber;
@@ -9,7 +9,7 @@ use crate::xref::entry::XRefEntry;
 #[test]
 fn minimal_table_with_single_free_entry_parses() {
     let input = table(&[(0, &["0000000000 65535 f"])], " \r\n", "trailer");
-    let parsed = parse_classic_xref_table(&input, ByteOffset::new(0))
+    let parsed = ParsedXRefTable::parse(&input, ByteOffset::new(0))
         .expect("minimal free entry should parse");
     assert_eq!(parsed.table().len(), 1);
     assert_eq!(
@@ -25,8 +25,8 @@ fn minimal_table_with_single_free_entry_parses() {
 #[test]
 fn free_entry_maps_first_field_to_next_free_object() {
     let input = table(&[(0, &["0000000003 00007 f"])], " \r\n", "trailer");
-    let parsed = parse_classic_xref_table(&input, ByteOffset::new(0))
-        .expect("single free entry should parse");
+    let parsed =
+        ParsedXRefTable::parse(&input, ByteOffset::new(0)).expect("single free entry should parse");
     assert_eq!(
         parsed.table().get(ObjectNumber::new(0)),
         Some(&XRefEntry::Free {
@@ -40,7 +40,7 @@ fn free_entry_maps_first_field_to_next_free_object() {
 #[test]
 fn in_use_entry_maps_first_field_to_offset() {
     let input = table(&[(0, &["0000000017 00000 n"])], " \r\n", "trailer");
-    let parsed = parse_classic_xref_table(&input, ByteOffset::new(0))
+    let parsed = ParsedXRefTable::parse(&input, ByteOffset::new(0))
         .expect("single in-use entry should parse");
     assert_eq!(
         parsed.table().get(ObjectNumber::new(0)),
@@ -66,8 +66,8 @@ fn mixed_free_and_in_use_entries_are_registered() {
         " \r\n",
         "trailer",
     );
-    let parsed = parse_classic_xref_table(&input, ByteOffset::new(0))
-        .expect("mixed subsection should parse");
+    let parsed =
+        ParsedXRefTable::parse(&input, ByteOffset::new(0)).expect("mixed subsection should parse");
     assert_eq!(parsed.table().len(), 3);
     assert_eq!(
         parsed.table().get(ObjectNumber::new(0)),
@@ -100,7 +100,7 @@ fn object_numbers_start_from_subsection_first_number() {
         " \r\n",
         "trailer",
     );
-    let parsed = parse_classic_xref_table(&input, ByteOffset::new(0))
+    let parsed = ParsedXRefTable::parse(&input, ByteOffset::new(0))
         .expect("subsection starting at 5 should parse");
     assert!(parsed.table().get(ObjectNumber::new(4)).is_none());
     assert!(parsed.table().get(ObjectNumber::new(5)).is_some());
@@ -119,7 +119,7 @@ fn large_first_object_number_does_not_overflow() {
         " \r\n",
         "trailer",
     );
-    let parsed = parse_classic_xref_table(&input, ByteOffset::new(0))
+    let parsed = ParsedXRefTable::parse(&input, ByteOffset::new(0))
         .expect("subsection with large object numbers should parse");
     assert_eq!(parsed.table().len(), 2);
     assert!(parsed
@@ -136,7 +136,7 @@ fn large_first_object_number_does_not_overflow() {
 #[test]
 fn subsection_ending_exactly_at_u64_max_is_accepted() {
     let input = table(&[(u64::MAX, &["0000000017 00000 n"])], " \r\n", "trailer");
-    let parsed = parse_classic_xref_table(&input, ByteOffset::new(0))
+    let parsed = ParsedXRefTable::parse(&input, ByteOffset::new(0))
         .expect("subsection covering only object u64::MAX should parse");
     assert_eq!(parsed.table().len(), 1);
     assert_eq!(

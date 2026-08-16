@@ -1,4 +1,4 @@
-use super::super::parse_classic_xref_table;
+use super::super::ParsedXRefTable;
 use super::table;
 use crate::byte_offset::ByteOffset;
 use crate::object::object_number::ObjectNumber;
@@ -23,7 +23,7 @@ fn two_subsections_register_disjoint_object_numbers() {
         "trailer",
     );
     let parsed =
-        parse_classic_xref_table(&input, ByteOffset::new(0)).expect("two subsections should parse");
+        ParsedXRefTable::parse(&input, ByteOffset::new(0)).expect("two subsections should parse");
     assert_eq!(parsed.table().len(), 5);
     for number in [0u64, 1, 2, 10, 11] {
         assert!(
@@ -51,8 +51,8 @@ fn three_subsections_register_all_entries() {
         " \r\n",
         "trailer",
     );
-    let parsed = parse_classic_xref_table(&input, ByteOffset::new(0))
-        .expect("three subsections should parse");
+    let parsed =
+        ParsedXRefTable::parse(&input, ByteOffset::new(0)).expect("three subsections should parse");
     assert_eq!(parsed.table().len(), 4);
     assert!(parsed.table().get(ObjectNumber::new(0)).is_some());
     assert!(parsed.table().get(ObjectNumber::new(4)).is_some());
@@ -64,7 +64,7 @@ fn three_subsections_register_all_entries() {
 #[test]
 fn zero_count_subsection_registers_nothing() {
     let input = table(&[(0, &[])], "\n", "trailer");
-    let parsed = parse_classic_xref_table(&input, ByteOffset::new(0))
+    let parsed = ParsedXRefTable::parse(&input, ByteOffset::new(0))
         .expect("zero-count subsection should parse");
     assert!(parsed.table().is_empty());
 }
@@ -81,7 +81,7 @@ fn zero_count_subsection_in_the_middle_is_tolerated() {
         " \r\n",
         "trailer",
     );
-    let parsed = parse_classic_xref_table(&input, ByteOffset::new(0))
+    let parsed = ParsedXRefTable::parse(&input, ByteOffset::new(0))
         .expect("subsections with zero-count in the middle should parse");
     assert_eq!(parsed.table().len(), 3);
     assert!(parsed.table().get(ObjectNumber::new(0)).is_some());
@@ -99,7 +99,7 @@ fn duplicate_object_number_keeps_first_entry() {
         " \r\n",
         "trailer",
     );
-    let parsed = parse_classic_xref_table(&input, ByteOffset::new(0))
+    let parsed = ParsedXRefTable::parse(&input, ByteOffset::new(0))
         .expect("duplicate subsection should parse");
     assert_eq!(parsed.table().len(), 1);
     let entry = parsed
@@ -130,7 +130,7 @@ fn overlapping_subsections_keep_first_entries_and_add_new_ones() {
         " \r\n",
         "trailer",
     );
-    let parsed = parse_classic_xref_table(&input, ByteOffset::new(0))
+    let parsed = ParsedXRefTable::parse(&input, ByteOffset::new(0))
         .expect("overlapping subsections should parse");
     assert_eq!(parsed.table().len(), 3);
     let entry_1 = parsed
