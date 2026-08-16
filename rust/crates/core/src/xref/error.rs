@@ -49,38 +49,38 @@ pub struct XRefError {
 
 impl XRefError {
     /// 任意の `kind` + `position` でエラーを構築する。
-    pub fn new(kind: XRefErrorKind, position: ByteOffset) -> XRefError {
-        XRefError { kind, position }
+    pub fn new(kind: XRefErrorKind, position: ByteOffset) -> Self {
+        Self { kind, position }
     }
 
     /// [`XRefErrorKind::MissingXRefKeyword`] を指定位置で構築する。
-    pub fn missing_xref_keyword_at(position: ByteOffset) -> XRefError {
-        XRefError::new(XRefErrorKind::MissingXRefKeyword, position)
+    pub fn missing_xref_keyword_at(position: ByteOffset) -> Self {
+        Self::new(XRefErrorKind::MissingXRefKeyword, position)
     }
 
     /// [`XRefErrorKind::InvalidSubsectionHeader`] を指定位置で構築する。
-    pub fn invalid_subsection_header_at(position: ByteOffset) -> XRefError {
-        XRefError::new(XRefErrorKind::InvalidSubsectionHeader, position)
+    pub fn invalid_subsection_header_at(position: ByteOffset) -> Self {
+        Self::new(XRefErrorKind::InvalidSubsectionHeader, position)
     }
 
     /// [`XRefErrorKind::InvalidNumber`] を指定位置で構築する。
-    pub fn invalid_number_at(position: ByteOffset) -> XRefError {
-        XRefError::new(XRefErrorKind::InvalidNumber, position)
+    pub fn invalid_number_at(position: ByteOffset) -> Self {
+        Self::new(XRefErrorKind::InvalidNumber, position)
     }
 
     /// [`XRefErrorKind::InvalidEntryFlag`] を指定位置・実バイトで構築する。
-    pub fn invalid_entry_flag_at(position: ByteOffset, actual: u8) -> XRefError {
-        XRefError::new(XRefErrorKind::InvalidEntryFlag { actual }, position)
+    pub fn invalid_entry_flag_at(position: ByteOffset, actual: u8) -> Self {
+        Self::new(XRefErrorKind::InvalidEntryFlag { actual }, position)
     }
 
     /// [`XRefErrorKind::GenerationOutOfRange`] を指定位置・実値で構築する。
-    pub fn generation_out_of_range_at(position: ByteOffset, value: u64) -> XRefError {
-        XRefError::new(XRefErrorKind::GenerationOutOfRange { value }, position)
+    pub fn generation_out_of_range_at(position: ByteOffset, value: u64) -> Self {
+        Self::new(XRefErrorKind::GenerationOutOfRange { value }, position)
     }
 
     /// [`XRefErrorKind::UnexpectedEof`] を指定位置で構築する。
-    pub fn unexpected_eof_at(position: ByteOffset) -> XRefError {
-        XRefError::new(XRefErrorKind::UnexpectedEof, position)
+    pub fn unexpected_eof_at(position: ByteOffset) -> Self {
+        Self::new(XRefErrorKind::UnexpectedEof, position)
     }
 }
 
