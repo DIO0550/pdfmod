@@ -5,10 +5,11 @@
 //! に対応する。
 //! 本ファイルはサブモジュールの mod 宣言のみを持つファサード。
 //! xref エントリの表現（`entry`）・テーブルの表現（`table`）・従来型 xref テーブルの
-//! 解析（`table::parse`）・xref 解析専用のエラー型（`error`）を提供する。
-//! xref ストリームの解析（#588）・トレイラ・`/Prev` を辿るチェーン走査は
+//! 解析（`table::parse`）・従来形式トレイラの解析（`trailer`）・xref 解析専用のエラー型（`error`）を提供する。
+//! xref ストリームの解析（#588）・`/Prev` を辿るチェーン走査は
 //! 後続の Issue で追加する。
 
 pub mod entry;
 pub mod error;
 pub mod table;
+pub mod trailer;
