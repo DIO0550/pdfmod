@@ -31,8 +31,8 @@ impl PdfStream {
     /// 上位（lexer/parser 層）に委譲する。`data` は `impl Into<Vec<u8>>` 受け
     /// （`PdfName::new` と同方針。`b"..."` を直接渡せる）。`Vec<u8>` 入力はムーブ格納で
     /// コピーなし、スライス・配列参照入力は所有化のためのコピーが 1 回発生する。
-    pub fn new(dictionary: PdfDictionary, data: impl Into<Vec<u8>>) -> PdfStream {
-        PdfStream {
+    pub fn new(dictionary: PdfDictionary, data: impl Into<Vec<u8>>) -> Self {
+        Self {
             dictionary,
             data: data.into(),
         }

@@ -44,21 +44,21 @@ impl ByteKind {
     ///
     /// 分類の単一情報源である `ByteKind::from` に委譲する。
     pub fn is_whitespace(byte: u8) -> bool {
-        ByteKind::from(byte) == ByteKind::Whitespace
+        Self::from(byte) == Self::Whitespace
     }
 
     /// デリミタバイトかどうかを返す述語（関連関数）。
     ///
     /// 分類の単一情報源である `ByteKind::from` に委譲する。
     pub fn is_delimiter(byte: u8) -> bool {
-        ByteKind::from(byte) == ByteKind::Delimiter
+        Self::from(byte) == Self::Delimiter
     }
 
     /// 通常の文字（whitespace でも delimiter でもない）かどうかを返す述語（関連関数）。
     ///
     /// 分類の単一情報源である `ByteKind::from` に委譲する。
     pub fn is_regular(byte: u8) -> bool {
-        ByteKind::from(byte) == ByteKind::Regular
+        Self::from(byte) == Self::Regular
     }
 
     /// トークンを終端するバイト（whitespace または delimiter）かどうかを返す述語（関連関数）。
@@ -67,7 +67,7 @@ impl ByteKind {
     /// `is_whitespace(b) || is_delimiter(b)` と書くと分類の単一情報源から離れ、
     /// whitespace / delimiter の定義が動いたときに追従漏れを起こす。
     pub fn is_token_boundary(byte: u8) -> bool {
-        !ByteKind::is_regular(byte)
+        !Self::is_regular(byte)
     }
 }
 
@@ -75,12 +75,12 @@ impl From<u8> for ByteKind {
     /// バイト値を 3 分類のいずれかに変換する。
     ///
     /// 全バイト値に対して定義される全域変換であり、panic しない。
-    fn from(byte: u8) -> ByteKind {
+    fn from(byte: u8) -> Self {
         match byte {
-            NUL | TAB | LF | FF | CR | SP => ByteKind::Whitespace,
+            NUL | TAB | LF | FF | CR | SP => Self::Whitespace,
             LEFT_PAREN | RIGHT_PAREN | LESS_THAN | GREATER_THAN | LEFT_BRACKET | RIGHT_BRACKET
-            | LEFT_BRACE | RIGHT_BRACE | SLASH | PERCENT => ByteKind::Delimiter,
-            _ => ByteKind::Regular,
+            | LEFT_BRACE | RIGHT_BRACE | SLASH | PERCENT => Self::Delimiter,
+            _ => Self::Regular,
         }
     }
 }
