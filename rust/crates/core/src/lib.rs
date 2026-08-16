@@ -10,8 +10,9 @@
 //!
 //! byte_offset / error / file / lexer / object / parser / xref の各モジュールは実装済み。
 //! `file` はヘッダ解析と startxref の末尾スキャンを提供する。
-//! `xref` は xref エントリとテーブルの表現に加え、従来型 xref テーブルの解析を提供する。
-//! xref ストリームの解析と trailer は後続 PR で追加する。
+//! `xref` は xref エントリとテーブルの表現に加え、従来型 xref テーブルの解析と
+//! 従来形式トレイラの解析を提供する。
+//! xref ストリームの解析と `/Prev` チェーン走査は後続 PR で追加する。
 
 pub mod byte_offset;
 pub mod error;
