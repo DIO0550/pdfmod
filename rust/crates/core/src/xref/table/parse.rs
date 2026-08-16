@@ -58,6 +58,60 @@ pub struct ParsedXRefTable {
 }
 
 impl ParsedXRefTable {
+    /// 従来型 xref テーブルを解析する。
+    ///
+    /// `start` は `xref` キーワードの位置（`startxref` が記録した値）。
+    /// その位置から空白・コメントを読み飛ばした先に `xref` があることを確認し、
+    /// サブセクションが尽きるまで「ヘッダ ＋ 件数ぶんのエントリ」を繰り返し読む。
+    /// 数字で始まらないトークン（通常は `trailer`）に到達したら正常終了し、
+    /// その位置を [`ParsedXRefTable::end`] として返す。
+    ///
+    /// # Errors
+    ///
+    /// - [`XRefErrorKind::MissingXRefKeyword`] — `start` が入力範囲外、または
+    ///   空白を飛ばした先が `xref`（＋トークン境界）でない
+    /// - [`XRefErrorKind::InvalidSubsectionHeader`] — サブセクションヘッダの
+    ///   2 整数が読めない、または「先頭番号 + 件数」が `u64` を超える
+    /// - [`XRefErrorKind::InvalidNumber`] — エントリのオフセット欄／世代番号欄が
+    ///   10 進整数として読めない
+    /// - [`XRefErrorKind::GenerationOutOfRange`] — 世代番号が 65535 を超える
+    /// - [`XRefErrorKind::InvalidEntryFlag`] — 状態フラグが `n` / `f` 以外
+    /// - [`XRefErrorKind::UnexpectedEof`] — 宣言件数を読み切る前に入力が尽きた
+    ///
+    /// [`XRefErrorKind::MissingXRefKeyword`]: crate::xref::error::XRefErrorKind::MissingXRefKeyword
+    /// [`XRefErrorKind::InvalidSubsectionHeader`]: crate::xref::error::XRefErrorKind::InvalidSubsectionHeader
+    /// [`XRefErrorKind::InvalidNumber`]: crate::xref::error::XRefErrorKind::InvalidNumber
+    /// [`XRefErrorKind::GenerationOutOfRange`]: crate::xref::error::XRefErrorKind::GenerationOutOfRange
+    /// [`XRefErrorKind::InvalidEntryFlag`]: crate::xref::error::XRefErrorKind::InvalidEntryFlag
+    /// [`XRefErrorKind::UnexpectedEof`]: crate::xref::error::XRefErrorKind::UnexpectedEof
+    pub fn parse(input: &[u8], start: ByteOffset) -> Result<ParsedXRefTable, XRefError> {
+        // ByteOffset(u64) → usize。入力範囲外なら、その位置に xref キーワードは無い。
+        let Ok(begin) = usize::try_from(start.value()) else {
+            return Err(XRefError::missing_xref_keyword_at(start));
+        };
+        if begin > input.len() {
+            return Err(XRefError::missing_xref_keyword_at(start));
+        }
+
+        let mut cursor = expect_xref_keyword(input, begin)?;
+        let mut table = XRefTable::new();
+
+        loop {
+            cursor = skip_blanks(input, cursor);
+            // 数字で始まらなければサブセクションの終わり（通常は `trailer`）。
+            // trailer かどうかの判定は後続の trailer パーサの責務なので、ここでは見ない。
+            if !starts_with_digit(input, cursor) {
+                break;
+            }
+            cursor = parse_subsection(input, cursor, &mut table)?;
+        }
+
+        Ok(ParsedXRefTable {
+            table,
+            end: offset_of(cursor),
+        })
+    }
+
     /// 構築された xref テーブルへの参照を返す。
     #[must_use]
     pub fn table(&self) -> &XRefTable {
@@ -74,63 +128,6 @@ impl ParsedXRefTable {
     pub fn end(&self) -> ByteOffset {
         self.end
     }
-}
-
-/// 従来型 xref テーブルを解析する。
-///
-/// `start` は `xref` キーワードの位置（`startxref` が記録した値）。
-/// その位置から空白・コメントを読み飛ばした先に `xref` があることを確認し、
-/// サブセクションが尽きるまで「ヘッダ ＋ 件数ぶんのエントリ」を繰り返し読む。
-/// 数字で始まらないトークン（通常は `trailer`）に到達したら正常終了し、
-/// その位置を [`ParsedXRefTable::end`] として返す。
-///
-/// # Errors
-///
-/// - [`XRefErrorKind::MissingXRefKeyword`] — `start` が入力範囲外、または
-///   空白を飛ばした先が `xref`（＋トークン境界）でない
-/// - [`XRefErrorKind::InvalidSubsectionHeader`] — サブセクションヘッダの
-///   2 整数が読めない、または「先頭番号 + 件数」が `u64` を超える
-/// - [`XRefErrorKind::InvalidNumber`] — エントリのオフセット欄／世代番号欄が
-///   10 進整数として読めない
-/// - [`XRefErrorKind::GenerationOutOfRange`] — 世代番号が 65535 を超える
-/// - [`XRefErrorKind::InvalidEntryFlag`] — 状態フラグが `n` / `f` 以外
-/// - [`XRefErrorKind::UnexpectedEof`] — 宣言件数を読み切る前に入力が尽きた
-///
-/// [`XRefErrorKind::MissingXRefKeyword`]: crate::xref::error::XRefErrorKind::MissingXRefKeyword
-/// [`XRefErrorKind::InvalidSubsectionHeader`]: crate::xref::error::XRefErrorKind::InvalidSubsectionHeader
-/// [`XRefErrorKind::InvalidNumber`]: crate::xref::error::XRefErrorKind::InvalidNumber
-/// [`XRefErrorKind::GenerationOutOfRange`]: crate::xref::error::XRefErrorKind::GenerationOutOfRange
-/// [`XRefErrorKind::InvalidEntryFlag`]: crate::xref::error::XRefErrorKind::InvalidEntryFlag
-/// [`XRefErrorKind::UnexpectedEof`]: crate::xref::error::XRefErrorKind::UnexpectedEof
-pub fn parse_classic_xref_table(
-    input: &[u8],
-    start: ByteOffset,
-) -> Result<ParsedXRefTable, XRefError> {
-    // ByteOffset(u64) → usize。入力範囲外なら、その位置に xref キーワードは無い。
-    let Ok(begin) = usize::try_from(start.value()) else {
-        return Err(XRefError::missing_xref_keyword_at(start));
-    };
-    if begin > input.len() {
-        return Err(XRefError::missing_xref_keyword_at(start));
-    }
-
-    let mut cursor = expect_xref_keyword(input, begin)?;
-    let mut table = XRefTable::new();
-
-    loop {
-        cursor = skip_blanks(input, cursor);
-        // 数字で始まらなければサブセクションの終わり（通常は `trailer`）。
-        // trailer かどうかの判定は後続の trailer パーサの責務なので、ここでは見ない。
-        if !starts_with_digit(input, cursor) {
-            break;
-        }
-        cursor = parse_subsection(input, cursor, &mut table)?;
-    }
-
-    Ok(ParsedXRefTable {
-        table,
-        end: offset_of(cursor),
-    })
 }
 
 /// 空白・コメントを飛ばした先に `xref` キーワードがあることを確認し、その直後の位置を返す。

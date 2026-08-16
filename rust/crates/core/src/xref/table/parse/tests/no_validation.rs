@@ -1,4 +1,4 @@
-use super::super::parse_classic_xref_table;
+use super::super::ParsedXRefTable;
 use super::table;
 use crate::byte_offset::ByteOffset;
 use crate::object::generation_number::GenerationNumber;
@@ -13,7 +13,7 @@ fn subsection_starting_at_one_is_registered_without_correction() {
         " \r\n",
         "trailer",
     );
-    let parsed = parse_classic_xref_table(&input, ByteOffset::new(0))
+    let parsed = ParsedXRefTable::parse(&input, ByteOffset::new(0))
         .expect("subsection starting at 1 should parse");
     assert!(parsed.table().get(ObjectNumber::new(0)).is_none());
     assert!(parsed.table().get(ObjectNumber::new(1)).is_some());
@@ -28,7 +28,7 @@ fn table_without_object_zero_is_accepted() {
         " \r\n",
         "trailer",
     );
-    let parsed = parse_classic_xref_table(&input, ByteOffset::new(0))
+    let parsed = ParsedXRefTable::parse(&input, ByteOffset::new(0))
         .expect("table without object 0 should parse");
     assert_eq!(parsed.table().len(), 2);
     assert!(parsed.table().get(ObjectNumber::new(0)).is_none());
@@ -40,7 +40,7 @@ fn table_without_object_zero_is_accepted() {
 #[test]
 fn object_zero_with_non_default_generation_is_accepted() {
     let input = table(&[(0, &["0000000000 00000 f"])], " \r\n", "trailer");
-    let parsed = parse_classic_xref_table(&input, ByteOffset::new(0))
+    let parsed = ParsedXRefTable::parse(&input, ByteOffset::new(0))
         .expect("object 0 with generation 0 should parse");
     assert_eq!(
         parsed.table().get(ObjectNumber::new(0)),
@@ -55,7 +55,7 @@ fn object_zero_with_non_default_generation_is_accepted() {
 #[test]
 fn object_zero_without_conventional_free_head_is_accepted() {
     let input = table(&[(0, &["0000000017 00000 n"])], " \r\n", "trailer");
-    let parsed = parse_classic_xref_table(&input, ByteOffset::new(0))
+    let parsed = ParsedXRefTable::parse(&input, ByteOffset::new(0))
         .expect("object 0 declared in-use should still parse");
     assert_eq!(
         parsed.table().get(ObjectNumber::new(0)),
@@ -70,7 +70,7 @@ fn object_zero_without_conventional_free_head_is_accepted() {
 #[test]
 fn offset_beyond_input_length_is_accepted() {
     let input = table(&[(0, &["9999999999 00000 n"])], " \r\n", "trailer");
-    let parsed = parse_classic_xref_table(&input, ByteOffset::new(0))
+    let parsed = ParsedXRefTable::parse(&input, ByteOffset::new(0))
         .expect("large offset should not be validated against input length");
     assert_eq!(
         parsed.table().get(ObjectNumber::new(0)),
@@ -89,7 +89,7 @@ fn boundary_values_are_accepted() {
         " \r\n",
         "trailer",
     );
-    let parsed = parse_classic_xref_table(&input, ByteOffset::new(0))
+    let parsed = ParsedXRefTable::parse(&input, ByteOffset::new(0))
         .expect("u64::MAX offset and generation 65535 should parse");
     assert_eq!(
         parsed.table().get(ObjectNumber::new(0)),

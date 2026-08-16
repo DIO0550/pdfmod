@@ -1,4 +1,4 @@
-use super::super::parse_classic_xref_table;
+use super::super::ParsedXRefTable;
 use crate::byte_offset::ByteOffset;
 use crate::xref::error::XRefErrorKind;
 
@@ -6,7 +6,7 @@ use crate::xref::error::XRefErrorKind;
 #[test]
 fn start_points_directly_at_xref_keyword() {
     let input = b"xref\n0 1\n0000000000 65535 f \ntrailer";
-    let parsed = parse_classic_xref_table(input, ByteOffset::new(0))
+    let parsed = ParsedXRefTable::parse(input, ByteOffset::new(0))
         .expect("standard xref table should parse");
     assert_eq!(parsed.table().len(), 1);
 }
@@ -15,7 +15,7 @@ fn start_points_directly_at_xref_keyword() {
 #[test]
 fn whitespace_before_xref_keyword_is_skipped() {
     let input = b"  \r\nxref\n0 1\n0000000000 65535 f \ntrailer";
-    let parsed = parse_classic_xref_table(input, ByteOffset::new(0))
+    let parsed = ParsedXRefTable::parse(input, ByteOffset::new(0))
         .expect("leading whitespace before xref keyword should be skipped");
     assert_eq!(parsed.table().len(), 1);
 }
@@ -24,7 +24,7 @@ fn whitespace_before_xref_keyword_is_skipped() {
 #[test]
 fn comment_before_xref_keyword_is_skipped() {
     let input = b"%comment\nxref\n0 1\n0000000000 65535 f \ntrailer";
-    let parsed = parse_classic_xref_table(input, ByteOffset::new(0))
+    let parsed = ParsedXRefTable::parse(input, ByteOffset::new(0))
         .expect("comment before xref keyword should be skipped");
     assert_eq!(parsed.table().len(), 1);
 }
@@ -37,7 +37,7 @@ fn xref_at_arbitrary_start_offset_returns_absolute_positions() {
     let table_bytes = b"xref\n0 1\n0000000017 00000 n \ntrailer";
     input.extend_from_slice(table_bytes);
     let start = ByteOffset::new(10);
-    let parsed = parse_classic_xref_table(&input, start).expect("xref at offset 10 should parse");
+    let parsed = ParsedXRefTable::parse(&input, start).expect("xref at offset 10 should parse");
     assert_eq!(parsed.table().len(), 1);
     let trailer_rel = table_bytes
         .windows(b"trailer".len())
@@ -50,7 +50,7 @@ fn xref_at_arbitrary_start_offset_returns_absolute_positions() {
 #[test]
 fn missing_xref_keyword_is_rejected() {
     let input = b"trailer\n<< >>";
-    let error = parse_classic_xref_table(input, ByteOffset::new(0))
+    let error = ParsedXRefTable::parse(input, ByteOffset::new(0))
         .expect_err("input without xref keyword should be rejected");
     assert_eq!(error.kind, XRefErrorKind::MissingXRefKeyword);
     assert_eq!(error.position, ByteOffset::new(0));
@@ -60,7 +60,7 @@ fn missing_xref_keyword_is_rejected() {
 #[test]
 fn keyword_prefix_without_token_boundary_is_rejected() {
     let input = b"xrefs\n0 1\n0000000000 65535 f \n";
-    let error = parse_classic_xref_table(input, ByteOffset::new(0))
+    let error = ParsedXRefTable::parse(input, ByteOffset::new(0))
         .expect_err("`xrefs` should not be accepted as the xref keyword");
     assert_eq!(error.kind, XRefErrorKind::MissingXRefKeyword);
     assert_eq!(error.position, ByteOffset::new(0));
@@ -70,7 +70,7 @@ fn keyword_prefix_without_token_boundary_is_rejected() {
 #[test]
 fn start_offset_at_input_end_is_rejected() {
     let input: &[u8] = b"";
-    let error = parse_classic_xref_table(input, ByteOffset::new(0))
+    let error = ParsedXRefTable::parse(input, ByteOffset::new(0))
         .expect_err("empty input should be rejected");
     assert_eq!(error.kind, XRefErrorKind::MissingXRefKeyword);
     assert_eq!(error.position, ByteOffset::new(0));
@@ -81,7 +81,7 @@ fn start_offset_at_input_end_is_rejected() {
 fn start_offset_beyond_input_is_rejected_with_original_position() {
     let input = b"xref\n0 0\ntrailer";
     let start = ByteOffset::new(u64::MAX);
-    let error = parse_classic_xref_table(input, start)
+    let error = ParsedXRefTable::parse(input, start)
         .expect_err("start offset beyond the input should be rejected");
     assert_eq!(error.kind, XRefErrorKind::MissingXRefKeyword);
     assert_eq!(error.position, start);

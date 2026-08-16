@@ -1,4 +1,4 @@
-use super::super::parse_classic_xref_table;
+use super::super::ParsedXRefTable;
 use super::table;
 use crate::byte_offset::ByteOffset;
 use crate::object::generation_number::GenerationNumber;
@@ -14,7 +14,7 @@ fn entries_parse_identically_across_eol_variants() {
         ("\r\n", "CR LF"),
         ("\r", "CR only"),
     ];
-    let expected = parse_classic_xref_table(
+    let expected = ParsedXRefTable::parse(
         &table(&[(0, &["0000000017 00000 n"])], " \r\n", "trailer"),
         ByteOffset::new(0),
     )
@@ -23,7 +23,7 @@ fn entries_parse_identically_across_eol_variants() {
 
     for (eol, name) in cases {
         let input = table(&[(0, &["0000000017 00000 n"])], eol, "trailer");
-        let parsed = parse_classic_xref_table(&input, ByteOffset::new(0))
+        let parsed = ParsedXRefTable::parse(&input, ByteOffset::new(0))
             .unwrap_or_else(|error| panic!("{name} should parse: {error:?}"));
         assert_eq!(parsed.into_table(), expected, "{name}");
     }
@@ -34,7 +34,7 @@ fn entries_parse_identically_across_eol_variants() {
 fn mixed_eol_variants_in_single_subsection_are_supported() {
     let input =
         b"xref\n0 3\n0000000000 65535 f\n0000000017 00000 n \r\n0000000058 00000 n\rtrailer";
-    let parsed = parse_classic_xref_table(input, ByteOffset::new(0))
+    let parsed = ParsedXRefTable::parse(input, ByteOffset::new(0))
         .expect("mixed EOL in single subsection should parse");
     assert_eq!(parsed.table().len(), 3);
     assert_eq!(
@@ -64,7 +64,7 @@ fn mixed_eol_variants_in_single_subsection_are_supported() {
 #[test]
 fn extra_whitespace_between_fields_is_tolerated() {
     let input = table(&[(0, &["0000000017   00000    n"])], "\n", "trailer");
-    let parsed = parse_classic_xref_table(&input, ByteOffset::new(0))
+    let parsed = ParsedXRefTable::parse(&input, ByteOffset::new(0))
         .expect("loosely formatted entry should parse");
     assert_eq!(
         parsed.table().get(ObjectNumber::new(0)),
@@ -80,7 +80,7 @@ fn extra_whitespace_between_fields_is_tolerated() {
 fn missing_zero_padding_is_tolerated() {
     let input = table(&[(0, &["17 0 n"])], "\n", "trailer");
     let parsed =
-        parse_classic_xref_table(&input, ByteOffset::new(0)).expect("unpadded entry should parse");
+        ParsedXRefTable::parse(&input, ByteOffset::new(0)).expect("unpadded entry should parse");
     assert_eq!(
         parsed.table().get(ObjectNumber::new(0)),
         Some(&XRefEntry::InUse {
@@ -94,7 +94,7 @@ fn missing_zero_padding_is_tolerated() {
 #[test]
 fn digits_exceeding_standard_width_are_tolerated() {
     let input = table(&[(0, &["00000000017 000000 n"])], "\n", "trailer");
-    let parsed = parse_classic_xref_table(&input, ByteOffset::new(0))
+    let parsed = ParsedXRefTable::parse(&input, ByteOffset::new(0))
         .expect("entry with extra digit width should parse");
     assert_eq!(
         parsed.table().get(ObjectNumber::new(0)),
@@ -109,7 +109,7 @@ fn digits_exceeding_standard_width_are_tolerated() {
 #[test]
 fn comment_between_entries_is_skipped() {
     let input = b"xref\n0 2\n0000000017 00000 n \n%comment\n0000000058 00000 n \ntrailer";
-    let parsed = parse_classic_xref_table(input, ByteOffset::new(0))
+    let parsed = ParsedXRefTable::parse(input, ByteOffset::new(0))
         .expect("comment between entries should be skipped");
     assert_eq!(parsed.table().len(), 2);
 }
