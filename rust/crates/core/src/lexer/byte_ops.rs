@@ -4,6 +4,34 @@
 //! 本モジュールはトークン化ロジック（`hex_string` / `literal_string` 等）から
 //! 共通利用される計算ヘルパの集約先である。
 
+use super::byte_kind::ByteKind;
+
+/// 指定位置が `keyword` と一致し、かつ直後がトークン境界（または EOF）であれば、
+/// キーワード直後の位置を返す純関数。
+///
+/// 構造キーワード（`xref` / `trailer` / `startxref` 等）の検出に使う。
+/// これらは lexer では既知キーワードにならず `Token::Keyword` になるため、
+/// トークン層を経由せず生バイトで照合する必要がある。
+///
+/// # 契約
+/// - `pos` が範囲外、または `pos..pos + keyword.len()` が入力を超える場合は `None`。
+/// - キーワード直後が regular バイトの場合は `None`（`xrefs` / `trailerX` を弾く）。
+/// - 直後が EOF の場合は境界とみなして `Some`。
+/// - 空白・コメントのスキップは**行わない**。呼び出し側が事前に
+///   `skip_whitespace_and_comments` で位置を進めてから渡す。
+/// - 任意の入力に対して panic しない（lexer 層の panic 不在契約）。
+pub(crate) fn keyword_end_at(input: &[u8], pos: usize, keyword: &[u8]) -> Option<usize> {
+    let end = pos.checked_add(keyword.len())?;
+    if input.get(pos..end)? != keyword {
+        return None;
+    }
+    match input.get(end) {
+        None => Some(end),
+        Some(&byte) if ByteKind::is_token_boundary(byte) => Some(end),
+        Some(_) => None,
+    }
+}
+
 /// 16 進数字 1 バイト（`'0'-'9'` / `'a'-'f'` / `'A'-'F'`）を 0-15 のニブル値に変換する純関数。
 ///
 /// # 契約
@@ -37,6 +65,52 @@ pub(super) fn combine_pair(high_nibble: u8, low_nibble: u8) -> u8 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // キーワードと一致し直後が空白なら、キーワード直後の位置が返ることを確認する
+    #[test]
+    fn keyword_end_at_returns_position_after_keyword() {
+        assert_eq!(keyword_end_at(b"trailer << >>", 0, b"trailer"), Some(7));
+    }
+
+    // 直後が EOF の場合もトークン境界とみなすことを確認する
+    #[test]
+    fn keyword_end_at_accepts_eof_as_boundary() {
+        assert_eq!(keyword_end_at(b"trailer", 0, b"trailer"), Some(7));
+    }
+
+    // 直後が regular バイトなら None を返すことを確認する（trailerX を弾く）
+    #[test]
+    fn keyword_end_at_rejects_regular_byte_after_keyword() {
+        assert_eq!(keyword_end_at(b"trailerX", 0, b"trailer"), None);
+    }
+
+    // 各種デリミタが境界として受理されることを確認する
+    #[test]
+    fn keyword_end_at_accepts_delimiters_as_boundary() {
+        let cases: [&[u8]; 4] = [b"trailer<<", b"trailer[", b"trailer(", b"trailer/"];
+        for input in cases {
+            assert_eq!(
+                keyword_end_at(input, 0, b"trailer"),
+                Some(7),
+                "input: {input:?}"
+            );
+        }
+    }
+
+    // 非ゼロ位置からの照合が成立することを確認する
+    #[test]
+    fn keyword_end_at_matches_at_nonzero_position() {
+        assert_eq!(keyword_end_at(b"xxxtrailer ", 3, b"trailer"), Some(10));
+    }
+
+    // 一致しない・範囲外・オーバーフローのいずれでも panic せず None を返すことを確認する
+    #[test]
+    fn keyword_end_at_returns_none_for_mismatch_or_out_of_range() {
+        assert_eq!(keyword_end_at(b"xref ", 0, b"trailer"), None);
+        assert_eq!(keyword_end_at(b"trail", 0, b"trailer"), None);
+        assert_eq!(keyword_end_at(b"trailer", 100, b"trailer"), None);
+        assert_eq!(keyword_end_at(b"trailer", usize::MAX, b"trailer"), None);
+    }
 
     #[test]
     fn hex_value_converts_hex_digit_bytes_to_nibble_values() {
