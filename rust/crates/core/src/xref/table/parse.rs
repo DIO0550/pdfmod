@@ -84,7 +84,7 @@ impl ParsedXRefTable {
     /// [`XRefErrorKind::GenerationOutOfRange`]: crate::xref::error::XRefErrorKind::GenerationOutOfRange
     /// [`XRefErrorKind::InvalidEntryFlag`]: crate::xref::error::XRefErrorKind::InvalidEntryFlag
     /// [`XRefErrorKind::UnexpectedEof`]: crate::xref::error::XRefErrorKind::UnexpectedEof
-    pub fn parse(input: &[u8], start: ByteOffset) -> Result<ParsedXRefTable, XRefError> {
+    pub fn parse(input: &[u8], start: ByteOffset) -> Result<Self, XRefError> {
         // ByteOffset(u64) → usize。入力範囲外なら、その位置に xref キーワードは無い。
         let Ok(begin) = usize::try_from(start.value()) else {
             return Err(XRefError::missing_xref_keyword_at(start));
@@ -106,7 +106,7 @@ impl ParsedXRefTable {
             cursor = parse_subsection(input, cursor, &mut table)?;
         }
 
-        Ok(ParsedXRefTable {
+        Ok(Self {
             table,
             end: offset_of(cursor),
         })
