@@ -54,77 +54,77 @@ pub struct ParseError {
 
 impl ParseError {
     /// 任意の `kind` + `position` でエラーを構築する。
-    pub fn new(kind: ParseErrorKind, position: ByteOffset) -> ParseError {
-        ParseError { kind, position }
+    pub fn new(kind: ParseErrorKind, position: ByteOffset) -> Self {
+        Self { kind, position }
     }
 
     /// [`ParseErrorKind::UnexpectedEof`] を指定位置で構築する便利コンストラクタ。
-    pub fn unexpected_eof_at(position: ByteOffset) -> ParseError {
-        ParseError {
+    pub fn unexpected_eof_at(position: ByteOffset) -> Self {
+        Self {
             kind: ParseErrorKind::UnexpectedEof,
             position,
         }
     }
 
     /// [`ParseErrorKind::UnexpectedToken`] を指定位置・トークン識別子で構築する便利コンストラクタ。
-    pub fn unexpected_token_at(position: ByteOffset, actual_kind: &'static str) -> ParseError {
-        ParseError {
+    pub fn unexpected_token_at(position: ByteOffset, actual_kind: &'static str) -> Self {
+        Self {
             kind: ParseErrorKind::UnexpectedToken { actual_kind },
             position,
         }
     }
 
     /// [`ParseErrorKind::LexerError`] を指定位置で構築する便利コンストラクタ。
-    pub fn lexer_error_at(position: ByteOffset) -> ParseError {
-        ParseError {
+    pub fn lexer_error_at(position: ByteOffset) -> Self {
+        Self {
             kind: ParseErrorKind::LexerError,
             position,
         }
     }
 
     /// [`ParseErrorKind::MissingLength`] を指定位置で構築する便利コンストラクタ。
-    pub fn missing_length_at(position: ByteOffset) -> ParseError {
-        ParseError {
+    pub fn missing_length_at(position: ByteOffset) -> Self {
+        Self {
             kind: ParseErrorKind::MissingLength,
             position,
         }
     }
 
     /// [`ParseErrorKind::IndirectLengthNotSupported`] を指定位置で構築する便利コンストラクタ。
-    pub fn indirect_length_not_supported_at(position: ByteOffset) -> ParseError {
-        ParseError {
+    pub fn indirect_length_not_supported_at(position: ByteOffset) -> Self {
+        Self {
             kind: ParseErrorKind::IndirectLengthNotSupported,
             position,
         }
     }
 
     /// [`ParseErrorKind::InvalidLengthType`] を指定位置・型識別子で構築する便利コンストラクタ。
-    pub fn invalid_length_type_at(position: ByteOffset, actual_kind: &'static str) -> ParseError {
-        ParseError {
+    pub fn invalid_length_type_at(position: ByteOffset, actual_kind: &'static str) -> Self {
+        Self {
             kind: ParseErrorKind::InvalidLengthType { actual_kind },
             position,
         }
     }
 
     /// [`ParseErrorKind::NegativeLength`] を指定位置で構築する便利コンストラクタ。
-    pub fn negative_length_at(position: ByteOffset) -> ParseError {
-        ParseError {
+    pub fn negative_length_at(position: ByteOffset) -> Self {
+        Self {
             kind: ParseErrorKind::NegativeLength,
             position,
         }
     }
 
     /// [`ParseErrorKind::InvalidStreamEol`] を指定位置で構築する便利コンストラクタ。
-    pub fn invalid_stream_eol_at(position: ByteOffset) -> ParseError {
-        ParseError {
+    pub fn invalid_stream_eol_at(position: ByteOffset) -> Self {
+        Self {
             kind: ParseErrorKind::InvalidStreamEol,
             position,
         }
     }
 
     /// [`ParseErrorKind::MissingEndstream`] を指定位置で構築する便利コンストラクタ。
-    pub fn missing_endstream_at(position: ByteOffset) -> ParseError {
-        ParseError {
+    pub fn missing_endstream_at(position: ByteOffset) -> Self {
+        Self {
             kind: ParseErrorKind::MissingEndstream,
             position,
         }

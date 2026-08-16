@@ -31,8 +31,8 @@ pub struct XRefTable {
 impl XRefTable {
     /// 空の xref テーブルを生成する。
     #[must_use]
-    pub fn new() -> XRefTable {
-        XRefTable {
+    pub fn new() -> Self {
+        Self {
             entries: HashMap::new(),
         }
     }

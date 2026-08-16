@@ -46,7 +46,7 @@ pub enum PdfObject {
     /// 自己再帰によりネスト（配列内に配列・辞書など）を表現する。妥当性検証や
     /// 正規化は行わず、空配列も無検証で忠実に保持する。要素に `Real(NaN)` を
     /// 含むと `NaN != NaN` が配列全体に伝播し、配列同士は `==` で非等価になる。
-    Array(Vec<PdfObject>),
+    Array(Vec<Self>),
     /// 辞書オブジェクト。`PdfDictionary`（#264）をそのまま内包する。
     ///
     /// 値型 `PdfObject` を介して配列・辞書を値に持つ多段ネストを表現する。
@@ -130,7 +130,7 @@ impl PdfObject {
     ///
     /// ヒープ保持のため参照返し（`as_string_bytes` の `as_slice()` と同方針）。
     #[must_use]
-    pub fn as_array(&self) -> Option<&[PdfObject]> {
+    pub fn as_array(&self) -> Option<&[Self]> {
         match self {
             Self::Array(items) => Some(items.as_slice()),
             _ => None,
@@ -176,8 +176,8 @@ impl From<bool> for PdfObject {
     ///
     /// バリアント名を明示せずに `true.into()` と書け、`impl Into<PdfObject>` を
     /// 受け取る汎用 API を設計できるようにする目的で提供する。
-    fn from(value: bool) -> PdfObject {
-        PdfObject::Boolean(value)
+    fn from(value: bool) -> Self {
+        Self::Boolean(value)
     }
 }
 
@@ -188,8 +188,8 @@ impl From<i64> for PdfObject {
     /// 適用可能な impl が 1 つだけであるために一意に解決するが、`From<i32>` や
     /// `From<u32>` を追加すると候補が複数になり、既存の `42.into()` が
     /// 「type annotations needed」で壊れる。よって整数型の追加実装はしない。
-    fn from(value: i64) -> PdfObject {
-        PdfObject::Integer(value)
+    fn from(value: i64) -> Self {
+        Self::Integer(value)
     }
 }
 
@@ -197,8 +197,8 @@ impl From<f64> for PdfObject {
     /// `f64` から `Real` バリアントを構築する変換経路。
     ///
     /// 無検証であり、`NaN` / `±0.0` / `Inf` もそのまま保持する（正規化しない）。
-    fn from(value: f64) -> PdfObject {
-        PdfObject::Real(value)
+    fn from(value: f64) -> Self {
+        Self::Real(value)
     }
 }
 
@@ -213,8 +213,8 @@ impl From<Vec<u8>> for PdfObject {
     /// 「type annotations needed」で失敗する。空の文字列オブジェクトを作るときは
     /// `Vec::<u8>::new().into()` と要素型を明示するか、`PdfObject::String(Vec::new())`
     /// とバリアントを直接書く。
-    fn from(bytes: Vec<u8>) -> PdfObject {
-        PdfObject::String(bytes)
+    fn from(bytes: Vec<u8>) -> Self {
+        Self::String(bytes)
     }
 }
 
@@ -226,34 +226,34 @@ impl From<PdfName> for PdfObject {
     /// 誤用を招くため。また `From` は連鎖しないので、`From<&str> for PdfName` が
     /// あっても `"Type".into()` は `PdfObject` にならない。名前オブジェクトは
     /// `PdfObject::from(PdfName::from("Type"))` と 2 段で明示的に書く。
-    fn from(name: PdfName) -> PdfObject {
-        PdfObject::Name(name)
+    fn from(name: PdfName) -> Self {
+        Self::Name(name)
     }
 }
 
-impl From<Vec<PdfObject>> for PdfObject {
+impl From<Vec<Self>> for PdfObject {
     /// 要素列から `Array` バリアントを構築する変換経路。
     ///
     /// `Vec<u8>` からの変換と併存するため、要素型が未確定の空ベクタは
     /// 「type annotations needed」で失敗する。空配列は
     /// `Vec::<PdfObject>::new().into()` と要素型を明示するか、
     /// `PdfObject::Array(vec![])` とバリアントを直接書く。
-    fn from(items: Vec<PdfObject>) -> PdfObject {
-        PdfObject::Array(items)
+    fn from(items: Vec<Self>) -> Self {
+        Self::Array(items)
     }
 }
 
 impl From<PdfDictionary> for PdfObject {
     /// `PdfDictionary` から `Dictionary` バリアントを構築する変換経路。
-    fn from(dict: PdfDictionary) -> PdfObject {
-        PdfObject::Dictionary(dict)
+    fn from(dict: PdfDictionary) -> Self {
+        Self::Dictionary(dict)
     }
 }
 
 impl From<PdfStream> for PdfObject {
     /// `PdfStream` から `Stream` バリアントを構築する変換経路。
-    fn from(stream: PdfStream) -> PdfObject {
-        PdfObject::Stream(stream)
+    fn from(stream: PdfStream) -> Self {
+        Self::Stream(stream)
     }
 }
 
@@ -262,8 +262,8 @@ impl From<IndirectRef> for PdfObject {
     ///
     /// 内包型を持たない `Null` にだけは `From` を提供できないため、構築用の
     /// 変換は本 impl を含む 9 バリアント分で全数となる。
-    fn from(reference: IndirectRef) -> PdfObject {
-        PdfObject::Reference(reference)
+    fn from(reference: IndirectRef) -> Self {
+        Self::Reference(reference)
     }
 }
 

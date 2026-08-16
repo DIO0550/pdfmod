@@ -27,8 +27,8 @@ impl PdfName {
     /// 無検証（infallible）。空のバイト列や NUL・非UTF-8 を含む任意のバイト列を
     /// 無条件に受理する。呼び出し側が**デコード済み**バイト列を渡す契約であり、
     /// 本型は `#XX` デコードも妥当性検証も行わない（検証は lexer/parser 層に委譲）。
-    pub fn new(bytes: impl Into<Vec<u8>>) -> PdfName {
-        PdfName(bytes.into())
+    pub fn new(bytes: impl Into<Vec<u8>>) -> Self {
+        Self(bytes.into())
     }
 
     /// 内部の名前本体を `&[u8]`（バイトスライス）として取り出す。
@@ -56,8 +56,8 @@ impl From<&str> for PdfName {
     /// 本 `From<&str>` は `PdfName::from("Type")` / `.into()` という慣習的な変換経路を
     /// 提供する目的で実装する（唯一の文字列構築経路ではない）。
     /// 例: `PdfName::from("Type")` の `as_bytes()` は `b"Type"` と一致する。
-    fn from(s: &str) -> PdfName {
-        PdfName(s.as_bytes().to_vec())
+    fn from(s: &str) -> Self {
+        Self(s.as_bytes().to_vec())
     }
 }
 
@@ -67,8 +67,8 @@ impl From<String> for PdfName {
     /// `into_bytes()` によりバッファをそのままムーブするため、`From<&str>` の
     /// `to_vec()` と違ってコピーが発生しない。UTF-8 妥当性の検査はしない
     /// （`String` は常に妥当な UTF-8 であり、本型はさらに広いバイト列を受理する）。
-    fn from(s: String) -> PdfName {
-        PdfName(s.into_bytes())
+    fn from(s: String) -> Self {
+        Self(s.into_bytes())
     }
 }
 
@@ -78,8 +78,8 @@ impl From<Vec<u8>> for PdfName {
     /// レクサーが `#XX` デコード後に組み立てた `Vec<u8>` をそのままムーブで受け取る
     /// 想定の主経路。無検証（infallible）であり、空バイト列・NUL・非 UTF-8 バイトを
     /// 無条件に受理する（`new` と同一の契約）。
-    fn from(bytes: Vec<u8>) -> PdfName {
-        PdfName(bytes)
+    fn from(bytes: Vec<u8>) -> Self {
+        Self(bytes)
     }
 }
 
@@ -90,8 +90,8 @@ impl From<&[u8]> for PdfName {
     /// `&Vec<u8>` は本 impl では受理できない。バイト列リテラルからは `new(b"Length")`
     /// を使うか、`b"Length".as_slice()` のようにスライスへ明示的に変換する。
     /// `From<&[u8; N]>` は今回実装しないが、後から非破壊で追加できる。
-    fn from(bytes: &[u8]) -> PdfName {
-        PdfName(bytes.to_vec())
+    fn from(bytes: &[u8]) -> Self {
+        Self(bytes.to_vec())
     }
 }
 
