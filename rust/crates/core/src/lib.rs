@@ -8,13 +8,15 @@
 //! - **外部 crate 依存ゼロ**。Rust 標準ライブラリ (`std`) のみを使う。
 //! - **`Result` / `Option` は std のものをそのまま使う**（自作しない）。
 //!
-//! byte_offset / error / file / lexer / object / parser / xref の各モジュールは実装済み。
+//! byte_offset / encrypt / error / file / lexer / object / parser / xref の各モジュールは実装済み。
+//! `encrypt` は暗号化辞書（`/Encrypt`）の型表現を提供する（復号処理は未実装）。
 //! `file` はヘッダ解析と startxref の末尾スキャンを提供する。
 //! `xref` は xref エントリとテーブルの表現に加え、従来型 xref テーブルの解析と
 //! 従来形式トレイラの解析を提供する。
 //! xref ストリームの解析と `/Prev` チェーン走査は後続 PR で追加する。
 
 pub mod byte_offset;
+pub mod encrypt;
 pub mod error;
 pub mod file;
 pub mod lexer;
