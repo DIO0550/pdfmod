@@ -24,6 +24,7 @@ pub mod key;
 pub mod parse;
 
 use crate::byte_offset::ByteOffset;
+use crate::encrypt::EncryptDictionary;
 use crate::object::dictionary::PdfDictionary;
 use crate::object::indirect_ref::IndirectRef;
 use crate::object::pdf_object::PdfObject;
@@ -35,13 +36,26 @@ const ID_ELEMENT_COUNT: usize = 2;
 
 /// `/Encrypt` の値。間接参照と直接辞書の 2 形態を取りうる（ISO 32000-1 §7.6.1）。
 ///
-/// `PdfDictionary` が `Eq` 非実装のため、本 enum も `PartialEq` のみ。
+/// 直接辞書の場合は [`EncryptDictionary`] として型に変換される（#604）。
+/// 間接参照の場合はオブジェクト本体を読まないと中身が分からないため、
+/// #585 と同じく参照のまま保持する。
+///
+/// [`EncryptDictionary`] が `Unsupported` で生辞書を保持しうるため、
+/// `Eq` は実装できない（`PdfDictionary` は値に `Real(f64)` を持ちうる）。
+// clippy の提案どおり `Dictionary` を `Box` に逃がすと、暗号化辞書は 1 ドキュメントに
+// 高々 1 個なのでサイズ差の利得は 1 回分しかない一方、
+// `EncryptValue::Dictionary(EncryptDictionary::Unsupported { .. })` のような
+// 入れ子のパターンマッチが書けなくなる（`Box` は分解できない）。
+#[expect(
+    clippy::large_enum_variant,
+    reason = "1 ドキュメントに 1 個のため Box 化の利得より入れ子 match の可読性を優先する（#604）"
+)]
 #[derive(Debug, Clone, PartialEq)]
 pub enum EncryptValue {
     /// 暗号化辞書への間接参照。
     Reference(IndirectRef),
     /// 直接書かれた暗号化辞書。
-    Dictionary(PdfDictionary),
+    Dictionary(EncryptDictionary),
 }
 
 /// 従来形式トレイラから取り出した主要キー。
@@ -51,8 +65,8 @@ pub enum EncryptValue {
 /// 保持しないのは**トレイラ辞書そのもの**（未知キーを含む辞書全体）であり、
 /// 未知キーへのアクセスが必要になった時点で追加する。ただし `Trailer` が
 /// `PdfDictionary` を一切内包しないという意味ではない。`/Encrypt` は辞書を
-/// 直接書ける唯一のキーで（ISO 32000-1 §7.6.1）、その形態では
-/// [`EncryptValue::Dictionary`] が値として辞書を保持する。
+/// 直接書ける唯一のキーで（ISO 32000-1 §7.6.1）、その形態が未対応ハンドラだった
+/// 場合は [`EncryptDictionary::Unsupported`] が生の辞書を保持する。
 ///
 /// この内包があるため `Eq` は derive できない（`PdfDictionary` は値に
 /// `Real(f64)` を持ちうる）。`PartialEq` のみに留めている理由がこれ。
@@ -82,6 +96,7 @@ impl Trailer {
     /// - `InvalidKeyType` — いずれかのキーが期待した型でない
     /// - `NegativeValue` — `/Size` `/Prev` `/XRefStm` が負の整数
     /// - `InvalidIdArray` — `/ID` が「2 要素の文字列配列」でない
+    /// - `EncryptDictionaryInvalid` — `/Encrypt` に直接書かれた暗号化辞書の構造が不正
     pub fn from_dictionary(
         mut dictionary: PdfDictionary,
         position: ByteOffset,
@@ -262,6 +277,10 @@ fn take_optional_id(
 }
 
 /// `/Encrypt` を取り出す。間接参照と直接辞書の 2 形態を許す。
+///
+/// 直接辞書は [`EncryptDictionary::from_dictionary`] で型に変換する。
+/// 未対応のセキュリティハンドラ・未対応の `/V` は `EncryptDictionary::Unsupported`
+/// になり、エラーにはならない（#604）。
 fn take_optional_encrypt(
     dictionary: &mut PdfDictionary,
     position: ByteOffset,
@@ -273,7 +292,11 @@ fn take_optional_encrypt(
 
     match value {
         PdfObject::Reference(reference) => Ok(Some(EncryptValue::Reference(reference))),
-        PdfObject::Dictionary(dictionary) => Ok(Some(EncryptValue::Dictionary(dictionary))),
+        PdfObject::Dictionary(encrypt) => {
+            let encrypt = EncryptDictionary::from_dictionary(encrypt, position)
+                .map_err(|error| TrailerError::encrypt_dictionary_invalid_at(position, error))?;
+            Ok(Some(EncryptValue::Dictionary(encrypt)))
+        }
         other => Err(TrailerError::invalid_key_type_at(
             position,
             key,
