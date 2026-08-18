@@ -1,5 +1,7 @@
 use super::{TrailerError, TrailerErrorKind};
 use crate::byte_offset::ByteOffset;
+use crate::encrypt::error::{EncryptError, EncryptErrorKind};
+use crate::encrypt::key::EncryptKey;
 use crate::parser::error::ParseErrorKind;
 use crate::xref::trailer::key::TrailerKey;
 
@@ -89,4 +91,22 @@ fn equality_follows_kind_and_position() {
     assert_ne!(a, different_key);
     assert_ne!(a, different_actual);
     assert_ne!(a, different_position);
+}
+
+// encrypt_dictionary_invalid が委譲先エラーの kind と position をそのまま引き継ぐことを確認する
+#[test]
+fn encrypt_dictionary_invalid_inherits_position_from_delegated_error() {
+    let error = EncryptError::missing_required_key_at(ByteOffset::new(37), EncryptKey::Filter);
+
+    let trailer_error = TrailerError::encrypt_dictionary_invalid(error);
+
+    assert_eq!(
+        trailer_error.kind,
+        TrailerErrorKind::EncryptDictionaryInvalid {
+            kind: EncryptErrorKind::MissingRequiredKey {
+                key: EncryptKey::Filter,
+            },
+        }
+    );
+    assert_eq!(trailer_error.position, ByteOffset::new(37));
 }
