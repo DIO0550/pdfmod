@@ -26,6 +26,7 @@
 | 01 | [01_lexical_conventions.md](./01_lexical_conventions.md) | レキシカル規約とプリミティブデータ型 |
 | 02 | [02_file_structure.md](./02_file_structure.md) | 物理ファイル構造とランダムアクセス機構 |
 | 02a | [02a_object_resolution.md](./02a_object_resolution.md) | インダイレクトオブジェクト解決の仕組み |
+| 02b | [02b_encryption.md](./02b_encryption.md) | 暗号化辞書（`/Encrypt`）の構造 |
 | 03 | [03_document_architecture.md](./03_document_architecture.md) | 論理ドキュメントアーキテクチャとページツリー |
 | 04 | [04_resources_graphics_state.md](./04_resources_graphics_state.md) | リソース辞書とグラフィックスステート |
 | 05 | [05_content_streams.md](./05_content_streams.md) | コンテンツストリームと描画オペレータ |
@@ -65,7 +66,7 @@ PDFは、JSONやXMLのような単純なシリアライズデータや、HTMLの
 
 | 領域 | ISO 32000 参照 | 現状 |
 |:-----|:---------------|:-----|
-| 暗号化・セキュリティハンドラ（RC4 / AES-128 / AES-256、暗号化辞書、鍵導出、パスワード認証） | §7.6 | ほぼ未記載（トレイラ `/Encrypt` と `/Crypt` フィルタの名前のみ） |
+| 暗号化・セキュリティハンドラ（RC4 / AES-128 / AES-256、鍵導出、パスワード認証） | §7.6 | 暗号化辞書の構造は [02b_encryption.md](./02b_encryption.md) に記載。復号アルゴリズム・鍵導出・パスワード認証は未記載 |
 | 注釈（Annotations: 共通辞書、サブタイプ、外観ストリーム） | §12.5 | ページ `/Annots` の言及のみ |
 | インタラクティブフォーム（AcroForm: フィールド辞書、Widget 注釈、XFA） | §12.7 | カタログ `/AcroForm` の名前のみ |
 | アクション（`/OpenAction`、`/GoTo`、`/URI`、JavaScript、追加アクション `/AA`） | §12.6 | アウトラインの `/A` の言及のみ |
