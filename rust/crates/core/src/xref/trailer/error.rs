@@ -4,9 +4,11 @@
 //! `parser::error::ParseError` / `xref::error::XRefError` と同じフラット構造を採る。
 //! 公開境界での `PdfError` への変換（`From` 実装）は後続 Issue に委ねる。
 //!
-//! [`ParseErrorKind`] を内包するため `Copy` は実装しない（`Clone` のみ）。
+//! [`ParseErrorKind`] と [`EncryptErrorKind`] を内包するため `Copy` は実装しない
+//! （`Clone` のみ）。
 
 use crate::byte_offset::ByteOffset;
+use crate::encrypt::error::{EncryptError, EncryptErrorKind};
 use crate::parser::error::ParseErrorKind;
 use crate::xref::trailer::key::TrailerKey;
 
@@ -58,6 +60,14 @@ pub enum TrailerErrorKind {
     ///
     /// 配列でない・要素数が 2 でない・要素が文字列でない、をまとめて表す。
     InvalidIdArray,
+    /// `/Encrypt` に直接書かれた暗号化辞書の構造が不正だった（#604）。
+    ///
+    /// 未対応のセキュリティハンドラ・未対応の `/V` はここには来ない
+    /// （`EncryptDictionary::Unsupported` として成功で返る）。
+    EncryptDictionaryInvalid {
+        /// 委譲先の暗号化辞書解析が報告したエラー種別。
+        kind: EncryptErrorKind,
+    },
 }
 
 /// トレイラ解析エラー。位置情報を必須で保持する。
@@ -116,6 +126,22 @@ impl TrailerError {
     /// [`TrailerErrorKind::InvalidIdArray`] を指定位置で構築する。
     pub fn invalid_id_array_at(position: ByteOffset) -> Self {
         Self::new(TrailerErrorKind::InvalidIdArray, position)
+    }
+
+    /// [`TrailerErrorKind::EncryptDictionaryInvalid`] を委譲先エラーから構築する。
+    ///
+    /// 位置は引数で受け取らず、委譲先の [`EncryptError`] が保持している値を使う。
+    /// 他の `*_at` と同じく位置を引数に取る形にすると、呼び出し側が委譲先エラーと
+    /// 別の位置を渡せてしまい、報告位置が実際の検出位置と乖離しうるため
+    /// （名前に `_at` を付けていないのはこの違いを示すため）。
+    pub fn encrypt_dictionary_invalid(error: EncryptError) -> Self {
+        let position = error.position();
+        Self::new(
+            TrailerErrorKind::EncryptDictionaryInvalid {
+                kind: error.into_kind(),
+            },
+            position,
+        )
     }
 }
 
