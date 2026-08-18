@@ -294,7 +294,7 @@ fn take_optional_encrypt(
         PdfObject::Reference(reference) => Ok(Some(EncryptValue::Reference(reference))),
         PdfObject::Dictionary(encrypt) => {
             let encrypt = EncryptDictionary::from_dictionary(encrypt, position)
-                .map_err(|error| TrailerError::encrypt_dictionary_invalid_at(position, error))?;
+                .map_err(TrailerError::encrypt_dictionary_invalid)?;
             Ok(Some(EncryptValue::Dictionary(encrypt)))
         }
         other => Err(TrailerError::invalid_key_type_at(

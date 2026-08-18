@@ -128,8 +128,14 @@ impl TrailerError {
         Self::new(TrailerErrorKind::InvalidIdArray, position)
     }
 
-    /// [`TrailerErrorKind::EncryptDictionaryInvalid`] を指定位置・委譲先エラーで構築する。
-    pub fn encrypt_dictionary_invalid_at(position: ByteOffset, error: EncryptError) -> Self {
+    /// [`TrailerErrorKind::EncryptDictionaryInvalid`] を委譲先エラーから構築する。
+    ///
+    /// 位置は引数で受け取らず、委譲先の [`EncryptError`] が保持している値を使う。
+    /// 他の `*_at` と同じく位置を引数に取る形にすると、呼び出し側が委譲先エラーと
+    /// 別の位置を渡せてしまい、報告位置が実際の検出位置と乖離しうるため
+    /// （名前に `_at` を付けていないのはこの違いを示すため）。
+    pub fn encrypt_dictionary_invalid(error: EncryptError) -> Self {
+        let position = error.position();
         Self::new(
             TrailerErrorKind::EncryptDictionaryInvalid {
                 kind: error.into_kind(),
