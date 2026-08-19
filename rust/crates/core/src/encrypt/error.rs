@@ -8,7 +8,7 @@
 //! `Copy` は実装しない（`Clone` のみ）。
 
 use crate::byte_offset::ByteOffset;
-use crate::encrypt::key::EncryptKey;
+use crate::encrypt::key::{EncryptKey, EncryptKeyPath};
 use crate::object::name::PdfName;
 
 /// 暗号化辞書の解析エラーの種別。
@@ -27,8 +27,8 @@ pub enum EncryptErrorKind {
     },
     /// キーの値が期待した型ではない。
     InvalidKeyType {
-        /// 対象のキー。
-        key: EncryptKey,
+        /// 対象のキーの位置。暗号化辞書直下と `/CF` エントリ内部の双方を指せる。
+        key: EncryptKeyPath,
         /// 実際に読み取った値の種別ラベル（`PdfObject` のバリアント名）。
         actual_kind: &'static str,
     },
@@ -97,10 +97,13 @@ impl EncryptError {
         Self::new(EncryptErrorKind::MissingRequiredKey { key }, position)
     }
 
-    /// [`EncryptErrorKind::InvalidKeyType`] を指定位置・キー・実種別で構築する。
+    /// [`EncryptErrorKind::InvalidKeyType`] を指定位置・キー位置・実種別で構築する。
+    ///
+    /// 直下のキーなら [`EncryptKeyPath::Root`]、`/CF` 内部なら
+    /// [`EncryptKeyPath::CryptFilterEntry`] / [`EncryptKeyPath::CryptFilter`] を渡す。
     pub fn invalid_key_type_at(
         position: ByteOffset,
-        key: EncryptKey,
+        key: EncryptKeyPath,
         actual_kind: &'static str,
     ) -> Self {
         Self::new(
