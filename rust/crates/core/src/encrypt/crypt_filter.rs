@@ -5,7 +5,7 @@ use std::collections::BTreeMap;
 
 use crate::byte_offset::ByteOffset;
 use crate::encrypt::error::EncryptError;
-use crate::encrypt::key::{CryptFilterKey, EncryptKey};
+use crate::encrypt::key::{CryptFilterKey, EncryptKey, EncryptKeyPath};
 use crate::object::dictionary::PdfDictionary;
 use crate::object::name::PdfName;
 use crate::object::pdf_object::PdfObject;
@@ -225,7 +225,7 @@ fn take_filter_map(
     let PdfObject::Dictionary(mut entries) = value else {
         return Err(EncryptError::invalid_key_type_at(
             position,
-            EncryptKey::CF,
+            EncryptKeyPath::Root(EncryptKey::CF),
             actual_kind,
         ));
     };
@@ -238,13 +238,16 @@ fn take_filter_map(
         };
         let actual_kind = entry.kind_label();
         let PdfObject::Dictionary(entry) = entry else {
+            // name はループが所有しており、この分岐で return するため clone は不要。
             return Err(EncryptError::invalid_key_type_at(
                 position,
-                EncryptKey::CF,
+                EncryptKeyPath::CryptFilterEntry { name },
                 actual_kind,
             ));
         };
-        filters.insert(name, CryptFilter::from_dictionary(entry, position)?);
+        // &name の借用を先に終わらせてから、name を BTreeMap のキーとして move する。
+        let filter = CryptFilter::from_dictionary(entry, &name, position)?;
+        filters.insert(name, filter);
     }
     Ok(filters)
 }
@@ -262,7 +265,7 @@ fn take_selector(
     let PdfObject::Name(name) = value else {
         return Err(EncryptError::invalid_key_type_at(
             position,
-            key,
+            EncryptKeyPath::Root(key),
             actual_kind,
         ));
     };
@@ -274,12 +277,16 @@ fn take_selector(
 
 impl CryptFilter {
     /// `/CF` のエントリ辞書を型に変換する。
+    ///
+    /// `name` は自身の crypt filter 名。エラーにどのエントリかを載せるためだけに受け取る。
     fn from_dictionary(
         mut dictionary: PdfDictionary,
+        name: &PdfName,
         position: ByteOffset,
     ) -> Result<Self, EncryptError> {
-        let method = take_method(&mut dictionary, position)?;
+        let method = take_method(&mut dictionary, name, position)?;
 
+        // /AuthEvent /Length は型不一致でもエラーにせず既定値へフォールバックする（#607 で維持）。
         let auth_event = dictionary
             .get(CryptFilterKey::AuthEvent.as_bytes())
             .and_then(PdfObject::as_name)
@@ -323,23 +330,31 @@ impl CryptFilter {
 }
 
 /// `/CFM` を取り出す。省略時は `/None`（ISO 32000-1 表 25 の既定値）。
+///
+/// `name` は所属する crypt filter エントリの名前。`/CF` に複数エントリがあるとき、
+/// どのエントリの `/CFM` が壊れているかをエラーで指すために受け取る。
 fn take_method(
     dictionary: &mut PdfDictionary,
+    name: &PdfName,
     position: ByteOffset,
 ) -> Result<CryptFilterMethod, EncryptError> {
     let Some(value) = dictionary.remove(CryptFilterKey::CFM.as_bytes()) else {
         return Ok(CryptFilterMethod::None);
     };
     let actual_kind = value.kind_label();
-    let PdfObject::Name(name) = value else {
+    // 引数の name（エントリ名）と区別するため、/CFM の値は method_name とする。
+    let PdfObject::Name(method_name) = value else {
         return Err(EncryptError::invalid_key_type_at(
             position,
-            EncryptKey::CF,
+            EncryptKeyPath::CryptFilter {
+                name: name.clone(),
+                key: CryptFilterKey::CFM,
+            },
             actual_kind,
         ));
     };
-    CryptFilterMethod::from_bytes(name.as_bytes())
-        .ok_or_else(|| EncryptError::unknown_crypt_filter_method_at(position, name))
+    CryptFilterMethod::from_bytes(method_name.as_bytes())
+        .ok_or_else(|| EncryptError::unknown_crypt_filter_method_at(position, method_name))
 }
 
 #[cfg(test)]

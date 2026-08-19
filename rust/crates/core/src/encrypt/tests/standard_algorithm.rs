@@ -1,7 +1,7 @@
 use super::{encrypt, encrypt_err};
 use crate::encrypt::algorithm::{KeyLength, StandardAlgorithm};
 use crate::encrypt::error::EncryptErrorKind;
-use crate::encrypt::key::EncryptKey;
+use crate::encrypt::key::{EncryptKey, EncryptKeyPath};
 use crate::encrypt::EncryptDictionary;
 
 /// `/O` `/U` に書く 32 バイトの値（R2-4 の仕様上の長さ）。
@@ -192,7 +192,7 @@ fn standard_dictionary_with_non_integer_version_is_rejected() {
     assert_eq!(
         error.kind(),
         &EncryptErrorKind::InvalidKeyType {
-            key: EncryptKey::V,
+            key: EncryptKeyPath::Root(EncryptKey::V),
             actual_kind: "Name",
         }
     );

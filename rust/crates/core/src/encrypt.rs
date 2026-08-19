@@ -26,7 +26,7 @@ pub mod standard;
 use crate::byte_offset::ByteOffset;
 use crate::encrypt::algorithm::AlgorithmKind;
 use crate::encrypt::error::EncryptError;
-use crate::encrypt::key::EncryptKey;
+use crate::encrypt::key::{EncryptKey, EncryptKeyPath};
 use crate::encrypt::standard::StandardSecurityHandler;
 use crate::object::dictionary::PdfDictionary;
 use crate::object::name::PdfName;
@@ -130,9 +130,9 @@ fn expect_name(
     let Some(value) = dictionary.get(key.as_bytes()) else {
         return Err(EncryptError::missing_required_key_at(position, key));
     };
-    value
-        .as_name()
-        .ok_or_else(|| EncryptError::invalid_key_type_at(position, key, value.kind_label()))
+    value.as_name().ok_or_else(|| {
+        EncryptError::invalid_key_type_at(position, EncryptKeyPath::Root(key), value.kind_label())
+    })
 }
 
 /// 必須キーを Integer として借用で取り出す。
@@ -144,9 +144,9 @@ fn expect_integer(
     let Some(value) = dictionary.get(key.as_bytes()) else {
         return Err(EncryptError::missing_required_key_at(position, key));
     };
-    value
-        .as_integer()
-        .ok_or_else(|| EncryptError::invalid_key_type_at(position, key, value.kind_label()))
+    value.as_integer().ok_or_else(|| {
+        EncryptError::invalid_key_type_at(position, EncryptKeyPath::Root(key), value.kind_label())
+    })
 }
 
 /// 任意キーを Integer として取り出す（辞書からは除去される）。
@@ -158,10 +158,9 @@ fn take_optional_integer(
     let Some(value) = dictionary.remove(key.as_bytes()) else {
         return Ok(None);
     };
-    value
-        .as_integer()
-        .map(Some)
-        .ok_or_else(|| EncryptError::invalid_key_type_at(position, key, value.kind_label()))
+    value.as_integer().map(Some).ok_or_else(|| {
+        EncryptError::invalid_key_type_at(position, EncryptKeyPath::Root(key), value.kind_label())
+    })
 }
 
 /// 必須キーを String（バイト列）として取り出す（辞書からは除去される）。
@@ -177,7 +176,7 @@ fn take_required_bytes(
         PdfObject::String(bytes) => Ok(bytes),
         other => Err(EncryptError::invalid_key_type_at(
             position,
-            key,
+            EncryptKeyPath::Root(key),
             other.kind_label(),
         )),
     }
@@ -192,10 +191,9 @@ fn take_optional_bool(
     let Some(value) = dictionary.remove(key.as_bytes()) else {
         return Ok(None);
     };
-    value
-        .as_bool()
-        .map(Some)
-        .ok_or_else(|| EncryptError::invalid_key_type_at(position, key, value.kind_label()))
+    value.as_bool().map(Some).ok_or_else(|| {
+        EncryptError::invalid_key_type_at(position, EncryptKeyPath::Root(key), value.kind_label())
+    })
 }
 
 #[cfg(test)]

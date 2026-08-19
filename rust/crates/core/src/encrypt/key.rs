@@ -6,6 +6,8 @@
 //! 片方だけの綴り間違いを型検査で防げないため、enum に集約している
 //! （`xref/trailer/key.rs` と同じ方針）。
 
+use crate::object::name::PdfName;
+
 /// 暗号化辞書のキー。
 ///
 /// ここに無いキー（未知キー・将来追加されるキー）は解析時に無視される。
@@ -108,6 +110,38 @@ impl CryptFilterKey {
     pub fn as_bytes(self) -> &'static [u8] {
         self.as_str().as_bytes()
     }
+}
+
+/// 暗号化辞書内でのキーの位置。
+///
+/// `/CF` は入れ子の辞書（ISO 32000-1:2008 §7.6.5 表 25）であるため、
+/// 「どのキーが壊れているか」を [`EncryptKey`] だけでは指せない。
+/// 暗号化辞書直下のキーと `/CF` エントリ内部のキーを 1 つの型で表す。
+///
+/// `/Length` は直下（ファイル暗号鍵のビット長）と `/CF` エントリ内（鍵長）の
+/// 双方に存在し意味が異なるため、バリアントで区別できることに意味がある。
+///
+/// [`PdfName`] を内包するため `Copy` は実装しない（`Clone` のみ）。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum EncryptKeyPath {
+    /// 暗号化辞書直下のキー（例: `/Filter` `/V` `/CF` `/StmF`）。
+    Root(EncryptKey),
+    /// `/CF` のエントリそのもの。エントリの値が辞書でない場合に使う。
+    ///
+    /// 例: `/CF << /StdCF [ 1 2 ] >>` → `name` は `StdCF`。
+    CryptFilterEntry {
+        /// crypt filter 名。
+        name: PdfName,
+    },
+    /// `/CF` エントリ内部のキー。
+    ///
+    /// 例: `/CF << /StdCF << /CFM 1 >> >>` → `name` は `StdCF`、`key` は `CFM`。
+    CryptFilter {
+        /// 所属する crypt filter 名。
+        name: PdfName,
+        /// エントリ内のキー。
+        key: CryptFilterKey,
+    },
 }
 
 #[cfg(test)]

@@ -4,7 +4,7 @@ use crate::encrypt::crypt_filter::{
     AuthEvent, CryptFilterMethod, CryptFilterSelector, CryptFilters,
 };
 use crate::encrypt::error::EncryptErrorKind;
-use crate::encrypt::key::EncryptKey;
+use crate::encrypt::key::{CryptFilterKey, EncryptKey, EncryptKeyPath};
 use crate::encrypt::EncryptDictionary;
 use crate::object::name::PdfName;
 
@@ -179,10 +179,93 @@ fn non_dictionary_crypt_filters_are_rejected() {
     assert_eq!(
         error.kind(),
         &EncryptErrorKind::InvalidKeyType {
-            key: EncryptKey::CF,
+            key: EncryptKeyPath::Root(EncryptKey::CF),
             actual_kind: "Array",
         }
     );
+}
+
+// /CF のエントリが辞書でない場合に、壊れているエントリ名がエラーに載ることを確認する
+#[test]
+fn non_dictionary_crypt_filter_entry_reports_its_name() {
+    let error = encrypt_err(&source("/CF << /StdCF [ 1 2 ] >>"));
+
+    assert_eq!(
+        error.kind(),
+        &EncryptErrorKind::InvalidKeyType {
+            key: EncryptKeyPath::CryptFilterEntry {
+                name: PdfName::from("StdCF"),
+            },
+            actual_kind: "Array",
+        }
+    );
+}
+
+// /CF エントリ内の /CFM が名前でない場合に、エントリ名と /CFM がエラーに載ることを確認する
+#[test]
+fn non_name_crypt_filter_method_reports_its_entry_and_key() {
+    let error = encrypt_err(&source("/CF << /StdCF << /CFM 1 >> >>"));
+
+    assert_eq!(
+        error.kind(),
+        &EncryptErrorKind::InvalidKeyType {
+            key: EncryptKeyPath::CryptFilter {
+                name: PdfName::from("StdCF"),
+                key: CryptFilterKey::CFM,
+            },
+            actual_kind: "Integer",
+        }
+    );
+}
+
+// /CF に複数エントリがあるとき、壊れているエントリの名前が報告されることを確認する
+#[test]
+fn broken_entry_among_several_is_identified_by_name() {
+    let error = encrypt_err(&source(
+        "/CF << /AaaCF << /CFM /AESV2 >> /BbbCF << /CFM 1 >> >>",
+    ));
+
+    assert_eq!(
+        error.kind(),
+        &EncryptErrorKind::InvalidKeyType {
+            key: EncryptKeyPath::CryptFilter {
+                name: PdfName::from("BbbCF"),
+                key: CryptFilterKey::CFM,
+            },
+            actual_kind: "Integer",
+        }
+    );
+}
+
+// /CF 自体が非辞書のときと、エントリが非辞書のときがエラーの内容だけで区別できることを確認する
+#[test]
+fn non_dictionary_crypt_filters_and_entry_are_distinguishable() {
+    let filters_error = encrypt_err(&source("/CF [ /StdCF ]"));
+    let entry_error = encrypt_err(&source("/CF << /StdCF [ 1 2 ] >>"));
+
+    assert_ne!(filters_error.kind(), entry_error.kind());
+}
+
+// /AuthEvent が名前でなくてもエラーにせず既定値になることを確認する
+#[test]
+fn non_name_auth_event_falls_back_to_doc_open() {
+    let filters = crypt_filters("/CF << /StdCF << /CFM /AESV2 /AuthEvent 1 >> >> /StmF /StdCF");
+
+    let filter = filters
+        .get(filters.stream())
+        .expect("/StmF should point at a defined crypt filter");
+    assert_eq!(filter.auth_event(), AuthEvent::DocOpen);
+}
+
+// /Length が整数でなくてもエラーにせず None になることを確認する
+#[test]
+fn non_integer_crypt_filter_length_falls_back_to_none() {
+    let filters = crypt_filters("/CF << /StdCF << /CFM /AESV2 /Length /Foo >> >> /StmF /StdCF");
+
+    let filter = filters
+        .get(filters.stream())
+        .expect("/StmF should point at a defined crypt filter");
+    assert_eq!(filter.length(), None);
 }
 
 // /StmF が名前でない場合に InvalidKeyType になることを確認する
@@ -193,7 +276,7 @@ fn non_name_selector_is_rejected() {
     assert_eq!(
         error.kind(),
         &EncryptErrorKind::InvalidKeyType {
-            key: EncryptKey::StmF,
+            key: EncryptKeyPath::Root(EncryptKey::StmF),
             actual_kind: "Integer",
         }
     );
