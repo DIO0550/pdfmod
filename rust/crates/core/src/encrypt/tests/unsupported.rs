@@ -1,6 +1,6 @@
 use super::{encrypt, encrypt_err};
 use crate::encrypt::error::EncryptErrorKind;
-use crate::encrypt::key::EncryptKey;
+use crate::encrypt::key::{EncryptKey, EncryptKeyPath};
 use crate::encrypt::EncryptDictionary;
 use crate::object::name::PdfName;
 use crate::object::pdf_object::PdfObject;
@@ -111,7 +111,7 @@ fn dictionary_with_non_name_filter_is_rejected() {
     assert_eq!(
         error.kind(),
         &EncryptErrorKind::InvalidKeyType {
-            key: EncryptKey::Filter,
+            key: EncryptKeyPath::Root(EncryptKey::Filter),
             actual_kind: "Integer",
         }
     );

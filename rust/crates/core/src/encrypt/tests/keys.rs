@@ -1,6 +1,6 @@
 use super::{encrypt, encrypt_err};
 use crate::encrypt::error::EncryptErrorKind;
-use crate::encrypt::key::EncryptKey;
+use crate::encrypt::key::{EncryptKey, EncryptKeyPath};
 use crate::encrypt::standard::StandardSecurityHandler;
 use crate::encrypt::EncryptDictionary;
 
@@ -126,7 +126,7 @@ fn non_string_owner_key_is_rejected() {
     assert_eq!(
         error.kind(),
         &EncryptErrorKind::InvalidKeyType {
-            key: EncryptKey::O,
+            key: EncryptKeyPath::Root(EncryptKey::O),
             actual_kind: "Name",
         }
     );
@@ -154,7 +154,7 @@ fn non_boolean_encrypt_metadata_is_rejected() {
     assert_eq!(
         error.kind(),
         &EncryptErrorKind::InvalidKeyType {
-            key: EncryptKey::EncryptMetadata,
+            key: EncryptKeyPath::Root(EncryptKey::EncryptMetadata),
             actual_kind: "Integer",
         }
     );

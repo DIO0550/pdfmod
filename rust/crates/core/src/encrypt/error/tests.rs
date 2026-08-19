@@ -1,6 +1,6 @@
 use super::{EncryptError, EncryptErrorKind};
 use crate::byte_offset::ByteOffset;
-use crate::encrypt::key::EncryptKey;
+use crate::encrypt::key::{CryptFilterKey, EncryptKey, EncryptKeyPath};
 use crate::object::name::PdfName;
 
 // new が渡した kind と position を透過保持することを確認する
@@ -15,7 +15,7 @@ fn new_constructs_with_given_kind_and_position() {
 #[test]
 fn convenience_constructors_set_expected_kind() {
     let position = ByteOffset::new(42);
-    let cases: [(EncryptError, EncryptErrorKind); 7] = [
+    let cases: [(EncryptError, EncryptErrorKind); 9] = [
         (
             EncryptError::missing_required_key_at(position, EncryptKey::Filter),
             EncryptErrorKind::MissingRequiredKey {
@@ -23,10 +23,46 @@ fn convenience_constructors_set_expected_kind() {
             },
         ),
         (
-            EncryptError::invalid_key_type_at(position, EncryptKey::V, "Name"),
+            EncryptError::invalid_key_type_at(
+                position,
+                EncryptKeyPath::Root(EncryptKey::V),
+                "Name",
+            ),
             EncryptErrorKind::InvalidKeyType {
-                key: EncryptKey::V,
+                key: EncryptKeyPath::Root(EncryptKey::V),
                 actual_kind: "Name",
+            },
+        ),
+        (
+            EncryptError::invalid_key_type_at(
+                position,
+                EncryptKeyPath::CryptFilterEntry {
+                    name: PdfName::from("StdCF"),
+                },
+                "Array",
+            ),
+            EncryptErrorKind::InvalidKeyType {
+                key: EncryptKeyPath::CryptFilterEntry {
+                    name: PdfName::from("StdCF"),
+                },
+                actual_kind: "Array",
+            },
+        ),
+        (
+            EncryptError::invalid_key_type_at(
+                position,
+                EncryptKeyPath::CryptFilter {
+                    name: PdfName::from("StdCF"),
+                    key: CryptFilterKey::CFM,
+                },
+                "Integer",
+            ),
+            EncryptErrorKind::InvalidKeyType {
+                key: EncryptKeyPath::CryptFilter {
+                    name: PdfName::from("StdCF"),
+                    key: CryptFilterKey::CFM,
+                },
+                actual_kind: "Integer",
             },
         ),
         (
