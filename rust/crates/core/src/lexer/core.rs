@@ -68,8 +68,10 @@ impl<'a> Lexer<'a> {
 
     /// バイト単位のカーソル位置 (`self.pos`) を直接返す。バッファ内のトークンを無視した生の値。
     ///
-    /// 用途: lookahead 中に lexer が malformed を検知した場合のエラー位置報告など、
-    /// 論理カーソルではなく生バイト位置が必要な場面で使う。
+    /// 用途: EOF 位置（常に `input.len()`）の報告など、論理カーソルではなく生バイト位置が
+    /// 必要な場面で使う。malformed のエラー位置は
+    /// [`LexOutcome::Malformed`](crate::lexer::LexOutcome::Malformed) が `position` として
+    /// 自分で運ぶため、本 API から取り直す必要はない。
     /// 通常の論理カーソルが必要な場合は [`Self::position`] を使う。
     pub fn cursor_position(&self) -> usize {
         self.pos

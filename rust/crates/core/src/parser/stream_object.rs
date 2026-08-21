@@ -14,6 +14,7 @@
 use crate::byte_offset::ByteOffset;
 use crate::lexer::eol::EolKind;
 use crate::lexer::token::Token;
+use crate::lexer::LexOutcome;
 use crate::object::dictionary::PdfDictionary;
 use crate::object::pdf_object::PdfObject;
 use crate::object::stream::PdfStream;
@@ -41,7 +42,12 @@ impl<'a> Parser<'a> {
         dictionary: PdfDictionary,
         dict_start: ByteOffset,
     ) -> Result<PdfObject, ParseError> {
-        if !matches!(self.lexer.peek_token_at(0), Some(Token::StreamBegin)) {
+        // Eof / Malformed はいずれも「stream が続かない」として辞書のまま返す（従来どおり）。
+        // malformed であれば後続の処理が改めて LexerError を発火する。
+        if !matches!(
+            self.lexer.peek_token_at(0),
+            LexOutcome::Lexed(Token::StreamBegin)
+        ) {
             return Ok(PdfObject::Dictionary(dictionary));
         }
         let _ = self.lexer.take_token();
@@ -177,17 +183,15 @@ impl<'a> Parser<'a> {
         }
 
         match self.lexer.take_token_with_pos() {
-            Some((Token::StreamEnd, _)) => Ok(()),
-            Some((_, pos_before)) => Err(ParseError::missing_endstream_at(ByteOffset::new(
-                pos_before as u64,
+            LexOutcome::Lexed((Token::StreamEnd, _)) => Ok(()),
+            LexOutcome::Lexed((_, pos_before)) => Err(ParseError::missing_endstream_at(
+                ByteOffset::new(pos_before as u64),
+            )),
+            LexOutcome::Eof => Err(ParseError::missing_endstream_at(ByteOffset::new(
+                self.lexer.cursor_position() as u64,
             ))),
-            None => {
-                let here = ByteOffset::new(self.lexer.cursor_position() as u64);
-                if self.lexer.is_eof() {
-                    Err(ParseError::missing_endstream_at(here))
-                } else {
-                    Err(ParseError::lexer_error_at(here))
-                }
+            LexOutcome::Malformed { position } => {
+                Err(ParseError::lexer_error_at(ByteOffset::new(position as u64)))
             }
         }
     }
