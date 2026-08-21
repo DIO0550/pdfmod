@@ -1,3 +1,4 @@
+use crate::lexer::outcome::LexOutcome;
 use crate::lexer::token::{Primitive, Token};
 
 use super::lexer;
@@ -8,11 +9,11 @@ fn peek_token_then_take_token_returns_same_integer() {
     let mut lex = lexer(b"42");
     assert_eq!(
         lex.peek_token(),
-        Some(&Token::Primitive(Primitive::Integer(42)))
+        LexOutcome::Lexed(&Token::Primitive(Primitive::Integer(42)))
     );
     assert_eq!(
         lex.take_token(),
-        Some(Token::Primitive(Primitive::Integer(42)))
+        LexOutcome::Lexed(Token::Primitive(Primitive::Integer(42)))
     );
 }
 
@@ -22,6 +23,6 @@ fn take_token_without_prior_peek_returns_first_token() {
     let mut lex = lexer(b"42");
     assert_eq!(
         lex.take_token(),
-        Some(Token::Primitive(Primitive::Integer(42)))
+        LexOutcome::Lexed(Token::Primitive(Primitive::Integer(42)))
     );
 }
