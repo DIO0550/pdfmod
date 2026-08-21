@@ -1,3 +1,4 @@
+use crate::lexer::outcome::LexOutcome;
 use crate::lexer::token::{Primitive, Token};
 
 use super::lexer;
@@ -9,15 +10,15 @@ fn next_token_returns_buffered_peek_before_advancing_cursor() {
     let mut lex = lexer(b"1 2");
     assert_eq!(
         lex.peek_token(),
-        Some(&Token::Primitive(Primitive::Integer(1)))
+        LexOutcome::Lexed(&Token::Primitive(Primitive::Integer(1)))
     );
     assert_eq!(
         lex.next_token(),
-        Some(Token::Primitive(Primitive::Integer(1)))
+        LexOutcome::Lexed(Token::Primitive(Primitive::Integer(1)))
     );
     assert_eq!(
         lex.next_token(),
-        Some(Token::Primitive(Primitive::Integer(2)))
+        LexOutcome::Lexed(Token::Primitive(Primitive::Integer(2)))
     );
 }
 
@@ -30,15 +31,15 @@ fn next_token_drains_buffer_in_order_after_consecutive_peek_at() {
     let _ = lex.peek_token_at(2);
     assert_eq!(
         lex.next_token(),
-        Some(Token::Primitive(Primitive::Integer(1)))
+        LexOutcome::Lexed(Token::Primitive(Primitive::Integer(1)))
     );
     assert_eq!(
         lex.next_token(),
-        Some(Token::Primitive(Primitive::Integer(2)))
+        LexOutcome::Lexed(Token::Primitive(Primitive::Integer(2)))
     );
     assert_eq!(
         lex.next_token(),
-        Some(Token::Primitive(Primitive::Integer(3)))
+        LexOutcome::Lexed(Token::Primitive(Primitive::Integer(3)))
     );
 }
 
@@ -49,6 +50,6 @@ fn next_token_without_prior_peek_reads_directly_from_input() {
     let mut lex = lexer(b"42");
     assert_eq!(
         lex.next_token(),
-        Some(Token::Primitive(Primitive::Integer(42)))
+        LexOutcome::Lexed(Token::Primitive(Primitive::Integer(42)))
     );
 }
