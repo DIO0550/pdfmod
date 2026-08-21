@@ -2,6 +2,7 @@
 //! 内部用 raw ディスパッチ (next_raw_token)、数値→キーワード合流ヘルパを提供する。
 
 use super::byte_kind::ByteKind;
+use super::outcome::LexOutcome;
 use super::token::{Primitive, Token};
 use super::Lexer;
 
@@ -11,7 +12,7 @@ impl<'a> Lexer<'a> {
     /// 処理順:
     /// 1. `skip_whitespace` で whitespace 6 種のみ消費（コメントは消費しない。`%PDF-1.7` /
     ///    `%%EOF` を parser が拾えるようにするため）
-    /// 2. `peek()` で先頭バイトを取得（`None` なら EOF として `None` を返す）
+    /// 2. `peek()` で先頭バイトを取得（取れなければ入力末尾として [`LexOutcome::Eof`] を返す）
     /// 3. 先頭バイトに応じて以下にディスパッチ:
     ///    - `%`               → `skip_comment` の本文を `to_vec()` で `Token::Comment` に組み立て
     ///    - `[` / `]`         → `read_array_begin` / `read_array_end`
@@ -22,25 +23,25 @@ impl<'a> Lexer<'a> {
     ///    - `+` / `-` / digit → `read_integer` → 失敗時 `read_real` → 失敗時 `read_keyword`
     ///    - `.`               → `read_real` → 失敗時 `read_keyword`（`.foo` のような `.` 始まりの regular byte 連結を `Token::Keyword` で吸収するため、`+/-` / digit と対称）
     ///    - その他 regular    → `read_keyword`
-    ///    - 上記以外          → `None`（pos 不変）
+    ///    - 上記以外          → [`LexOutcome::Malformed`]（pos 不変）
     ///
     /// `<` 分岐の二段構えは安全である（`read_hex_string` が `<<` 入力では `None` + `pos` 不変を
     /// 返すことが既存テストで保証されているため）。`+ABC` のような `+` / `-` 始まりの連結は
     /// `read_integer` / `read_real` が失敗した時点で `read_keyword` に流れ、`Token::Keyword` として吸収される。
     ///
-    /// `None` 返却時の EOF / malformed 区別（呼び出し側の責務）:
-    /// - `lexer.is_eof()` が `true`  → 真 EOF（入力末尾に到達）
-    /// - `lexer.is_eof()` が `false` → malformed input（仕様外バイトが残存）
+    /// EOF / malformed の区別は戻り値の型が表現する（呼び出し側が `is_eof()` を追い問い合わせる
+    /// 必要はない）:
+    /// - [`LexOutcome::Eof`]       → 真 EOF（入力末尾に到達）
+    /// - [`LexOutcome::Malformed`] → malformed input（仕様外バイトが残存）
     ///   - 例: `>` 単独・`{` / `}` のような仕様外 delimiter・`< ` のような `<<` でも 16 進開始
     ///     でもない `<` パターン
-    ///   - これらは本層では `None` + `pos` 不変を返すだけで、エラー化しない（panic 不在 /
-    ///     エラー型なしの契約）
+    ///   - これらは本層では `pos` 不変のまま `Malformed` を返すだけで、エラー化しない
+    ///     （panic 不在 / エラー型なしの契約）
     ///
-    /// `position()` 比較の用途: 「同じ malformed input で `next_token` を再試行したときに
-    /// 無限ループしないための no-progress 検知」。malformed と判定した parser は呼び出し前後の
-    /// `position()` を比較し、進んでいなければ 1 バイト強制スキップなどのヒューリスティックを
-    /// 適用する。EOF / malformed の分類自体には使わない（先頭 `skip_whitespace` のため
-    /// whitespace のみ入力で pos が進むなど混在があるため）。
+    /// no-progress 検知の用途: 「同じ malformed input で `next_token` を再試行したときに
+    /// 無限ループしないための検知」には `Malformed` が運ぶ `position` を使う。前回と同じ
+    /// `position` が返ったなら進んでいないため、1 バイト強制スキップなどのヒューリスティックを
+    /// 適用する。`position()` は peek 済みトークンの開始位置を返すため、この用途には使わない。
     ///
     /// panic 不在: 各ディスパッチ先（既存 `read_*` / 新規 6 メソッド）がすべて panic 不在
     /// 契約を満たすため、本 API も任意の入力・任意の pos で panic しない。
@@ -60,9 +61,9 @@ impl<'a> Lexer<'a> {
     /// したがって peek 後に本 API を呼ぶと、peek が透過スキップした Comment はもはや観測
     /// できない（バッファに残るのは Comment 以外のトークンのみ）。Comment を含む全トークンを
     /// 順に観測したい場合は、本 API を peek 系と混在させず単独で呼び出すこと。
-    pub fn next_token(&mut self) -> Option<Token> {
+    pub fn next_token(&mut self) -> LexOutcome<Token> {
         if let Some((tok, _)) = self.buffer.pop_front() {
-            return Some(tok);
+            return LexOutcome::Lexed(tok);
         }
         self.skip_whitespace();
         self.next_raw_token()
@@ -80,13 +81,18 @@ impl<'a> Lexer<'a> {
     /// `Lexer::next_non_comment_token` の双方で実施済み）。これにより
     /// `next_non_comment_token` の `pos` 採取直前にだけ whitespace を消費する形になり、
     /// `next_raw_token` 内で再スキャンする冗長性が消える。
-    pub(super) fn next_raw_token(&mut self) -> Option<Token> {
-        let b = self.peek()?;
-        match b {
-            b'%' => {
-                let body = self.skip_comment()?;
-                Some(Token::Comment(body.to_vec()))
-            }
+    pub(super) fn next_raw_token(&mut self) -> LexOutcome<Token> {
+        let Some(b) = self.peek() else {
+            // 先頭バイトが取れないのは入力末尾に到達した場合だけ。ここが唯一の真の EOF 判定。
+            return LexOutcome::Eof;
+        };
+
+        // 内側の read_* は Option のまま。None は「この字句ではない」＝ or_else による
+        // 次候補への切替であり malformed ではない。全候補が尽きた時点でのみ malformed に畳む。
+        let lexed = match b {
+            b'%' => self
+                .skip_comment()
+                .map(|body| Token::Comment(body.to_vec())),
             b'[' => self.read_array_begin(),
             b']' => self.read_array_end(),
             b'<' => self.read_dict_begin().or_else(|| {
@@ -108,6 +114,13 @@ impl<'a> Lexer<'a> {
             b if b.is_ascii_digit() => self.dispatch_numeric_or_keyword(),
             b if ByteKind::is_regular(b) => self.read_keyword(),
             _ => None,
+        };
+
+        match lexed {
+            Some(tok) => LexOutcome::Lexed(tok),
+            // 各 read_* は失敗時に pos を巻き戻すため、この時点の self.pos は不正バイトの先頭。
+            // cursor_position() と同じ値であり、従来 parser が使っていたエラー位置と一致する。
+            None => LexOutcome::Malformed { position: self.pos },
         }
     }
 
