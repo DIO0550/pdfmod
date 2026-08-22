@@ -1,6 +1,7 @@
 use super::super::super::object::pdf_object::PdfObject;
 use super::super::error::ParseErrorKind;
 use super::parser;
+use crate::lexer::token_kind::TokenKind;
 
 #[test]
 fn parse_object_falls_back_when_generation_exceeds_u16_max() {
@@ -12,7 +13,7 @@ fn parse_object_falls_back_when_generation_exceeds_u16_max() {
     assert_eq!(
         err.kind,
         ParseErrorKind::UnexpectedToken {
-            actual_kind: "Keyword"
+            actual: TokenKind::Keyword
         }
     );
 }
@@ -27,7 +28,7 @@ fn parse_object_falls_back_when_generation_is_negative() {
     assert_eq!(
         err.kind,
         ParseErrorKind::UnexpectedToken {
-            actual_kind: "Keyword"
+            actual: TokenKind::Keyword
         }
     );
 }

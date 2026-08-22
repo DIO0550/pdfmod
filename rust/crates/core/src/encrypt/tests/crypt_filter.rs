@@ -7,6 +7,7 @@ use crate::encrypt::error::EncryptErrorKind;
 use crate::encrypt::key::{CryptFilterKey, EncryptKey, EncryptKeyPath};
 use crate::encrypt::EncryptDictionary;
 use crate::object::name::PdfName;
+use crate::object::object_kind::ObjectKind;
 
 /// 標準ハンドラの必須キー（`/O` `/U` `/P`）。crypt filter の検証には関与しない。
 const REQUIRED_KEYS: &str =
@@ -180,7 +181,7 @@ fn non_dictionary_crypt_filters_are_rejected() {
         error.kind(),
         &EncryptErrorKind::InvalidKeyType {
             key: EncryptKeyPath::Root(EncryptKey::CF),
-            actual_kind: "Array",
+            actual: ObjectKind::Array,
         }
     );
 }
@@ -196,7 +197,7 @@ fn non_dictionary_crypt_filter_entry_reports_its_name() {
             key: EncryptKeyPath::CryptFilterEntry {
                 name: PdfName::from("StdCF"),
             },
-            actual_kind: "Array",
+            actual: ObjectKind::Array,
         }
     );
 }
@@ -213,7 +214,7 @@ fn non_name_crypt_filter_method_reports_its_entry_and_key() {
                 name: PdfName::from("StdCF"),
                 key: CryptFilterKey::CFM,
             },
-            actual_kind: "Integer",
+            actual: ObjectKind::Integer,
         }
     );
 }
@@ -232,7 +233,7 @@ fn broken_entry_among_several_is_identified_by_name() {
                 name: PdfName::from("BbbCF"),
                 key: CryptFilterKey::CFM,
             },
-            actual_kind: "Integer",
+            actual: ObjectKind::Integer,
         }
     );
 }
@@ -277,7 +278,7 @@ fn non_name_selector_is_rejected() {
         error.kind(),
         &EncryptErrorKind::InvalidKeyType {
             key: EncryptKeyPath::Root(EncryptKey::StmF),
-            actual_kind: "Integer",
+            actual: ObjectKind::Integer,
         }
     );
 }

@@ -9,6 +9,7 @@
 
 use crate::byte_offset::ByteOffset;
 use crate::encrypt::error::{EncryptError, EncryptErrorKind};
+use crate::object::object_kind::ObjectKind;
 use crate::parser::error::ParseErrorKind;
 use crate::xref::trailer::key::TrailerKey;
 
@@ -30,8 +31,8 @@ pub enum TrailerErrorKind {
     },
     /// `trailer` キーワードの後が辞書ではなかった。
     NotADictionary {
-        /// 実際に読み取ったオブジェクトの種別ラベル。
-        actual_kind: &'static str,
+        /// 実際に読み取ったオブジェクトの種別。
+        actual: ObjectKind,
     },
     /// 必須キー（`/Size` / `/Root`）が辞書に無い。
     ///
@@ -42,19 +43,34 @@ pub enum TrailerErrorKind {
         key: TrailerKey,
     },
     /// キーの値が期待した型ではない。
+    ///
+    /// 型は合っているが値が範囲外の場合は [`Self::KeyValueOutOfRange`] を使う。
     InvalidKeyType {
         /// 対象のキー。
         key: TrailerKey,
-        /// 実際に読み取った値の種別ラベル。
-        ///
-        /// `PdfObject` のバリアント名（`"Integer"` / `"Real"` 等）。
-        /// 既存 `ParseErrorKind` の同名フィールドに揃えて `&'static str` を使う。
-        actual_kind: &'static str,
+        /// 実際に読み取った値の種別。
+        actual: ObjectKind,
     },
     /// バイトオフセット／サイズを表すキーの値が負の整数だった。
     NegativeValue {
         /// 対象のキー。
         key: TrailerKey,
+    },
+    /// キーの値が非負 Integer だが `u64` に収まらない。
+    ///
+    /// 型不一致ではなく値域の問題であるため [`Self::InvalidKeyType`] とは分ける。
+    ///
+    /// 現状の呼び出し側では**全ターゲットで到達しない**。負値は先に
+    /// [`Self::NegativeValue`] へ落ちるため、`u64::try_from` に渡る `i64` は
+    /// 常に非負で、ポインタ幅に依らず `u64` に収まるため（`usize` を介する
+    /// `ParseErrorKind::LengthOutOfRange` とはこの点が異なる）。
+    /// それでも `as` で握り潰さず本バリアントを用意しておくのは、非負検証の
+    /// 前提が将来崩れたときに、静かにラップさせず型で失敗を返すため。
+    KeyValueOutOfRange {
+        /// 対象のキー。
+        key: TrailerKey,
+        /// 実際に書かれていた値。
+        value: i64,
     },
     /// `/ID` が「厳密に 2 要素の文字列配列」ではない。
     ///
@@ -97,8 +113,8 @@ impl TrailerError {
     }
 
     /// [`TrailerErrorKind::NotADictionary`] を指定位置・実種別で構築する。
-    pub fn not_a_dictionary_at(position: ByteOffset, actual_kind: &'static str) -> Self {
-        Self::new(TrailerErrorKind::NotADictionary { actual_kind }, position)
+    pub fn not_a_dictionary_at(position: ByteOffset, actual: ObjectKind) -> Self {
+        Self::new(TrailerErrorKind::NotADictionary { actual }, position)
     }
 
     /// [`TrailerErrorKind::MissingRequiredKey`] を指定位置・キーで構築する。
@@ -107,20 +123,21 @@ impl TrailerError {
     }
 
     /// [`TrailerErrorKind::InvalidKeyType`] を指定位置・キー・実種別で構築する。
-    pub fn invalid_key_type_at(
-        position: ByteOffset,
-        key: TrailerKey,
-        actual_kind: &'static str,
-    ) -> Self {
-        Self::new(
-            TrailerErrorKind::InvalidKeyType { key, actual_kind },
-            position,
-        )
+    pub fn invalid_key_type_at(position: ByteOffset, key: TrailerKey, actual: ObjectKind) -> Self {
+        Self::new(TrailerErrorKind::InvalidKeyType { key, actual }, position)
     }
 
     /// [`TrailerErrorKind::NegativeValue`] を指定位置・キーで構築する。
     pub fn negative_value_at(position: ByteOffset, key: TrailerKey) -> Self {
         Self::new(TrailerErrorKind::NegativeValue { key }, position)
+    }
+
+    /// [`TrailerErrorKind::KeyValueOutOfRange`] を指定位置・キー・実値で構築する。
+    pub fn key_value_out_of_range_at(position: ByteOffset, key: TrailerKey, value: i64) -> Self {
+        Self::new(
+            TrailerErrorKind::KeyValueOutOfRange { key, value },
+            position,
+        )
     }
 
     /// [`TrailerErrorKind::InvalidIdArray`] を指定位置で構築する。

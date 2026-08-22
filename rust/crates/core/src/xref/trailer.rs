@@ -174,14 +174,15 @@ fn take_required_size(
 
     match value {
         PdfObject::Integer(n) if n < 0 => Err(TrailerError::negative_value_at(position, key)),
-        // n >= 0 が確定しているため try_from は失敗しないが、panic 不在契約のため
-        // unwrap せずエラーに落とす。
-        PdfObject::Integer(n) => u64::try_from(n)
-            .map_err(|_| TrailerError::invalid_key_type_at(position, key, "Integer")),
+        // n >= 0 が確定しているため try_from は全ターゲットで失敗しないが、
+        // panic 不在契約のため unwrap せずエラーに落とす。
+        PdfObject::Integer(n) => {
+            u64::try_from(n).map_err(|_| TrailerError::key_value_out_of_range_at(position, key, n))
+        }
         other => Err(TrailerError::invalid_key_type_at(
             position,
             key,
-            other.kind_label(),
+            other.kind(),
         )),
     }
 }
@@ -201,7 +202,7 @@ fn take_required_reference(
         other => Err(TrailerError::invalid_key_type_at(
             position,
             key,
-            other.kind_label(),
+            other.kind(),
         )),
     }
 }
@@ -218,13 +219,14 @@ fn take_optional_offset(
 
     match value {
         PdfObject::Integer(n) if n < 0 => Err(TrailerError::negative_value_at(position, key)),
+        // take_required_size と同じく、n >= 0 が確定しているため try_from は失敗しない。
         PdfObject::Integer(n) => u64::try_from(n)
             .map(|offset| Some(ByteOffset::new(offset)))
-            .map_err(|_| TrailerError::invalid_key_type_at(position, key, "Integer")),
+            .map_err(|_| TrailerError::key_value_out_of_range_at(position, key, n)),
         other => Err(TrailerError::invalid_key_type_at(
             position,
             key,
-            other.kind_label(),
+            other.kind(),
         )),
     }
 }
@@ -244,7 +246,7 @@ fn take_optional_reference(
         other => Err(TrailerError::invalid_key_type_at(
             position,
             key,
-            other.kind_label(),
+            other.kind(),
         )),
     }
 }
@@ -300,7 +302,7 @@ fn take_optional_encrypt(
         other => Err(TrailerError::invalid_key_type_at(
             position,
             key,
-            other.kind_label(),
+            other.kind(),
         )),
     }
 }

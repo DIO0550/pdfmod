@@ -2,6 +2,7 @@ use super::{TrailerError, TrailerErrorKind};
 use crate::byte_offset::ByteOffset;
 use crate::encrypt::error::{EncryptError, EncryptErrorKind};
 use crate::encrypt::key::EncryptKey;
+use crate::object::object_kind::ObjectKind;
 use crate::parser::error::ParseErrorKind;
 use crate::xref::trailer::key::TrailerKey;
 
@@ -17,7 +18,7 @@ fn new_constructs_with_given_kind_and_position() {
 #[test]
 fn convenience_constructors_set_expected_kind() {
     let position = ByteOffset::new(42);
-    let cases: [(TrailerError, TrailerErrorKind); 7] = [
+    let cases: [(TrailerError, TrailerErrorKind); 8] = [
         (
             TrailerError::missing_trailer_keyword_at(position),
             TrailerErrorKind::MissingTrailerKeyword,
@@ -29,9 +30,9 @@ fn convenience_constructors_set_expected_kind() {
             },
         ),
         (
-            TrailerError::not_a_dictionary_at(position, "Integer"),
+            TrailerError::not_a_dictionary_at(position, ObjectKind::Integer),
             TrailerErrorKind::NotADictionary {
-                actual_kind: "Integer",
+                actual: ObjectKind::Integer,
             },
         ),
         (
@@ -41,16 +42,23 @@ fn convenience_constructors_set_expected_kind() {
             },
         ),
         (
-            TrailerError::invalid_key_type_at(position, TrailerKey::Root, "Integer"),
+            TrailerError::invalid_key_type_at(position, TrailerKey::Root, ObjectKind::Integer),
             TrailerErrorKind::InvalidKeyType {
                 key: TrailerKey::Root,
-                actual_kind: "Integer",
+                actual: ObjectKind::Integer,
             },
         ),
         (
             TrailerError::negative_value_at(position, TrailerKey::Prev),
             TrailerErrorKind::NegativeValue {
                 key: TrailerKey::Prev,
+            },
+        ),
+        (
+            TrailerError::key_value_out_of_range_at(position, TrailerKey::Prev, i64::MAX),
+            TrailerErrorKind::KeyValueOutOfRange {
+                key: TrailerKey::Prev,
+                value: i64::MAX,
             },
         ),
         (
@@ -81,12 +89,14 @@ fn position_boundary_values_are_preserved() {
 #[test]
 fn equality_follows_kind_and_position() {
     let position = ByteOffset::new(10);
-    let a = TrailerError::invalid_key_type_at(position, TrailerKey::Size, "Real");
-    let b = TrailerError::invalid_key_type_at(position, TrailerKey::Size, "Real");
-    let different_key = TrailerError::invalid_key_type_at(position, TrailerKey::Prev, "Real");
-    let different_actual = TrailerError::invalid_key_type_at(position, TrailerKey::Size, "Name");
+    let a = TrailerError::invalid_key_type_at(position, TrailerKey::Size, ObjectKind::Real);
+    let b = TrailerError::invalid_key_type_at(position, TrailerKey::Size, ObjectKind::Real);
+    let different_key =
+        TrailerError::invalid_key_type_at(position, TrailerKey::Prev, ObjectKind::Real);
+    let different_actual =
+        TrailerError::invalid_key_type_at(position, TrailerKey::Size, ObjectKind::Name);
     let different_position =
-        TrailerError::invalid_key_type_at(ByteOffset::new(11), TrailerKey::Size, "Real");
+        TrailerError::invalid_key_type_at(ByteOffset::new(11), TrailerKey::Size, ObjectKind::Real);
     assert_eq!(a, b);
     assert_ne!(a, different_key);
     assert_ne!(a, different_actual);
@@ -109,4 +119,34 @@ fn encrypt_dictionary_invalid_inherits_position_from_delegated_error() {
         }
     );
     assert_eq!(trailer_error.position, ByteOffset::new(37));
+}
+
+// KeyValueOutOfRange が型不一致（InvalidKeyType）・負値（NegativeValue）と別バリアントであることを確認する
+#[test]
+fn key_value_out_of_range_is_distinct_from_type_and_negative_errors() {
+    let position = ByteOffset::new(5);
+    let out_of_range =
+        TrailerError::key_value_out_of_range_at(position, TrailerKey::Size, i64::MAX);
+    let wrong_type =
+        TrailerError::invalid_key_type_at(position, TrailerKey::Size, ObjectKind::Integer);
+    let negative = TrailerError::negative_value_at(position, TrailerKey::Size);
+
+    assert_ne!(out_of_range, wrong_type);
+    assert_ne!(out_of_range, negative);
+}
+
+// key_value_out_of_range_at が key と value を透過保持することを確認する
+#[test]
+fn key_value_out_of_range_at_preserves_key_and_value() {
+    let error =
+        TrailerError::key_value_out_of_range_at(ByteOffset::new(9), TrailerKey::XRefStm, i64::MAX);
+
+    assert_eq!(
+        error.kind,
+        TrailerErrorKind::KeyValueOutOfRange {
+            key: TrailerKey::XRefStm,
+            value: i64::MAX,
+        }
+    );
+    assert_eq!(error.position, ByteOffset::new(9));
 }

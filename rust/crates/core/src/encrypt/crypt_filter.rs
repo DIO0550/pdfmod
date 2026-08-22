@@ -221,12 +221,12 @@ fn take_filter_map(
     let Some(value) = dictionary.remove(EncryptKey::CF.as_bytes()) else {
         return Err(EncryptError::missing_crypt_filters_at(position));
     };
-    let actual_kind = value.kind_label();
+    let actual = value.kind();
     let PdfObject::Dictionary(mut entries) = value else {
         return Err(EncryptError::invalid_key_type_at(
             position,
             EncryptKeyPath::Root(EncryptKey::CF),
-            actual_kind,
+            actual,
         ));
     };
 
@@ -236,13 +236,13 @@ fn take_filter_map(
         let Some(entry) = entries.remove(name.as_bytes()) else {
             continue;
         };
-        let actual_kind = entry.kind_label();
+        let actual = entry.kind();
         let PdfObject::Dictionary(entry) = entry else {
             // name はループが所有しており、この分岐で return するため clone は不要。
             return Err(EncryptError::invalid_key_type_at(
                 position,
                 EncryptKeyPath::CryptFilterEntry { name },
-                actual_kind,
+                actual,
             ));
         };
         // &name の借用を先に終わらせてから、name を BTreeMap のキーとして move する。
@@ -261,12 +261,12 @@ fn take_selector(
     let Some(value) = dictionary.remove(key.as_bytes()) else {
         return Ok(None);
     };
-    let actual_kind = value.kind_label();
+    let actual = value.kind();
     let PdfObject::Name(name) = value else {
         return Err(EncryptError::invalid_key_type_at(
             position,
             EncryptKeyPath::Root(key),
-            actual_kind,
+            actual,
         ));
     };
     if name.as_bytes() == IDENTITY {
@@ -341,7 +341,7 @@ fn take_method(
     let Some(value) = dictionary.remove(CryptFilterKey::CFM.as_bytes()) else {
         return Ok(CryptFilterMethod::None);
     };
-    let actual_kind = value.kind_label();
+    let actual = value.kind();
     // 引数の name（エントリ名）と区別するため、/CFM の値は method_name とする。
     let PdfObject::Name(method_name) = value else {
         return Err(EncryptError::invalid_key_type_at(
@@ -350,7 +350,7 @@ fn take_method(
                 name: name.clone(),
                 key: CryptFilterKey::CFM,
             },
-            actual_kind,
+            actual,
         ));
     };
     CryptFilterMethod::from_bytes(method_name.as_bytes())

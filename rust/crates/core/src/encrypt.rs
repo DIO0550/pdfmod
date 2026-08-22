@@ -131,7 +131,7 @@ fn expect_name(
         return Err(EncryptError::missing_required_key_at(position, key));
     };
     value.as_name().ok_or_else(|| {
-        EncryptError::invalid_key_type_at(position, EncryptKeyPath::Root(key), value.kind_label())
+        EncryptError::invalid_key_type_at(position, EncryptKeyPath::Root(key), value.kind())
     })
 }
 
@@ -145,7 +145,7 @@ fn expect_integer(
         return Err(EncryptError::missing_required_key_at(position, key));
     };
     value.as_integer().ok_or_else(|| {
-        EncryptError::invalid_key_type_at(position, EncryptKeyPath::Root(key), value.kind_label())
+        EncryptError::invalid_key_type_at(position, EncryptKeyPath::Root(key), value.kind())
     })
 }
 
@@ -159,7 +159,7 @@ fn take_optional_integer(
         return Ok(None);
     };
     value.as_integer().map(Some).ok_or_else(|| {
-        EncryptError::invalid_key_type_at(position, EncryptKeyPath::Root(key), value.kind_label())
+        EncryptError::invalid_key_type_at(position, EncryptKeyPath::Root(key), value.kind())
     })
 }
 
@@ -177,7 +177,7 @@ fn take_required_bytes(
         other => Err(EncryptError::invalid_key_type_at(
             position,
             EncryptKeyPath::Root(key),
-            other.kind_label(),
+            other.kind(),
         )),
     }
 }
@@ -192,7 +192,7 @@ fn take_optional_bool(
         return Ok(None);
     };
     value.as_bool().map(Some).ok_or_else(|| {
-        EncryptError::invalid_key_type_at(position, EncryptKeyPath::Root(key), value.kind_label())
+        EncryptError::invalid_key_type_at(position, EncryptKeyPath::Root(key), value.kind())
     })
 }
 
