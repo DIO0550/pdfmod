@@ -17,6 +17,7 @@ mod hex_string;
 mod literal_string;
 pub mod outcome;
 pub mod token;
+pub mod token_kind;
 
 // 責務ごとに分割したサブモジュール
 mod cursor;
