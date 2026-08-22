@@ -1,6 +1,7 @@
 use super::super::super::byte_offset::ByteOffset;
 use super::super::error::ParseErrorKind;
 use super::parser;
+use crate::lexer::token_kind::TokenKind;
 
 #[test]
 fn parse_object_returns_unexpected_eof_for_open_dict_only() {
@@ -50,7 +51,7 @@ fn parse_object_returns_unexpected_eof_for_two_complete_entries_then_eof() {
 #[test]
 fn parse_object_returns_unexpected_token_dict_end_when_value_missing() {
     // 入力 b"<< /A >>" でキー /A の値位置に `>>` が来た場合、値読み中の parse_object() 経由で
-    // UnexpectedToken { actual_kind: "DictEnd" } が返ることを確認する（仕様準拠の副次挙動）
+    // UnexpectedToken { actual: TokenKind::DictEnd } が返ることを確認する（仕様準拠の副次挙動）
     let mut p = parser(b"<< /A >>");
     let err = p
         .parse_object()
@@ -58,7 +59,7 @@ fn parse_object_returns_unexpected_token_dict_end_when_value_missing() {
     assert_eq!(
         err.kind,
         ParseErrorKind::UnexpectedToken {
-            actual_kind: "DictEnd"
+            actual: TokenKind::DictEnd
         }
     );
 }
