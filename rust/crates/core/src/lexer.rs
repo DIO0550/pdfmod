@@ -15,6 +15,7 @@ mod core;
 pub mod eol;
 mod hex_string;
 mod literal_string;
+pub mod outcome;
 pub mod token;
 
 // 責務ごとに分割したサブモジュール
@@ -30,6 +31,7 @@ pub(crate) mod skip;
 
 // extern prelude の `core`（libcore）との曖昧性（E0659）を避けるため self 修飾で再 export する
 pub use self::core::Lexer;
+pub use self::outcome::LexOutcome;
 
 #[cfg(test)]
 mod tests;

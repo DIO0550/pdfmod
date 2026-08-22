@@ -24,17 +24,25 @@ mod stream_object;
 
 use crate::byte_offset::ByteOffset;
 use crate::lexer::token::{Primitive, Token};
+use crate::lexer::LexOutcome;
 use crate::lexer::Lexer;
 
 /// `try_parse_indirect_reference` 内部で peek 結果を借用切れにしてから分岐するための分類タグ。
 ///
-/// `Lexer::peek_token_at` の戻り値が握る `&Token` の借用が、後続の `is_eof()` 等の
-/// 不変借用や `take_token()` の可変借用と衝突するため、まず純粋な分類値に変換する。
+/// `Lexer::peek_token_at` の戻り値が握る `&Token` の借用が、後続の `take_token()` の
+/// 可変借用と衝突するため、まず純粋な分類値に変換する。[`LexOutcome`] 化後も `&Token` を
+/// 握る点は変わらないため、このタグは引き続き必要である。
+///
+/// 一方で旧 `Unavailable`（EOF か malformed か未分解）は [`LexOutcome`] の導入により
+/// `Eof` / `Malformed` に分解でき、`is_eof()` の追い問い合わせが不要になった。
+/// なお `Mismatch`（トークンは取れたが期待した型ではない）は [`LexOutcome`] に存在しない
+/// 概念のため、本タグを [`LexOutcome`] に吸収して消すことはできない。
 #[derive(Debug)]
 enum PeekClass<T> {
     Match(T),
     Mismatch,
-    Unavailable,
+    Eof,
+    Malformed { position: usize },
 }
 use crate::object::dictionary::PdfDictionary;
 use crate::object::generation_number::GenerationNumber;
@@ -99,7 +107,7 @@ impl<'a> Parser<'a> {
     /// `obj`/`endobj`/`stream`/`endstream`・キーワード等の対象外トークンが来た場合は
     /// [`ParseErrorKind::UnexpectedToken`](error::ParseErrorKind::UnexpectedToken)、
     /// 入力が尽きていれば [`ParseErrorKind::UnexpectedEof`](error::ParseErrorKind::UnexpectedEof)、
-    /// lexer が malformed を検知して `None` を返した場合は
+    /// lexer が [`LexOutcome::Malformed`] を返した場合は
     /// [`ParseErrorKind::LexerError`](error::ParseErrorKind::LexerError) を返す。
     pub fn parse_object(&mut self) -> Result<PdfObject, ParseError> {
         let (token, pos_before) = self.take_token_or_error()?;
@@ -156,8 +164,13 @@ impl<'a> Parser<'a> {
     /// を `dict_start` として `parse_stream_object` に渡す（DC-5）。
     fn parse_object_or_stream(&mut self) -> Result<PdfObject, ParseError> {
         let dict_start = match self.lexer.peek_token_with_pos() {
-            Some((_, pos)) => ByteOffset::new(pos as u64),
-            None => ByteOffset::new(self.lexer.cursor_position() as u64),
+            LexOutcome::Lexed((_, pos)) => ByteOffset::new(pos as u64),
+            // EOF / malformed のどちらでも直後の parse_object() が正しいエラーを返すため、
+            // この dict_start は実際には使われない。両者を区別せず生カーソル位置を
+            // フォールバックとして使う（従来の None 分岐と同じ振る舞い）。
+            LexOutcome::Eof | LexOutcome::Malformed { .. } => {
+                ByteOffset::new(self.lexer.cursor_position() as u64)
+            }
         };
         let obj = self.parse_object()?;
         match obj {
@@ -237,7 +250,7 @@ impl<'a> Parser<'a> {
     /// [`ParseErrorKind::UnexpectedToken`](error::ParseErrorKind::UnexpectedToken)、
     /// `]` 不在で入力が尽きた場合は
     /// [`ParseErrorKind::UnexpectedEof`](error::ParseErrorKind::UnexpectedEof)、
-    /// lexer が malformed を検知して `None` を返した場合は
+    /// lexer が [`LexOutcome::Malformed`] を返した場合は
     /// [`ParseErrorKind::LexerError`](error::ParseErrorKind::LexerError) を fail-fast で返す。
     fn parse_array_body(&mut self) -> Result<PdfObject, ParseError> {
         let mut items: Vec<PdfObject> = Vec::new();
@@ -279,7 +292,7 @@ impl<'a> Parser<'a> {
     /// [`ParseErrorKind::UnexpectedToken`](error::ParseErrorKind::UnexpectedToken)、
     /// `>>` 不在で入力が尽きた場合は
     /// [`ParseErrorKind::UnexpectedEof`](error::ParseErrorKind::UnexpectedEof)、
-    /// lexer が malformed を検知して `None` を返した場合は
+    /// lexer が [`LexOutcome::Malformed`] を返した場合は
     /// [`ParseErrorKind::LexerError`](error::ParseErrorKind::LexerError) を fail-fast で返す。
     ///
     /// [`PdfName`]: crate::object::name::PdfName
@@ -310,20 +323,18 @@ impl<'a> Parser<'a> {
     /// 次のトークンを Comment 透過込みで取り出し、EOF と malformed を区別して
     /// [`ParseError`] にラップする内部 helper。
     ///
-    /// `Lexer::take_token_with_pos` が `None` を返した時点で、`Lexer` 内部バッファは
-    /// 空であり [`Lexer::cursor_position`] は生のカーソル位置（EOF なら `input.len()`、
-    /// malformed なら巻き戻し済みの不正バイト開始位置）を指す。これをそのまま
-    /// `UnexpectedEof` / `LexerError` のエラー位置として報告する。
+    /// EOF 位置は常に `input.len()` のため [`Lexer::cursor_position`] から取る。
+    /// malformed 位置は [`LexOutcome::Malformed`] が運ぶ値をそのまま使う
+    /// （不正バイトの先頭位置。[`Lexer::position`] は peek 済みトークンの開始位置を
+    /// 返すため一致しない）。
     fn take_token_or_error(&mut self) -> Result<(Token, usize), ParseError> {
         match self.lexer.take_token_with_pos() {
-            Some(entry) => Ok(entry),
-            None => {
-                let here = ByteOffset::new(self.lexer.cursor_position() as u64);
-                if self.lexer.is_eof() {
-                    Err(ParseError::unexpected_eof_at(here))
-                } else {
-                    Err(ParseError::lexer_error_at(here))
-                }
+            LexOutcome::Lexed(entry) => Ok(entry),
+            LexOutcome::Eof => Err(ParseError::unexpected_eof_at(ByteOffset::new(
+                self.lexer.cursor_position() as u64,
+            ))),
+            LexOutcome::Malformed { position } => {
+                Err(ParseError::lexer_error_at(ByteOffset::new(position as u64)))
             }
         }
     }
@@ -344,9 +355,9 @@ impl<'a> Parser<'a> {
     /// （i64 範囲外の N は lexer が `Keyword` 化するため、ここには `Integer` のみ届く）。
     ///
     /// lookahead 中に lexer malformed が検出された場合は `Err(LexerError)` を
-    /// fail-fast で伝播する。エラー位置は [`Lexer::cursor_position`]（バッファを無視した
-    /// 生のカーソル位置）を使う。`Lexer::position` だと peek 済みトークンの開始位置が
-    /// 返るため、malformed バイト位置と一致しない。
+    /// fail-fast で伝播する。エラー位置は [`LexOutcome::Malformed`] が運ぶ `position`
+    /// （バッファを無視した生のカーソル位置）をそのまま使う。`Lexer::position` だと
+    /// peek 済みトークンの開始位置が返るため、malformed バイト位置と一致しない。
     fn try_parse_indirect_reference(&mut self, n: i64) -> Result<Option<IndirectRef>, ParseError> {
         if n < 0 {
             return Ok(None);
@@ -354,8 +365,11 @@ impl<'a> Parser<'a> {
 
         let g = match Self::classify_indirect_ref_generation(self.lexer.peek_token_at(0)) {
             PeekClass::Match(g) => g,
-            PeekClass::Mismatch => return Ok(None),
-            PeekClass::Unavailable => return self.peek_unavailable_to_result(),
+            // EOF は「参照ではなかった」として Integer(N) 扱いに戻す（従来どおり）。
+            PeekClass::Mismatch | PeekClass::Eof => return Ok(None),
+            PeekClass::Malformed { position } => {
+                return Err(ParseError::lexer_error_at(ByteOffset::new(position as u64)))
+            }
         };
         if !(0..=i64::from(u16::MAX)).contains(&g) {
             return Ok(None);
@@ -363,8 +377,10 @@ impl<'a> Parser<'a> {
 
         match Self::classify_indirect_ref_keyword(self.lexer.peek_token_at(1)) {
             PeekClass::Match(()) => {}
-            PeekClass::Mismatch => return Ok(None),
-            PeekClass::Unavailable => return self.peek_unavailable_to_result(),
+            PeekClass::Mismatch | PeekClass::Eof => return Ok(None),
+            PeekClass::Malformed { position } => {
+                return Err(ParseError::lexer_error_at(ByteOffset::new(position as u64)))
+            }
         }
 
         let _ = self.lexer.take_token();
@@ -374,32 +390,23 @@ impl<'a> Parser<'a> {
         Ok(Some(IndirectRef::new(id)))
     }
 
-    fn classify_indirect_ref_generation(peeked: Option<&Token>) -> PeekClass<i64> {
+    fn classify_indirect_ref_generation(peeked: LexOutcome<&Token>) -> PeekClass<i64> {
         match peeked {
-            Some(Token::Primitive(Primitive::Integer(g))) => PeekClass::Match(*g),
-            Some(_) => PeekClass::Mismatch,
-            None => PeekClass::Unavailable,
+            LexOutcome::Lexed(Token::Primitive(Primitive::Integer(g))) => PeekClass::Match(*g),
+            LexOutcome::Lexed(_) => PeekClass::Mismatch,
+            LexOutcome::Eof => PeekClass::Eof,
+            LexOutcome::Malformed { position } => PeekClass::Malformed { position },
         }
     }
 
-    fn classify_indirect_ref_keyword(peeked: Option<&Token>) -> PeekClass<()> {
+    fn classify_indirect_ref_keyword(peeked: LexOutcome<&Token>) -> PeekClass<()> {
         match peeked {
-            Some(Token::Keyword(bytes)) if bytes.as_slice() == b"R" => PeekClass::Match(()),
-            Some(_) => PeekClass::Mismatch,
-            None => PeekClass::Unavailable,
-        }
-    }
-
-    /// `peek_token_at` が `None` を返した場合のフォローアップ判定。
-    /// EOF なら `Ok(None)`（呼び出し元は Integer(N) として処理）、malformed なら
-    /// `Err(LexerError)` を `cursor_position` 起点で発火する。
-    fn peek_unavailable_to_result<T>(&self) -> Result<Option<T>, ParseError> {
-        if self.lexer.is_eof() {
-            Ok(None)
-        } else {
-            Err(ParseError::lexer_error_at(ByteOffset::new(
-                self.lexer.cursor_position() as u64,
-            )))
+            LexOutcome::Lexed(Token::Keyword(bytes)) if bytes.as_slice() == b"R" => {
+                PeekClass::Match(())
+            }
+            LexOutcome::Lexed(_) => PeekClass::Mismatch,
+            LexOutcome::Eof => PeekClass::Eof,
+            LexOutcome::Malformed { position } => PeekClass::Malformed { position },
         }
     }
 
