@@ -10,6 +10,7 @@
 //! （parser）に委譲する。`N G R` の 3 字句から `IndirectRef` を組み立てるのは
 //! parser 層の責務であり、本モジュールでは `R` を `Keyword(b"R")` として平坦に流す。
 
+use crate::lexer::token_kind::TokenKind;
 use crate::object::name::PdfName;
 
 /// PDF §7.3 のプリミティブオブジェクト（スカラ系・文字列・名前）に対応する字句値を
@@ -244,6 +245,28 @@ impl Token {
         match self {
             Self::Comment(b) => Some(b.as_slice()),
             _ => None,
+        }
+    }
+
+    /// バリアント種別を [`TokenKind`] として返す。
+    ///
+    /// `Primitive` の内側の種別（Integer / Real / Name 等）は区別せず、
+    /// まとめて [`TokenKind::Primitive`] にする。
+    /// `ParseErrorKind::UnexpectedToken` に「実際に来たトークン」を載せるために使う。
+    #[must_use]
+    pub fn kind(&self) -> TokenKind {
+        match self {
+            Self::Primitive(_) => TokenKind::Primitive,
+            Self::ArrayBegin => TokenKind::ArrayBegin,
+            Self::ArrayEnd => TokenKind::ArrayEnd,
+            Self::DictBegin => TokenKind::DictBegin,
+            Self::DictEnd => TokenKind::DictEnd,
+            Self::ObjBegin => TokenKind::ObjBegin,
+            Self::ObjEnd => TokenKind::ObjEnd,
+            Self::StreamBegin => TokenKind::StreamBegin,
+            Self::StreamEnd => TokenKind::StreamEnd,
+            Self::Keyword(_) => TokenKind::Keyword,
+            Self::Comment(_) => TokenKind::Comment,
         }
     }
 }
@@ -1242,5 +1265,41 @@ mod tests {
             Token::Keyword(b"Type".to_vec()),
             Token::Primitive(Primitive::Name(PdfName::from("Type")))
         );
+    }
+
+    #[test]
+    fn kind_returns_matching_token_kind_for_every_variant() {
+        // 全 11 バリアントの kind() が対応する TokenKind を返すことを確認する
+        let cases: [(Token, TokenKind); 11] = [
+            (Token::Primitive(Primitive::Null), TokenKind::Primitive),
+            (Token::ArrayBegin, TokenKind::ArrayBegin),
+            (Token::ArrayEnd, TokenKind::ArrayEnd),
+            (Token::DictBegin, TokenKind::DictBegin),
+            (Token::DictEnd, TokenKind::DictEnd),
+            (Token::ObjBegin, TokenKind::ObjBegin),
+            (Token::ObjEnd, TokenKind::ObjEnd),
+            (Token::StreamBegin, TokenKind::StreamBegin),
+            (Token::StreamEnd, TokenKind::StreamEnd),
+            (Token::Keyword(b"R".to_vec()), TokenKind::Keyword),
+            (Token::Comment(b"comment".to_vec()), TokenKind::Comment),
+        ];
+
+        for (token, expected) in cases {
+            assert_eq!(token.kind(), expected, "token: {token:?}");
+        }
+    }
+
+    #[test]
+    fn kind_returns_primitive_regardless_of_inner_primitive_type() {
+        // Primitive の内側が Integer / Real / Name いずれでも TokenKind::Primitive にまとまる契約を固定する
+        let tokens = [
+            Token::Primitive(Primitive::Integer(42)),
+            Token::Primitive(Primitive::Real(1.5)),
+            Token::Primitive(Primitive::Name(PdfName::from("Type"))),
+        ];
+
+        for token in tokens {
+            assert_eq!(token.kind(), TokenKind::Primitive, "token: {token:?}");
+        }
     }
 }

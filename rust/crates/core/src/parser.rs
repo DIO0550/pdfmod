@@ -124,7 +124,7 @@ impl<'a> Parser<'a> {
             Token::DictBegin => self.parse_dictionary_body(),
             other => Err(ParseError::unexpected_token_at(
                 ByteOffset::new(pos_before as u64),
-                Self::token_kind_label(&other),
+                other.kind(),
             )),
         }
     }
@@ -183,7 +183,7 @@ impl<'a> Parser<'a> {
     ///
     /// 非 Integer / 範囲外（`N < 0`）は
     /// [`ParseErrorKind::UnexpectedToken`](error::ParseErrorKind::UnexpectedToken)
-    /// （範囲外でも token 自体は有効な `Primitive` のため `actual_kind` は "Primitive"）、
+    /// （範囲外でも token 自体は有効な `Primitive` のため `actual` は `TokenKind::Primitive`）、
     /// EOF / malformed は [`Self::take_token_or_error`] 経由で区別して返す。範囲検証後にのみ
     /// `n as u64` を行うため panic しない（`N >= 0` により非負 i64 → u64 は常に安全）。
     fn take_object_number(&mut self) -> Result<u64, ParseError> {
@@ -192,7 +192,7 @@ impl<'a> Parser<'a> {
             Token::Primitive(Primitive::Integer(n)) if n >= 0 => Ok(n as u64),
             other => Err(ParseError::unexpected_token_at(
                 ByteOffset::new(pos_before as u64),
-                Self::token_kind_label(&other),
+                other.kind(),
             )),
         }
     }
@@ -201,7 +201,7 @@ impl<'a> Parser<'a> {
     ///
     /// 非 Integer / 範囲外は
     /// [`ParseErrorKind::UnexpectedToken`](error::ParseErrorKind::UnexpectedToken)
-    /// （範囲外でも token 自体は有効な `Primitive` のため `actual_kind` は "Primitive"）、
+    /// （範囲外でも token 自体は有効な `Primitive` のため `actual` は `TokenKind::Primitive`）、
     /// EOF / malformed は [`Self::take_token_or_error`] 経由で区別して返す。範囲検証後にのみ
     /// `g as u16` を行うため panic しない。
     fn take_generation_number(&mut self) -> Result<u16, ParseError> {
@@ -212,7 +212,7 @@ impl<'a> Parser<'a> {
             }
             other => Err(ParseError::unexpected_token_at(
                 ByteOffset::new(pos_before as u64),
-                Self::token_kind_label(&other),
+                other.kind(),
             )),
         }
     }
@@ -221,7 +221,7 @@ impl<'a> Parser<'a> {
     ///
     /// `obj`（[`Token::ObjBegin`]）/ `endobj`（[`Token::ObjEnd`]）要求を 1 本化した
     /// 汎用 helper。両ステップは骨格が同一（`take_token_or_error` → unit トークン判定 →
-    /// 不一致で `token_kind_label` + `unexpected_token_at`）のため DRY 化する。`expected` は
+    /// 不一致で `Token::kind` + `unexpected_token_at`）のため DRY 化する。`expected` は
     /// unit variant を想定し、取得済みトークンとの `==`（`Token: PartialEq`）で等価判定する。
     /// 不一致は
     /// [`ParseErrorKind::UnexpectedToken`](error::ParseErrorKind::UnexpectedToken)、
@@ -233,7 +233,7 @@ impl<'a> Parser<'a> {
         } else {
             Err(ParseError::unexpected_token_at(
                 ByteOffset::new(pos_before as u64),
-                Self::token_kind_label(&token),
+                token.kind(),
             ))
         }
     }
@@ -271,7 +271,7 @@ impl<'a> Parser<'a> {
                 other => {
                     return Err(ParseError::unexpected_token_at(
                         ByteOffset::new(pos_before as u64),
-                        Self::token_kind_label(&other),
+                        other.kind(),
                     ));
                 }
             }
@@ -313,7 +313,7 @@ impl<'a> Parser<'a> {
                 other => {
                     return Err(ParseError::unexpected_token_at(
                         ByteOffset::new(pos_before as u64),
-                        Self::token_kind_label(&other),
+                        other.kind(),
                     ));
                 }
             }
@@ -424,24 +424,6 @@ impl<'a> Parser<'a> {
             Primitive::Name(n) => PdfObject::Name(n),
         }
     }
-
-    /// 想定外トークンの種別を [`ParseErrorKind::UnexpectedToken`](error::ParseErrorKind::UnexpectedToken)
-    /// の `actual_kind` フィールドに載せる短い `'static` 識別子にマップする。
-    fn token_kind_label(token: &Token) -> &'static str {
-        match token {
-            Token::Primitive(_) => "Primitive",
-            Token::ArrayBegin => "ArrayBegin",
-            Token::ArrayEnd => "ArrayEnd",
-            Token::DictBegin => "DictBegin",
-            Token::DictEnd => "DictEnd",
-            Token::ObjBegin => "ObjBegin",
-            Token::ObjEnd => "ObjEnd",
-            Token::StreamBegin => "StreamBegin",
-            Token::StreamEnd => "StreamEnd",
-            Token::Keyword(_) => "Keyword",
-            Token::Comment(_) => "Comment",
-        }
-    }
 }
 
 #[cfg(test)]
@@ -465,6 +447,7 @@ mod new_at_tests;
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::lexer::token_kind::TokenKind;
     use crate::object::name::PdfName;
     use crate::parser::error::ParseErrorKind;
 
@@ -707,91 +690,91 @@ mod tests {
 
     #[test]
     fn parse_object_returns_unexpected_token_for_array_end() {
-        // 入力 b"]" で UnexpectedToken { actual_kind: "ArrayEnd" } を返すことを確認する
+        // 入力 b"]" で UnexpectedToken { actual: TokenKind::ArrayEnd } を返すことを確認する
         let mut p = parser(b"]");
         let err = p.parse_object().expect_err("array end must error");
         assert_eq!(
             err.kind,
             ParseErrorKind::UnexpectedToken {
-                actual_kind: "ArrayEnd"
+                actual: TokenKind::ArrayEnd
             }
         );
     }
 
     #[test]
     fn parse_object_returns_unexpected_token_for_dict_end() {
-        // 入力 b">>" で UnexpectedToken { actual_kind: "DictEnd" } を返すことを確認する
+        // 入力 b">>" で UnexpectedToken { actual: TokenKind::DictEnd } を返すことを確認する
         let mut p = parser(b">>");
         let err = p.parse_object().expect_err("dict end must error");
         assert_eq!(
             err.kind,
             ParseErrorKind::UnexpectedToken {
-                actual_kind: "DictEnd"
+                actual: TokenKind::DictEnd
             }
         );
     }
 
     #[test]
     fn parse_object_returns_unexpected_token_for_obj_begin() {
-        // 入力 b"obj" で UnexpectedToken { actual_kind: "ObjBegin" } を返すことを確認する
+        // 入力 b"obj" で UnexpectedToken { actual: TokenKind::ObjBegin } を返すことを確認する
         let mut p = parser(b"obj");
         let err = p.parse_object().expect_err("obj begin must error");
         assert_eq!(
             err.kind,
             ParseErrorKind::UnexpectedToken {
-                actual_kind: "ObjBegin"
+                actual: TokenKind::ObjBegin
             }
         );
     }
 
     #[test]
     fn parse_object_returns_unexpected_token_for_obj_end() {
-        // 入力 b"endobj" で UnexpectedToken { actual_kind: "ObjEnd" } を返すことを確認する
+        // 入力 b"endobj" で UnexpectedToken { actual: TokenKind::ObjEnd } を返すことを確認する
         let mut p = parser(b"endobj");
         let err = p.parse_object().expect_err("obj end must error");
         assert_eq!(
             err.kind,
             ParseErrorKind::UnexpectedToken {
-                actual_kind: "ObjEnd"
+                actual: TokenKind::ObjEnd
             }
         );
     }
 
     #[test]
     fn parse_object_returns_unexpected_token_for_stream_begin() {
-        // 入力 b"stream" で UnexpectedToken { actual_kind: "StreamBegin" } を返すことを確認する
+        // 入力 b"stream" で UnexpectedToken { actual: TokenKind::StreamBegin } を返すことを確認する
         let mut p = parser(b"stream");
         let err = p.parse_object().expect_err("stream begin must error");
         assert_eq!(
             err.kind,
             ParseErrorKind::UnexpectedToken {
-                actual_kind: "StreamBegin"
+                actual: TokenKind::StreamBegin
             }
         );
     }
 
     #[test]
     fn parse_object_returns_unexpected_token_for_stream_end() {
-        // 入力 b"endstream" で UnexpectedToken { actual_kind: "StreamEnd" } を返すことを確認する
+        // 入力 b"endstream" で UnexpectedToken { actual: TokenKind::StreamEnd } を返すことを確認する
         let mut p = parser(b"endstream");
         let err = p.parse_object().expect_err("stream end must error");
         assert_eq!(
             err.kind,
             ParseErrorKind::UnexpectedToken {
-                actual_kind: "StreamEnd"
+                actual: TokenKind::StreamEnd
             }
         );
     }
 
     #[test]
     fn parse_object_returns_unexpected_token_for_keyword_r() {
-        // 入力 b"R" で UnexpectedToken { actual_kind: "Keyword" } を返すことを確認する
+        // 入力 b"R" で UnexpectedToken { actual: TokenKind::Keyword } を返すことを確認する
         let mut p = parser(b"R");
         let err = p.parse_object().expect_err("keyword R must error");
         assert_eq!(
             err.kind,
             ParseErrorKind::UnexpectedToken {
-                actual_kind: "Keyword"
+                actual: TokenKind::Keyword
             }
         );
     }
@@ -852,7 +835,7 @@ mod tests {
         assert_eq!(
             err.kind,
             ParseErrorKind::UnexpectedToken {
-                actual_kind: "Keyword"
+                actual: TokenKind::Keyword
             }
         );
         assert_eq!(err.position, ByteOffset::new(0));
@@ -868,7 +851,7 @@ mod tests {
         assert_eq!(
             err.kind,
             ParseErrorKind::UnexpectedToken {
-                actual_kind: "Keyword"
+                actual: TokenKind::Keyword
             }
         );
         assert_eq!(err.position, ByteOffset::new(0));
