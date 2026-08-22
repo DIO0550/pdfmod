@@ -1,6 +1,7 @@
 mod array_dictionary;
 mod conversion;
 mod eq_clone_debug;
+mod kind;
 mod primitive_variants;
 mod reference;
 mod stream;

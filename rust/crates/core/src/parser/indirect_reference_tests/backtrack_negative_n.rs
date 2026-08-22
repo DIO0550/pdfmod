@@ -1,6 +1,7 @@
 use super::super::super::object::pdf_object::PdfObject;
 use super::super::error::ParseErrorKind;
 use super::parser;
+use crate::lexer::token_kind::TokenKind;
 
 #[test]
 fn parse_object_falls_back_when_object_number_is_negative() {
@@ -12,7 +13,7 @@ fn parse_object_falls_back_when_object_number_is_negative() {
     assert_eq!(
         err.kind,
         ParseErrorKind::UnexpectedToken {
-            actual_kind: "Keyword"
+            actual: TokenKind::Keyword
         }
     );
 }

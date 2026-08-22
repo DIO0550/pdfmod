@@ -3,6 +3,7 @@ use crate::encrypt::algorithm::{KeyLength, StandardAlgorithm};
 use crate::encrypt::error::EncryptErrorKind;
 use crate::encrypt::key::{EncryptKey, EncryptKeyPath};
 use crate::encrypt::EncryptDictionary;
+use crate::object::object_kind::ObjectKind;
 
 /// `/O` `/U` に書く 32 バイトの値（R2-4 の仕様上の長さ）。
 const KEY_32_BYTES: &str = "(0123456789abcdef0123456789abcdef)";
@@ -193,7 +194,7 @@ fn standard_dictionary_with_non_integer_version_is_rejected() {
         error.kind(),
         &EncryptErrorKind::InvalidKeyType {
             key: EncryptKeyPath::Root(EncryptKey::V),
-            actual_kind: "Name",
+            actual: ObjectKind::Name,
         }
     );
 }

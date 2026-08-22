@@ -3,6 +3,7 @@ use super::simple_trailer;
 use crate::byte_offset::ByteOffset;
 use crate::object::generation_number::GenerationNumber;
 use crate::object::object_id::ObjectId;
+use crate::object::object_kind::ObjectKind;
 use crate::object::object_number::ObjectNumber;
 use crate::xref::trailer::error::TrailerErrorKind;
 use crate::xref::trailer::key::TrailerKey;
@@ -116,13 +117,13 @@ fn empty_dictionary_is_rejected() {
 // /Size が Integer 以外のすべての型で InvalidKeyType になることを確認する
 #[test]
 fn size_with_wrong_type_is_rejected() {
-    let cases: [(&str, &'static str); 6] = [
-        ("/Size 1.5 /Root 1 0 R", "Real"),
-        ("/Size /Six /Root 1 0 R", "Name"),
-        ("/Size (six) /Root 1 0 R", "String"),
-        ("/Size [6] /Root 1 0 R", "Array"),
-        ("/Size true /Root 1 0 R", "Boolean"),
-        ("/Size 6 0 R /Root 1 0 R", "Reference"),
+    let cases: [(&str, ObjectKind); 6] = [
+        ("/Size 1.5 /Root 1 0 R", ObjectKind::Real),
+        ("/Size /Six /Root 1 0 R", ObjectKind::Name),
+        ("/Size (six) /Root 1 0 R", ObjectKind::String),
+        ("/Size [6] /Root 1 0 R", ObjectKind::Array),
+        ("/Size true /Root 1 0 R", ObjectKind::Boolean),
+        ("/Size 6 0 R /Root 1 0 R", ObjectKind::Reference),
     ];
     for (body, expected_kind) in cases {
         let input = simple_trailer(body);
@@ -132,7 +133,7 @@ fn size_with_wrong_type_is_rejected() {
             error.kind,
             TrailerErrorKind::InvalidKeyType {
                 key: TrailerKey::Size,
-                actual_kind: expected_kind,
+                actual: expected_kind,
             },
             "body: {body}"
         );
@@ -156,13 +157,13 @@ fn negative_size_is_rejected() {
 // /Root が間接参照以外の型の場合に InvalidKeyType エラーになることを確認する
 #[test]
 fn root_with_wrong_type_is_rejected() {
-    let cases: [(&str, &'static str); 6] = [
-        ("/Size 6 /Root 1", "Integer"),
-        ("/Size 6 /Root 1.0", "Real"),
-        ("/Size 6 /Root /Catalog", "Name"),
-        ("/Size 6 /Root (1 0 R)", "String"),
-        ("/Size 6 /Root [1 0 R]", "Array"),
-        ("/Size 6 /Root << >>", "Dictionary"),
+    let cases: [(&str, ObjectKind); 6] = [
+        ("/Size 6 /Root 1", ObjectKind::Integer),
+        ("/Size 6 /Root 1.0", ObjectKind::Real),
+        ("/Size 6 /Root /Catalog", ObjectKind::Name),
+        ("/Size 6 /Root (1 0 R)", ObjectKind::String),
+        ("/Size 6 /Root [1 0 R]", ObjectKind::Array),
+        ("/Size 6 /Root << >>", ObjectKind::Dictionary),
     ];
     for (body, expected_kind) in cases {
         let input = simple_trailer(body);
@@ -172,7 +173,7 @@ fn root_with_wrong_type_is_rejected() {
             error.kind,
             TrailerErrorKind::InvalidKeyType {
                 key: TrailerKey::Root,
-                actual_kind: expected_kind,
+                actual: expected_kind,
             },
             "body: {body}"
         );

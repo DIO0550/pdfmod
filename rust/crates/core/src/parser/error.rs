@@ -1,11 +1,15 @@
 //! parser モジュール専用のエラー型。
 //!
 //! 位置情報（[`ByteOffset`]）は全バリアントで必須。
-//! `actual_kind` は `&'static str` を採用し、`PartialEq`/`Eq` を簡潔に保つ。
+//! 「期待した型と違う値が来た」ことを表す `actual` には [`ObjectKind`] / [`TokenKind`]
+//! を載せる。文字列では網羅 match が書けず、`PdfObject` に実在しないバリアント名を
+//! 種別として混入させられてしまうため（#610）。
 //! 将来的に公開境界では `From<ParseError> for PdfError` 経由で
 //! 上位エラー型に変換できるよう、構造はフラットに保つ。
 
 use crate::byte_offset::ByteOffset;
+use crate::lexer::token_kind::TokenKind;
+use crate::object::object_kind::ObjectKind;
 
 /// パースエラーの種別。
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -14,9 +18,8 @@ pub enum ParseErrorKind {
     UnexpectedEof,
     /// スカラでないトークンが来た（配列開始・辞書開始・キーワード等）。
     UnexpectedToken {
-        /// 受け取ったトークンを表す短い識別子。
-        /// 例: `"ArrayBegin"` / `"DictBegin"` / `"Keyword"` / `"ObjBegin"` 等。
-        actual_kind: &'static str,
+        /// 受け取ったトークンの種別。
+        actual: TokenKind,
     },
     /// lexer が `None` を返した（malformed input）。入力末端ではない場合に発生する。
     LexerError,
@@ -24,18 +27,24 @@ pub enum ParseErrorKind {
     MissingLength,
     /// `/Length` が間接参照 `N G R` になっている（Epic R2 で解決される予定）。
     IndirectLengthNotSupported,
-    /// `/Length` が Integer 以外の型（Real / String / Name / Array / Dictionary / Boolean など）、
-    /// または Integer だが `usize` に収まらない値（32bit ターゲットで `usize::try_from` が失敗する場合、
-    /// `actual_kind = "IntegerTooLarge"`）。
+    /// `/Length` が Integer 以外の型（Real / String / Name / Array / Dictionary / Boolean など）。
     ///
+    /// Integer だが `usize` に収まらない場合は本バリアントではなく
+    /// [`Self::LengthOutOfRange`] として現れる。
     /// 値が `Null` の場合は辞書パース時に ISO §7.3.7 に従いエントリ自体が削除されるため、
-    /// `/Length null` は本バリアントではなく [`Self::MissingLength`] として現れる。
+    /// `/Length null` は [`Self::MissingLength`] として現れる。
     InvalidLengthType {
-        /// 実際に受け取った型を表す短い識別子。
-        actual_kind: &'static str,
+        /// 実際に受け取った値の種別。
+        actual: ObjectKind,
     },
     /// `/Length` が Integer だが負の値。
     NegativeLength,
+    /// `/Length` が非負 Integer だが `usize` に収まらない
+    /// （32bit ターゲットで `usize::try_from` が失敗する場合。panic 不在契約のフォールバック）。
+    LengthOutOfRange {
+        /// 実際に書かれていた値。
+        value: i64,
+    },
     /// `stream` キーワード直後が CRLF/LF 以外（CR 単体・SP・TAB・EOF など）。
     InvalidStreamEol,
     /// `Length` バイト消費後に `endstream` トークンが無い。
@@ -66,10 +75,10 @@ impl ParseError {
         }
     }
 
-    /// [`ParseErrorKind::UnexpectedToken`] を指定位置・トークン識別子で構築する便利コンストラクタ。
-    pub fn unexpected_token_at(position: ByteOffset, actual_kind: &'static str) -> Self {
+    /// [`ParseErrorKind::UnexpectedToken`] を指定位置・トークン種別で構築する便利コンストラクタ。
+    pub fn unexpected_token_at(position: ByteOffset, actual: TokenKind) -> Self {
         Self {
-            kind: ParseErrorKind::UnexpectedToken { actual_kind },
+            kind: ParseErrorKind::UnexpectedToken { actual },
             position,
         }
     }
@@ -98,10 +107,18 @@ impl ParseError {
         }
     }
 
-    /// [`ParseErrorKind::InvalidLengthType`] を指定位置・型識別子で構築する便利コンストラクタ。
-    pub fn invalid_length_type_at(position: ByteOffset, actual_kind: &'static str) -> Self {
+    /// [`ParseErrorKind::InvalidLengthType`] を指定位置・オブジェクト種別で構築する便利コンストラクタ。
+    pub fn invalid_length_type_at(position: ByteOffset, actual: ObjectKind) -> Self {
         Self {
-            kind: ParseErrorKind::InvalidLengthType { actual_kind },
+            kind: ParseErrorKind::InvalidLengthType { actual },
+            position,
+        }
+    }
+
+    /// [`ParseErrorKind::LengthOutOfRange`] を指定位置・実値で構築する便利コンストラクタ。
+    pub fn length_out_of_range_at(position: ByteOffset, value: i64) -> Self {
+        Self {
+            kind: ParseErrorKind::LengthOutOfRange { value },
             position,
         }
     }
@@ -152,13 +169,13 @@ mod tests {
     }
 
     #[test]
-    fn unexpected_token_at_constructs_with_actual_kind() {
-        // unexpected_token_at が UnexpectedToken { actual_kind } を保持し、position も透過することを確認する
-        let err = ParseError::unexpected_token_at(ByteOffset::new(3), "ArrayBegin");
+    fn unexpected_token_at_constructs_with_actual_token_kind() {
+        // unexpected_token_at が UnexpectedToken { actual } を保持し、position も透過することを確認する
+        let err = ParseError::unexpected_token_at(ByteOffset::new(3), TokenKind::ArrayBegin);
         assert_eq!(
             err.kind,
             ParseErrorKind::UnexpectedToken {
-                actual_kind: "ArrayBegin"
+                actual: TokenKind::ArrayBegin
             }
         );
         assert_eq!(err.position, ByteOffset::new(3));
@@ -189,8 +206,8 @@ mod tests {
     #[test]
     fn same_kind_and_position_are_equal() {
         // 同じ kind と position で構築した 2 つの ParseError が PartialEq で == となることを確認する
-        let a = ParseError::unexpected_token_at(ByteOffset::new(10), "DictBegin");
-        let b = ParseError::unexpected_token_at(ByteOffset::new(10), "DictBegin");
+        let a = ParseError::unexpected_token_at(ByteOffset::new(10), TokenKind::DictBegin);
+        let b = ParseError::unexpected_token_at(ByteOffset::new(10), TokenKind::DictBegin);
         assert_eq!(a, b);
     }
 
@@ -203,10 +220,10 @@ mod tests {
     }
 
     #[test]
-    fn different_actual_kind_are_not_equal() {
-        // UnexpectedToken の actual_kind が異なる 2 つが != と判定されることを確認する
-        let a = ParseError::unexpected_token_at(ByteOffset::new(0), "ArrayBegin");
-        let b = ParseError::unexpected_token_at(ByteOffset::new(0), "DictBegin");
+    fn different_actual_token_kind_are_not_equal() {
+        // UnexpectedToken の actual が異なる 2 つが != と判定されることを確認する
+        let a = ParseError::unexpected_token_at(ByteOffset::new(0), TokenKind::ArrayBegin);
+        let b = ParseError::unexpected_token_at(ByteOffset::new(0), TokenKind::DictBegin);
         assert_ne!(a, b);
     }
 
@@ -227,16 +244,36 @@ mod tests {
     }
 
     #[test]
-    fn invalid_length_type_at_constructs_with_actual_kind() {
-        // invalid_length_type_at が InvalidLengthType { actual_kind } を保持し、position も透過することを確認する
-        let err = ParseError::invalid_length_type_at(ByteOffset::new(31), "Real");
+    fn invalid_length_type_at_constructs_with_actual_object_kind() {
+        // invalid_length_type_at が InvalidLengthType { actual } を保持し、position も透過することを確認する
+        let err = ParseError::invalid_length_type_at(ByteOffset::new(31), ObjectKind::Real);
         assert_eq!(
             err.kind,
             ParseErrorKind::InvalidLengthType {
-                actual_kind: "Real"
+                actual: ObjectKind::Real
             }
         );
         assert_eq!(err.position, ByteOffset::new(31));
+    }
+
+    #[test]
+    fn length_out_of_range_at_constructs_with_value() {
+        // length_out_of_range_at が LengthOutOfRange { value } を保持し、position も透過することを確認する
+        let err = ParseError::length_out_of_range_at(ByteOffset::new(33), i64::MAX);
+        assert_eq!(
+            err.kind,
+            ParseErrorKind::LengthOutOfRange { value: i64::MAX }
+        );
+        assert_eq!(err.position, ByteOffset::new(33));
+    }
+
+    #[test]
+    fn length_out_of_range_is_distinct_from_invalid_length_type() {
+        // 値域エラーと型不一致エラーが別バリアントとして区別されることを確認する
+        let out_of_range = ParseError::length_out_of_range_at(ByteOffset::new(0), i64::MAX);
+        let wrong_type =
+            ParseError::invalid_length_type_at(ByteOffset::new(0), ObjectKind::Integer);
+        assert_ne!(out_of_range, wrong_type);
     }
 
     #[test]
@@ -264,10 +301,10 @@ mod tests {
     }
 
     #[test]
-    fn invalid_length_type_different_actual_kind_are_not_equal() {
-        // InvalidLengthType の actual_kind が異なる 2 つが != と判定されることを確認する
-        let a = ParseError::invalid_length_type_at(ByteOffset::new(0), "Real");
-        let b = ParseError::invalid_length_type_at(ByteOffset::new(0), "Name");
+    fn invalid_length_type_different_actual_object_kind_are_not_equal() {
+        // InvalidLengthType の actual が異なる 2 つが != と判定されることを確認する
+        let a = ParseError::invalid_length_type_at(ByteOffset::new(0), ObjectKind::Real);
+        let b = ParseError::invalid_length_type_at(ByteOffset::new(0), ObjectKind::Name);
         assert_ne!(a, b);
     }
 }

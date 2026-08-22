@@ -3,6 +3,7 @@ use crate::encrypt::error::EncryptErrorKind;
 use crate::encrypt::key::{EncryptKey, EncryptKeyPath};
 use crate::encrypt::standard::StandardSecurityHandler;
 use crate::encrypt::EncryptDictionary;
+use crate::object::object_kind::ObjectKind;
 
 /// `/O` `/U` に書く 32 バイトの値（R2-4 の仕様上の長さ）。
 const KEY_32_BYTES: &[u8] = b"0123456789abcdef0123456789abcdef";
@@ -127,7 +128,7 @@ fn non_string_owner_key_is_rejected() {
         error.kind(),
         &EncryptErrorKind::InvalidKeyType {
             key: EncryptKeyPath::Root(EncryptKey::O),
-            actual_kind: "Name",
+            actual: ObjectKind::Name,
         }
     );
 }
@@ -155,7 +156,7 @@ fn non_boolean_encrypt_metadata_is_rejected() {
         error.kind(),
         &EncryptErrorKind::InvalidKeyType {
             key: EncryptKeyPath::Root(EncryptKey::EncryptMetadata),
-            actual_kind: "Integer",
+            actual: ObjectKind::Integer,
         }
     );
 }

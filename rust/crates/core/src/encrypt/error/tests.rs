@@ -2,6 +2,7 @@ use super::{EncryptError, EncryptErrorKind};
 use crate::byte_offset::ByteOffset;
 use crate::encrypt::key::{CryptFilterKey, EncryptKey, EncryptKeyPath};
 use crate::object::name::PdfName;
+use crate::object::object_kind::ObjectKind;
 
 // new が渡した kind と position を透過保持することを確認する
 #[test]
@@ -26,11 +27,11 @@ fn convenience_constructors_set_expected_kind() {
             EncryptError::invalid_key_type_at(
                 position,
                 EncryptKeyPath::Root(EncryptKey::V),
-                "Name",
+                ObjectKind::Name,
             ),
             EncryptErrorKind::InvalidKeyType {
                 key: EncryptKeyPath::Root(EncryptKey::V),
-                actual_kind: "Name",
+                actual: ObjectKind::Name,
             },
         ),
         (
@@ -39,13 +40,13 @@ fn convenience_constructors_set_expected_kind() {
                 EncryptKeyPath::CryptFilterEntry {
                     name: PdfName::from("StdCF"),
                 },
-                "Array",
+                ObjectKind::Array,
             ),
             EncryptErrorKind::InvalidKeyType {
                 key: EncryptKeyPath::CryptFilterEntry {
                     name: PdfName::from("StdCF"),
                 },
-                actual_kind: "Array",
+                actual: ObjectKind::Array,
             },
         ),
         (
@@ -55,14 +56,14 @@ fn convenience_constructors_set_expected_kind() {
                     name: PdfName::from("StdCF"),
                     key: CryptFilterKey::CFM,
                 },
-                "Integer",
+                ObjectKind::Integer,
             ),
             EncryptErrorKind::InvalidKeyType {
                 key: EncryptKeyPath::CryptFilter {
                     name: PdfName::from("StdCF"),
                     key: CryptFilterKey::CFM,
                 },
-                actual_kind: "Integer",
+                actual: ObjectKind::Integer,
             },
         ),
         (

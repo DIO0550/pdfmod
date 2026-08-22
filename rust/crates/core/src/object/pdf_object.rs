@@ -10,6 +10,7 @@
 use crate::object::dictionary::PdfDictionary;
 use crate::object::indirect_ref::IndirectRef;
 use crate::object::name::PdfName;
+use crate::object::object_kind::ObjectKind;
 use crate::object::stream::PdfStream;
 
 /// PDF 基本オブジェクト（スカラ系・文字列・名前・配列・辞書・ストリーム・参照バリアントを表す enum）。
@@ -170,25 +171,25 @@ impl PdfObject {
         }
     }
 
-    /// バリアント名を、エラーの `actual_kind` フィールドに載せるための短い
-    /// `'static` 識別子にマップする。
+    /// バリアント種別を [`ObjectKind`] として返す。
     ///
-    /// 「期待した型と違う値が来た」ことを報告する各層（`ParseError` /
-    /// `TrailerError`）で共通に使う。バリアントを追加した際の更新漏れを
-    /// 防ぐため、複製せずここに集約する。
+    /// 「期待した型と違う値が来た」ことを報告する各層（`ParseError` / `TrailerError` /
+    /// `EncryptError`）で共通に使う。バリアント追加時の更新漏れを防ぐため、
+    /// 変換はここに集約する（`ObjectKind` に `#[non_exhaustive]` を付けないため、
+    /// 追加時はこの `match` が非網羅となりコンパイルエラーになる）。
     #[must_use]
-    pub(crate) fn kind_label(&self) -> &'static str {
+    pub fn kind(&self) -> ObjectKind {
         match self {
-            Self::Null => "Null",
-            Self::Boolean(_) => "Boolean",
-            Self::Integer(_) => "Integer",
-            Self::Real(_) => "Real",
-            Self::String(_) => "String",
-            Self::Name(_) => "Name",
-            Self::Array(_) => "Array",
-            Self::Dictionary(_) => "Dictionary",
-            Self::Stream(_) => "Stream",
-            Self::Reference(_) => "Reference",
+            Self::Null => ObjectKind::Null,
+            Self::Boolean(_) => ObjectKind::Boolean,
+            Self::Integer(_) => ObjectKind::Integer,
+            Self::Real(_) => ObjectKind::Real,
+            Self::String(_) => ObjectKind::String,
+            Self::Name(_) => ObjectKind::Name,
+            Self::Array(_) => ObjectKind::Array,
+            Self::Dictionary(_) => ObjectKind::Dictionary,
+            Self::Stream(_) => ObjectKind::Stream,
+            Self::Reference(_) => ObjectKind::Reference,
         }
     }
 }
