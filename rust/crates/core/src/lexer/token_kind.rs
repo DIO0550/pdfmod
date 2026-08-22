@@ -32,7 +32,10 @@ pub enum TokenKind {
     StreamBegin,
     /// `endstream`
     StreamEnd,
-    /// 上記以外のキーワード（`R` / `true` 以外の裸トークン等）
+    /// 上記以外の裸のキーワード（`R` / `xref` / `trailer` / `startxref` / `f` / `n` など）。
+    ///
+    /// `true` / `false` は lexer が `Primitive::Boolean` として字句化するため
+    /// [`Self::Primitive`] であり、本バリアントには来ない。
     Keyword,
     /// `%` から行末までのコメント
     Comment,

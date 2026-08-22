@@ -59,8 +59,13 @@ pub enum TrailerErrorKind {
     /// キーの値が非負 Integer だが `u64` に収まらない。
     ///
     /// 型不一致ではなく値域の問題であるため [`Self::InvalidKeyType`] とは分ける。
-    /// `i64 → u64` は非負検証後なので理論上到達しないが、panic 不在契約の
-    /// フォールバックとして残す。
+    ///
+    /// 現状の呼び出し側では**全ターゲットで到達しない**。負値は先に
+    /// [`Self::NegativeValue`] へ落ちるため、`u64::try_from` に渡る `i64` は
+    /// 常に非負で、ポインタ幅に依らず `u64` に収まるため（`usize` を介する
+    /// `ParseErrorKind::LengthOutOfRange` とはこの点が異なる）。
+    /// それでも `as` で握り潰さず本バリアントを用意しておくのは、非負検証の
+    /// 前提が将来崩れたときに、静かにラップさせず型で失敗を返すため。
     KeyValueOutOfRange {
         /// 対象のキー。
         key: TrailerKey,
