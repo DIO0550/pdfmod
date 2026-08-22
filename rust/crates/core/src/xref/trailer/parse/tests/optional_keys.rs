@@ -3,6 +3,7 @@ use super::simple_trailer;
 use crate::byte_offset::ByteOffset;
 use crate::object::generation_number::GenerationNumber;
 use crate::object::object_id::ObjectId;
+use crate::object::object_kind::ObjectKind;
 use crate::object::object_number::ObjectNumber;
 use crate::xref::trailer::error::TrailerErrorKind;
 use crate::xref::trailer::key::TrailerKey;
@@ -94,11 +95,11 @@ fn negative_xref_stm_is_rejected() {
 // /Prev が整数以外の型の場合に InvalidKeyType エラーになることを確認する
 #[test]
 fn prev_with_wrong_type_is_rejected() {
-    let cases: [(&str, &'static str); 4] = [
-        ("/Size 6 /Root 1 0 R /Prev 1.5", "Real"),
-        ("/Size 6 /Root 1 0 R /Prev /Offset", "Name"),
-        ("/Size 6 /Root 1 0 R /Prev (408)", "String"),
-        ("/Size 6 /Root 1 0 R /Prev 408 0 R", "Reference"),
+    let cases: [(&str, ObjectKind); 4] = [
+        ("/Size 6 /Root 1 0 R /Prev 1.5", ObjectKind::Real),
+        ("/Size 6 /Root 1 0 R /Prev /Offset", ObjectKind::Name),
+        ("/Size 6 /Root 1 0 R /Prev (408)", ObjectKind::String),
+        ("/Size 6 /Root 1 0 R /Prev 408 0 R", ObjectKind::Reference),
     ];
     for (body, expected_kind) in cases {
         let input = simple_trailer(body);
@@ -108,7 +109,7 @@ fn prev_with_wrong_type_is_rejected() {
             error.kind,
             TrailerErrorKind::InvalidKeyType {
                 key: TrailerKey::Prev,
-                actual_kind: expected_kind,
+                actual: expected_kind,
             },
             "body: {body}"
         );
@@ -118,11 +119,14 @@ fn prev_with_wrong_type_is_rejected() {
 // /Info が間接参照以外の型の場合に InvalidKeyType エラーになることを確認する
 #[test]
 fn info_with_wrong_type_is_rejected() {
-    let cases: [(&str, &'static str); 4] = [
-        ("/Size 6 /Root 1 0 R /Info 5", "Integer"),
-        ("/Size 6 /Root 1 0 R /Info /InfoDict", "Name"),
-        ("/Size 6 /Root 1 0 R /Info << /Title (Doc) >>", "Dictionary"),
-        ("/Size 6 /Root 1 0 R /Info [5 0 R]", "Array"),
+    let cases: [(&str, ObjectKind); 4] = [
+        ("/Size 6 /Root 1 0 R /Info 5", ObjectKind::Integer),
+        ("/Size 6 /Root 1 0 R /Info /InfoDict", ObjectKind::Name),
+        (
+            "/Size 6 /Root 1 0 R /Info << /Title (Doc) >>",
+            ObjectKind::Dictionary,
+        ),
+        ("/Size 6 /Root 1 0 R /Info [5 0 R]", ObjectKind::Array),
     ];
     for (body, expected_kind) in cases {
         let input = simple_trailer(body);
@@ -132,7 +136,7 @@ fn info_with_wrong_type_is_rejected() {
             error.kind,
             TrailerErrorKind::InvalidKeyType {
                 key: TrailerKey::Info,
-                actual_kind: expected_kind,
+                actual: expected_kind,
             },
             "body: {body}"
         );

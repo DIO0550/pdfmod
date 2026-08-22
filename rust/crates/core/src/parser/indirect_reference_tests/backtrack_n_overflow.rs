@@ -1,6 +1,7 @@
 use super::super::super::byte_offset::ByteOffset;
 use super::super::error::ParseErrorKind;
 use super::parser;
+use crate::lexer::token_kind::TokenKind;
 
 #[test]
 fn parse_object_returns_unexpected_token_when_object_number_overflows_i64() {
@@ -13,7 +14,7 @@ fn parse_object_returns_unexpected_token_when_object_number_overflows_i64() {
     assert_eq!(
         err.kind,
         ParseErrorKind::UnexpectedToken {
-            actual_kind: "Keyword"
+            actual: TokenKind::Keyword
         }
     );
     assert_eq!(err.position, ByteOffset::new(0));

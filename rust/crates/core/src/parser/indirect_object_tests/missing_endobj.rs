@@ -3,6 +3,7 @@ use super::super::super::object::name::PdfName;
 use super::super::super::object::pdf_object::PdfObject;
 use super::super::error::{ParseError, ParseErrorKind};
 use super::parser;
+use crate::lexer::token_kind::TokenKind;
 
 #[test]
 fn parse_indirect_object_missing_endobj_at_eof_returns_unexpected_eof() {
@@ -16,33 +17,33 @@ fn parse_indirect_object_missing_endobj_at_eof_returns_unexpected_eof() {
 
 #[test]
 fn parse_indirect_object_non_endobj_token_returns_unexpected_token() {
-    // endobj 位置に別トークン: b"1 0 obj 42 [1]" は content 後に配列開始が来て UnexpectedToken{"ArrayBegin"} を [ 位置(11)で返す
+    // endobj 位置に別トークン: b"1 0 obj 42 [1]" は content 後に配列開始が来て UnexpectedToken{TokenKind::ArrayBegin} を [ 位置(11)で返す
     let mut p = parser(b"1 0 obj 42 [1]");
     assert_eq!(
         p.parse_indirect_object(),
         Err(ParseError::unexpected_token_at(
             ByteOffset::new(11),
-            "ArrayBegin"
+            TokenKind::ArrayBegin
         ))
     );
 }
 
 #[test]
 fn parse_indirect_object_empty_content_returns_unexpected_obj_end() {
-    // 空 content: b"12 0 obj endobj" は obj 直後に endobj が来て content 読みの parse_object が UnexpectedToken{"ObjEnd"} を endobj 位置(9)で返す
+    // 空 content: b"12 0 obj endobj" は obj 直後に endobj が来て content 読みの parse_object が UnexpectedToken{TokenKind::ObjEnd} を endobj 位置(9)で返す
     let mut p = parser(b"12 0 obj endobj");
     assert_eq!(
         p.parse_indirect_object(),
         Err(ParseError::unexpected_token_at(
             ByteOffset::new(9),
-            "ObjEnd"
+            TokenKind::ObjEnd
         ))
     );
 }
 
 #[test]
 fn parse_indirect_object_stream_content_returns_stream_object_for_empty_data() {
-    // 以前は stream 昇格未サポートで UnexpectedToken{"StreamBegin"} を返すテストだったが、
+    // 以前は stream 昇格未サポートで UnexpectedToken{TokenKind::StreamBegin} を返すテストだったが、
     // 本 Issue で parse_indirect_object 内の stream 昇格を実装したため、成功パスに書き換えている。
     // 期待: /Length 0 の空データストリームが PdfObject::Stream として復元される
     let mut p = parser(b"1 0 obj << /Length 0 >> stream\nendstream endobj");

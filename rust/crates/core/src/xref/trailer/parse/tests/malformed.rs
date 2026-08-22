@@ -1,5 +1,6 @@
 use super::super::ParsedTrailer;
 use crate::byte_offset::ByteOffset;
+use crate::object::object_kind::ObjectKind;
 use crate::xref::trailer::error::TrailerErrorKind;
 
 // 辞書が閉じられていない（>> が無い）場合に ObjectParseFailed エラーになることを確認する
@@ -35,7 +36,7 @@ fn non_dictionary_object_is_rejected() {
     assert_eq!(
         error.kind,
         TrailerErrorKind::NotADictionary {
-            actual_kind: "Integer",
+            actual: ObjectKind::Integer,
         }
     );
 }
@@ -49,7 +50,7 @@ fn array_instead_of_dictionary_is_rejected() {
     assert_eq!(
         error.kind,
         TrailerErrorKind::NotADictionary {
-            actual_kind: "Array",
+            actual: ObjectKind::Array,
         }
     );
 }

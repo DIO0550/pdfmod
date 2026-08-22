@@ -1,6 +1,7 @@
 use super::super::super::byte_offset::ByteOffset;
 use super::super::error::ParseErrorKind;
 use super::parser;
+use crate::lexer::token_kind::TokenKind;
 
 #[test]
 fn parse_object_returns_unexpected_token_for_dict_end_in_array() {
@@ -10,7 +11,7 @@ fn parse_object_returns_unexpected_token_for_dict_end_in_array() {
     assert_eq!(
         err.kind,
         ParseErrorKind::UnexpectedToken {
-            actual_kind: "DictEnd"
+            actual: TokenKind::DictEnd
         }
     );
 }
@@ -23,7 +24,7 @@ fn parse_object_returns_unexpected_token_for_obj_begin_in_array() {
     assert_eq!(
         err.kind,
         ParseErrorKind::UnexpectedToken {
-            actual_kind: "ObjBegin"
+            actual: TokenKind::ObjBegin
         }
     );
 }
@@ -36,7 +37,7 @@ fn parse_object_returns_unexpected_token_for_obj_end_in_array() {
     assert_eq!(
         err.kind,
         ParseErrorKind::UnexpectedToken {
-            actual_kind: "ObjEnd"
+            actual: TokenKind::ObjEnd
         }
     );
 }
@@ -49,7 +50,7 @@ fn parse_object_returns_unexpected_token_for_stream_begin_in_array() {
     assert_eq!(
         err.kind,
         ParseErrorKind::UnexpectedToken {
-            actual_kind: "StreamBegin"
+            actual: TokenKind::StreamBegin
         }
     );
 }
@@ -62,7 +63,7 @@ fn parse_object_returns_unexpected_token_for_stream_end_in_array() {
     assert_eq!(
         err.kind,
         ParseErrorKind::UnexpectedToken {
-            actual_kind: "StreamEnd"
+            actual: TokenKind::StreamEnd
         }
     );
 }
@@ -75,7 +76,7 @@ fn parse_object_returns_unexpected_token_for_keyword_r_in_array() {
     assert_eq!(
         err.kind,
         ParseErrorKind::UnexpectedToken {
-            actual_kind: "Keyword"
+            actual: TokenKind::Keyword
         }
     );
 }
@@ -88,7 +89,7 @@ fn parse_object_returns_unexpected_token_for_array_end_only() {
     assert_eq!(
         err.kind,
         ParseErrorKind::UnexpectedToken {
-            actual_kind: "ArrayEnd"
+            actual: TokenKind::ArrayEnd
         }
     );
     assert_eq!(err.position, ByteOffset::new(0));

@@ -3,6 +3,7 @@ use crate::encrypt::error::EncryptErrorKind;
 use crate::encrypt::key::{EncryptKey, EncryptKeyPath};
 use crate::encrypt::EncryptDictionary;
 use crate::object::name::PdfName;
+use crate::object::object_kind::ObjectKind;
 use crate::object::pdf_object::PdfObject;
 
 // 公開鍵ハンドラの暗号化辞書が Unsupported になり、解析が失敗しないことを確認する
@@ -112,7 +113,7 @@ fn dictionary_with_non_name_filter_is_rejected() {
         error.kind(),
         &EncryptErrorKind::InvalidKeyType {
             key: EncryptKeyPath::Root(EncryptKey::Filter),
-            actual_kind: "Integer",
+            actual: ObjectKind::Integer,
         }
     );
 }

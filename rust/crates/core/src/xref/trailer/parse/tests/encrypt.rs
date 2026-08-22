@@ -9,6 +9,7 @@ use crate::encrypt::EncryptDictionary;
 use crate::object::generation_number::GenerationNumber;
 use crate::object::name::PdfName;
 use crate::object::object_id::ObjectId;
+use crate::object::object_kind::ObjectKind;
 use crate::object::object_number::ObjectNumber;
 use crate::object::pdf_object::PdfObject;
 use crate::xref::trailer::error::{TrailerError, TrailerErrorKind};
@@ -133,11 +134,11 @@ fn empty_encrypt_dictionary_is_rejected() {
 // /Encrypt が間接参照でも辞書でもない場合に InvalidKeyType エラーになることを確認する
 #[test]
 fn encrypt_with_wrong_type_is_rejected() {
-    let cases: [(&str, &'static str); 4] = [
-        ("/Size 6 /Root 1 0 R /Encrypt 42", "Integer"),
-        ("/Size 6 /Root 1 0 R /Encrypt /Standard", "Name"),
-        ("/Size 6 /Root 1 0 R /Encrypt (encrypt)", "String"),
-        ("/Size 6 /Root 1 0 R /Encrypt [9 0 R]", "Array"),
+    let cases: [(&str, ObjectKind); 4] = [
+        ("/Size 6 /Root 1 0 R /Encrypt 42", ObjectKind::Integer),
+        ("/Size 6 /Root 1 0 R /Encrypt /Standard", ObjectKind::Name),
+        ("/Size 6 /Root 1 0 R /Encrypt (encrypt)", ObjectKind::String),
+        ("/Size 6 /Root 1 0 R /Encrypt [9 0 R]", ObjectKind::Array),
     ];
     for (body, expected_kind) in cases {
         let error = trailer_err(body);
@@ -146,7 +147,7 @@ fn encrypt_with_wrong_type_is_rejected() {
             error.kind,
             TrailerErrorKind::InvalidKeyType {
                 key: TrailerKey::Encrypt,
-                actual_kind: expected_kind,
+                actual: expected_kind,
             },
             "body: {body}"
         );
