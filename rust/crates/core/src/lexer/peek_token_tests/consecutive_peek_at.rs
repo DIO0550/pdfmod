@@ -1,3 +1,4 @@
+use crate::lexer::outcome::LexOutcome;
 use crate::lexer::token::{Primitive, Token};
 
 use super::lexer;
@@ -8,15 +9,15 @@ fn peek_token_at_returns_n_th_token_in_input_order() {
     let mut lex = lexer(b"1 2 3");
     assert_eq!(
         lex.peek_token_at(0),
-        Some(&Token::Primitive(Primitive::Integer(1)))
+        LexOutcome::Lexed(&Token::Primitive(Primitive::Integer(1)))
     );
     assert_eq!(
         lex.peek_token_at(1),
-        Some(&Token::Primitive(Primitive::Integer(2)))
+        LexOutcome::Lexed(&Token::Primitive(Primitive::Integer(2)))
     );
     assert_eq!(
         lex.peek_token_at(2),
-        Some(&Token::Primitive(Primitive::Integer(3)))
+        LexOutcome::Lexed(&Token::Primitive(Primitive::Integer(3)))
     );
 }
 
@@ -29,14 +30,14 @@ fn take_token_follows_peek_at_order() {
     let _ = lex.peek_token_at(2);
     assert_eq!(
         lex.take_token(),
-        Some(Token::Primitive(Primitive::Integer(1)))
+        LexOutcome::Lexed(Token::Primitive(Primitive::Integer(1)))
     );
     assert_eq!(
         lex.take_token(),
-        Some(Token::Primitive(Primitive::Integer(2)))
+        LexOutcome::Lexed(Token::Primitive(Primitive::Integer(2)))
     );
     assert_eq!(
         lex.take_token(),
-        Some(Token::Primitive(Primitive::Integer(3)))
+        LexOutcome::Lexed(Token::Primitive(Primitive::Integer(3)))
     );
 }

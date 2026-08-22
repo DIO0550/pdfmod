@@ -6,7 +6,8 @@
 //! ## 設計方針
 //!
 //! - **外部 crate 依存ゼロ**。Rust 標準ライブラリ (`std`) のみを使う。
-//! - **`Result` / `Option` は std のものをそのまま使う**（自作しない）。
+//! - **`Result` / `Option` は std のものをそのまま使う**（汎用のクローンを自作しない）。
+//!   ドメイン固有の状態を型で表す判別可能 enum（`XRefEntry` / `LexOutcome` など）は推奨する。
 //!
 //! byte_offset / encrypt / error / file / lexer / object / parser / xref の各モジュールは実装済み。
 //! `encrypt` は暗号化辞書（`/Encrypt`）の型表現を提供する（復号処理は未実装）。
