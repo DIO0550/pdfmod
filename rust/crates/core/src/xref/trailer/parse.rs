@@ -85,7 +85,7 @@ impl ParsedTrailer {
         let PdfObject::Dictionary(dictionary) = object else {
             return Err(TrailerError::not_a_dictionary_at(
                 dictionary_start,
-                object.kind_label(),
+                object.kind(),
             ));
         };
 

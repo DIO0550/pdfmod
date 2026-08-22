@@ -10,6 +10,7 @@
 use crate::byte_offset::ByteOffset;
 use crate::encrypt::key::{EncryptKey, EncryptKeyPath};
 use crate::object::name::PdfName;
+use crate::object::object_kind::ObjectKind;
 
 /// 暗号化辞書の解析エラーの種別。
 ///
@@ -29,8 +30,8 @@ pub enum EncryptErrorKind {
     InvalidKeyType {
         /// 対象のキーの位置。暗号化辞書直下と `/CF` エントリ内部の双方を指せる。
         key: EncryptKeyPath,
-        /// 実際に読み取った値の種別ラベル（`PdfObject` のバリアント名）。
-        actual_kind: &'static str,
+        /// 実際に読み取った値の種別。
+        actual: ObjectKind,
     },
     /// `/Length` が仕様の範囲外（40..=128 かつ 8 の倍数でない）。
     InvalidKeyLength {
@@ -104,12 +105,9 @@ impl EncryptError {
     pub fn invalid_key_type_at(
         position: ByteOffset,
         key: EncryptKeyPath,
-        actual_kind: &'static str,
+        actual: ObjectKind,
     ) -> Self {
-        Self::new(
-            EncryptErrorKind::InvalidKeyType { key, actual_kind },
-            position,
-        )
+        Self::new(EncryptErrorKind::InvalidKeyType { key, actual }, position)
     }
 
     /// [`EncryptErrorKind::InvalidKeyLength`] を指定位置・実値で構築する。

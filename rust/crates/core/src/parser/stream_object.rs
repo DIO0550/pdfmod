@@ -66,8 +66,8 @@ impl<'a> Parser<'a> {
     ///
     /// エラー位置はすべて `dict_start`（DC-5）。
     /// `i64 → usize` は `usize::try_from` で行い、32bit ターゲットで
-    /// `usize` に収まらない場合は `InvalidLengthType { actual_kind: "IntegerTooLarge" }`
-    /// として返す（panic 不在契約）。
+    /// `usize` に収まらない場合は `LengthOutOfRange { value }` として返す
+    /// （型不一致ではなく値域の問題であるため `InvalidLengthType` とは分ける。panic 不在契約）。
     fn resolve_stream_length(
         dictionary: &PdfDictionary,
         dict_start: ByteOffset,
@@ -79,15 +79,13 @@ impl<'a> Parser<'a> {
 
         match value {
             PdfObject::Integer(n) if *n < 0 => Err(ParseError::negative_length_at(dict_start)),
-            PdfObject::Integer(n) => usize::try_from(*n)
-                .map_err(|_| ParseError::invalid_length_type_at(dict_start, "IntegerTooLarge")),
+            PdfObject::Integer(n) => {
+                usize::try_from(*n).map_err(|_| ParseError::length_out_of_range_at(dict_start, *n))
+            }
             PdfObject::Reference(_) => {
                 Err(ParseError::indirect_length_not_supported_at(dict_start))
             }
-            other => Err(ParseError::invalid_length_type_at(
-                dict_start,
-                other.kind_label(),
-            )),
+            other => Err(ParseError::invalid_length_type_at(dict_start, other.kind())),
         }
     }
 
