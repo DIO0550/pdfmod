@@ -14,8 +14,9 @@
 //!
 //! 間接参照は `Integer(N) Integer(G) Keyword("R")` の 3 トークン列を `Lexer` の
 //! token 単位 peek API（`peek_token_at(0/1)` + `take_token`）で検出する。
-//! `N >= 0` かつ `0 <= G <= u16::MAX` のときのみ発火し、`N` を [`PdfObject::Reference`]
-//! に格納する。不成立時は peek 済みトークンが `Lexer` 内部バッファに保留されたまま
+//! `N` が [`ObjectNumber`] に、`G` が [`GenerationNumber`] に変換できるときのみ発火し、
+//! `N` を [`PdfObject::Reference`] に格納する。
+//! 不成立時は peek 済みトークンが `Lexer` 内部バッファに保留されたまま
 //! `Ok(None)` を返し、呼び出し元は `N` を [`PdfObject::Integer`] として発行する。
 //! 保留中のトークンは次回 `parse_object` 系で透過的に取り出される（ISO 32000-1 §7.3.10）。
 
@@ -133,8 +134,9 @@ impl<'a> Parser<'a> {
     /// [`IndirectObject`] を返す（ISO 32000-1 §7.3.10）。
     ///
     /// 消費型の専用エントリ。ヘッダ `Integer(N) Integer(G) ObjBegin` を順に消費し
-    /// （`N >= 0` / `0 <= G <= u16::MAX` を範囲検証）、content を [`Self::parse_object`]
-    /// で 1 回読み、最後に `endobj`（[`Token::ObjEnd`]）を要求する。ヘッダ/`endobj`
+    /// （`N` / `G` は [`ObjectNumber`] / [`GenerationNumber`] へ変換できることを検証済み）、
+    /// content を [`Self::parse_object`] で 1 回読み、最後に `endobj`（[`Token::ObjEnd`]）を
+    /// 要求する。ヘッダ/`endobj`
     /// 位置が期待形でなければ
     /// [`ParseErrorKind::UnexpectedToken`](error::ParseErrorKind::UnexpectedToken)、
     /// 入力が尽きれば
@@ -148,10 +150,7 @@ impl<'a> Parser<'a> {
         self.expect_token(&Token::ObjBegin)?;
         let object = self.parse_object_or_stream()?;
         self.expect_token(&Token::ObjEnd)?;
-        let id = ObjectId::new(
-            ObjectNumber::new(object_number),
-            GenerationNumber::new(generation),
-        );
+        let id = ObjectId::new(object_number, generation);
         Ok(IndirectObject::new(id, object))
     }
 
@@ -179,41 +178,40 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// ヘッダ先頭の N を消費する。`Integer(N)` かつ `N >= 0` のみ受理し `u64` へ変換する。
+    /// ヘッダ先頭の N を消費し、検証済みの [`ObjectNumber`] として返す。
     ///
-    /// 非 Integer / 範囲外（`N < 0`）は
+    /// `Integer(N)` かつ [`ObjectNumber::try_from_i64`] が `Some` を返す（= `N >= 0`）
+    /// 場合のみ受理する。非 Integer / 範囲外はどちらも
     /// [`ParseErrorKind::UnexpectedToken`](error::ParseErrorKind::UnexpectedToken)
     /// （範囲外でも token 自体は有効な `Primitive` のため `actual` は `TokenKind::Primitive`）、
-    /// EOF / malformed は [`Self::take_token_or_error`] 経由で区別して返す。範囲検証後にのみ
-    /// `n as u64` を行うため panic しない（`N >= 0` により非負 i64 → u64 は常に安全）。
-    fn take_object_number(&mut self) -> Result<u64, ParseError> {
+    /// EOF / malformed は [`Self::take_token_or_error`] 経由で区別して返す。
+    /// 範囲検証とキャストは `ObjectNumber` 側に閉じており、ここには `as` が無い。
+    fn take_object_number(&mut self) -> Result<ObjectNumber, ParseError> {
         let (token, pos_before) = self.take_token_or_error()?;
+        // 範囲外の Integer も「有効な Primitive が来た」として報告する契約のため、
+        // 種別は match の前に 1 度だけ求めて両腕で共有する（TokenKind は Copy）。
+        let kind = token.kind();
+        let position = ByteOffset::new(pos_before as u64);
         match token {
-            Token::Primitive(Primitive::Integer(n)) if n >= 0 => Ok(n as u64),
-            other => Err(ParseError::unexpected_token_at(
-                ByteOffset::new(pos_before as u64),
-                other.kind(),
-            )),
+            Token::Primitive(Primitive::Integer(n)) => ObjectNumber::try_from_i64(n)
+                .ok_or_else(|| ParseError::unexpected_token_at(position, kind)),
+            _ => Err(ParseError::unexpected_token_at(position, kind)),
         }
     }
 
-    /// ヘッダ 2 番目の G を消費する。`Integer(G)` かつ `0 <= G <= u16::MAX` のみ受理し `u16` へ変換する。
+    /// ヘッダ 2 番目の G を消費し、検証済みの [`GenerationNumber`] として返す。
     ///
-    /// 非 Integer / 範囲外は
-    /// [`ParseErrorKind::UnexpectedToken`](error::ParseErrorKind::UnexpectedToken)
-    /// （範囲外でも token 自体は有効な `Primitive` のため `actual` は `TokenKind::Primitive`）、
-    /// EOF / malformed は [`Self::take_token_or_error`] 経由で区別して返す。範囲検証後にのみ
-    /// `g as u16` を行うため panic しない。
-    fn take_generation_number(&mut self) -> Result<u16, ParseError> {
+    /// `Integer(G)` かつ [`GenerationNumber::try_from_i64`] が `Some` を返す
+    /// （= `0 <= G <= u16::MAX`）場合のみ受理する。エラーの扱いは
+    /// [`Self::take_object_number`] と同一。
+    fn take_generation_number(&mut self) -> Result<GenerationNumber, ParseError> {
         let (token, pos_before) = self.take_token_or_error()?;
+        let kind = token.kind();
+        let position = ByteOffset::new(pos_before as u64);
         match token {
-            Token::Primitive(Primitive::Integer(g)) if (0..=i64::from(u16::MAX)).contains(&g) => {
-                Ok(g as u16)
-            }
-            other => Err(ParseError::unexpected_token_at(
-                ByteOffset::new(pos_before as u64),
-                other.kind(),
-            )),
+            Token::Primitive(Primitive::Integer(g)) => GenerationNumber::try_from_i64(g)
+                .ok_or_else(|| ParseError::unexpected_token_at(position, kind)),
+            _ => Err(ParseError::unexpected_token_at(position, kind)),
         }
     }
 
@@ -343,8 +341,9 @@ impl<'a> Parser<'a> {
     /// あるかを最大 2 トークン先読みで検証する（ISO 32000-1 §7.3.10）。
     ///
     /// 成立条件:
-    /// - `N >= 0`
-    /// - 次トークンが `Integer(G)` かつ `0 <= G <= u16::MAX`
+    /// - `N` が [`ObjectNumber`] に変換できる（[`ObjectNumber::try_from_i64`] が `Some`）
+    /// - 次トークンが `Integer(G)` かつ `G` が [`GenerationNumber`] に変換できる
+    ///   （[`GenerationNumber::try_from_i64`] が `Some`）
     /// - 次々トークンが `Keyword("R")`
     ///
     /// 成立時は `Ok(Some(IndirectRef))` を返し、両 lookahead トークンを `take_token`
@@ -359,9 +358,11 @@ impl<'a> Parser<'a> {
     /// （バッファを無視した生のカーソル位置）をそのまま使う。`Lexer::position` だと
     /// peek 済みトークンの開始位置が返るため、malformed バイト位置と一致しない。
     fn try_parse_indirect_reference(&mut self, n: i64) -> Result<Option<IndirectRef>, ParseError> {
-        if n < 0 {
+        // N が番号として表現できなければ参照ではない。lookahead を始める前に打ち切る
+        // （従来の `if n < 0` と同じ位置・同じ判定を、コンストラクタ経由で表現する）。
+        let Some(number) = ObjectNumber::try_from_i64(n) else {
             return Ok(None);
-        }
+        };
 
         let g = match Self::classify_indirect_ref_generation(self.lexer.peek_token_at(0)) {
             PeekClass::Match(g) => g,
@@ -371,9 +372,10 @@ impl<'a> Parser<'a> {
                 return Err(ParseError::lexer_error_at(ByteOffset::new(position as u64)))
             }
         };
-        if !(0..=i64::from(u16::MAX)).contains(&g) {
+        // G が仕様範囲外なら参照ではない。peek 済みトークンは take せず保留のまま返す。
+        let Some(generation) = GenerationNumber::try_from_i64(g) else {
             return Ok(None);
-        }
+        };
 
         match Self::classify_indirect_ref_keyword(self.lexer.peek_token_at(1)) {
             PeekClass::Match(()) => {}
@@ -386,8 +388,7 @@ impl<'a> Parser<'a> {
         let _ = self.lexer.take_token();
         let _ = self.lexer.take_token();
 
-        let id = ObjectId::new(ObjectNumber::new(n as u64), GenerationNumber::new(g as u16));
-        Ok(Some(IndirectRef::new(id)))
+        Ok(Some(IndirectRef::new(ObjectId::new(number, generation))))
     }
 
     fn classify_indirect_ref_generation(peeked: LexOutcome<&Token>) -> PeekClass<i64> {
