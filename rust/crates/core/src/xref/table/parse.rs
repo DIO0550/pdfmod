@@ -196,11 +196,10 @@ fn read_entry(input: &[u8], pos: usize) -> Result<(XRefEntry, usize), XRefError>
     let (generation_value, after_generation) = read_unsigned(input, generation_start)
         .ok_or_else(|| XRefError::invalid_number_at(offset_of(generation_start)))?;
     // GenerationNumber の内部型は u16。5 桁は最大 99999 なので範囲外がありうる。
-    let generation = u16::try_from(generation_value)
-        .map(GenerationNumber::new)
-        .map_err(|_| {
-            XRefError::generation_out_of_range_at(offset_of(generation_start), generation_value)
-        })?;
+    // 範囲判定は newtype のコンストラクタに委譲する（エラーには元の u64 を載せる）。
+    let generation = GenerationNumber::try_from_u64(generation_value).ok_or_else(|| {
+        XRefError::generation_out_of_range_at(offset_of(generation_start), generation_value)
+    })?;
 
     let flag_pos = skip_blanks(input, after_generation);
     let Some(&flag) = input.get(flag_pos) else {
