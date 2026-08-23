@@ -117,6 +117,70 @@ mod tests {
     }
 
     #[test]
+    fn try_from_i64_accepts_values_in_spec_range() {
+        // 仕様範囲内の代表値（0 / 1 / 42）が受理され、value() が入力と一致することを確認する
+        for g in [0i64, 1, 42] {
+            assert_eq!(
+                GenerationNumber::try_from_i64(g).map(|generation| generation.value()),
+                Some(g as u16)
+            );
+        }
+    }
+
+    #[test]
+    fn try_from_i64_accepts_u16_max() {
+        // 仕様上限ちょうど 65535（ISO 32000-1 §7.5.4）が受理されることを確認する
+        assert_eq!(
+            GenerationNumber::try_from_i64(65535),
+            Some(GenerationNumber::new(u16::MAX))
+        );
+    }
+
+    #[test]
+    fn try_from_i64_rejects_u16_max_plus_one() {
+        // 仕様上限の 1 つ外 65536 が拒否されることを確認する
+        assert_eq!(GenerationNumber::try_from_i64(65536), None);
+    }
+
+    #[test]
+    fn try_from_i64_rejects_negative_values() {
+        // 負値（-1 / i64::MIN）がいずれも拒否されることを確認する
+        for g in [-1i64, i64::MIN] {
+            assert_eq!(GenerationNumber::try_from_i64(g), None);
+        }
+    }
+
+    #[test]
+    fn try_from_u64_accepts_values_in_spec_range() {
+        // xref 経路の入力型 u64 でも仕様範囲内（0 / 42 / 65535）が受理されることを確認する
+        for g in [0u64, 42, 65535] {
+            assert_eq!(
+                GenerationNumber::try_from_u64(g).map(|generation| generation.value()),
+                Some(g as u16)
+            );
+        }
+    }
+
+    #[test]
+    fn try_from_u64_rejects_above_u16_max() {
+        // 上限超え（65536 / u64::MAX。後者は xref のエラー値として実際に流れうる）が拒否されることを確認する
+        for g in [65536u64, u64::MAX] {
+            assert_eq!(GenerationNumber::try_from_u64(g), None);
+        }
+    }
+
+    #[test]
+    fn try_from_i64_and_try_from_u64_agree_in_shared_range() {
+        // 共通範囲 0..=65535 の代表値で両者が同じ結果を返す（検証ロジックが分岐していない）ことを確認する
+        for g in [0i64, 1, 42, 65535] {
+            assert_eq!(
+                GenerationNumber::try_from_i64(g),
+                GenerationNumber::try_from_u64(g as u64)
+            );
+        }
+    }
+
+    #[test]
     fn from_u16_builds_generation_number() {
         // u16 から From で変換した結果が new で生成した GenerationNumber と等価になることを確認する
         assert_eq!(GenerationNumber::from(42), GenerationNumber::new(42));
