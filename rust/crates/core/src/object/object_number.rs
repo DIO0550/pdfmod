@@ -104,6 +104,49 @@ mod tests {
     }
 
     #[test]
+    fn try_from_i64_accepts_non_negative_values() {
+        // 代表的な非負値（0 / 1 / 42）が受理され、value() が入力と一致することを確認する
+        for n in [0i64, 1, 42] {
+            assert_eq!(
+                ObjectNumber::try_from_i64(n).map(|number| number.value()),
+                Some(n as u64)
+            );
+        }
+    }
+
+    #[test]
+    fn try_from_i64_accepts_i64_max() {
+        // 参照解析で実際に到達する上限 i64::MAX が受理され、値が保持されることを確認する
+        assert_eq!(
+            ObjectNumber::try_from_i64(i64::MAX),
+            Some(ObjectNumber::new(i64::MAX as u64))
+        );
+    }
+
+    #[test]
+    fn try_from_i64_rejects_negative_one() {
+        // 非負領域のすぐ外側 -1 が拒否されることを確認する
+        assert_eq!(ObjectNumber::try_from_i64(-1), None);
+    }
+
+    #[test]
+    fn try_from_i64_rejects_i64_min() {
+        // as キャストなら値が化ける i64::MIN が拒否されることを確認する
+        assert_eq!(ObjectNumber::try_from_i64(i64::MIN), None);
+    }
+
+    #[test]
+    fn try_from_i64_agrees_with_new_for_accepted_values() {
+        // 受理される値では try_from_i64 と既存 new が等価な ObjectNumber を作ることを確認する
+        for n in [0i64, 1, 42, i64::MAX] {
+            assert_eq!(
+                ObjectNumber::try_from_i64(n),
+                Some(ObjectNumber::new(n as u64))
+            );
+        }
+    }
+
+    #[test]
     fn from_u64_builds_object_number() {
         // u64 から From で変換した結果が new で生成した ObjectNumber と等価になることを確認する
         assert_eq!(ObjectNumber::from(42), ObjectNumber::new(42));
