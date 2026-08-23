@@ -10,8 +10,10 @@ use super::byte_kind::ByteKind;
 /// キーワード直後の位置を返す純関数。
 ///
 /// 構造キーワード（`xref` / `trailer` / `startxref` 等）の検出に使う。
-/// これらは lexer では既知キーワードにならず `Token::Keyword` になるため、
-/// トークン層を経由せず生バイトで照合する必要がある。
+/// これらは [`Keyword`](crate::lexer::token::Keyword) の既知バリアントを持つが、
+/// 検出側（xref テーブル解析 / トレイラ解析 / `startxref` の後方スキャン）は
+/// トークン列ではなく生バイトオフセットの上を走査するため、`Lexer` を通さずに
+/// 照合する。照合に渡すバイト列は `Keyword::as_bytes` から取る。
 ///
 /// # 契約
 /// - `pos` が範囲外、または `pos..pos + keyword.len()` が入力を超える場合は `None`。
