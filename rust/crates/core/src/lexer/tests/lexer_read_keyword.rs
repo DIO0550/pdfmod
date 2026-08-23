@@ -407,3 +407,50 @@ fn read_keyword_preserves_non_ascii_bytes_in_keyword() {
     );
     assert_eq!(lexer.position(), 4);
 }
+
+#[test]
+fn read_keyword_stops_at_boundary_after_known_keyword() {
+    // 既知キーワードの直後が境界バイトのとき、キーワード分だけ消費して止まることを確認する
+    let cases: [(&[u8], Token, usize); 2] = [
+        (b"R 1 0", Token::Keyword(Keyword::R), 1),
+        (b"xref\n0 1", Token::Keyword(Keyword::Xref), 4),
+    ];
+
+    for (input, expected, expected_pos) in cases {
+        let mut lexer = Lexer::new(input);
+        assert_eq!(lexer.read_keyword(), Some(expected), "input: {input:?}");
+        assert_eq!(lexer.position(), expected_pos, "input: {input:?}");
+    }
+}
+
+#[test]
+fn read_keyword_flattens_concatenation_of_known_keyword_to_unknown() {
+    // 既知キーワードに regular byte が連結された字句は境界まで一括収集され Unknown になることを確認する
+    let cases: [&[u8]; 3] = [b"Rx", b"xrefs", b"startxrefs"];
+
+    for input in cases {
+        let mut lexer = Lexer::new(input);
+        assert_eq!(
+            lexer.read_keyword(),
+            Some(Token::Keyword(Keyword::Unknown(input.to_vec()))),
+            "input: {input:?}"
+        );
+        assert_eq!(lexer.position(), input.len(), "input: {input:?}");
+    }
+}
+
+#[test]
+fn read_keyword_flattens_case_variants_of_known_keyword_to_unknown() {
+    // 既知キーワードの大文字小文字違いは case-sensitive 照合により Unknown になることを確認する
+    let cases: [&[u8]; 3] = [b"r", b"XREF", b"Trailer"];
+
+    for input in cases {
+        let mut lexer = Lexer::new(input);
+        assert_eq!(
+            lexer.read_keyword(),
+            Some(Token::Keyword(Keyword::Unknown(input.to_vec()))),
+            "input: {input:?}"
+        );
+        assert_eq!(lexer.position(), input.len(), "input: {input:?}");
+    }
+}

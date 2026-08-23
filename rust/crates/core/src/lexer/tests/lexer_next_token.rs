@@ -284,3 +284,21 @@ fn next_token_reports_the_same_position_when_malformed_is_retried() {
     assert_eq!(first, LexOutcome::Malformed { position: 0 });
     assert_eq!(second, LexOutcome::Malformed { position: 0 });
 }
+
+#[test]
+fn next_token_returns_keyword_r_for_indirect_reference_marker() {
+    // `1 0 R` を 3 回 next_token すると Integer(1) / Integer(0) / Keyword(Keyword::R) の順で返ることを確認する
+    let mut lexer = Lexer::new(b"1 0 R");
+    assert_eq!(
+        lexer.next_token(),
+        LexOutcome::Lexed(Token::Primitive(Primitive::Integer(1)))
+    );
+    assert_eq!(
+        lexer.next_token(),
+        LexOutcome::Lexed(Token::Primitive(Primitive::Integer(0)))
+    );
+    assert_eq!(
+        lexer.next_token(),
+        LexOutcome::Lexed(Token::Keyword(Keyword::R))
+    );
+}
