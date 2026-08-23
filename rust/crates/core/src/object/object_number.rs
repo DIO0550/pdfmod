@@ -22,6 +22,25 @@ impl ObjectNumber {
         Self(n)
     }
 
+    /// `i64` のトークン値から `ObjectNumber` を生成する。負値は `None` を返す。
+    ///
+    /// lexer が返す `Primitive::Integer` は `i64` だが、オブジェクト番号は非負整数
+    /// （ISO 32000-1 §7.3.10）であり `i64` の負領域は番号として表現できない。
+    /// この「`i64` → `u64` の絞り込み」をコンストラクタに閉じ込めることで、
+    /// 呼び出し側に `n >= 0` の判定と `n as u64` のキャストを書かせない。
+    ///
+    /// 失敗理由が「負値である」の一択で、呼び出し側の文脈ごとに扱いが変わる
+    /// （ヘッダ位置ではパースエラー、参照 lookahead では「参照ではない」判定）ため、
+    /// エラー型を固定する `TryFrom` ではなく `Option` を返す関連関数とする。
+    /// 内部型 `u64` を受ける無検証の [`Self::new`] / `From<u64>` は非破壊で残す。
+    ///
+    /// 検証するのは整数値としての範囲だけで、PDF 仕様上の妥当性（`N >= 1`、
+    /// フリーリスト先頭の予約番号 0 の特別扱いなど）は従来どおり xref レイヤの責務。
+    #[must_use]
+    pub fn try_from_i64(n: i64) -> Option<Self> {
+        u64::try_from(n).ok().map(Self)
+    }
+
     /// 内部のオブジェクト番号を `u64` として取り出す。
     #[must_use]
     pub fn value(&self) -> u64 {
@@ -81,6 +100,49 @@ mod tests {
         // 代表値（0 / 1 / 42 / u64::MAX）を new で包んで value で取り出すと、生成時の値と一致することを確認する
         for n in [0, 1, 42, u64::MAX] {
             assert_eq!(ObjectNumber::new(n).value(), n);
+        }
+    }
+
+    #[test]
+    fn try_from_i64_accepts_non_negative_values() {
+        // 代表的な非負値（0 / 1 / 42）が受理され、value() が入力と一致することを確認する
+        for n in [0i64, 1, 42] {
+            assert_eq!(
+                ObjectNumber::try_from_i64(n).map(|number| number.value()),
+                Some(n as u64)
+            );
+        }
+    }
+
+    #[test]
+    fn try_from_i64_accepts_i64_max() {
+        // 参照解析で実際に到達する上限 i64::MAX が受理され、値が保持されることを確認する
+        assert_eq!(
+            ObjectNumber::try_from_i64(i64::MAX),
+            Some(ObjectNumber::new(i64::MAX as u64))
+        );
+    }
+
+    #[test]
+    fn try_from_i64_rejects_negative_one() {
+        // 非負領域のすぐ外側 -1 が拒否されることを確認する
+        assert_eq!(ObjectNumber::try_from_i64(-1), None);
+    }
+
+    #[test]
+    fn try_from_i64_rejects_i64_min() {
+        // as キャストなら値が化ける i64::MIN が拒否されることを確認する
+        assert_eq!(ObjectNumber::try_from_i64(i64::MIN), None);
+    }
+
+    #[test]
+    fn try_from_i64_agrees_with_new_for_accepted_values() {
+        // 受理される値では try_from_i64 と既存 new が等価な ObjectNumber を作ることを確認する
+        for n in [0i64, 1, 42, i64::MAX] {
+            assert_eq!(
+                ObjectNumber::try_from_i64(n),
+                Some(ObjectNumber::new(n as u64))
+            );
         }
     }
 

@@ -24,6 +24,34 @@ impl GenerationNumber {
         Self(n)
     }
 
+    /// `i64` のトークン値から `GenerationNumber` を生成する。
+    /// 仕様範囲 `0..=65535`（ISO 32000-1 §7.5.4）の外は `None` を返す。
+    ///
+    /// lexer が返す `Primitive::Integer` は `i64` のため、パーサ側の入力型はこちら。
+    /// 負値と `65535` 超の両方をここで弾き、呼び出し側から
+    /// `(0..=i64::from(u16::MAX)).contains(&g)` と `g as u16` を無くす。
+    ///
+    /// `Option` を返す理由・`TryFrom` を採らない理由・無検証の [`Self::new`] と
+    /// 併存させる理由は [`ObjectNumber::try_from_i64`](crate::object::object_number::ObjectNumber::try_from_i64)
+    /// と同じ。世代不一致の判定など PDF 仕様上の妥当性は xref レイヤの責務。
+    #[must_use]
+    pub fn try_from_i64(g: i64) -> Option<Self> {
+        u16::try_from(g).ok().map(Self)
+    }
+
+    /// `u64` の値から `GenerationNumber` を生成する。`65535` 超は `None` を返す。
+    ///
+    /// xref テーブルのエントリ解析は符号を受理しない `read_unsigned` から `u64` を得るため、
+    /// 入力型が `i64` ではなくこちらになる。`i64` を経由させると `i64::MAX` 超の値が
+    /// 表現できず、`XRefErrorKind::GenerationOutOfRange { value: u64 }` に載せる値が
+    /// 失われるため、`u64` を直接受ける経路を併設する。
+    ///
+    /// 検証内容は [`Self::try_from_i64`] と同一（結果が `u16` に収まるか）。
+    #[must_use]
+    pub fn try_from_u64(g: u64) -> Option<Self> {
+        u16::try_from(g).ok().map(Self)
+    }
+
     /// 内部の世代番号を `u16` として取り出す。
     #[must_use]
     pub fn value(&self) -> u16 {
@@ -85,6 +113,70 @@ mod tests {
         // 代表値 [0, 1, 42, u16::MAX] で生成と取り出しが無損失（ラウンドトリップ）であることを確認する。
         for n in [0, 1, 42, u16::MAX] {
             assert_eq!(GenerationNumber::new(n).value(), n);
+        }
+    }
+
+    #[test]
+    fn try_from_i64_accepts_values_in_spec_range() {
+        // 仕様範囲内の代表値（0 / 1 / 42）が受理され、value() が入力と一致することを確認する
+        for g in [0i64, 1, 42] {
+            assert_eq!(
+                GenerationNumber::try_from_i64(g).map(|generation| generation.value()),
+                Some(g as u16)
+            );
+        }
+    }
+
+    #[test]
+    fn try_from_i64_accepts_u16_max() {
+        // 仕様上限ちょうど 65535（ISO 32000-1 §7.5.4）が受理されることを確認する
+        assert_eq!(
+            GenerationNumber::try_from_i64(65535),
+            Some(GenerationNumber::new(u16::MAX))
+        );
+    }
+
+    #[test]
+    fn try_from_i64_rejects_u16_max_plus_one() {
+        // 仕様上限の 1 つ外 65536 が拒否されることを確認する
+        assert_eq!(GenerationNumber::try_from_i64(65536), None);
+    }
+
+    #[test]
+    fn try_from_i64_rejects_negative_values() {
+        // 負値（-1 / i64::MIN）がいずれも拒否されることを確認する
+        for g in [-1i64, i64::MIN] {
+            assert_eq!(GenerationNumber::try_from_i64(g), None);
+        }
+    }
+
+    #[test]
+    fn try_from_u64_accepts_values_in_spec_range() {
+        // xref 経路の入力型 u64 でも仕様範囲内（0 / 42 / 65535）が受理されることを確認する
+        for g in [0u64, 42, 65535] {
+            assert_eq!(
+                GenerationNumber::try_from_u64(g).map(|generation| generation.value()),
+                Some(g as u16)
+            );
+        }
+    }
+
+    #[test]
+    fn try_from_u64_rejects_above_u16_max() {
+        // 上限超え（65536 / u64::MAX。後者は xref のエラー値として実際に流れうる）が拒否されることを確認する
+        for g in [65536u64, u64::MAX] {
+            assert_eq!(GenerationNumber::try_from_u64(g), None);
+        }
+    }
+
+    #[test]
+    fn try_from_i64_and_try_from_u64_agree_in_shared_range() {
+        // 共通範囲 0..=65535 の代表値で両者が同じ結果を返す（検証ロジックが分岐していない）ことを確認する
+        for g in [0i64, 1, 42, 65535] {
+            assert_eq!(
+                GenerationNumber::try_from_i64(g),
+                GenerationNumber::try_from_u64(g as u64)
+            );
         }
     }
 
