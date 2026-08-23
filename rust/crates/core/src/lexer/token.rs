@@ -1376,4 +1376,135 @@ mod tests {
             assert_eq!(token.kind(), TokenKind::Primitive, "token: {token:?}");
         }
     }
+
+    // ---------- Keyword: from_bytes ----------
+
+    #[test]
+    fn keyword_from_bytes_maps_known_spellings_to_known_variants() {
+        // 既知 4 綴りが対応するバリアントに写ることを確認する
+        let cases: [(&[u8], Keyword); 4] = [
+            (b"R", Keyword::R),
+            (b"xref", Keyword::Xref),
+            (b"trailer", Keyword::Trailer),
+            (b"startxref", Keyword::StartXref),
+        ];
+
+        for (bytes, expected) in cases {
+            assert_eq!(Keyword::from_bytes(bytes), expected, "bytes: {bytes:?}");
+        }
+    }
+
+    #[test]
+    fn keyword_from_bytes_maps_case_variants_to_unknown() {
+        // case-sensitive 照合により大文字小文字違いが Unknown へ落ちることを確認する
+        let cases: [&[u8]; 4] = [b"r", b"XREF", b"Trailer", b"STARTXREF"];
+
+        for bytes in cases {
+            assert_eq!(
+                Keyword::from_bytes(bytes),
+                Keyword::Unknown(bytes.to_vec()),
+                "bytes: {bytes:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn keyword_from_bytes_maps_partial_and_concatenated_spellings_to_unknown() {
+        // 既知綴りへの連結・部分一致が Unknown へ落ちることを確認する
+        let cases: [&[u8]; 4] = [b"Rx", b"xrefs", b"trailerX", b"start"];
+
+        for bytes in cases {
+            assert_eq!(
+                Keyword::from_bytes(bytes),
+                Keyword::Unknown(bytes.to_vec()),
+                "bytes: {bytes:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn keyword_from_bytes_maps_empty_bytes_to_empty_unknown() {
+        // 空バイト列（read_keyword からは到達しないが全域関数として）が Unknown になることを確認する
+        assert_eq!(Keyword::from_bytes(b""), Keyword::Unknown(Vec::new()));
+    }
+
+    #[test]
+    fn keyword_from_bytes_preserves_non_utf8_bytes_in_unknown() {
+        // 非 UTF-8 / NUL / 高位バイトを含む列が Unknown に忠実に保持されることを確認する
+        assert_eq!(
+            Keyword::from_bytes(&[0xFF, 0x00, 0x80]),
+            Keyword::Unknown(vec![0xFF, 0x00, 0x80])
+        );
+    }
+
+    // ---------- Keyword: as_bytes ----------
+
+    #[test]
+    fn keyword_as_bytes_returns_spelling_for_known_variants() {
+        // 既知 4 バリアントが対応する綴りを返すことを確認する
+        let cases: [(Keyword, &[u8]); 4] = [
+            (Keyword::R, b"R"),
+            (Keyword::Xref, b"xref"),
+            (Keyword::Trailer, b"trailer"),
+            (Keyword::StartXref, b"startxref"),
+        ];
+
+        for (keyword, expected) in cases {
+            assert_eq!(keyword.as_bytes(), expected, "keyword: {keyword:?}");
+        }
+    }
+
+    #[test]
+    fn keyword_as_bytes_returns_held_bytes_for_unknown() {
+        // Unknown は保持している収集バイト列をそのまま返すことを確認する
+        assert_eq!(Keyword::Unknown(b"foo".to_vec()).as_bytes(), b"foo");
+    }
+
+    // ---------- Keyword: 往復一致 ----------
+
+    #[test]
+    fn keyword_from_bytes_and_as_bytes_round_trip_for_known_variants() {
+        // 既知バリアント全件で from_bytes(kw.as_bytes()) == kw が成り立つことを確認する
+        // （将来バリアントを足したときの KNOWN / as_bytes の綴り不一致を検出する）
+        let cases = [
+            Keyword::R,
+            Keyword::Xref,
+            Keyword::Trailer,
+            Keyword::StartXref,
+        ];
+
+        for keyword in cases {
+            assert_eq!(
+                Keyword::from_bytes(keyword.as_bytes()),
+                keyword,
+                "keyword: {keyword:?}"
+            );
+        }
+    }
+
+    // ---------- Keyword: Eq ----------
+
+    #[test]
+    fn keyword_unknown_with_same_bytes_are_equal() {
+        // 同じバイト列を保持する Unknown 同士が等価になることを確認する
+        assert_eq!(
+            Keyword::Unknown(b"foo".to_vec()),
+            Keyword::Unknown(b"foo".to_vec())
+        );
+    }
+
+    #[test]
+    fn keyword_unknown_with_different_bytes_are_not_equal() {
+        // 異なるバイト列を保持する Unknown 同士が非等価になることを確認する
+        assert_ne!(
+            Keyword::Unknown(b"foo".to_vec()),
+            Keyword::Unknown(b"bar".to_vec())
+        );
+    }
+
+    #[test]
+    fn keyword_known_variant_and_unknown_with_same_bytes_are_not_equal() {
+        // 既知バリアントと同じ綴りを保持する Unknown はバリアントが異なるため非等価になることを確認する
+        assert_ne!(Keyword::Xref, Keyword::Unknown(b"xref".to_vec()));
+    }
 }
