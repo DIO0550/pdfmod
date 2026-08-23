@@ -1,5 +1,5 @@
 use super::super::outcome::LexOutcome;
-use super::super::token::{Primitive, Token};
+use super::super::token::{Keyword, Primitive, Token};
 use super::super::Lexer;
 use crate::object::name::PdfName;
 
@@ -130,22 +130,22 @@ fn next_token_dispatches_to_real_on_dot() {
 
 #[test]
 fn next_token_falls_back_to_keyword_on_lone_dot() {
-    // `.` 単独入力で next_token が read_real 失敗 → read_keyword フォールバックで Keyword(b".") を返すことを確認する（+/- / digit との対称性）
+    // `.` 単独入力で next_token が read_real 失敗 → read_keyword フォールバックで Keyword(Keyword::Unknown(b".")) を返すことを確認する（+/- / digit との対称性）
     let mut lexer = Lexer::new(b".");
     assert_eq!(
         lexer.next_token(),
-        LexOutcome::Lexed(Token::Keyword(b".".to_vec()))
+        LexOutcome::Lexed(Token::Keyword(Keyword::Unknown(b".".to_vec())))
     );
     assert_eq!(lexer.position(), 1);
 }
 
 #[test]
 fn next_token_falls_back_to_keyword_on_dot_followed_by_alpha() {
-    // `.foo` 入力で next_token が read_real 失敗 → read_keyword フォールバックで Keyword(b".foo") を返すことを確認する
+    // `.foo` 入力で next_token が read_real 失敗 → read_keyword フォールバックで Keyword(Keyword::Unknown(b".foo")) を返すことを確認する
     let mut lexer = Lexer::new(b".foo");
     assert_eq!(
         lexer.next_token(),
-        LexOutcome::Lexed(Token::Keyword(b".foo".to_vec()))
+        LexOutcome::Lexed(Token::Keyword(Keyword::Unknown(b".foo".to_vec())))
     );
     assert_eq!(lexer.position(), 4);
 }
@@ -163,22 +163,22 @@ fn next_token_dispatches_to_real_on_digit_with_dot() {
 
 #[test]
 fn next_token_falls_back_to_keyword_on_digit_with_non_numeric_suffix() {
-    // `123abc` 入力で digit 分岐が read_integer / read_real 失敗 → read_keyword に到達し Keyword(b"123abc") を返すことを確認する
+    // `123abc` 入力で digit 分岐が read_integer / read_real 失敗 → read_keyword に到達し Keyword(Keyword::Unknown(b"123abc")) を返すことを確認する
     let mut lexer = Lexer::new(b"123abc");
     assert_eq!(
         lexer.next_token(),
-        LexOutcome::Lexed(Token::Keyword(b"123abc".to_vec()))
+        LexOutcome::Lexed(Token::Keyword(Keyword::Unknown(b"123abc".to_vec())))
     );
     assert_eq!(lexer.position(), 6);
 }
 
 #[test]
 fn next_token_dispatches_to_keyword_on_plus_letter() {
-    // `+ABC` のように read_integer / read_real が失敗する `+` 始まり連結が Keyword(b"+ABC") に吸収されることを確認する
+    // `+ABC` のように read_integer / read_real が失敗する `+` 始まり連結が Keyword(Keyword::Unknown(b"+ABC")) に吸収されることを確認する
     let mut lexer = Lexer::new(b"+ABC");
     assert_eq!(
         lexer.next_token(),
-        LexOutcome::Lexed(Token::Keyword(b"+ABC".to_vec()))
+        LexOutcome::Lexed(Token::Keyword(Keyword::Unknown(b"+ABC".to_vec())))
     );
     assert_eq!(lexer.position(), 4);
 }
