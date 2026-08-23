@@ -124,6 +124,80 @@ impl Primitive {
     }
 }
 
+/// PDF の字句として現れる既知キーワードの有限集合（ISO 32000-1 §7.3.10 / §7.5.4 / §7.5.5）。
+///
+/// `true` / `false` / `null` / `obj` / `endobj` / `stream` / `endstream` は
+/// [`Token`] の専用バリアントに割り当てられているため、ここには含まれない。
+/// 本 enum が表すのは「専用バリアントを持たないが綴りが確定している」キーワードだけである。
+///
+/// 綴りの**唯一の定義点**は [`Keyword::as_bytes`]。照合（[`Keyword::from_bytes`]）も
+/// そこから導出するため、バイト列リテラルが 2 箇所に分かれて片方だけ綴りを間違える
+/// 事故が起きない（`TrailerKey` と同じ方針）。
+///
+/// 既知バリアントはデータを持たないため、字句解析時にヒープ確保が発生しない。
+/// [`Keyword::Unknown`] だけが収集バイト列を保持する。lexer は意味解釈を行わず、
+/// 既知集合に無い regular バイト列は無検証のまま `Unknown` で上位に委譲する。
+///
+/// `Unknown(Vec<u8>)` がヒープを持つため `Copy` は不可。`Vec<u8>` は `Eq` を満たすので
+/// `Token` と違い `Eq` を derive できる（`Token` が `Eq` を持てないのは
+/// `Primitive::Real(f64)` の NaN 伝播が理由であり、本 enum はその制約を受けない）。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Keyword {
+    /// `R` — 間接参照 `N G R` の 3 字句目（ISO 32000-1 §7.3.10）。
+    ///
+    /// `N G R` から [`crate::object::indirect_ref::IndirectRef`] を組み立てるのは
+    /// parser の責務であり、本層では単独の字句として平坦に流す。
+    R,
+    /// `xref` — 従来型 xref テーブルの開始（ISO 32000-1 §7.5.4）。
+    Xref,
+    /// `trailer` — 従来形式トレイラの開始（ISO 32000-1 §7.5.5）。
+    Trailer,
+    /// `startxref` — 最初に読む xref テーブルのオフセットを導入する（ISO 32000-1 §7.5.5）。
+    StartXref,
+    /// 既知集合に無い regular バイト列（`f` / `n` / `True` / `OBJ` / `trueX` / `123abc` など）。
+    ///
+    /// UTF-8 は仮定せず、NUL・非 UTF-8・高位バイトも無検証で忠実に保持する
+    /// （変更前の `Token::Keyword(Vec<u8>)` と同じ扱い）。
+    Unknown(Vec<u8>),
+}
+
+impl Keyword {
+    /// バイト列表現を持つ既知バリアントの全体。[`Self::from_bytes`] の照合対象。
+    ///
+    /// ここに新しいキーワードを足したら [`Self::as_bytes`] にも綴りを足す
+    /// （逆に言えば、足し忘れると照合されないだけで綴りは 1 箇所のまま保たれる）。
+    const KNOWN: [Self; 4] = [Self::R, Self::Xref, Self::Trailer, Self::StartXref];
+
+    /// 収集済みバイト列から対応するキーワードを判定する。既知集合に無ければ
+    /// [`Self::Unknown`] に倒す全域関数。
+    ///
+    /// case-sensitive で照合する（`R` は既知、`r` / `XREF` / `Trailer` は `Unknown`）。
+    /// 既知に一致した場合はヒープ確保が発生せず、`Unknown` に落ちた場合のみ
+    /// `bytes.to_vec()` で複製する。
+    #[must_use]
+    pub fn from_bytes(bytes: &[u8]) -> Self {
+        Self::KNOWN
+            .into_iter()
+            .find(|keyword| keyword.as_bytes() == bytes)
+            .unwrap_or_else(|| Self::Unknown(bytes.to_vec()))
+    }
+
+    /// キーワードのバイト列表現を返す。
+    ///
+    /// 既知キーワードの綴りの**唯一の定義点**。[`Self::Unknown`] の場合は
+    /// 保持している収集バイト列をそのまま返す。
+    #[must_use]
+    pub fn as_bytes(&self) -> &[u8] {
+        match self {
+            Self::R => b"R",
+            Self::Xref => b"xref",
+            Self::Trailer => b"trailer",
+            Self::StartXref => b"startxref",
+            Self::Unknown(bytes) => bytes.as_slice(),
+        }
+    }
+}
+
 /// PDF レキシカル層の出力トークン（§7.2 / §7.3 全体に対応）。
 ///
 /// `Primitive` ラッパ 1 個 + 構造制御トークン 8 個 + `Keyword` / `Comment` の計 11 バリアントで構成される。
