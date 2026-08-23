@@ -32,7 +32,11 @@ pub enum TokenKind {
     StreamBegin,
     /// `endstream`
     StreamEnd,
-    /// 上記以外の裸のキーワード（`R` / `xref` / `trailer` / `startxref` / `f` / `n` など）。
+    /// 上記以外の裸のキーワード（[`Keyword`](crate::lexer::token::Keyword) を持つ字句）。
+    ///
+    /// 既知の綴り（`R` / `xref` / `trailer` / `startxref`）も未知のバイト列（`f` / `n` など）も
+    /// まとめて本バリアントになる。`Keyword` の内側の区別は本 enum では行わない
+    /// （`Primitive` の内側を区別しないのと同じ粒度方針）。
     ///
     /// `true` / `false` は lexer が `Primitive::Boolean` として字句化するため
     /// [`Self::Primitive`] であり、本バリアントには来ない。
