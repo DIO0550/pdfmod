@@ -5,10 +5,11 @@
 //! §7.3 のオブジェクト型分類、実装ガイド（`docs/specs/09_implementation_guide.md` §2.2）に
 //! 基づき、§7.3 のスカラ系プリミティブ 7 種を `Primitive` sub-enum に集約し、
 //! `Token` 本体は `Primitive(Primitive)` ラッパに加えて配列・辞書・obj/endobj・
-//! stream/endstream の構造制御トークン 8 個、無検証バイト列の `Keyword` / `Comment` の
-//! 計 11 バリアントで字句種別を表す。構築は無検証で、意味解釈・正規化は上位
-//! （parser）に委譲する。`N G R` の 3 字句から `IndirectRef` を組み立てるのは
-//! parser 層の責務であり、本モジュールでは `R` を `Keyword(b"R")` として平坦に流す。
+//! stream/endstream の構造制御トークン 8 個、既知キーワードの有限集合を表す `Keyword` と
+//! 無検証バイト列の `Comment` の計 11 バリアントで字句種別を表す。構築は無検証で、
+//! 意味解釈・正規化は上位（parser）に委譲する。`N G R` の 3 字句から `IndirectRef` を
+//! 組み立てるのは parser 層の責務であり、本モジュールでは `R` を `Keyword(Keyword::R)`
+//! として平坦に流す。
 
 use crate::lexer::token_kind::TokenKind;
 use crate::object::name::PdfName;
@@ -202,7 +203,7 @@ impl Keyword {
 ///
 /// `Primitive` ラッパ 1 個 + 構造制御トークン 8 個 + `Keyword` / `Comment` の計 11 バリアントで構成される。
 /// 内部に `Primitive` を含むため `Eq`/`Hash`/`Ord` は derive 不可（NaN 伝播）。
-/// `Keyword(Vec<u8>)` / `Comment(Vec<u8>)` / `Primitive` ラップのヒープにより `Copy` 不可。
+/// `Keyword(Keyword::Unknown)` / `Comment(Vec<u8>)` / `Primitive` ラップのヒープにより `Copy` 不可。
 /// 順序（`PartialOrd`）はトークン間に意味ある全順序がないため不要。
 /// よって derive は `Debug, Clone, PartialEq` のみで `Primitive` と完全に一致する。
 #[derive(Debug, Clone, PartialEq)]
@@ -230,13 +231,13 @@ pub enum Token {
     StreamBegin,
     /// ストリーム終了 `endstream` キーワード（ISO 32000-1 §7.3.8）。
     StreamEnd,
-    /// 無検証キーワード（`R` / `xref` / `trailer` / `startxref` / `f` / `n` /
-    /// 未知の正規バイト列）。
+    /// キーワード字句（[`Keyword`]）。既知の有限集合と、それ以外の無検証バイト列を表す。
     ///
     /// `N G R` の 3 字句から間接参照を組み立てるのは parser の責務であり、
-    /// 本層では `R` も単独 `Keyword(b"R")` として平坦に流す。意味解釈は上位
-    /// パーサに委譲し、UTF-8 を仮定せず生バイトを保持する。
-    Keyword(Vec<u8>),
+    /// 本層では `R` も単独 `Keyword(Keyword::R)` として平坦に流す。意味解釈は上位
+    /// パーサに委譲し、既知集合に無い綴りは UTF-8 を仮定せず
+    /// [`Keyword::Unknown`] で生バイトのまま保持する。
+    Keyword(Keyword),
     /// コメント本体（ISO 32000-1 §7.2.4）。
     ///
     /// 先頭 `%` と末尾の改行（CR/LF/CRLF）を **含めない** 本文バイト列のみを保持する。
@@ -300,13 +301,14 @@ impl Token {
         }
     }
 
-    /// `Keyword` のとき内部のバイト列を `&[u8]` として `Some` で取り出す（他は `None`）。
+    /// `Keyword` のとき内部の [`Keyword`] を `Some` で取り出す（他は `None`）。
     ///
-    /// ヒープ保持のため参照返し。`R` 単独識別は `tok.as_keyword() == Some(b"R" as &[u8])`
-    /// のように検査する。
-    pub fn as_keyword(&self) -> Option<&[u8]> {
+    /// ヒープを持ちうるため参照返し。`R` 単独識別は
+    /// `matches!(tok.as_keyword(), Some(Keyword::R))` のように検査する。
+    /// バイト列表現が必要な場合は [`Keyword::as_bytes`] を重ねる。
+    pub fn as_keyword(&self) -> Option<&Keyword> {
         match self {
-            Self::Keyword(b) => Some(b.as_slice()),
+            Self::Keyword(keyword) => Some(keyword),
             _ => None,
         }
     }
@@ -665,7 +667,7 @@ mod tests {
             Token::ObjEnd,
             Token::StreamBegin,
             Token::StreamEnd,
-            Token::Keyword(b"xref".to_vec()),
+            Token::Keyword(Keyword::Xref),
             Token::Comment(b"x".to_vec()),
         ] {
             assert!(!t.is_array_begin());
@@ -684,7 +686,7 @@ mod tests {
             Token::ObjEnd,
             Token::StreamBegin,
             Token::StreamEnd,
-            Token::Keyword(b"xref".to_vec()),
+            Token::Keyword(Keyword::Xref),
             Token::Comment(b"x".to_vec()),
         ] {
             assert!(!t.is_array_end());
@@ -703,7 +705,7 @@ mod tests {
             Token::ObjEnd,
             Token::StreamBegin,
             Token::StreamEnd,
-            Token::Keyword(b"xref".to_vec()),
+            Token::Keyword(Keyword::Xref),
             Token::Comment(b"x".to_vec()),
         ] {
             assert!(!t.is_dict_begin());
@@ -722,7 +724,7 @@ mod tests {
             Token::ObjEnd,
             Token::StreamBegin,
             Token::StreamEnd,
-            Token::Keyword(b"xref".to_vec()),
+            Token::Keyword(Keyword::Xref),
             Token::Comment(b"x".to_vec()),
         ] {
             assert!(!t.is_dict_end());
@@ -741,7 +743,7 @@ mod tests {
             Token::ObjEnd,
             Token::StreamBegin,
             Token::StreamEnd,
-            Token::Keyword(b"xref".to_vec()),
+            Token::Keyword(Keyword::Xref),
             Token::Comment(b"x".to_vec()),
         ] {
             assert!(!t.is_obj_begin());
@@ -760,7 +762,7 @@ mod tests {
             Token::ObjBegin,
             Token::StreamBegin,
             Token::StreamEnd,
-            Token::Keyword(b"xref".to_vec()),
+            Token::Keyword(Keyword::Xref),
             Token::Comment(b"x".to_vec()),
         ] {
             assert!(!t.is_obj_end());
@@ -779,7 +781,7 @@ mod tests {
             Token::ObjBegin,
             Token::ObjEnd,
             Token::StreamEnd,
-            Token::Keyword(b"xref".to_vec()),
+            Token::Keyword(Keyword::Xref),
             Token::Comment(b"x".to_vec()),
         ] {
             assert!(!t.is_stream_begin());
@@ -798,7 +800,7 @@ mod tests {
             Token::ObjBegin,
             Token::ObjEnd,
             Token::StreamBegin,
-            Token::Keyword(b"xref".to_vec()),
+            Token::Keyword(Keyword::Xref),
             Token::Comment(b"x".to_vec()),
         ] {
             assert!(!t.is_stream_end());
@@ -831,7 +833,7 @@ mod tests {
             Token::ObjEnd,
             Token::StreamBegin,
             Token::StreamEnd,
-            Token::Keyword(b"xref".to_vec()),
+            Token::Keyword(Keyword::Xref),
             Token::Comment(b"x".to_vec()),
         ] {
             assert_eq!(t.as_primitive(), None);
@@ -865,8 +867,8 @@ mod tests {
 
     #[test]
     fn token_keyword_constructs_and_matches_keyword_arm() {
-        // Token::Keyword(b"xref") を構築し matches! で Keyword 腕に入ることを確認する
-        let t = Token::Keyword(b"xref".to_vec());
+        // Token::Keyword(Keyword::Xref) を構築し matches! で Keyword 腕に入ることを確認する
+        let t = Token::Keyword(Keyword::Xref);
         assert!(matches!(t, Token::Keyword(_)));
     }
 
@@ -879,10 +881,10 @@ mod tests {
 
     #[test]
     fn token_as_keyword_returns_some_for_keyword() {
-        // Token::Keyword(b"xref") に as_keyword() を呼ぶと Some(b"xref") を返すことを確認する
+        // Token::Keyword(Keyword::Xref) に as_keyword() を呼ぶと Some(&Keyword::Xref) を返すことを確認する
         assert_eq!(
-            Token::Keyword(b"xref".to_vec()).as_keyword(),
-            Some(b"xref".as_slice())
+            Token::Keyword(Keyword::Xref).as_keyword(),
+            Some(&Keyword::Xref)
         );
     }
 
@@ -927,7 +929,7 @@ mod tests {
             Token::ObjEnd,
             Token::StreamBegin,
             Token::StreamEnd,
-            Token::Keyword(b"xref".to_vec()),
+            Token::Keyword(Keyword::Xref),
         ] {
             assert_eq!(t.as_comment(), None);
         }
@@ -999,18 +1001,15 @@ mod tests {
     #[test]
     fn token_same_content_keywords_are_equal() {
         // 同内容の Keyword 同士は == で等価になることを確認する
-        assert_eq!(
-            Token::Keyword(b"xref".to_vec()),
-            Token::Keyword(b"xref".to_vec())
-        );
+        assert_eq!(Token::Keyword(Keyword::Xref), Token::Keyword(Keyword::Xref));
     }
 
     #[test]
     fn token_different_content_keywords_are_not_equal() {
         // 異内容の Keyword 同士は != で非等価になることを確認する
         assert_ne!(
-            Token::Keyword(b"xref".to_vec()),
-            Token::Keyword(b"trailer".to_vec())
+            Token::Keyword(Keyword::Xref),
+            Token::Keyword(Keyword::Trailer)
         );
     }
 
@@ -1079,7 +1078,7 @@ mod tests {
             Token::ObjEnd,
             Token::StreamBegin,
             Token::StreamEnd,
-            Token::Keyword(b"xref".to_vec()),
+            Token::Keyword(Keyword::Xref),
             Token::Comment(b"PDF-1.7".to_vec()),
         ];
         for (i, a) in variants.iter().enumerate() {
@@ -1181,10 +1180,16 @@ mod tests {
     #[test]
     fn token_clone_preserves_heap_variants_and_keeps_original_usable() {
         // ヒープ型 Token（Keyword/Comment/Primitive(LiteralString)）を clone() すると元と一致し元も使用可能なことを確認する
-        let original_kw = Token::Keyword(b"xref".to_vec());
+        let original_kw = Token::Keyword(Keyword::Unknown(b"xrefs".to_vec()));
         let cloned_kw = original_kw.clone();
-        assert_eq!(cloned_kw.as_keyword(), Some(b"xref".as_slice()));
-        assert_eq!(original_kw.as_keyword(), Some(b"xref".as_slice()));
+        assert_eq!(
+            cloned_kw.as_keyword(),
+            Some(&Keyword::Unknown(b"xrefs".to_vec()))
+        );
+        assert_eq!(
+            original_kw.as_keyword(),
+            Some(&Keyword::Unknown(b"xrefs".to_vec()))
+        );
 
         let original_cm = Token::Comment(b"PDF-1.7".to_vec());
         let cloned_cm = original_cm.clone();
@@ -1233,7 +1238,7 @@ mod tests {
         assert!(format!("{:?}", Token::ObjEnd).contains("ObjEnd"));
         assert!(format!("{:?}", Token::StreamBegin).contains("StreamBegin"));
         assert!(format!("{:?}", Token::StreamEnd).contains("StreamEnd"));
-        assert!(format!("{:?}", Token::Keyword(b"xref".to_vec())).contains("Keyword"));
+        assert!(format!("{:?}", Token::Keyword(Keyword::Xref)).contains("Keyword"));
         assert!(format!("{:?}", Token::Comment(b"x".to_vec())).contains("Comment"));
     }
 
@@ -1279,11 +1284,12 @@ mod tests {
     }
 
     #[test]
-    fn token_as_keyword_returns_empty_slice_for_empty_keyword() {
-        // 空バイト列の Token::Keyword(b"") は as_keyword() で Some(空スライス) を返すことを確認する
+    fn token_as_keyword_returns_empty_unknown_for_empty_keyword() {
+        // 空バイト列の Token::Keyword(Keyword::Unknown(b"")) は as_keyword() で
+        // Some(&Keyword::Unknown(空バイト列)) を返すことを確認する
         assert_eq!(
-            Token::Keyword(b"".to_vec()).as_keyword(),
-            Some(b"".as_slice())
+            Token::Keyword(Keyword::Unknown(b"".to_vec())).as_keyword(),
+            Some(&Keyword::Unknown(b"".to_vec()))
         );
     }
 
@@ -1298,9 +1304,13 @@ mod tests {
 
     #[test]
     fn token_as_keyword_preserves_nul_non_utf8_and_high_bytes() {
-        // Token::Keyword(vec![0x00, 0x80, 0xFF]) を as_keyword() で取り出すと忠実に返ることを確認する
-        let t = Token::Keyword(vec![0x00, 0x80, 0xFF]);
-        assert_eq!(t.as_keyword(), Some([0x00, 0x80, 0xFF].as_slice()));
+        // Token::Keyword(Keyword::Unknown(vec![0x00, 0x80, 0xFF])) を as_keyword() で
+        // 取り出すと保持バイト列が忠実に返ることを確認する
+        let t = Token::Keyword(Keyword::Unknown(vec![0x00, 0x80, 0xFF]));
+        assert_eq!(
+            t.as_keyword().map(Keyword::as_bytes),
+            Some([0x00, 0x80, 0xFF].as_slice())
+        );
     }
 
     #[test]
@@ -1327,7 +1337,7 @@ mod tests {
     fn token_keyword_and_primitive_literal_string_with_same_bytes_are_not_equal() {
         // 同一バイト内容でも Token::Keyword と Token::Primitive(LiteralString) は別バリアントのため != になることを確認する
         assert_ne!(
-            Token::Keyword(b"R".to_vec()),
+            Token::Keyword(Keyword::R),
             Token::Primitive(Primitive::LiteralString(b"R".to_vec()))
         );
     }
@@ -1336,7 +1346,7 @@ mod tests {
     fn token_keyword_and_primitive_name_with_same_bytes_are_not_equal() {
         // 同一バイト内容でも Token::Keyword と Token::Primitive(Name) は別バリアントのため != になることを確認する
         assert_ne!(
-            Token::Keyword(b"Type".to_vec()),
+            Token::Keyword(Keyword::Unknown(b"Type".to_vec())),
             Token::Primitive(Primitive::Name(PdfName::from("Type")))
         );
     }
@@ -1354,7 +1364,7 @@ mod tests {
             (Token::ObjEnd, TokenKind::ObjEnd),
             (Token::StreamBegin, TokenKind::StreamBegin),
             (Token::StreamEnd, TokenKind::StreamEnd),
-            (Token::Keyword(b"R".to_vec()), TokenKind::Keyword),
+            (Token::Keyword(Keyword::R), TokenKind::Keyword),
             (Token::Comment(b"comment".to_vec()), TokenKind::Comment),
         ];
 
