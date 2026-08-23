@@ -24,6 +24,34 @@ impl GenerationNumber {
         Self(n)
     }
 
+    /// `i64` のトークン値から `GenerationNumber` を生成する。
+    /// 仕様範囲 `0..=65535`（ISO 32000-1 §7.5.4）の外は `None` を返す。
+    ///
+    /// lexer が返す `Primitive::Integer` は `i64` のため、パーサ側の入力型はこちら。
+    /// 負値と `65535` 超の両方をここで弾き、呼び出し側から
+    /// `(0..=i64::from(u16::MAX)).contains(&g)` と `g as u16` を無くす。
+    ///
+    /// `Option` を返す理由・`TryFrom` を採らない理由・無検証の [`Self::new`] と
+    /// 併存させる理由は [`ObjectNumber::try_from_i64`](crate::object::object_number::ObjectNumber::try_from_i64)
+    /// と同じ。世代不一致の判定など PDF 仕様上の妥当性は xref レイヤの責務。
+    #[must_use]
+    pub fn try_from_i64(g: i64) -> Option<Self> {
+        u16::try_from(g).ok().map(Self)
+    }
+
+    /// `u64` の値から `GenerationNumber` を生成する。`65535` 超は `None` を返す。
+    ///
+    /// xref テーブルのエントリ解析は符号を受理しない `read_unsigned` から `u64` を得るため、
+    /// 入力型が `i64` ではなくこちらになる。`i64` を経由させると `i64::MAX` 超の値が
+    /// 表現できず、`XRefErrorKind::GenerationOutOfRange { value: u64 }` に載せる値が
+    /// 失われるため、`u64` を直接受ける経路を併設する。
+    ///
+    /// 検証内容は [`Self::try_from_i64`] と同一（結果が `u16` に収まるか）。
+    #[must_use]
+    pub fn try_from_u64(g: u64) -> Option<Self> {
+        u16::try_from(g).ok().map(Self)
+    }
+
     /// 内部の世代番号を `u16` として取り出す。
     #[must_use]
     pub fn value(&self) -> u16 {
