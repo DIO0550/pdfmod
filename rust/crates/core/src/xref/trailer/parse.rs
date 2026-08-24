@@ -6,8 +6,8 @@
 //!
 //! # キーワード検証を lexer に任せない理由
 //!
-//! `trailer` は lexer では既知キーワードではなく `Token::Keyword(b"trailer")`
-//! になり、[`Parser::parse_object`] は Keyword トークンを `UnexpectedToken` で
+//! `trailer` は lexer では `Token::Keyword(Keyword::Trailer)` になり、
+//! [`Parser::parse_object`] は Keyword トークンを `UnexpectedToken` で
 //! 弾く。そのため `xref/table/parse.rs` の `expect_xref_keyword` と同じく、
 //! 生バイト比較＋トークン境界チェックで検出する。
 //!
@@ -22,13 +22,11 @@
 use crate::byte_offset::ByteOffset;
 use crate::lexer::byte_ops::keyword_end_at;
 use crate::lexer::skip::skip_whitespace_and_comments;
+use crate::lexer::token::Keyword;
 use crate::object::pdf_object::PdfObject;
 use crate::parser::Parser;
 use crate::xref::trailer::error::TrailerError;
 use crate::xref::trailer::Trailer;
-
-/// トレイラの開始を示すキーワード。
-const TRAILER_KEYWORD: &[u8] = b"trailer";
 
 /// 従来形式トレイラの解析結果。
 ///
@@ -121,7 +119,7 @@ impl ParsedTrailer {
 fn expect_trailer_keyword(input: &[u8], pos: usize) -> Result<usize, TrailerError> {
     let keyword_start = skip_whitespace_and_comments(input, pos, input.len());
 
-    keyword_end_at(input, keyword_start, TRAILER_KEYWORD)
+    keyword_end_at(input, keyword_start, Keyword::Trailer.as_bytes())
         .ok_or_else(|| TrailerError::missing_trailer_keyword_at(offset_of(keyword_start)))
 }
 
