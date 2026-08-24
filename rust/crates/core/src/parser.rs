@@ -12,7 +12,7 @@
 //! 辞書のキーは `Primitive::Name` のみ受理、値が `Null` のエントリは ISO §7.3.7 準拠で
 //! `PdfDictionary` に登録しない（重複キーで既存値がある場合は削除する）。
 //!
-//! 間接参照は `Integer(N) Integer(G) Keyword("R")` の 3 トークン列を `Lexer` の
+//! 間接参照は `Integer(N) Integer(G) Keyword(Keyword::R)` の 3 トークン列を `Lexer` の
 //! token 単位 peek API（`peek_token_at(0/1)` + `take_token`）で検出する。
 //! `N` が [`ObjectNumber`] に、`G` が [`GenerationNumber`] に変換できるときのみ発火し、
 //! `N` を [`PdfObject::Reference`] に格納する。
@@ -24,7 +24,7 @@ pub mod error;
 mod stream_object;
 
 use crate::byte_offset::ByteOffset;
-use crate::lexer::token::{Primitive, Token};
+use crate::lexer::token::{Keyword, Primitive, Token};
 use crate::lexer::LexOutcome;
 use crate::lexer::Lexer;
 
@@ -242,7 +242,7 @@ impl<'a> Parser<'a> {
     /// `items` に push、[`Token::ArrayBegin`] はネストとして自身を再帰呼び出しし、
     /// [`Token::DictBegin`] は辞書要素として [`Self::parse_dictionary_body`] を
     /// 再帰呼び出しする。Integer 要素は `try_parse_indirect_reference` を介して
-    /// 後続 `Integer Keyword("R")` を検出すれば [`PdfObject::Reference`] として push、
+    /// 後続 `Integer Keyword(Keyword::R)` を検出すれば [`PdfObject::Reference`] として push、
     /// 不成立なら [`PdfObject::Integer`] として push する（ISO 32000-1 §7.3.10）。
     /// [`Token::ArrayEnd`] でループを脱出する。対象外トークンは
     /// [`ParseErrorKind::UnexpectedToken`](error::ParseErrorKind::UnexpectedToken)、
@@ -337,21 +337,21 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Integer(N) を読んだ直後に呼び出され、後続が `Integer(G) Keyword("R")` で
+    /// Integer(N) を読んだ直後に呼び出され、後続が `Integer(G) Keyword(Keyword::R)` で
     /// あるかを最大 2 トークン先読みで検証する（ISO 32000-1 §7.3.10）。
     ///
     /// 成立条件:
     /// - `N` が [`ObjectNumber`] に変換できる（[`ObjectNumber::try_from_i64`] が `Some`）
     /// - 次トークンが `Integer(G)` かつ `G` が [`GenerationNumber`] に変換できる
     ///   （[`GenerationNumber::try_from_i64`] が `Some`）
-    /// - 次々トークンが `Keyword("R")`
+    /// - 次々トークンが `Keyword(Keyword::R)`
     ///
     /// 成立時は `Ok(Some(IndirectRef))` を返し、両 lookahead トークンを `take_token`
     /// で 2 回消費する。不成立時は peek 済みトークンを [`Lexer`] のバッファに保留した
     /// まま `Ok(None)` を返す（呼び出し元は Integer(N) として処理し、保留中のトークンは
     /// 次回 `parse_object` 系で透過的に取り出される）。
     /// `N` は呼び出し元で `Token::Primitive(Primitive::Integer)` として既に成立済み
-    /// （i64 範囲外の N は lexer が `Keyword` 化するため、ここには `Integer` のみ届く）。
+    /// （i64 範囲外の N は lexer が `Keyword::Unknown` 化するため、ここには `Integer` のみ届く）。
     ///
     /// lookahead 中に lexer malformed が検出された場合は `Err(LexerError)` を
     /// fail-fast で伝播する。エラー位置は [`LexOutcome::Malformed`] が運ぶ `position`
@@ -402,9 +402,7 @@ impl<'a> Parser<'a> {
 
     fn classify_indirect_ref_keyword(peeked: LexOutcome<&Token>) -> PeekClass<()> {
         match peeked {
-            LexOutcome::Lexed(Token::Keyword(bytes)) if bytes.as_slice() == b"R" => {
-                PeekClass::Match(())
-            }
+            LexOutcome::Lexed(Token::Keyword(Keyword::R)) => PeekClass::Match(()),
             LexOutcome::Lexed(_) => PeekClass::Mismatch,
             LexOutcome::Eof => PeekClass::Eof,
             LexOutcome::Malformed { position } => PeekClass::Malformed { position },

@@ -5,10 +5,11 @@
 //! §7.3 のオブジェクト型分類、実装ガイド（`docs/specs/09_implementation_guide.md` §2.2）に
 //! 基づき、§7.3 のスカラ系プリミティブ 7 種を `Primitive` sub-enum に集約し、
 //! `Token` 本体は `Primitive(Primitive)` ラッパに加えて配列・辞書・obj/endobj・
-//! stream/endstream の構造制御トークン 8 個、無検証バイト列の `Keyword` / `Comment` の
-//! 計 11 バリアントで字句種別を表す。構築は無検証で、意味解釈・正規化は上位
-//! （parser）に委譲する。`N G R` の 3 字句から `IndirectRef` を組み立てるのは
-//! parser 層の責務であり、本モジュールでは `R` を `Keyword(b"R")` として平坦に流す。
+//! stream/endstream の構造制御トークン 8 個、既知キーワードの有限集合を表す `Keyword` と
+//! 無検証バイト列の `Comment` の計 11 バリアントで字句種別を表す。構築は無検証で、
+//! 意味解釈・正規化は上位（parser）に委譲する。`N G R` の 3 字句から `IndirectRef` を
+//! 組み立てるのは parser 層の責務であり、本モジュールでは `R` を `Keyword(Keyword::R)`
+//! として平坦に流す。
 
 use crate::lexer::token_kind::TokenKind;
 use crate::object::name::PdfName;
@@ -124,11 +125,85 @@ impl Primitive {
     }
 }
 
+/// PDF の字句として現れる既知キーワードの有限集合（ISO 32000-1 §7.3.10 / §7.5.4 / §7.5.5）。
+///
+/// `true` / `false` / `null` / `obj` / `endobj` / `stream` / `endstream` は
+/// [`Token`] の専用バリアントに割り当てられているため、ここには含まれない。
+/// 本 enum が表すのは「専用バリアントを持たないが綴りが確定している」キーワードだけである。
+///
+/// 綴りの**唯一の定義点**は [`Keyword::as_bytes`]。照合（[`Keyword::from_bytes`]）も
+/// そこから導出するため、バイト列リテラルが 2 箇所に分かれて片方だけ綴りを間違える
+/// 事故が起きない（`TrailerKey` と同じ方針）。
+///
+/// 既知バリアントはデータを持たないため、字句解析時にヒープ確保が発生しない。
+/// [`Keyword::Unknown`] だけが収集バイト列を保持する。lexer は意味解釈を行わず、
+/// 既知集合に無い regular バイト列は無検証のまま `Unknown` で上位に委譲する。
+///
+/// `Unknown(Vec<u8>)` がヒープを持つため `Copy` は不可。`Vec<u8>` は `Eq` を満たすので
+/// `Token` と違い `Eq` を derive できる（`Token` が `Eq` を持てないのは
+/// `Primitive::Real(f64)` の NaN 伝播が理由であり、本 enum はその制約を受けない）。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Keyword {
+    /// `R` — 間接参照 `N G R` の 3 字句目（ISO 32000-1 §7.3.10）。
+    ///
+    /// `N G R` から [`crate::object::indirect_ref::IndirectRef`] を組み立てるのは
+    /// parser の責務であり、本層では単独の字句として平坦に流す。
+    R,
+    /// `xref` — 従来型 xref テーブルの開始（ISO 32000-1 §7.5.4）。
+    Xref,
+    /// `trailer` — 従来形式トレイラの開始（ISO 32000-1 §7.5.5）。
+    Trailer,
+    /// `startxref` — 最初に読む xref テーブルのオフセットを導入する（ISO 32000-1 §7.5.5）。
+    StartXref,
+    /// 既知集合に無い regular バイト列（`f` / `n` / `True` / `OBJ` / `trueX` / `123abc` など）。
+    ///
+    /// UTF-8 は仮定せず、NUL・非 UTF-8・高位バイトも無検証で忠実に保持する
+    /// （変更前の `Token::Keyword(Vec<u8>)` と同じ扱い）。
+    Unknown(Vec<u8>),
+}
+
+impl Keyword {
+    /// バイト列表現を持つ既知バリアントの全体。[`Self::from_bytes`] の照合対象。
+    ///
+    /// ここに新しいキーワードを足したら [`Self::as_bytes`] にも綴りを足す
+    /// （逆に言えば、足し忘れると照合されないだけで綴りは 1 箇所のまま保たれる）。
+    const KNOWN: [Self; 4] = [Self::R, Self::Xref, Self::Trailer, Self::StartXref];
+
+    /// 収集済みバイト列から対応するキーワードを判定する。既知集合に無ければ
+    /// [`Self::Unknown`] に倒す全域関数。
+    ///
+    /// case-sensitive で照合する（`R` は既知、`r` / `XREF` / `Trailer` は `Unknown`）。
+    /// 既知に一致した場合はヒープ確保が発生せず、`Unknown` に落ちた場合のみ
+    /// `bytes.to_vec()` で複製する。
+    #[must_use]
+    pub fn from_bytes(bytes: &[u8]) -> Self {
+        Self::KNOWN
+            .into_iter()
+            .find(|keyword| keyword.as_bytes() == bytes)
+            .unwrap_or_else(|| Self::Unknown(bytes.to_vec()))
+    }
+
+    /// キーワードのバイト列表現を返す。
+    ///
+    /// 既知キーワードの綴りの**唯一の定義点**。[`Self::Unknown`] の場合は
+    /// 保持している収集バイト列をそのまま返す。
+    #[must_use]
+    pub fn as_bytes(&self) -> &[u8] {
+        match self {
+            Self::R => b"R",
+            Self::Xref => b"xref",
+            Self::Trailer => b"trailer",
+            Self::StartXref => b"startxref",
+            Self::Unknown(bytes) => bytes.as_slice(),
+        }
+    }
+}
+
 /// PDF レキシカル層の出力トークン（§7.2 / §7.3 全体に対応）。
 ///
 /// `Primitive` ラッパ 1 個 + 構造制御トークン 8 個 + `Keyword` / `Comment` の計 11 バリアントで構成される。
 /// 内部に `Primitive` を含むため `Eq`/`Hash`/`Ord` は derive 不可（NaN 伝播）。
-/// `Keyword(Vec<u8>)` / `Comment(Vec<u8>)` / `Primitive` ラップのヒープにより `Copy` 不可。
+/// `Keyword(Keyword::Unknown)` / `Comment(Vec<u8>)` / `Primitive` ラップのヒープにより `Copy` 不可。
 /// 順序（`PartialOrd`）はトークン間に意味ある全順序がないため不要。
 /// よって derive は `Debug, Clone, PartialEq` のみで `Primitive` と完全に一致する。
 #[derive(Debug, Clone, PartialEq)]
@@ -156,13 +231,13 @@ pub enum Token {
     StreamBegin,
     /// ストリーム終了 `endstream` キーワード（ISO 32000-1 §7.3.8）。
     StreamEnd,
-    /// 無検証キーワード（`R` / `xref` / `trailer` / `startxref` / `f` / `n` /
-    /// 未知の正規バイト列）。
+    /// キーワード字句（[`Keyword`]）。既知の有限集合と、それ以外の無検証バイト列を表す。
     ///
     /// `N G R` の 3 字句から間接参照を組み立てるのは parser の責務であり、
-    /// 本層では `R` も単独 `Keyword(b"R")` として平坦に流す。意味解釈は上位
-    /// パーサに委譲し、UTF-8 を仮定せず生バイトを保持する。
-    Keyword(Vec<u8>),
+    /// 本層では `R` も単独 `Keyword(Keyword::R)` として平坦に流す。意味解釈は上位
+    /// パーサに委譲し、既知集合に無い綴りは UTF-8 を仮定せず
+    /// [`Keyword::Unknown`] で生バイトのまま保持する。
+    Keyword(Keyword),
     /// コメント本体（ISO 32000-1 §7.2.4）。
     ///
     /// 先頭 `%` と末尾の改行（CR/LF/CRLF）を **含めない** 本文バイト列のみを保持する。
@@ -226,13 +301,14 @@ impl Token {
         }
     }
 
-    /// `Keyword` のとき内部のバイト列を `&[u8]` として `Some` で取り出す（他は `None`）。
+    /// `Keyword` のとき内部の [`Keyword`] を `Some` で取り出す（他は `None`）。
     ///
-    /// ヒープ保持のため参照返し。`R` 単独識別は `tok.as_keyword() == Some(b"R" as &[u8])`
-    /// のように検査する。
-    pub fn as_keyword(&self) -> Option<&[u8]> {
+    /// ヒープを持ちうるため参照返し。`R` 単独識別は
+    /// `matches!(tok.as_keyword(), Some(Keyword::R))` のように検査する。
+    /// バイト列表現が必要な場合は [`Keyword::as_bytes`] を重ねる。
+    pub fn as_keyword(&self) -> Option<&Keyword> {
         match self {
-            Self::Keyword(b) => Some(b.as_slice()),
+            Self::Keyword(keyword) => Some(keyword),
             _ => None,
         }
     }
@@ -591,7 +667,7 @@ mod tests {
             Token::ObjEnd,
             Token::StreamBegin,
             Token::StreamEnd,
-            Token::Keyword(b"xref".to_vec()),
+            Token::Keyword(Keyword::Xref),
             Token::Comment(b"x".to_vec()),
         ] {
             assert!(!t.is_array_begin());
@@ -610,7 +686,7 @@ mod tests {
             Token::ObjEnd,
             Token::StreamBegin,
             Token::StreamEnd,
-            Token::Keyword(b"xref".to_vec()),
+            Token::Keyword(Keyword::Xref),
             Token::Comment(b"x".to_vec()),
         ] {
             assert!(!t.is_array_end());
@@ -629,7 +705,7 @@ mod tests {
             Token::ObjEnd,
             Token::StreamBegin,
             Token::StreamEnd,
-            Token::Keyword(b"xref".to_vec()),
+            Token::Keyword(Keyword::Xref),
             Token::Comment(b"x".to_vec()),
         ] {
             assert!(!t.is_dict_begin());
@@ -648,7 +724,7 @@ mod tests {
             Token::ObjEnd,
             Token::StreamBegin,
             Token::StreamEnd,
-            Token::Keyword(b"xref".to_vec()),
+            Token::Keyword(Keyword::Xref),
             Token::Comment(b"x".to_vec()),
         ] {
             assert!(!t.is_dict_end());
@@ -667,7 +743,7 @@ mod tests {
             Token::ObjEnd,
             Token::StreamBegin,
             Token::StreamEnd,
-            Token::Keyword(b"xref".to_vec()),
+            Token::Keyword(Keyword::Xref),
             Token::Comment(b"x".to_vec()),
         ] {
             assert!(!t.is_obj_begin());
@@ -686,7 +762,7 @@ mod tests {
             Token::ObjBegin,
             Token::StreamBegin,
             Token::StreamEnd,
-            Token::Keyword(b"xref".to_vec()),
+            Token::Keyword(Keyword::Xref),
             Token::Comment(b"x".to_vec()),
         ] {
             assert!(!t.is_obj_end());
@@ -705,7 +781,7 @@ mod tests {
             Token::ObjBegin,
             Token::ObjEnd,
             Token::StreamEnd,
-            Token::Keyword(b"xref".to_vec()),
+            Token::Keyword(Keyword::Xref),
             Token::Comment(b"x".to_vec()),
         ] {
             assert!(!t.is_stream_begin());
@@ -724,7 +800,7 @@ mod tests {
             Token::ObjBegin,
             Token::ObjEnd,
             Token::StreamBegin,
-            Token::Keyword(b"xref".to_vec()),
+            Token::Keyword(Keyword::Xref),
             Token::Comment(b"x".to_vec()),
         ] {
             assert!(!t.is_stream_end());
@@ -757,7 +833,7 @@ mod tests {
             Token::ObjEnd,
             Token::StreamBegin,
             Token::StreamEnd,
-            Token::Keyword(b"xref".to_vec()),
+            Token::Keyword(Keyword::Xref),
             Token::Comment(b"x".to_vec()),
         ] {
             assert_eq!(t.as_primitive(), None);
@@ -791,8 +867,8 @@ mod tests {
 
     #[test]
     fn token_keyword_constructs_and_matches_keyword_arm() {
-        // Token::Keyword(b"xref") を構築し matches! で Keyword 腕に入ることを確認する
-        let t = Token::Keyword(b"xref".to_vec());
+        // Token::Keyword(Keyword::Xref) を構築し matches! で Keyword 腕に入ることを確認する
+        let t = Token::Keyword(Keyword::Xref);
         assert!(matches!(t, Token::Keyword(_)));
     }
 
@@ -805,10 +881,10 @@ mod tests {
 
     #[test]
     fn token_as_keyword_returns_some_for_keyword() {
-        // Token::Keyword(b"xref") に as_keyword() を呼ぶと Some(b"xref") を返すことを確認する
+        // Token::Keyword(Keyword::Xref) に as_keyword() を呼ぶと Some(&Keyword::Xref) を返すことを確認する
         assert_eq!(
-            Token::Keyword(b"xref".to_vec()).as_keyword(),
-            Some(b"xref".as_slice())
+            Token::Keyword(Keyword::Xref).as_keyword(),
+            Some(&Keyword::Xref)
         );
     }
 
@@ -853,7 +929,7 @@ mod tests {
             Token::ObjEnd,
             Token::StreamBegin,
             Token::StreamEnd,
-            Token::Keyword(b"xref".to_vec()),
+            Token::Keyword(Keyword::Xref),
         ] {
             assert_eq!(t.as_comment(), None);
         }
@@ -925,18 +1001,15 @@ mod tests {
     #[test]
     fn token_same_content_keywords_are_equal() {
         // 同内容の Keyword 同士は == で等価になることを確認する
-        assert_eq!(
-            Token::Keyword(b"xref".to_vec()),
-            Token::Keyword(b"xref".to_vec())
-        );
+        assert_eq!(Token::Keyword(Keyword::Xref), Token::Keyword(Keyword::Xref));
     }
 
     #[test]
     fn token_different_content_keywords_are_not_equal() {
         // 異内容の Keyword 同士は != で非等価になることを確認する
         assert_ne!(
-            Token::Keyword(b"xref".to_vec()),
-            Token::Keyword(b"trailer".to_vec())
+            Token::Keyword(Keyword::Xref),
+            Token::Keyword(Keyword::Trailer)
         );
     }
 
@@ -1005,7 +1078,7 @@ mod tests {
             Token::ObjEnd,
             Token::StreamBegin,
             Token::StreamEnd,
-            Token::Keyword(b"xref".to_vec()),
+            Token::Keyword(Keyword::Xref),
             Token::Comment(b"PDF-1.7".to_vec()),
         ];
         for (i, a) in variants.iter().enumerate() {
@@ -1107,10 +1180,16 @@ mod tests {
     #[test]
     fn token_clone_preserves_heap_variants_and_keeps_original_usable() {
         // ヒープ型 Token（Keyword/Comment/Primitive(LiteralString)）を clone() すると元と一致し元も使用可能なことを確認する
-        let original_kw = Token::Keyword(b"xref".to_vec());
+        let original_kw = Token::Keyword(Keyword::Unknown(b"xrefs".to_vec()));
         let cloned_kw = original_kw.clone();
-        assert_eq!(cloned_kw.as_keyword(), Some(b"xref".as_slice()));
-        assert_eq!(original_kw.as_keyword(), Some(b"xref".as_slice()));
+        assert_eq!(
+            cloned_kw.as_keyword(),
+            Some(&Keyword::Unknown(b"xrefs".to_vec()))
+        );
+        assert_eq!(
+            original_kw.as_keyword(),
+            Some(&Keyword::Unknown(b"xrefs".to_vec()))
+        );
 
         let original_cm = Token::Comment(b"PDF-1.7".to_vec());
         let cloned_cm = original_cm.clone();
@@ -1159,7 +1238,7 @@ mod tests {
         assert!(format!("{:?}", Token::ObjEnd).contains("ObjEnd"));
         assert!(format!("{:?}", Token::StreamBegin).contains("StreamBegin"));
         assert!(format!("{:?}", Token::StreamEnd).contains("StreamEnd"));
-        assert!(format!("{:?}", Token::Keyword(b"xref".to_vec())).contains("Keyword"));
+        assert!(format!("{:?}", Token::Keyword(Keyword::Xref)).contains("Keyword"));
         assert!(format!("{:?}", Token::Comment(b"x".to_vec())).contains("Comment"));
     }
 
@@ -1205,11 +1284,12 @@ mod tests {
     }
 
     #[test]
-    fn token_as_keyword_returns_empty_slice_for_empty_keyword() {
-        // 空バイト列の Token::Keyword(b"") は as_keyword() で Some(空スライス) を返すことを確認する
+    fn token_as_keyword_returns_empty_unknown_for_empty_keyword() {
+        // 空バイト列の Token::Keyword(Keyword::Unknown(b"")) は as_keyword() で
+        // Some(&Keyword::Unknown(空バイト列)) を返すことを確認する
         assert_eq!(
-            Token::Keyword(b"".to_vec()).as_keyword(),
-            Some(b"".as_slice())
+            Token::Keyword(Keyword::Unknown(b"".to_vec())).as_keyword(),
+            Some(&Keyword::Unknown(b"".to_vec()))
         );
     }
 
@@ -1224,9 +1304,13 @@ mod tests {
 
     #[test]
     fn token_as_keyword_preserves_nul_non_utf8_and_high_bytes() {
-        // Token::Keyword(vec![0x00, 0x80, 0xFF]) を as_keyword() で取り出すと忠実に返ることを確認する
-        let t = Token::Keyword(vec![0x00, 0x80, 0xFF]);
-        assert_eq!(t.as_keyword(), Some([0x00, 0x80, 0xFF].as_slice()));
+        // Token::Keyword(Keyword::Unknown(vec![0x00, 0x80, 0xFF])) を as_keyword() で
+        // 取り出すと保持バイト列が忠実に返ることを確認する
+        let t = Token::Keyword(Keyword::Unknown(vec![0x00, 0x80, 0xFF]));
+        assert_eq!(
+            t.as_keyword().map(Keyword::as_bytes),
+            Some([0x00, 0x80, 0xFF].as_slice())
+        );
     }
 
     #[test]
@@ -1253,7 +1337,7 @@ mod tests {
     fn token_keyword_and_primitive_literal_string_with_same_bytes_are_not_equal() {
         // 同一バイト内容でも Token::Keyword と Token::Primitive(LiteralString) は別バリアントのため != になることを確認する
         assert_ne!(
-            Token::Keyword(b"R".to_vec()),
+            Token::Keyword(Keyword::R),
             Token::Primitive(Primitive::LiteralString(b"R".to_vec()))
         );
     }
@@ -1262,7 +1346,7 @@ mod tests {
     fn token_keyword_and_primitive_name_with_same_bytes_are_not_equal() {
         // 同一バイト内容でも Token::Keyword と Token::Primitive(Name) は別バリアントのため != になることを確認する
         assert_ne!(
-            Token::Keyword(b"Type".to_vec()),
+            Token::Keyword(Keyword::Unknown(b"Type".to_vec())),
             Token::Primitive(Primitive::Name(PdfName::from("Type")))
         );
     }
@@ -1280,7 +1364,7 @@ mod tests {
             (Token::ObjEnd, TokenKind::ObjEnd),
             (Token::StreamBegin, TokenKind::StreamBegin),
             (Token::StreamEnd, TokenKind::StreamEnd),
-            (Token::Keyword(b"R".to_vec()), TokenKind::Keyword),
+            (Token::Keyword(Keyword::R), TokenKind::Keyword),
             (Token::Comment(b"comment".to_vec()), TokenKind::Comment),
         ];
 
@@ -1301,5 +1385,136 @@ mod tests {
         for token in tokens {
             assert_eq!(token.kind(), TokenKind::Primitive, "token: {token:?}");
         }
+    }
+
+    // ---------- Keyword: from_bytes ----------
+
+    #[test]
+    fn keyword_from_bytes_maps_known_spellings_to_known_variants() {
+        // 既知 4 綴りが対応するバリアントに写ることを確認する
+        let cases: [(&[u8], Keyword); 4] = [
+            (b"R", Keyword::R),
+            (b"xref", Keyword::Xref),
+            (b"trailer", Keyword::Trailer),
+            (b"startxref", Keyword::StartXref),
+        ];
+
+        for (bytes, expected) in cases {
+            assert_eq!(Keyword::from_bytes(bytes), expected, "bytes: {bytes:?}");
+        }
+    }
+
+    #[test]
+    fn keyword_from_bytes_maps_case_variants_to_unknown() {
+        // case-sensitive 照合により大文字小文字違いが Unknown へ落ちることを確認する
+        let cases: [&[u8]; 4] = [b"r", b"XREF", b"Trailer", b"STARTXREF"];
+
+        for bytes in cases {
+            assert_eq!(
+                Keyword::from_bytes(bytes),
+                Keyword::Unknown(bytes.to_vec()),
+                "bytes: {bytes:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn keyword_from_bytes_maps_partial_and_concatenated_spellings_to_unknown() {
+        // 既知綴りへの連結・部分一致が Unknown へ落ちることを確認する
+        let cases: [&[u8]; 4] = [b"Rx", b"xrefs", b"trailerX", b"start"];
+
+        for bytes in cases {
+            assert_eq!(
+                Keyword::from_bytes(bytes),
+                Keyword::Unknown(bytes.to_vec()),
+                "bytes: {bytes:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn keyword_from_bytes_maps_empty_bytes_to_empty_unknown() {
+        // 空バイト列（read_keyword からは到達しないが全域関数として）が Unknown になることを確認する
+        assert_eq!(Keyword::from_bytes(b""), Keyword::Unknown(Vec::new()));
+    }
+
+    #[test]
+    fn keyword_from_bytes_preserves_non_utf8_bytes_in_unknown() {
+        // 非 UTF-8 / NUL / 高位バイトを含む列が Unknown に忠実に保持されることを確認する
+        assert_eq!(
+            Keyword::from_bytes(&[0xFF, 0x00, 0x80]),
+            Keyword::Unknown(vec![0xFF, 0x00, 0x80])
+        );
+    }
+
+    // ---------- Keyword: as_bytes ----------
+
+    #[test]
+    fn keyword_as_bytes_returns_spelling_for_known_variants() {
+        // 既知 4 バリアントが対応する綴りを返すことを確認する
+        let cases: [(Keyword, &[u8]); 4] = [
+            (Keyword::R, b"R"),
+            (Keyword::Xref, b"xref"),
+            (Keyword::Trailer, b"trailer"),
+            (Keyword::StartXref, b"startxref"),
+        ];
+
+        for (keyword, expected) in cases {
+            assert_eq!(keyword.as_bytes(), expected, "keyword: {keyword:?}");
+        }
+    }
+
+    #[test]
+    fn keyword_as_bytes_returns_held_bytes_for_unknown() {
+        // Unknown は保持している収集バイト列をそのまま返すことを確認する
+        assert_eq!(Keyword::Unknown(b"foo".to_vec()).as_bytes(), b"foo");
+    }
+
+    // ---------- Keyword: 往復一致 ----------
+
+    #[test]
+    fn keyword_from_bytes_and_as_bytes_round_trip_for_known_variants() {
+        // 既知バリアント全件で from_bytes(kw.as_bytes()) == kw が成り立つことを確認する
+        // （将来バリアントを足したときの KNOWN / as_bytes の綴り不一致を検出する）
+        let cases = [
+            Keyword::R,
+            Keyword::Xref,
+            Keyword::Trailer,
+            Keyword::StartXref,
+        ];
+
+        for keyword in cases {
+            assert_eq!(
+                Keyword::from_bytes(keyword.as_bytes()),
+                keyword,
+                "keyword: {keyword:?}"
+            );
+        }
+    }
+
+    // ---------- Keyword: Eq ----------
+
+    #[test]
+    fn keyword_unknown_with_same_bytes_are_equal() {
+        // 同じバイト列を保持する Unknown 同士が等価になることを確認する
+        assert_eq!(
+            Keyword::Unknown(b"foo".to_vec()),
+            Keyword::Unknown(b"foo".to_vec())
+        );
+    }
+
+    #[test]
+    fn keyword_unknown_with_different_bytes_are_not_equal() {
+        // 異なるバイト列を保持する Unknown 同士が非等価になることを確認する
+        assert_ne!(
+            Keyword::Unknown(b"foo".to_vec()),
+            Keyword::Unknown(b"bar".to_vec())
+        );
+    }
+
+    #[test]
+    fn keyword_known_variant_and_unknown_with_same_bytes_are_not_equal() {
+        // 既知バリアントと同じ綴りを保持する Unknown はバリアントが異なるため非等価になることを確認する
+        assert_ne!(Keyword::Xref, Keyword::Unknown(b"xref".to_vec()));
     }
 }

@@ -16,11 +16,10 @@ use crate::error::pdf_error_code::PdfErrorCode;
 use crate::lexer::byte_kind::ByteKind;
 use crate::lexer::eol::EolKind;
 use crate::lexer::skip::skip_whitespace_and_comments;
+use crate::lexer::token::Keyword;
 
 /// ファイル終端マーカー。この直前に `startxref` 行が置かれる。
 const EOF_MARKER: &[u8] = b"%%EOF";
-/// xref 開始オフセットを導入するキーワード。
-const STARTXREF_KEYWORD: &[u8] = b"startxref";
 /// 末尾から遡って走査する上限バイト数。
 ///
 /// `docs/specs/02_file_structure.md` §6 の「末尾から最大 1024 バイト」に対応する。
@@ -62,13 +61,18 @@ impl StartXref {
                     "%%EOF not found within the last {SCAN_LIMIT} bytes"
                 ))
             })?;
-        let keyword_pos = find_last_marker(input, STARTXREF_KEYWORD, scan_start, eof_pos)
-            .ok_or_else(|| {
-                PdfError::new(PdfErrorCode::InvalidSyntax)
-                    .with_position(ByteOffset::new(eof_pos as u64))
-                    .with_message("startxref keyword not found before %%EOF")
-            })?;
-        let value_start = keyword_pos.saturating_add(STARTXREF_KEYWORD.len());
+        // 綴りは Keyword::StartXref が持つ。as_bytes() の戻り値は self に借用が紐づくため、
+        // 値のほうを先に束縛してから 2 回呼ぶ。
+        let startxref_keyword = Keyword::StartXref;
+        let keyword_pos =
+            find_last_marker(input, startxref_keyword.as_bytes(), scan_start, eof_pos).ok_or_else(
+                || {
+                    PdfError::new(PdfErrorCode::InvalidSyntax)
+                        .with_position(ByteOffset::new(eof_pos as u64))
+                        .with_message("startxref keyword not found before %%EOF")
+                },
+            )?;
+        let value_start = keyword_pos.saturating_add(startxref_keyword.as_bytes().len());
         let offset = parse_offset_value(input, value_start, eof_pos)?;
         Ok(Self { offset })
     }

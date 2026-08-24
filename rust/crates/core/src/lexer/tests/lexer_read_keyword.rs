@@ -1,4 +1,4 @@
-use super::super::token::{Primitive, Token};
+use super::super::token::{Keyword, Primitive, Token};
 use super::super::Lexer;
 
 // ---------- Phase C: read_keyword の Primitive マッピング ----------
@@ -149,111 +149,123 @@ fn read_keyword_maps_endstream_followed_by_endobj() {
 
 #[test]
 fn read_keyword_flattens_uppercase_true_to_keyword() {
-    // 大文字始まり `True` は case-sensitive により Boolean ではなく Keyword(b"True") へ平坦化されることを確認する
+    // 大文字始まり `True` は case-sensitive により Boolean ではなく Keyword(Keyword::Unknown(b"True")) へ平坦化されることを確認する
     let mut lexer = Lexer::new(b"True");
-    assert_eq!(lexer.read_keyword(), Some(Token::Keyword(b"True".to_vec())));
+    assert_eq!(
+        lexer.read_keyword(),
+        Some(Token::Keyword(Keyword::Unknown(b"True".to_vec())))
+    );
     assert_eq!(lexer.position(), 4);
 }
 
 #[test]
 fn read_keyword_flattens_uppercase_false_to_keyword() {
-    // 全大文字 `FALSE` は case-sensitive により Boolean ではなく Keyword(b"FALSE") へ平坦化されることを確認する
+    // 全大文字 `FALSE` は case-sensitive により Boolean ではなく Keyword(Keyword::Unknown(b"FALSE")) へ平坦化されることを確認する
     let mut lexer = Lexer::new(b"FALSE");
     assert_eq!(
         lexer.read_keyword(),
-        Some(Token::Keyword(b"FALSE".to_vec()))
+        Some(Token::Keyword(Keyword::Unknown(b"FALSE".to_vec())))
     );
     assert_eq!(lexer.position(), 5);
 }
 
 #[test]
 fn read_keyword_flattens_uppercase_null_to_keyword() {
-    // 大文字始まり `Null` は case-sensitive により Null ではなく Keyword(b"Null") へ平坦化されることを確認する
+    // 大文字始まり `Null` は case-sensitive により Null ではなく Keyword(Keyword::Unknown(b"Null")) へ平坦化されることを確認する
     let mut lexer = Lexer::new(b"Null");
-    assert_eq!(lexer.read_keyword(), Some(Token::Keyword(b"Null".to_vec())));
+    assert_eq!(
+        lexer.read_keyword(),
+        Some(Token::Keyword(Keyword::Unknown(b"Null".to_vec())))
+    );
     assert_eq!(lexer.position(), 4);
 }
 
 #[test]
 fn read_keyword_flattens_uppercase_obj_to_keyword() {
-    // 全大文字 `OBJ` は case-sensitive により ObjBegin ではなく Keyword(b"OBJ") へ平坦化されることを確認する
+    // 全大文字 `OBJ` は case-sensitive により ObjBegin ではなく Keyword(Keyword::Unknown(b"OBJ")) へ平坦化されることを確認する
     let mut lexer = Lexer::new(b"OBJ");
-    assert_eq!(lexer.read_keyword(), Some(Token::Keyword(b"OBJ".to_vec())));
+    assert_eq!(
+        lexer.read_keyword(),
+        Some(Token::Keyword(Keyword::Unknown(b"OBJ".to_vec())))
+    );
     assert_eq!(lexer.position(), 3);
 }
 
 #[test]
 fn read_keyword_flattens_uppercase_stream_to_keyword() {
-    // 大文字始まり `Stream` は case-sensitive により StreamBegin ではなく Keyword(b"Stream") へ平坦化されることを確認する
+    // 大文字始まり `Stream` は case-sensitive により StreamBegin ではなく Keyword(Keyword::Unknown(b"Stream")) へ平坦化されることを確認する
     let mut lexer = Lexer::new(b"Stream");
     assert_eq!(
         lexer.read_keyword(),
-        Some(Token::Keyword(b"Stream".to_vec()))
+        Some(Token::Keyword(Keyword::Unknown(b"Stream".to_vec())))
     );
     assert_eq!(lexer.position(), 6);
 }
 
 #[test]
 fn read_keyword_flattens_indirect_ref_marker_r() {
-    // `R` 単独は間接参照マーカだが Lexer 層では Keyword(b"R") へ平坦化されることを確認する（組み立ては parser の責務）
+    // `R` 単独は間接参照マーカだが Lexer 層では Keyword(Keyword::R) へ平坦化されることを確認する（組み立ては parser の責務）
     let mut lexer = Lexer::new(b"R");
-    assert_eq!(lexer.read_keyword(), Some(Token::Keyword(b"R".to_vec())));
+    assert_eq!(lexer.read_keyword(), Some(Token::Keyword(Keyword::R)));
     assert_eq!(lexer.position(), 1);
 }
 
 #[test]
 fn read_keyword_flattens_xref_keyword() {
-    // `xref` キーワードが Keyword(b"xref") として平坦化されることを確認する
+    // `xref` キーワードが Keyword(Keyword::Xref) として平坦化されることを確認する
     let mut lexer = Lexer::new(b"xref");
-    assert_eq!(lexer.read_keyword(), Some(Token::Keyword(b"xref".to_vec())));
+    assert_eq!(lexer.read_keyword(), Some(Token::Keyword(Keyword::Xref)));
     assert_eq!(lexer.position(), 4);
 }
 
 #[test]
 fn read_keyword_flattens_trailer_keyword() {
-    // `trailer` キーワードが Keyword(b"trailer") として平坦化されることを確認する
+    // `trailer` キーワードが Keyword(Keyword::Trailer) として平坦化されることを確認する
     let mut lexer = Lexer::new(b"trailer");
-    assert_eq!(
-        lexer.read_keyword(),
-        Some(Token::Keyword(b"trailer".to_vec()))
-    );
+    assert_eq!(lexer.read_keyword(), Some(Token::Keyword(Keyword::Trailer)));
     assert_eq!(lexer.position(), 7);
 }
 
 #[test]
 fn read_keyword_flattens_startxref_keyword() {
-    // `startxref` キーワードが Keyword(b"startxref") として平坦化されることを確認する
+    // `startxref` キーワードが Keyword(Keyword::StartXref) として平坦化されることを確認する
     let mut lexer = Lexer::new(b"startxref");
     assert_eq!(
         lexer.read_keyword(),
-        Some(Token::Keyword(b"startxref".to_vec()))
+        Some(Token::Keyword(Keyword::StartXref))
     );
     assert_eq!(lexer.position(), 9);
 }
 
 #[test]
 fn read_keyword_flattens_xref_entry_f_keyword() {
-    // xref エントリ末尾 `f` 単独が Keyword(b"f") として平坦化されることを確認する
+    // xref エントリ末尾 `f` 単独が Keyword(Keyword::Unknown(b"f")) として平坦化されることを確認する
     let mut lexer = Lexer::new(b"f");
-    assert_eq!(lexer.read_keyword(), Some(Token::Keyword(b"f".to_vec())));
+    assert_eq!(
+        lexer.read_keyword(),
+        Some(Token::Keyword(Keyword::Unknown(b"f".to_vec())))
+    );
     assert_eq!(lexer.position(), 1);
 }
 
 #[test]
 fn read_keyword_flattens_xref_entry_n_keyword() {
-    // xref エントリ末尾 `n` 単独が Keyword(b"n") として平坦化されることを確認する
+    // xref エントリ末尾 `n` 単独が Keyword(Keyword::Unknown(b"n")) として平坦化されることを確認する
     let mut lexer = Lexer::new(b"n");
-    assert_eq!(lexer.read_keyword(), Some(Token::Keyword(b"n".to_vec())));
+    assert_eq!(
+        lexer.read_keyword(),
+        Some(Token::Keyword(Keyword::Unknown(b"n".to_vec())))
+    );
     assert_eq!(lexer.position(), 1);
 }
 
 #[test]
 fn read_keyword_flattens_true_x_as_single_keyword() {
-    // `trueX` のように true キーワードに regular byte が連結された字句は分割せず Keyword(b"trueX") として吸収されることを確認する
+    // `trueX` のように true キーワードに regular byte が連結された字句は分割せず Keyword(Keyword::Unknown(b"trueX")) として吸収されることを確認する
     let mut lexer = Lexer::new(b"trueX");
     assert_eq!(
         lexer.read_keyword(),
-        Some(Token::Keyword(b"trueX".to_vec()))
+        Some(Token::Keyword(Keyword::Unknown(b"trueX".to_vec())))
     );
     assert_eq!(lexer.position(), 5);
 }
@@ -346,9 +358,9 @@ fn read_keyword_stops_at_eof() {
 
 #[test]
 fn read_keyword_reads_single_regular_byte() {
-    // 単一の regular byte `R` が Keyword(b"R") として読み取られることを確認する
+    // 単一の regular byte `R` が Keyword(Keyword::R) として読み取られることを確認する
     let mut lexer = Lexer::new(b"R");
-    assert_eq!(lexer.read_keyword(), Some(Token::Keyword(b"R".to_vec())));
+    assert_eq!(lexer.read_keyword(), Some(Token::Keyword(Keyword::R)));
     assert_eq!(lexer.position(), 1);
 }
 
@@ -358,7 +370,9 @@ fn read_keyword_reads_long_unknown_byte_sequence() {
     let mut lexer = Lexer::new(b"MyCustomKeyword123");
     assert_eq!(
         lexer.read_keyword(),
-        Some(Token::Keyword(b"MyCustomKeyword123".to_vec()))
+        Some(Token::Keyword(Keyword::Unknown(
+            b"MyCustomKeyword123".to_vec()
+        )))
     );
     assert_eq!(lexer.position(), 18);
 }
@@ -382,12 +396,61 @@ fn read_keyword_keeps_position_zero_on_leading_whitespace() {
 
 #[test]
 fn read_keyword_preserves_non_ascii_bytes_in_keyword() {
-    // 非 ASCII バイト 0xC3 0xA9 を含む regular 列が Keyword(<原文 bytes>) として忠実に保持されることを確認する
+    // 非 ASCII バイト 0xC3 0xA9 を含む regular 列が Keyword(Keyword::Unknown(<原文 bytes>)) として忠実に保持されることを確認する
     let input: &[u8] = &[b'a', 0xC3, 0xA9, b'z'];
     let mut lexer = Lexer::new(input);
     assert_eq!(
         lexer.read_keyword(),
-        Some(Token::Keyword(vec![b'a', 0xC3, 0xA9, b'z']))
+        Some(Token::Keyword(Keyword::Unknown(vec![
+            b'a', 0xC3, 0xA9, b'z'
+        ])))
     );
     assert_eq!(lexer.position(), 4);
+}
+
+#[test]
+fn read_keyword_stops_at_boundary_after_known_keyword() {
+    // 既知キーワードの直後が境界バイトのとき、キーワード分だけ消費して止まることを確認する
+    let cases: [(&[u8], Token, usize); 2] = [
+        (b"R 1 0", Token::Keyword(Keyword::R), 1),
+        (b"xref\n0 1", Token::Keyword(Keyword::Xref), 4),
+    ];
+
+    for (input, expected, expected_pos) in cases {
+        let mut lexer = Lexer::new(input);
+        assert_eq!(lexer.read_keyword(), Some(expected), "input: {input:?}");
+        assert_eq!(lexer.position(), expected_pos, "input: {input:?}");
+    }
+}
+
+#[test]
+fn read_keyword_flattens_concatenation_of_known_keyword_to_unknown() {
+    // 既知キーワードに regular byte が連結された字句は境界まで一括収集され Unknown になることを確認する
+    let cases: [&[u8]; 3] = [b"Rx", b"xrefs", b"startxrefs"];
+
+    for input in cases {
+        let mut lexer = Lexer::new(input);
+        assert_eq!(
+            lexer.read_keyword(),
+            Some(Token::Keyword(Keyword::Unknown(input.to_vec()))),
+            "input: {input:?}"
+        );
+        assert_eq!(lexer.position(), input.len(), "input: {input:?}");
+    }
+}
+
+#[test]
+fn read_keyword_flattens_case_variants_of_known_keyword_to_unknown() {
+    // 既知キーワードの大文字小文字違いは case-sensitive 照合により Unknown になることを確認する
+    let cases: [&[u8]; 3] = [b"r", b"XREF", b"Trailer"];
+
+    for input in cases {
+        let mut lexer = Lexer::new(input);
+        assert_eq!(
+            lexer.read_keyword(),
+            Some(Token::Keyword(Keyword::Unknown(input.to_vec()))),
+            "input: {input:?}"
+        );
+        assert_eq!(lexer.position(), input.len(), "input: {input:?}");
+    }
 }

@@ -30,14 +30,13 @@ use crate::byte_offset::ByteOffset;
 use crate::lexer::byte_kind::ByteKind;
 use crate::lexer::byte_ops::keyword_end_at;
 use crate::lexer::skip::skip_whitespace_and_comments;
+use crate::lexer::token::Keyword;
 use crate::object::generation_number::GenerationNumber;
 use crate::object::object_number::ObjectNumber;
 use crate::xref::entry::XRefEntry;
 use crate::xref::error::XRefError;
 use crate::xref::table::XRefTable;
 
-/// テーブル開始を示すキーワード。
-const XREF_KEYWORD: &[u8] = b"xref";
 /// 使用中（in-use）エントリの状態フラグ。
 const FLAG_IN_USE: u8 = b'n';
 /// 未使用（free）エントリの状態フラグ。
@@ -135,10 +134,11 @@ impl ParsedXRefTable {
 /// 空白・コメントを飛ばした先に `xref` キーワードがあることを確認し、その直後の位置を返す。
 ///
 /// キーワード直後はトークン境界（または EOF）でなければならない（`xrefs` を弾く）。
+/// 綴りは [`Keyword::Xref`] から取る（バイト列リテラルの定義点は `Keyword::as_bytes` 1 箇所）。
 fn expect_xref_keyword(input: &[u8], pos: usize) -> Result<usize, XRefError> {
     let keyword_start = skip_blanks(input, pos);
 
-    keyword_end_at(input, keyword_start, XREF_KEYWORD)
+    keyword_end_at(input, keyword_start, Keyword::Xref.as_bytes())
         .ok_or_else(|| XRefError::missing_xref_keyword_at(offset_of(keyword_start)))
 }
 
