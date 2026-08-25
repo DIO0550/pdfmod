@@ -25,6 +25,17 @@ fn id_with_literal_strings_is_extracted() {
     assert_eq!(id.changing(), b"second");
 }
 
+// /ID の 2 要素が入れ替わらず、配列の出現順どおりに permanent / changing へ入ることを確認する
+#[test]
+fn id_elements_are_not_swapped() {
+    let input = simple_trailer("/Size 6 /Root 1 0 R /ID [(permanent-value) (changing-value)]");
+    let parsed = ParsedTrailer::parse(&input, ByteOffset::new(0)).expect("/ID should parse");
+    let id = parsed.trailer().id().expect("/ID should be Some");
+    assert_eq!(id.permanent(), b"permanent-value");
+    assert_ne!(id.permanent(), b"changing-value");
+    assert_eq!(id.changing(), b"changing-value");
+}
+
 // /ID の要素が空文字列の場合も正常に受け取れることを確認する
 #[test]
 fn id_with_empty_strings_is_accepted() {
