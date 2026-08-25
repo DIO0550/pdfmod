@@ -20,6 +20,7 @@
 //! `/XRefStm` が指す xref ストリームの読み込みは本モジュールの責務ではない。
 
 pub mod error;
+pub mod file_id;
 pub mod key;
 pub mod parse;
 
