@@ -20,6 +20,7 @@
 //! `/XRefStm` が指す xref ストリームの読み込みは本モジュールの責務ではない。
 
 pub mod error;
+pub mod file_id;
 pub mod key;
 pub mod parse;
 
@@ -29,10 +30,8 @@ use crate::object::dictionary::PdfDictionary;
 use crate::object::indirect_ref::IndirectRef;
 use crate::object::pdf_object::PdfObject;
 use crate::xref::trailer::error::TrailerError;
+use crate::xref::trailer::file_id::FileId;
 use crate::xref::trailer::key::TrailerKey;
-
-/// `/ID` 配列の要素数（永続 ID と変更 ID の 2 つ）。
-const ID_ELEMENT_COUNT: usize = 2;
 
 /// `/Encrypt` の値。間接参照と直接辞書の 2 形態を取りうる（ISO 32000-1 §7.6.1）。
 ///
@@ -78,7 +77,7 @@ pub struct Trailer {
     prev: Option<ByteOffset>,
     xref_stm: Option<ByteOffset>,
     info: Option<IndirectRef>,
-    id: Option<[Vec<u8>; ID_ELEMENT_COUNT]>,
+    id: Option<FileId>,
     encrypt: Option<EncryptValue>,
 }
 
@@ -149,9 +148,12 @@ impl Trailer {
         self.info
     }
 
-    /// `/ID`（永続 ID と変更 ID のバイト列ペア）を返す。
+    /// `/ID`（永続 ID と変更 ID のペア）を返す。
+    ///
+    /// 2 要素の意味の違いは [`FileId::permanent`] / [`FileId::changing`] で
+    /// 区別する（ISO 32000-1 §14.4）。
     #[must_use]
-    pub fn id(&self) -> Option<&[Vec<u8>; ID_ELEMENT_COUNT]> {
+    pub fn id(&self) -> Option<&FileId> {
         self.id.as_ref()
     }
 
@@ -252,10 +254,13 @@ fn take_optional_reference(
 }
 
 /// `/ID` を取り出す。厳密に 2 要素の文字列配列であることを要求する。
+///
+/// 要素数と要素型の検証は [`FileId::from_array`] が担い、本関数は
+/// 「値が配列であること」の確認と、失敗への位置情報の付与だけを行う。
 fn take_optional_id(
     dictionary: &mut PdfDictionary,
     position: ByteOffset,
-) -> Result<Option<[Vec<u8>; ID_ELEMENT_COUNT]>, TrailerError> {
+) -> Result<Option<FileId>, TrailerError> {
     let Some(value) = dictionary.remove(TrailerKey::Id.as_bytes()) else {
         return Ok(None);
     };
@@ -263,19 +268,10 @@ fn take_optional_id(
     let PdfObject::Array(elements) = value else {
         return Err(TrailerError::invalid_id_array_at(position));
     };
-    if elements.len() != ID_ELEMENT_COUNT {
-        return Err(TrailerError::invalid_id_array_at(position));
-    }
 
-    let mut pair: [Vec<u8>; ID_ELEMENT_COUNT] = [Vec::new(), Vec::new()];
-    for (slot, element) in pair.iter_mut().zip(elements) {
-        let PdfObject::String(bytes) = element else {
-            return Err(TrailerError::invalid_id_array_at(position));
-        };
-        *slot = bytes;
-    }
-
-    Ok(Some(pair))
+    FileId::from_array(elements)
+        .map(Some)
+        .ok_or_else(|| TrailerError::invalid_id_array_at(position))
 }
 
 /// `/Encrypt` を取り出す。間接参照と直接辞書の 2 形態を許す。
