@@ -3,26 +3,37 @@ use super::simple_trailer;
 use crate::byte_offset::ByteOffset;
 use crate::xref::trailer::error::TrailerErrorKind;
 
-// /ID に 2 つの 16 進文字列が与えられた場合にバイト列のペアとして正しく取り出せることを確認する
+// /ID に 2 つの 16 進文字列が与えられた場合に永続 ID と変更 ID として正しく取り出せることを確認する
 #[test]
 fn id_with_two_hex_strings_is_extracted() {
     let input = simple_trailer("/Size 6 /Root 1 0 R /ID [<aabb> <ccdd>]");
     let parsed = ParsedTrailer::parse(&input, ByteOffset::new(0))
         .expect("/ID with hex strings should parse");
     let id = parsed.trailer().id().expect("/ID should be Some");
-    assert_eq!(id[0], vec![0xAA, 0xBB]);
-    assert_eq!(id[1], vec![0xCC, 0xDD]);
+    assert_eq!(id.permanent(), &[0xAA, 0xBB]);
+    assert_eq!(id.changing(), &[0xCC, 0xDD]);
 }
 
-// /ID に 2 つのリテラル文字列が与えられた場合にバイト列のペアとして正しく取り出せることを確認する
+// /ID に 2 つのリテラル文字列が与えられた場合に永続 ID と変更 ID として正しく取り出せることを確認する
 #[test]
 fn id_with_literal_strings_is_extracted() {
     let input = simple_trailer("/Size 6 /Root 1 0 R /ID [(first) (second)]");
     let parsed = ParsedTrailer::parse(&input, ByteOffset::new(0))
         .expect("/ID with literal strings should parse");
     let id = parsed.trailer().id().expect("/ID should be Some");
-    assert_eq!(id[0], b"first");
-    assert_eq!(id[1], b"second");
+    assert_eq!(id.permanent(), b"first");
+    assert_eq!(id.changing(), b"second");
+}
+
+// /ID の 2 要素が入れ替わらず、配列の出現順どおりに permanent / changing へ入ることを確認する
+#[test]
+fn id_elements_are_not_swapped() {
+    let input = simple_trailer("/Size 6 /Root 1 0 R /ID [(permanent-value) (changing-value)]");
+    let parsed = ParsedTrailer::parse(&input, ByteOffset::new(0)).expect("/ID should parse");
+    let id = parsed.trailer().id().expect("/ID should be Some");
+    assert_eq!(id.permanent(), b"permanent-value");
+    assert_ne!(id.permanent(), b"changing-value");
+    assert_eq!(id.changing(), b"changing-value");
 }
 
 // /ID の要素が空文字列の場合も正常に受け取れることを確認する
@@ -32,8 +43,8 @@ fn id_with_empty_strings_is_accepted() {
     let parsed = ParsedTrailer::parse(&input, ByteOffset::new(0))
         .expect("/ID with empty strings should parse");
     let id = parsed.trailer().id().expect("/ID should be Some");
-    assert_eq!(id[0], Vec::<u8>::new());
-    assert_eq!(id[1], Vec::<u8>::new());
+    assert_eq!(id.permanent(), b"");
+    assert_eq!(id.changing(), b"");
 }
 
 // /ID の要素が 1 つしかない場合に InvalidIdArray エラーになることを確認する
