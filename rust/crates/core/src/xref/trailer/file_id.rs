@@ -79,3 +79,108 @@ impl FileId {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::object::pdf_object::PdfObject;
+
+    // 2 要素の文字列配列から permanent / changing を正しい順で取り出せることを確認する
+    #[test]
+    fn from_array_with_two_strings_assigns_permanent_and_changing_in_order() {
+        let file_id = FileId::from_array(vec![
+            PdfObject::String(vec![0xAA, 0xBB]),
+            PdfObject::String(vec![0xCC, 0xDD]),
+        ])
+        .expect("2 要素の文字列配列は受理される");
+
+        assert_eq!(file_id.permanent(), &[0xAA, 0xBB]);
+        assert_eq!(file_id.changing(), &[0xCC, 0xDD]);
+    }
+
+    // 要素数が 2 でない配列がすべて None になることを確認する
+    #[test]
+    fn from_array_with_wrong_element_count_returns_none() {
+        let string = || PdfObject::String(b"aa".to_vec());
+        let cases: [Vec<PdfObject>; 4] = [
+            vec![],
+            vec![string()],
+            vec![string(), string(), string()],
+            vec![string(), string(), string(), string()],
+        ];
+
+        for elements in cases {
+            let count = elements.len();
+            assert_eq!(
+                FileId::from_array(elements),
+                None,
+                "要素数 {count} は拒否されるべき"
+            );
+        }
+    }
+
+    // 文字列以外の要素が混ざった配列がすべて None になることを確認する
+    #[test]
+    fn from_array_with_non_string_element_returns_none() {
+        let string = || PdfObject::String(b"aa".to_vec());
+        let cases: [Vec<PdfObject>; 5] = [
+            // 1 番目が非文字列
+            vec![PdfObject::Integer(42), string()],
+            // 2 番目が非文字列
+            vec![string(), PdfObject::Integer(42)],
+            // 両方が非文字列
+            vec![PdfObject::Integer(1), PdfObject::Integer(2)],
+            // 入れ子の配列
+            vec![PdfObject::Array(vec![string()]), string()],
+            // 真偽値
+            vec![string(), PdfObject::Boolean(true)],
+        ];
+
+        for elements in cases {
+            assert_eq!(
+                FileId::from_array(elements.clone()),
+                None,
+                "非文字列要素を含む {elements:?} は拒否されるべき"
+            );
+        }
+    }
+
+    // 両要素が空バイト列でも受理されることを確認する（ISO は長さを規定しない）
+    #[test]
+    fn from_array_with_empty_strings_is_accepted() {
+        let file_id = FileId::from_array(vec![
+            PdfObject::String(Vec::new()),
+            PdfObject::String(Vec::new()),
+        ])
+        .expect("空バイト列でも 2 要素の文字列配列なら受理される");
+
+        assert_eq!(file_id.permanent(), b"");
+        assert_eq!(file_id.changing(), b"");
+    }
+
+    // 2 要素の長さが異なっていても受理されることを確認する（長さ検証はしない）
+    #[test]
+    fn from_array_with_different_lengths_is_accepted() {
+        let file_id = FileId::from_array(vec![
+            PdfObject::String(b"short".to_vec()),
+            PdfObject::String(b"much longer value".to_vec()),
+        ])
+        .expect("要素長が違っても受理される");
+
+        assert_eq!(file_id.permanent(), b"short");
+        assert_eq!(file_id.changing(), b"much longer value");
+    }
+
+    // permanent と changing が同じ値でも区別して保持されることを確認する
+    // （未更新ファイルでは 2 要素が一致するのが通常。同値でも入れ替えは起きない）
+    #[test]
+    fn from_array_with_identical_elements_keeps_both() {
+        let file_id = FileId::from_array(vec![
+            PdfObject::String(b"same".to_vec()),
+            PdfObject::String(b"same".to_vec()),
+        ])
+        .expect("同値の 2 要素は受理される");
+
+        assert_eq!(file_id.permanent(), b"same");
+        assert_eq!(file_id.changing(), b"same");
+    }
+}
