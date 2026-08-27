@@ -5,8 +5,7 @@
 //! 原点そのものと、任意のバイナリファイルインジケータの有無を返す。
 
 use crate::byte_offset::ByteOffset;
-use crate::error::pdf_error::PdfError;
-use crate::error::pdf_error_code::PdfErrorCode;
+use crate::file::error::FileError;
 use crate::file::version::PdfVersion;
 use crate::lexer::byte_kind::ByteKind;
 use crate::lexer::eol::EolKind;
@@ -20,6 +19,10 @@ const SIGNATURE: &[u8] = b"%PDF-";
 const SCAN_LIMIT: usize = 1024;
 /// 版表記として読み取る最大バイト数（`"1.7"` は 3 バイト。異常入力での暴走を防ぐ上限）。
 const VERSION_MAX_LEN: usize = 8;
+/// `%PDF-` を探す走査の開始位置（ファイル先頭）。
+///
+/// シグネチャ未検出エラーの報告位置に使う。
+const SCAN_ORIGIN: u64 = 0;
 /// バイナリファイルインジケータと判定する高ビットバイトの最小個数
 /// （`docs/specs/02_file_structure.md` §2.3）。
 const BINARY_INDICATOR_MIN_HIGH_BYTES: usize = 4;
@@ -46,31 +49,24 @@ impl PdfHeader {
     ///
     /// # Errors
     ///
-    /// - `InvalidHeader`: 走査範囲内に `%PDF-` が見つからない
-    /// - `UnexpectedEof`: `%PDF-` の直後で版表記が読めない
-    /// - `UnsupportedVersion`: 版表記が形式不正、または ISO 未規定
-    pub fn parse(input: &[u8]) -> Result<Self, PdfError> {
-        let origin = find_signature(input).ok_or_else(|| {
-            PdfError::new(PdfErrorCode::InvalidHeader).with_message(format!(
-                "%PDF- signature not found within the first {SCAN_LIMIT} bytes"
-            ))
-        })?;
+    /// - [`FileErrorKind::SignatureNotFound`] — 走査範囲内に `%PDF-` が見つからない
+    /// - [`FileErrorKind::UnexpectedEof`] — `%PDF-` の直後で版表記が読めない
+    /// - [`FileErrorKind::UnsupportedVersion`] — 版表記が形式不正、または ISO 未規定
+    ///
+    /// [`FileErrorKind::SignatureNotFound`]: crate::file::error::FileErrorKind::SignatureNotFound
+    /// [`FileErrorKind::UnexpectedEof`]: crate::file::error::FileErrorKind::UnexpectedEof
+    /// [`FileErrorKind::UnsupportedVersion`]: crate::file::error::FileErrorKind::UnsupportedVersion
+    pub fn parse(input: &[u8]) -> Result<Self, FileError> {
+        let origin = find_signature(input)
+            .ok_or_else(|| FileError::signature_not_found_at(ByteOffset::new(SCAN_ORIGIN)))?;
         let version_start = origin + SIGNATURE.len();
         let version_bytes = read_version_bytes(input, version_start);
         let position = ByteOffset::new(version_start as u64);
         if version_bytes.is_empty() {
-            return Err(PdfError::new(PdfErrorCode::UnexpectedEof)
-                .with_position(position)
-                .with_message("input ended before the version could be read"));
+            return Err(FileError::unexpected_eof_at(position));
         }
-        let version = PdfVersion::from_bytes(version_bytes).ok_or_else(|| {
-            PdfError::new(PdfErrorCode::UnsupportedVersion)
-                .with_position(position)
-                .with_message(format!(
-                    "unsupported version {}",
-                    String::from_utf8_lossy(version_bytes)
-                ))
-        })?;
+        let version = PdfVersion::from_bytes(version_bytes)
+            .ok_or_else(|| FileError::unsupported_version_at(position, version_bytes.to_vec()))?;
         let after_version = version_start + version_bytes.len();
         Ok(Self {
             version,
