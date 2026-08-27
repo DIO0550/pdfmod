@@ -1,5 +1,5 @@
 use crate::byte_offset::ByteOffset;
-use crate::error::pdf_error_code::PdfErrorCode;
+use crate::file::error::FileErrorKind;
 use crate::file::startxref::StartXref;
 
 #[test]
@@ -25,5 +25,5 @@ fn parse_broken_last_section_does_not_fall_back_to_earlier_section() {
     // （古い xref を最新と誤認させないため、候補は最後の %%EOF で確定させる）
     let input = b"dummy\nstartxref\n0\n%%EOF\nstartxref\nabc\n%%EOF\n";
     let error = StartXref::parse(input).expect_err("last section is broken");
-    assert_eq!(error.code(), PdfErrorCode::InvalidNumber);
+    assert_eq!(error.kind, FileErrorKind::OffsetNotFound);
 }

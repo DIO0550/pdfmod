@@ -11,8 +11,7 @@
 //! 走査しない」要件を優先し、`startxref` も同じ窓の内側でのみ探す。
 
 use crate::byte_offset::ByteOffset;
-use crate::error::pdf_error::PdfError;
-use crate::error::pdf_error_code::PdfErrorCode;
+use crate::file::error::FileError;
 use crate::lexer::byte_kind::ByteKind;
 use crate::lexer::eol::EolKind;
 use crate::lexer::skip::skip_whitespace_and_comments;
@@ -49,28 +48,32 @@ impl StartXref {
     ///
     /// # Errors
     ///
-    /// - `InvalidSyntax`: 走査範囲内に `%%EOF` が無い / その手前に `startxref` が無い /
-    ///   オフセット値と `%%EOF` の間に空白・コメント以外のバイトが残っている /
-    ///   オフセット値がファイル長以上
-    /// - `InvalidNumber`: `startxref` の後に 10 進数字が 1 桁も無い / 数値が `u64` を溢れる
-    pub fn parse(input: &[u8]) -> Result<Self, PdfError> {
+    /// - [`FileErrorKind::EofMarkerNotFound`] — 走査範囲内に `%%EOF` が無い
+    /// - [`FileErrorKind::StartXrefNotFound`] — `%%EOF` の手前に `startxref` が無い
+    /// - [`FileErrorKind::OffsetNotFound`] — `startxref` の後に 10 進数字が 1 桁も無い
+    /// - [`FileErrorKind::OffsetOverflow`] — オフセット値が `u64` を溢れる
+    /// - [`FileErrorKind::UnexpectedBytesBeforeEofMarker`] — オフセット値と `%%EOF` の間に
+    ///   空白・コメント以外のバイトが残っている
+    /// - [`FileErrorKind::OffsetOutOfFile`] — オフセット値がファイル長以上
+    ///
+    /// [`FileErrorKind::EofMarkerNotFound`]: crate::file::error::FileErrorKind::EofMarkerNotFound
+    /// [`FileErrorKind::StartXrefNotFound`]: crate::file::error::FileErrorKind::StartXrefNotFound
+    /// [`FileErrorKind::OffsetNotFound`]: crate::file::error::FileErrorKind::OffsetNotFound
+    /// [`FileErrorKind::OffsetOverflow`]: crate::file::error::FileErrorKind::OffsetOverflow
+    /// [`FileErrorKind::UnexpectedBytesBeforeEofMarker`]: crate::file::error::FileErrorKind::UnexpectedBytesBeforeEofMarker
+    /// [`FileErrorKind::OffsetOutOfFile`]: crate::file::error::FileErrorKind::OffsetOutOfFile
+    pub fn parse(input: &[u8]) -> Result<Self, FileError> {
         let scan_start = input.len().saturating_sub(SCAN_LIMIT);
         let eof_pos =
             find_last_marker(input, EOF_MARKER, scan_start, input.len()).ok_or_else(|| {
-                PdfError::new(PdfErrorCode::InvalidSyntax).with_message(format!(
-                    "%%EOF not found within the last {SCAN_LIMIT} bytes"
-                ))
+                FileError::eof_marker_not_found_at(ByteOffset::new(scan_start as u64))
             })?;
         // 綴りは Keyword::StartXref が持つ。as_bytes() の戻り値は self に借用が紐づくため、
         // 値のほうを先に束縛してから 2 回呼ぶ。
         let startxref_keyword = Keyword::StartXref;
         let keyword_pos =
             find_last_marker(input, startxref_keyword.as_bytes(), scan_start, eof_pos).ok_or_else(
-                || {
-                    PdfError::new(PdfErrorCode::InvalidSyntax)
-                        .with_position(ByteOffset::new(eof_pos as u64))
-                        .with_message("startxref keyword not found before %%EOF")
-                },
+                || FileError::start_xref_not_found_at(ByteOffset::new(eof_pos as u64)),
             )?;
         let value_start = keyword_pos.saturating_add(startxref_keyword.as_bytes().len());
         let offset = parse_offset_value(input, value_start, eof_pos)?;
@@ -153,7 +156,7 @@ fn is_inside_comment(input: &[u8], pos: usize) -> bool {
 /// `start`（`startxref` の直後）から `end`（`%%EOF` の位置）までを読み、オフセット値を返す。
 ///
 /// 数字列の前後に空白とコメントを許容し、それ以外のバイトが残っていればエラーにする。
-fn parse_offset_value(input: &[u8], start: usize, end: usize) -> Result<ByteOffset, PdfError> {
+fn parse_offset_value(input: &[u8], start: usize, end: usize) -> Result<ByteOffset, FileError> {
     let position = ByteOffset::new(start as u64);
     let digits_start = skip_whitespace_and_comments(input, start, end);
     let mut cursor = digits_start;
@@ -168,30 +171,20 @@ fn parse_offset_value(input: &[u8], start: usize, end: usize) -> Result<ByteOffs
         value = value
             .checked_mul(DECIMAL_RADIX)
             .and_then(|shifted| shifted.checked_add(u64::from(byte - ASCII_ZERO)))
-            .ok_or_else(|| {
-                PdfError::new(PdfErrorCode::InvalidNumber)
-                    .with_position(position)
-                    .with_message("startxref offset overflows u64")
-            })?;
+            .ok_or_else(|| FileError::offset_overflow_at(position))?;
         cursor = cursor.saturating_add(1);
     }
     if cursor == digits_start {
-        return Err(PdfError::new(PdfErrorCode::InvalidNumber)
-            .with_position(position)
-            .with_message("startxref is not followed by a decimal offset"));
+        return Err(FileError::offset_not_found_at(position));
     }
     if skip_whitespace_and_comments(input, cursor, end) != end {
-        return Err(PdfError::new(PdfErrorCode::InvalidSyntax)
-            .with_position(ByteOffset::new(cursor as u64))
-            .with_message("unexpected bytes between the startxref offset and %%EOF"));
+        return Err(FileError::unexpected_bytes_before_eof_marker_at(
+            ByteOffset::new(cursor as u64),
+        ));
     }
-    if value >= input.len() as u64 {
-        return Err(PdfError::new(PdfErrorCode::InvalidSyntax)
-            .with_position(position)
-            .with_message(format!(
-                "startxref offset {value} is outside the file of {} bytes",
-                input.len()
-            )));
+    let file_len = input.len() as u64;
+    if value >= file_len {
+        return Err(FileError::offset_out_of_file_at(position, value, file_len));
     }
     Ok(ByteOffset::new(value))
 }

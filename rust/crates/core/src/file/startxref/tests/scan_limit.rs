@@ -1,6 +1,6 @@
 use super::super::SCAN_LIMIT;
 use crate::byte_offset::ByteOffset;
-use crate::error::pdf_error_code::PdfErrorCode;
+use crate::file::error::FileErrorKind;
 use crate::file::startxref::StartXref;
 
 /// 走査窓の境界テスト用の末尾構造（`startxref` から `%%EOF` の改行まで）。
@@ -36,7 +36,7 @@ fn parse_startxref_at_first_byte_of_window_succeeds() {
 }
 
 #[test]
-fn parse_startxref_one_byte_before_window_returns_invalid_syntax() {
+fn parse_startxref_one_byte_before_window_returns_start_xref_not_found() {
     // 末尾ゴミが 1 バイト増えて startxref が走査窓から出た境界を拒否することを確認する
     let mut input = WINDOW_TAIL.to_vec();
     input.extend(std::iter::repeat_n(
@@ -44,25 +44,20 @@ fn parse_startxref_one_byte_before_window_returns_invalid_syntax() {
         SCAN_LIMIT - WINDOW_TAIL.len() + 1,
     ));
     let error = StartXref::parse(&input).expect_err("keyword is outside the window");
-    assert_eq!(error.code(), PdfErrorCode::InvalidSyntax);
-    assert!(error
-        .message()
-        .is_some_and(|message| message.contains("startxref keyword not found")));
+    assert_eq!(error.kind, FileErrorKind::StartXrefNotFound);
 }
 
 #[test]
-fn parse_eof_marker_beyond_scan_limit_returns_invalid_syntax() {
+fn parse_eof_marker_beyond_scan_limit_returns_eof_marker_not_found() {
     // 末尾 1024 バイトのゴミにより %%EOF が走査窓の外へ出た入力がエラーになることを確認する
     let mut input = WINDOW_TAIL.to_vec();
     input.extend(std::iter::repeat_n(b'z', SCAN_LIMIT));
     let error = StartXref::parse(&input).expect_err("%%EOF is outside the scan window");
-    assert_eq!(error.code(), PdfErrorCode::InvalidSyntax);
-    let expected = format!("%%EOF not found within the last {SCAN_LIMIT} bytes");
-    assert_eq!(error.message(), Some(expected.as_str()));
+    assert_eq!(error.kind, FileErrorKind::EofMarkerNotFound);
 }
 
 #[test]
-fn parse_startxref_outside_window_with_eof_inside_returns_invalid_syntax() {
+fn parse_startxref_outside_window_with_eof_inside_returns_start_xref_not_found() {
     // %%EOF は窓内でも startxref が窓の外なら拒否することを確認する
     // （TypeScript 実装は無制限に遡って受理するが、有限走査を優先した意図的な差異）
     let mut input = b"dummy\nstartxref\n0\n%%EOF\n".to_vec();
@@ -71,10 +66,7 @@ fn parse_startxref_outside_window_with_eof_inside_returns_invalid_syntax() {
     let padding = eof_pos + SCAN_LIMIT - input.len();
     input.extend(std::iter::repeat_n(b' ', padding));
     let error = StartXref::parse(&input).expect_err("keyword is outside the window");
-    assert_eq!(error.code(), PdfErrorCode::InvalidSyntax);
-    assert!(error
-        .message()
-        .is_some_and(|message| message.contains("startxref keyword not found before %%EOF")));
+    assert_eq!(error.kind, FileErrorKind::StartXrefNotFound);
 }
 
 #[test]
