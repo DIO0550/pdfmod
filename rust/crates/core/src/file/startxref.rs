@@ -177,9 +177,11 @@ fn parse_offset_value(input: &[u8], start: usize, end: usize) -> Result<ByteOffs
     if cursor == digits_start {
         return Err(FileError::offset_not_found_at(position));
     }
-    if skip_whitespace_and_comments(input, cursor, end) != end {
+    // 数字列の後に空白・コメントが挟まりうるため、それらを読み飛ばした先が残余バイトの開始位置。
+    let leftover_start = skip_whitespace_and_comments(input, cursor, end);
+    if leftover_start != end {
         return Err(FileError::unexpected_bytes_before_eof_marker_at(
-            ByteOffset::new(cursor as u64),
+            ByteOffset::new(leftover_start as u64),
         ));
     }
     let file_len = input.len() as u64;

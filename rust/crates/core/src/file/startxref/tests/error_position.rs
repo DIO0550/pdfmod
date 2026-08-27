@@ -49,6 +49,24 @@ fn unexpected_bytes_report_leftover_position() {
 }
 
 #[test]
+fn unexpected_bytes_skip_whitespace_before_reporting_position() {
+    // 数字列と余剰バイトの間に空白があるとき、空白ではなく余剰バイトの位置を指すことを確認する
+    let input = b"dummy\nstartxref\n123  abc\n%%EOF\n";
+    let error = StartXref::parse(input).expect_err("garbage after value");
+    assert_eq!(error.kind, FileErrorKind::UnexpectedBytesBeforeEofMarker);
+    assert_eq!(error.position, ByteOffset::new(21));
+}
+
+#[test]
+fn unexpected_bytes_skip_comment_before_reporting_position() {
+    // 数字列の後のコメントも読み飛ばし、その先の余剰バイトの位置を指すことを確認する
+    let input = b"dummy\nstartxref\n123 %note\nabc\n%%EOF\n";
+    let error = StartXref::parse(input).expect_err("garbage after value");
+    assert_eq!(error.kind, FileErrorKind::UnexpectedBytesBeforeEofMarker);
+    assert_eq!(error.position, ByteOffset::new(26));
+}
+
+#[test]
 fn offset_overflow_reports_value_start_position() {
     // u64 を溢れる値でも位置が値の開始位置で報告されることを確認する
     let input = b"dummy\nstartxref\n99999999999999999999\n%%EOF\n";
