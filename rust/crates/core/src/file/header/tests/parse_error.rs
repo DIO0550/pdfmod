@@ -81,6 +81,18 @@ fn parse_non_utf8_version_preserves_raw_bytes() {
 }
 
 #[test]
+fn parse_version_longer_than_max_len_is_truncated_in_actual() {
+    // 版表記が VERSION_MAX_LEN を超えるとき actual が 8 バイトで打ち切られることを確認する
+    let error = PdfHeader::parse(b"%PDF-123456789\n").expect_err("invalid version");
+    assert_eq!(
+        error.kind,
+        FileErrorKind::UnsupportedVersion {
+            actual: b"12345678".to_vec(),
+        }
+    );
+}
+
+#[test]
 fn parse_error_codes_are_mutually_distinct() {
     // 3 種のヘッダ解析エラーを呼び出し側で区別できることを確認する
     let kinds = [
