@@ -1,4 +1,4 @@
-use crate::error::pdf_error_code::PdfErrorCode;
+use crate::file::error::FileErrorKind;
 use crate::file::header::PdfHeader;
 use crate::file::version::PdfVersion;
 
@@ -42,21 +42,29 @@ fn parse_version_followed_by_space_returns_version() {
 fn parse_unsupported_version_returns_error() {
     // ISO 未規定版が UnsupportedVersion になることを確認する
     let error = PdfHeader::parse(b"%PDF-1.9\n").expect_err("invalid version");
-    assert_eq!(error.code(), PdfErrorCode::UnsupportedVersion);
+    assert!(
+        matches!(error.kind, FileErrorKind::UnsupportedVersion { .. }),
+        "unexpected kind: {:?}",
+        error.kind
+    );
 }
 
 #[test]
 fn parse_missing_version_returns_unexpected_eof() {
     // シグネチャ直後で入力が尽きると UnexpectedEof になることを確認する
     let error = PdfHeader::parse(b"%PDF-").expect_err("missing version");
-    assert_eq!(error.code(), PdfErrorCode::UnexpectedEof);
+    assert_eq!(error.kind, FileErrorKind::UnexpectedEof);
 }
 
 #[test]
 fn parse_version_over_maximum_length_returns_error() {
     // 8 バイトを超える版表記が上限で打ち切られて拒否されることを確認する
     let error = PdfHeader::parse(b"%PDF-123456789\n").expect_err("invalid version");
-    assert_eq!(error.code(), PdfErrorCode::UnsupportedVersion);
+    assert!(
+        matches!(error.kind, FileErrorKind::UnsupportedVersion { .. }),
+        "unexpected kind: {:?}",
+        error.kind
+    );
 }
 
 #[test]

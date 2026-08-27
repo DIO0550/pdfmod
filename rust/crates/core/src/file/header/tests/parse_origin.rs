@@ -1,5 +1,5 @@
 use crate::byte_offset::ByteOffset;
-use crate::error::pdf_error_code::PdfErrorCode;
+use crate::file::error::FileErrorKind;
 use crate::file::header::PdfHeader;
 use crate::file::version::PdfVersion;
 
@@ -37,7 +37,7 @@ fn origin_signature_crossing_scan_limit_is_rejected() {
     // シグネチャが走査上限を 1 バイト跨ぐと検出されないことを確認する
     let input = with_prefix(1020, b"%PDF-1.7\n");
     let error = PdfHeader::parse(&input).expect_err("signature outside limit");
-    assert_eq!(error.code(), PdfErrorCode::InvalidHeader);
+    assert_eq!(error.kind, FileErrorKind::SignatureNotFound);
 }
 
 #[test]
