@@ -55,7 +55,7 @@ fn parse_accepts_every_whitespace_byte_as_separator() {
         input.push(separator);
         input.extend_from_slice(b"5\n%%EOF\n");
         let start_xref = StartXref::parse(&input)
-            .unwrap_or_else(|error| panic!("{name} should separate the offset: {error}"));
+            .unwrap_or_else(|error| panic!("{name} should separate the offset: {error:?}"));
         assert_eq!(
             start_xref.offset(),
             ByteOffset::new(5),
