@@ -33,3 +33,13 @@ fn maximum_length_copy_decodes_258_bytes() {
 
     assert_eq!(decode_zlib_ok(&input), vec![b'a'; 259]);
 }
+
+// 空データを圧縮したストリームが空の展開結果になることを確認する。
+#[test]
+fn empty_payload_stream_decodes_to_empty_output() {
+    // 03 00: BFINAL=1 / BTYPE=01 とブロック終端シンボルだけの固定 Huffman ブロック
+    // 00 00 00 01: 空データの Adler-32
+    let input = [0x78, 0xDA, 0x03, 0x00, 0x00, 0x00, 0x00, 0x01];
+
+    assert_eq!(decode_zlib_ok(&input), b"");
+}
