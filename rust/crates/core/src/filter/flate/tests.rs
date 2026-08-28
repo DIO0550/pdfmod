@@ -1,8 +1,11 @@
 use super::*;
 use crate::filter::error::FlateErrorKind;
 
+mod fixed;
 mod malformed;
+mod multi_block;
 mod stored;
+mod zlib_wrapper;
 
 // 展開に成功する前提で結果のバイト列を取り出す。
 fn decode_zlib_ok(input: &[u8]) -> Vec<u8> {
