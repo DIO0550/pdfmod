@@ -4,10 +4,10 @@
 //! `docs/specs/07_compression_filters.md` §3.1 は外部ライブラリとの連携を前提に
 //! 書かれているが、本クレートは外部 crate 依存ゼロの制約により自前実装する。
 
-// huffman は PR② で追加する（このファイルへの追記も PR② の変更に含む）
 pub mod adler32;
 pub mod back_reference;
 pub mod bit_reader;
+pub mod huffman;
 pub mod inflate;
 pub mod symbols;
 pub mod zlib_header;

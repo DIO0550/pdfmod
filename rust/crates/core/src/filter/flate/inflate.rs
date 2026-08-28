@@ -1,7 +1,15 @@
 //! DEFLATE ブロック列の展開。RFC 1951 §3.2.3 に対応する。
 
 use crate::filter::error::FlateError;
+use crate::filter::flate::back_reference;
 use crate::filter::flate::bit_reader::BitReader;
+use crate::filter::flate::huffman::HuffmanTables;
+use crate::filter::flate::symbols::{
+    DISTANCE_BASE, DISTANCE_EXTRA_BITS, END_OF_BLOCK, LENGTH_BASE, LENGTH_EXTRA_BITS,
+};
+
+/// 長さシンボルの最小値（RFC 1951 §3.2.5 の表は 257 から始まる）。
+const FIRST_LENGTH_SYMBOL: usize = 257;
 
 /// 非圧縮ブロックの LEN / NLEN のバイト数。
 const STORED_LENGTH_FIELD_LEN: usize = 2;
@@ -23,8 +31,9 @@ pub fn inflate(reader: &mut BitReader<'_>) -> Result<Vec<u8>, FlateError> {
         let block_type = u8::try_from(reader.read_bits(2)?).unwrap_or(3);
         match block_type {
             0 => inflate_stored(reader, &mut output)?,
-            // PR② で固定 Huffman、PR③ で動的 Huffman の展開に差し替える
-            1 | 2 => return Err(FlateError::unsupported_block_type_at(position, block_type)),
+            1 => inflate_huffman(reader, &mut output, &HuffmanTables::fixed()?)?,
+            // PR③ で動的 Huffman の展開に差し替える
+            2 => return Err(FlateError::unsupported_block_type_at(position, block_type)),
             _ => return Err(FlateError::reserved_block_type_at(position, block_type)),
         }
         if is_final {
@@ -56,4 +65,51 @@ fn read_u16_le(reader: &mut BitReader<'_>) -> Result<u16, FlateError> {
     let low = bytes.first().copied().unwrap_or(0);
     let high = bytes.get(1).copied().unwrap_or(0);
     Ok(u16::from(low) | (u16::from(high) << 8))
+}
+
+/// Huffman 符号で圧縮されたブロックを、ブロック終端シンボルまで展開する。
+fn inflate_huffman(
+    reader: &mut BitReader<'_>,
+    output: &mut Vec<u8>,
+    tables: &HuffmanTables,
+) -> Result<(), FlateError> {
+    loop {
+        let symbol = tables.literal.decode(reader)?;
+        match symbol {
+            0..=255 => output.push(u8::try_from(symbol).unwrap_or_default()),
+            END_OF_BLOCK => return Ok(()),
+            _ => {
+                let length = read_length(reader, symbol)?;
+                let distance_symbol = tables.distance.decode(reader)?;
+                let distance = read_distance(reader, distance_symbol)?;
+                back_reference::copy(output, distance, length, reader.position())?;
+            }
+        }
+    }
+}
+
+/// 長さシンボル（257..=285）と追加ビットから実際のコピー長を求める。
+fn read_length(reader: &mut BitReader<'_>, symbol: u16) -> Result<usize, FlateError> {
+    let index = usize::from(symbol)
+        .checked_sub(FIRST_LENGTH_SYMBOL)
+        .ok_or_else(|| FlateError::invalid_length_symbol_at(reader.position(), symbol))?;
+    let base = LENGTH_BASE
+        .get(index)
+        .copied()
+        .ok_or_else(|| FlateError::invalid_length_symbol_at(reader.position(), symbol))?;
+    let extra_bits = LENGTH_EXTRA_BITS.get(index).copied().unwrap_or(0);
+    let extra = reader.read_bits(extra_bits)?;
+    Ok(usize::from(base).saturating_add(usize::try_from(extra).unwrap_or(0)))
+}
+
+/// 距離シンボル（0..=29）と追加ビットから実際の後方参照距離を求める。
+fn read_distance(reader: &mut BitReader<'_>, symbol: u16) -> Result<usize, FlateError> {
+    let index = usize::from(symbol);
+    let base = DISTANCE_BASE
+        .get(index)
+        .copied()
+        .ok_or_else(|| FlateError::invalid_distance_symbol_at(reader.position(), symbol))?;
+    let extra_bits = DISTANCE_EXTRA_BITS.get(index).copied().unwrap_or(0);
+    let extra = reader.read_bits(extra_bits)?;
+    Ok(usize::from(base).saturating_add(usize::try_from(extra).unwrap_or(0)))
 }
