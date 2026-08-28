@@ -1,5 +1,6 @@
 mod comment_handling;
 mod eol_variants;
+mod error_position;
 mod malformed_offset;
 mod multiple_eof;
 mod parse_basic;

@@ -9,7 +9,7 @@ fn parse_accepts_lf_crlf_and_cr_separated_tails() {
     for (eol, name) in cases {
         let input = tail("dummy body", "9", eol);
         let start_xref = StartXref::parse(&input)
-            .unwrap_or_else(|error| panic!("{name} separated tail should parse: {error}"));
+            .unwrap_or_else(|error| panic!("{name} separated tail should parse: {error:?}"));
         assert_eq!(
             start_xref.offset(),
             ByteOffset::new(9),
