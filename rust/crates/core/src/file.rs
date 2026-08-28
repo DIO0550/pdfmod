@@ -7,6 +7,7 @@
 //! xref テーブルとトレイラの解析は [`crate::xref`] モジュールが担う
 //! （[`crate::xref::table::parse`] / [`crate::xref::trailer::parse`]）。
 
+pub mod error;
 pub mod header;
 pub mod startxref;
 pub mod version;

@@ -1,5 +1,5 @@
 use crate::byte_offset::ByteOffset;
-use crate::error::pdf_error_code::PdfErrorCode;
+use crate::file::error::FileErrorKind;
 use crate::file::startxref::StartXref;
 
 #[test]
@@ -14,10 +14,7 @@ fn parse_eof_marker_in_comment_body_is_skipped() {
 fn parse_commented_out_startxref_is_rejected() {
     // 行頭 % でコメント化された startxref をキーワードと誤認しないことを確認する
     let error = StartXref::parse(b"%startxref\n5\n%%EOF\n").expect_err("keyword is commented out");
-    assert_eq!(error.code(), PdfErrorCode::InvalidSyntax);
-    assert!(error
-        .message()
-        .is_some_and(|message| message.contains("startxref keyword not found")));
+    assert_eq!(error.kind, FileErrorKind::StartXrefNotFound);
 }
 
 #[test]
@@ -25,28 +22,29 @@ fn parse_eof_marker_inside_comment_is_rejected() {
     // %%%EOF がトークン境界を通っても、コメント内判定で棄却されることを確認する
     let error =
         StartXref::parse(b"dummy\nstartxref\n5\n%%%EOF\n").expect_err("candidate is commented");
-    assert_eq!(error.code(), PdfErrorCode::InvalidSyntax);
+    assert_eq!(error.kind, FileErrorKind::EofMarkerNotFound);
 }
 
 #[test]
-fn parse_inputs_without_eof_marker_return_invalid_syntax_without_panic() {
+fn parse_inputs_without_eof_marker_return_eof_marker_not_found_without_panic() {
     // 空入力・マーカーより短い入力・マーカーが無い入力が panic せずエラーになることを確認する
-    let cases: [(&[u8], &str); 3] = [
-        (b"", "empty input"),
-        (b"ab", "input shorter than the marker"),
-        (b"no eof marker here", "input without any marker"),
+    let cases: [(&[u8], &str, FileErrorKind); 3] = [
+        (b"", "empty input", FileErrorKind::EofMarkerNotFound),
+        (
+            b"ab",
+            "input shorter than the marker",
+            FileErrorKind::EofMarkerNotFound,
+        ),
+        (
+            b"no eof marker here",
+            "input without any marker",
+            FileErrorKind::EofMarkerNotFound,
+        ),
     ];
-    for (input, name) in cases {
+    for (input, name, expected_kind) in cases {
         let error = StartXref::parse(input).expect_err("no %%EOF marker");
         assert_eq!(
-            error.code(),
-            PdfErrorCode::InvalidSyntax,
-            "{name} should be rejected as invalid syntax"
-        );
-        assert!(
-            error
-                .message()
-                .is_some_and(|message| message.contains("%%EOF not found")),
+            error.kind, expected_kind,
             "{name} should report the missing %%EOF"
         );
     }

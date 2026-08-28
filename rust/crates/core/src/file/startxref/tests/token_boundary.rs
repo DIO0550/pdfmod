@@ -1,30 +1,23 @@
 use crate::byte_offset::ByteOffset;
-use crate::error::pdf_error_code::PdfErrorCode;
+use crate::file::error::FileErrorKind;
 use crate::file::startxref::StartXref;
 
 #[test]
 fn parse_rejects_markers_glued_to_regular_bytes() {
     // 前後が非境界バイトのマーカー（x%%EOF / %%EOFx / xstartxref / startxrefX）を
     // 誤検出しないことを確認する
-    let cases: [(&[u8], &str); 4] = [
-        (b"startxref\n5\nx%%EOF\n", "%%EOF not found"),
-        (b"dummy\nstartxref\n5\n%%EOFx\n", "%%EOF not found"),
-        (b"xstartxref\n5\n%%EOF\n", "startxref keyword not found"),
-        (b"startxrefX\n5\n%%EOF\n", "startxref keyword not found"),
+    let cases: [(&[u8], FileErrorKind); 4] = [
+        (b"startxref\n5\nx%%EOF\n", FileErrorKind::EofMarkerNotFound),
+        (
+            b"dummy\nstartxref\n5\n%%EOFx\n",
+            FileErrorKind::EofMarkerNotFound,
+        ),
+        (b"xstartxref\n5\n%%EOF\n", FileErrorKind::StartXrefNotFound),
+        (b"startxrefX\n5\n%%EOF\n", FileErrorKind::StartXrefNotFound),
     ];
-    for (input, expected_message) in cases {
+    for (input, expected_kind) in cases {
         let error = StartXref::parse(input).expect_err("candidate is not a token");
-        assert_eq!(
-            error.code(),
-            PdfErrorCode::InvalidSyntax,
-            "{expected_message}: unexpected error code"
-        );
-        assert!(
-            error
-                .message()
-                .is_some_and(|message| message.contains(expected_message)),
-            "error message should mention {expected_message}"
-        );
+        assert_eq!(error.kind, expected_kind, "kind: {expected_kind:?}");
     }
 }
 
@@ -37,13 +30,10 @@ fn parse_keyword_preceded_by_delimiter_is_accepted() {
 }
 
 #[test]
-fn parse_delimiter_between_offset_and_eof_marker_returns_invalid_syntax() {
+fn parse_delimiter_between_offset_and_eof_marker_returns_unexpected_bytes() {
     // デリミタはトークン境界だが、オフセットと %%EOF の間に残っていれば残余バイトとして
     // 拒否されることを確認する（境界判定より残余バイト検査が後段で効く）
     let error =
         StartXref::parse(b"dummy\nstartxref\n5\n>>%%EOF\n").expect_err("delimiter is left over");
-    assert_eq!(error.code(), PdfErrorCode::InvalidSyntax);
-    assert!(error
-        .message()
-        .is_some_and(|message| message.contains("unexpected bytes between")));
+    assert_eq!(error.kind, FileErrorKind::UnexpectedBytesBeforeEofMarker);
 }
