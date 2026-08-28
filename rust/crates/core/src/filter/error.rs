@@ -33,14 +33,6 @@ pub enum FlateErrorKind {
         /// 実際に読み取った BTYPE の値。
         actual: u8,
     },
-    /// ブロック種別が本 PR ではまだ実装されていない。
-    ///
-    /// PR① / PR② の途中状態でのみ返る暫定バリアントで、動的 Huffman を実装する
-    /// PR③ で削除する。
-    UnsupportedBlockType {
-        /// 実際に読み取った BTYPE の値。
-        actual: u8,
-    },
     /// 非圧縮ブロックの LEN と NLEN が補数関係になっていない。
     StoredLengthMismatch {
         /// 実際に読み取った LEN。
@@ -140,11 +132,6 @@ impl FlateError {
     /// [`FlateErrorKind::ReservedBlockType`] を指定位置・実値で構築する。
     pub fn reserved_block_type_at(position: ByteOffset, actual: u8) -> Self {
         Self::new(FlateErrorKind::ReservedBlockType { actual }, position)
-    }
-
-    /// [`FlateErrorKind::UnsupportedBlockType`] を指定位置・実値で構築する。
-    pub fn unsupported_block_type_at(position: ByteOffset, actual: u8) -> Self {
-        Self::new(FlateErrorKind::UnsupportedBlockType { actual }, position)
     }
 
     /// [`FlateErrorKind::StoredLengthMismatch`] を指定位置・実値で構築する。
