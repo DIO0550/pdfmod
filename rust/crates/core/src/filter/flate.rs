@@ -4,13 +4,16 @@
 //! `docs/specs/07_compression_filters.md` §3.1 は外部ライブラリとの連携を前提に
 //! 書かれているが、本クレートは外部 crate 依存ゼロの制約により自前実装する。
 
-pub mod adler32;
-pub mod back_reference;
-pub mod bit_reader;
-pub mod huffman;
-pub mod inflate;
-pub mod symbols;
-pub mod zlib_header;
+// 展開の実装詳細はクレート内に閉じる。外へ出すのは decode_zlib / decode_raw の 2 本だけで、
+// ビットリーダ・符号表・定数表を公開 API に載せると互換性の負債になる
+// （`lexer` が `mod cursor;` / `pub(crate) mod byte_ops;` としているのと同じ扱い）。
+pub(crate) mod adler32;
+pub(crate) mod back_reference;
+pub(crate) mod bit_reader;
+pub(crate) mod huffman;
+pub(crate) mod inflate;
+pub(crate) mod symbols;
+pub(crate) mod zlib_header;
 
 use crate::byte_offset::ByteOffset;
 use crate::filter::error::FlateError;
@@ -34,7 +37,7 @@ const ADLER32_LEN: usize = 4;
 /// - [`FlateErrorKind::InvalidHeaderCheck`] — 検査値が 31 の倍数でない
 /// - [`FlateErrorKind::PresetDictionaryUnsupported`] — FDICT が立っている
 /// - [`FlateErrorKind::ChecksumMismatch`] — Adler-32 が一致しない
-/// - DEFLATE 本体の展開で発生するエラー（[`inflate::inflate`] を参照）
+/// - DEFLATE 本体の展開で検出した破損（ブロック種別・Huffman 符号・後方参照の距離）
 ///
 /// # panic
 ///
@@ -75,7 +78,7 @@ pub fn decode_zlib(input: &[u8]) -> Result<Vec<u8>, FlateError> {
 ///
 /// # Errors
 ///
-/// DEFLATE 本体の展開で発生するエラー（[`inflate::inflate`] を参照）。
+/// DEFLATE 本体の展開で検出した破損（ブロック種別・Huffman 符号・後方参照の距離）。
 ///
 /// # panic
 ///
