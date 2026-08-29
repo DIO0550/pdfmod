@@ -32,9 +32,19 @@ pub fn copy(
         ));
     }
 
-    // 重なりコピーでは push したばかりのバイトを読み直すため、範囲を先に切り出さず
-    // 1 バイトずつ「読んで追記する」を繰り返す。
-    for source in (available - distance..).take(length) {
+    let start = available - distance;
+    let end = start.saturating_add(length);
+    // 参照範囲が既存の出力に収まる（length <= distance）なら、書きながら読み直す必要が
+    // ないので一括で複製する。範囲が出力長を超えないことを end で明示的に確かめてから
+    // 呼ぶ（extend_from_within は範囲外で panic するため、条件を外部の証明に頼らない）。
+    if length <= distance && end <= available {
+        output.extend_from_within(start..end);
+        return Ok(());
+    }
+
+    // 重なりコピー（length > distance）では push したばかりのバイトを読み直すため、
+    // 範囲を先に切り出さず 1 バイトずつ「読んで追記する」を繰り返す。
+    for source in (start..).take(length) {
         let byte = output
             .get(source)
             .copied()
@@ -73,6 +83,24 @@ mod tests {
 
         assert_eq!(copy(&mut output, 3, 8, ByteOffset::new(0)), Ok(()));
         assert_eq!(output, b"abcabcabcab");
+    }
+
+    // 長さが距離と等しい（重ならない最大長）コピーが一括複製経路で正しく動くことを確認する。
+    #[test]
+    fn copy_with_length_equal_to_distance_duplicates_whole_window() {
+        let mut output = b"abcd".to_vec();
+
+        assert_eq!(copy(&mut output, 4, 4, ByteOffset::new(0)), Ok(()));
+        assert_eq!(output, b"abcdabcd");
+    }
+
+    // 長さが距離を 1 だけ超えるコピーが 1 バイトずつの経路へ切り替わることを確認する。
+    #[test]
+    fn copy_with_length_just_over_distance_wraps_into_new_bytes() {
+        let mut output = b"abcd".to_vec();
+
+        assert_eq!(copy(&mut output, 4, 5, ByteOffset::new(0)), Ok(()));
+        assert_eq!(output, b"abcdabcda");
     }
 
     // 距離が出力長ちょうど（先頭バイトを参照する）場合に成功することを確認する。
