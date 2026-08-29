@@ -15,14 +15,22 @@ fn raw_deflate_decodes_without_header_or_checksum() {
 
 // zlib 形式のバイト列を decode_raw に渡すと、ヘッダ 2 バイトを DEFLATE として読んで失敗することを確認する。
 #[test]
-fn zlib_stream_passed_to_decode_raw_is_not_silently_accepted() {
+fn zlib_stream_passed_to_decode_raw_is_rejected() {
     let input = [
         0x78, 0x01, 0xCB, 0x48, 0xCD, 0xC9, 0xC9, 0x07, 0x00, 0x06, 0x2C, 0x02, 0x15,
     ];
 
-    assert!(
-        decode_raw(&input) != Ok(b"hello".to_vec()),
-        "zlib header must not be skipped by decode_raw"
+    // 0x78 = 0b0111_1000 を LSB-first で読むと BFINAL=0 / BTYPE=00 になる。バイト境界へ
+    // 切り上げた先の 0x01 0xCB が LEN、0x48 0xCD が NLEN として読まれ、
+    // LEN=0xCB01 の補数は 0x34FE なので NLEN=0xCD48 とは一致しない
+    let error = decode_raw(&input).expect_err("zlib header must not be skipped by decode_raw");
+
+    assert_eq!(
+        error.kind,
+        FlateErrorKind::StoredLengthMismatch {
+            len: 0xCB01,
+            nlen: 0xCD48,
+        }
     );
 }
 
