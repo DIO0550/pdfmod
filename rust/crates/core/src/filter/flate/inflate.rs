@@ -57,6 +57,9 @@ const STORED_LENGTH_FIELD_LEN: usize = 2;
 /// 各ブロック種別の展開で検出した破損はそれぞれのエラー種別を返す。
 pub fn inflate(reader: &mut BitReader<'_>) -> Result<Vec<u8>, FlateError> {
     let mut output = Vec::new();
+    // 固定符号表は RFC 1951 §3.2.6 の定数から作られる不変の表なので、
+    // BTYPE=01 のブロックが現れるたびに作り直さず、ループの外で一度だけ構築する。
+    let fixed_tables = HuffmanTables::fixed()?;
     loop {
         let is_final = reader.read_bit()? == 1;
         let position = reader.position();
@@ -66,7 +69,7 @@ pub fn inflate(reader: &mut BitReader<'_>) -> Result<Vec<u8>, FlateError> {
         let block_type = u8::try_from(reader.read_bits(2)?).unwrap_or(3);
         match block_type {
             0 => inflate_stored(reader, &mut output)?,
-            1 => inflate_huffman(reader, &mut output, &HuffmanTables::fixed()?)?,
+            1 => inflate_huffman(reader, &mut output, &fixed_tables)?,
             2 => {
                 let tables = read_dynamic_tables(reader)?;
                 inflate_huffman(reader, &mut output, &tables)?;
