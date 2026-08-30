@@ -157,6 +157,27 @@ impl HuffmanTable {
         }
         Err(FlateError::invalid_huffman_code_at(reader.position()))
     }
+
+    /// 固定 Huffman のリテラル／長さ符号長表（RFC 1951 §3.2.6）。
+    ///
+    /// 0..=143 が 8 ビット、144..=255 が 9 ビット、256..=279 が 7 ビット、280..=287 が 8 ビット。
+    fn fixed_literal_lengths() -> [u8; LITERAL_SYMBOLS] {
+        let mut lengths = [8_u8; LITERAL_SYMBOLS];
+        for (symbol, length) in lengths.iter_mut().enumerate() {
+            *length = match symbol {
+                0..=143 => 8,
+                144..=255 => 9,
+                256..=279 => 7,
+                _ => 8,
+            };
+        }
+        lengths
+    }
+
+    /// 固定 Huffman の距離符号長表。全 32 シンボルが 5 ビット固定。
+    fn fixed_distance_lengths() -> [u8; DISTANCE_SYMBOLS] {
+        [5_u8; DISTANCE_SYMBOLS]
+    }
 }
 
 /// 1 ブロックの展開に使うリテラル／長さ符号表と距離符号表の組。
@@ -178,8 +199,11 @@ impl HuffmanTables {
     pub fn fixed() -> Result<Self, FlateError> {
         let position = ByteOffset::new(0);
         Ok(Self {
-            literal: HuffmanTable::from_lengths(&fixed_literal_lengths(), position)?,
-            distance: HuffmanTable::from_lengths(&fixed_distance_lengths(), position)?,
+            literal: HuffmanTable::from_lengths(&HuffmanTable::fixed_literal_lengths(), position)?,
+            distance: HuffmanTable::from_lengths(
+                &HuffmanTable::fixed_distance_lengths(),
+                position,
+            )?,
         })
     }
 
@@ -354,27 +378,6 @@ impl CodeLengths {
         let distance = self.lengths.get(literal_count..).unwrap_or(&[]);
         (literal, distance)
     }
-}
-
-/// 固定 Huffman のリテラル／長さ符号長表（RFC 1951 §3.2.6）。
-///
-/// 0..=143 が 8 ビット、144..=255 が 9 ビット、256..=279 が 7 ビット、280..=287 が 8 ビット。
-fn fixed_literal_lengths() -> [u8; LITERAL_SYMBOLS] {
-    let mut lengths = [8_u8; LITERAL_SYMBOLS];
-    for (symbol, length) in lengths.iter_mut().enumerate() {
-        *length = match symbol {
-            0..=143 => 8,
-            144..=255 => 9,
-            256..=279 => 7,
-            _ => 8,
-        };
-    }
-    lengths
-}
-
-/// 固定 Huffman の距離符号長表。全 32 シンボルが 5 ビット固定。
-fn fixed_distance_lengths() -> [u8; DISTANCE_SYMBOLS] {
-    [5_u8; DISTANCE_SYMBOLS]
 }
 
 #[cfg(test)]

@@ -47,7 +47,7 @@ fn single_bit_codes_build_minimal_table() {
 // 固定符号長表が RFC 1951 §3.2.6 の 4 区間どおりに埋まることを確認する。
 #[test]
 fn fixed_literal_lengths_follow_four_ranges() {
-    let lengths = fixed_literal_lengths();
+    let lengths = HuffmanTable::fixed_literal_lengths();
     let cases: [(usize, u8); 8] = [
         (0, 8),
         (143, 8),
@@ -71,7 +71,7 @@ fn fixed_literal_lengths_follow_four_ranges() {
 // 距離符号長表が全シンボル 5 ビットで埋まることを確認する。
 #[test]
 fn fixed_distance_lengths_are_all_five_bits() {
-    let lengths = fixed_distance_lengths();
+    let lengths = HuffmanTable::fixed_distance_lengths();
 
     assert!(
         lengths.iter().all(|&length| length == 5),
