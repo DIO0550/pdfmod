@@ -122,7 +122,7 @@ fn inflate_huffman(
                 let length = read_length(reader, symbol)?;
                 let distance_symbol = tables.distance.decode(reader)?;
                 let distance = read_distance(reader, distance_symbol)?;
-                back_reference::copy(output, distance, length, reader.position())?;
+                back_reference::copy_match(output, distance, length, reader.position())?;
             }
         }
     }

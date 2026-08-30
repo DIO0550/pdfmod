@@ -4,7 +4,9 @@ use crate::byte_offset::ByteOffset;
 use crate::filter::error::FlateError;
 use crate::filter::flate::symbols::MAX_DISTANCE;
 
-/// 出力の末尾から `distance` バイト遡った位置から `length` バイトを複製して追記する。
+/// LZ77 の match（`distance` と `length` の組）を出力へ複製して追記する。
+///
+/// 出力の末尾から `distance` バイト遡った位置から `length` バイトを取り、末尾へ足す。
 ///
 /// `length` が `distance` を超える場合（重なりコピー）、直前に書いたばかりのバイトを
 /// 読み直す必要があるため、1 バイトずつコピーする。
@@ -19,7 +21,7 @@ use crate::filter::flate::symbols::MAX_DISTANCE;
 /// panic しない契約（添字アクセスを使わない）。
 ///
 /// [`FlateErrorKind::DistanceTooFar`]: crate::filter::error::FlateErrorKind::DistanceTooFar
-pub fn copy(
+pub fn copy_match(
     output: &mut Vec<u8>,
     distance: usize,
     length: usize,
@@ -63,7 +65,7 @@ mod tests {
     fn non_overlapping_copy_duplicates_range() {
         let mut output = b"abcd".to_vec();
 
-        assert_eq!(copy(&mut output, 4, 3, ByteOffset::new(0)), Ok(()));
+        assert_eq!(copy_match(&mut output, 4, 3, ByteOffset::new(0)), Ok(()));
         assert_eq!(output, b"abcdabc");
     }
 
@@ -72,7 +74,7 @@ mod tests {
     fn overlapping_copy_repeats_last_byte() {
         let mut output = vec![b'a'];
 
-        assert_eq!(copy(&mut output, 1, 5, ByteOffset::new(0)), Ok(()));
+        assert_eq!(copy_match(&mut output, 1, 5, ByteOffset::new(0)), Ok(()));
         assert_eq!(output, b"aaaaaa");
     }
 
@@ -81,7 +83,7 @@ mod tests {
     fn overlapping_copy_cycles_pattern() {
         let mut output = b"abc".to_vec();
 
-        assert_eq!(copy(&mut output, 3, 8, ByteOffset::new(0)), Ok(()));
+        assert_eq!(copy_match(&mut output, 3, 8, ByteOffset::new(0)), Ok(()));
         assert_eq!(output, b"abcabcabcab");
     }
 
@@ -90,7 +92,7 @@ mod tests {
     fn copy_with_length_equal_to_distance_duplicates_whole_window() {
         let mut output = b"abcd".to_vec();
 
-        assert_eq!(copy(&mut output, 4, 4, ByteOffset::new(0)), Ok(()));
+        assert_eq!(copy_match(&mut output, 4, 4, ByteOffset::new(0)), Ok(()));
         assert_eq!(output, b"abcdabcd");
     }
 
@@ -99,7 +101,7 @@ mod tests {
     fn copy_with_length_just_over_distance_wraps_into_new_bytes() {
         let mut output = b"abcd".to_vec();
 
-        assert_eq!(copy(&mut output, 4, 5, ByteOffset::new(0)), Ok(()));
+        assert_eq!(copy_match(&mut output, 4, 5, ByteOffset::new(0)), Ok(()));
         assert_eq!(output, b"abcdabcda");
     }
 
@@ -108,7 +110,7 @@ mod tests {
     fn distance_equal_to_output_length_succeeds() {
         let mut output = b"abc".to_vec();
 
-        assert_eq!(copy(&mut output, 3, 1, ByteOffset::new(0)), Ok(()));
+        assert_eq!(copy_match(&mut output, 3, 1, ByteOffset::new(0)), Ok(()));
         assert_eq!(output, b"abca");
     }
 
@@ -119,7 +121,7 @@ mod tests {
         output.iter_mut().take(1).for_each(|byte| *byte = b'x');
 
         assert_eq!(
-            copy(&mut output, MAX_DISTANCE, 1, ByteOffset::new(0)),
+            copy_match(&mut output, MAX_DISTANCE, 1, ByteOffset::new(0)),
             Ok(())
         );
         assert_eq!(output.last().copied(), Some(b'x'));
@@ -130,7 +132,7 @@ mod tests {
     fn zero_length_copy_leaves_output_unchanged() {
         let mut output = b"abc".to_vec();
 
-        assert_eq!(copy(&mut output, 1, 0, ByteOffset::new(0)), Ok(()));
+        assert_eq!(copy_match(&mut output, 1, 0, ByteOffset::new(0)), Ok(()));
         assert_eq!(output, b"abc");
     }
 
@@ -143,7 +145,7 @@ mod tests {
             let mut output = b"abc".to_vec();
 
             assert_eq!(
-                copy(&mut output, distance, 1, ByteOffset::new(9)),
+                copy_match(&mut output, distance, 1, ByteOffset::new(9)),
                 Err(FlateError::distance_too_far_at(
                     ByteOffset::new(9),
                     distance,
