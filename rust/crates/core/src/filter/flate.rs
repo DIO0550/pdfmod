@@ -18,6 +18,7 @@ pub(crate) mod zlib;
 
 use crate::filter::error::FlateError;
 use bit_reader::BitReader;
+use inflate::Inflater;
 
 /// zlib 形式（RFC 1950）のバイト列を展開する。
 ///
@@ -74,8 +75,10 @@ pub fn decode_zlib(input: &[u8]) -> Result<Vec<u8>, FlateError> {
 ///
 /// panic しない契約。
 pub fn decode_raw(input: &[u8]) -> Result<Vec<u8>, FlateError> {
-    let mut reader = BitReader::new(input);
-    inflate::inflate(&mut reader)
+    let mut inflater = Inflater::new(BitReader::new(input))?;
+    inflater.inflate()?;
+    let (output, _reader) = inflater.into_parts();
+    Ok(output)
 }
 
 #[cfg(test)]
