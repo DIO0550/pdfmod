@@ -1,5 +1,5 @@
 use super::*;
-use crate::filter::flate::adler32::Adler32;
+use crate::filter::flate::zlib::Adler32;
 
 /// 線形合同法で再現性のあるバイト列を作る（圧縮しづらい入力を用意するため）。
 fn pseudo_random_bytes(len: usize) -> Vec<u8> {
