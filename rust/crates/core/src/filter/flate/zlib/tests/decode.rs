@@ -30,22 +30,23 @@ fn checksum_mismatch_reports_both_values() {
     );
 }
 
-// ビッグエンディアン 4 バイトの読み出しが、境界値と短いスライスで壊れないことを確認する。
+// トレーラの読み出しがビッグエンディアン 4 バイトを u32 にすることを確認する。
 #[test]
-fn read_be_u32_joins_bytes_and_pads_short_slices() {
-    let cases: [(&[u8], u32); 4] = [
-        (&[0x00, 0x00, 0x00, 0x00], 0),
-        (&[0x02, 0x4D, 0x01, 0x27], 0x024D_0127),
-        (&[0xFF, 0xFF, 0xFF, 0xFF], u32::MAX),
-        // take_bytes(4) の戻り値以外は渡らないが、短いスライスでも panic しない
-        (&[0x01, 0x02], 0x0102),
-    ];
+fn read_trailer_reads_four_big_endian_bytes() {
+    let bytes = [0x02, 0x4D, 0x01, 0x27];
+    let mut reader = BitReader::new(&bytes);
 
-    for (bytes, expected) in cases {
-        assert_eq!(
-            read_be_u32(bytes),
-            expected,
-            "read_be_u32({bytes:02X?}) should be {expected:#010X}"
-        );
-    }
+    assert_eq!(Adler32::read_trailer(&mut reader), Ok(0x024D_0127));
+}
+
+// トレーラが 4 バイトに満たない場合に UnexpectedEof になることを確認する。
+#[test]
+fn read_trailer_on_truncated_input_reports_unexpected_eof() {
+    let bytes = [0x02, 0x4D, 0x01];
+    let mut reader = BitReader::new(&bytes);
+
+    assert_eq!(
+        Adler32::read_trailer(&mut reader),
+        Err(FlateError::unexpected_eof_at(ByteOffset::new(0)))
+    );
 }

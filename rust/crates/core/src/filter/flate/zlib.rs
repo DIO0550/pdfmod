@@ -141,6 +141,26 @@ impl Adler32 {
     pub fn value(&self) -> u32 {
         (self.sum_of_sums << 16) | self.sum
     }
+
+    /// zlib トレーラに記録された Adler-32 を読む（ビッグエンディアン 4 バイト）。
+    ///
+    /// # 契約
+    ///
+    /// バイト境界上で呼ぶこと（トレーラは境界から始まる。RFC 1950 §2.2）。
+    ///
+    /// # Errors
+    ///
+    /// 4 バイト読み切る前に入力が尽きた場合は [`FlateErrorKind::UnexpectedEof`]。
+    ///
+    /// [`FlateErrorKind::UnexpectedEof`]: crate::filter::error::FlateErrorKind::UnexpectedEof
+    pub fn read_trailer(reader: &mut BitReader<'_>) -> Result<u32, FlateError> {
+        let bytes = reader.take_bytes(ADLER32_LEN)?;
+        // take_bytes(ADLER32_LEN) は必ず 4 バイトを返すので変換は失敗しない。
+        // panic 不在契約のため unwrap を使わず、到達しない値として 0 を置く。
+        Ok(<[u8; ADLER32_LEN]>::try_from(bytes)
+            .map(u32::from_be_bytes)
+            .unwrap_or_default())
+    }
 }
 
 impl Default for Adler32 {
@@ -176,8 +196,7 @@ pub fn decode(input: &[u8]) -> Result<Vec<u8>, FlateError> {
     // トレーラはバイト境界から始まる（RFC 1950 §2.2）
     reader.align_to_byte();
     let position = reader.position();
-    let trailer = reader.take_bytes(ADLER32_LEN)?;
-    let expected = read_be_u32(trailer);
+    let expected = Adler32::read_trailer(&mut reader)?;
 
     let mut checksum = Adler32::new();
     checksum.update(&output);
@@ -186,16 +205,6 @@ pub fn decode(input: &[u8]) -> Result<Vec<u8>, FlateError> {
         return Err(FlateError::checksum_mismatch_at(position, expected, actual));
     }
     Ok(output)
-}
-
-/// ビッグエンディアンの 4 バイトを `u32` として読む。
-///
-/// 4 バイト未満のスライスを渡された場合は、足りないぶんを 0 として扱う
-/// （呼び出し側は `take_bytes(4)` の戻り値のみを渡す）。
-fn read_be_u32(bytes: &[u8]) -> u32 {
-    bytes
-        .iter()
-        .fold(0_u32, |value, &byte| (value << 8) | u32::from(byte))
 }
 
 #[cfg(test)]
