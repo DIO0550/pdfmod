@@ -63,3 +63,23 @@ fn position_returns_byte_offset_of_current_bit() {
     assert_eq!(reader.read_bits(5), Ok(0));
     assert_eq!(reader.position(), ByteOffset::new(2));
 }
+
+// read_u16_le がバイト境界から 2 バイトをリトルエンディアンとして読むことを確認する。
+#[test]
+fn read_u16_le_joins_two_bytes_little_endian() {
+    let mut reader = BitReader::new(&[0x34, 0x12, 0xFF]);
+
+    assert_eq!(reader.read_u16_le(), Ok(0x1234));
+    assert_eq!(reader.position(), ByteOffset::new(2));
+}
+
+// 2 バイトに満たない入力で read_u16_le が UnexpectedEof になることを確認する。
+#[test]
+fn read_u16_le_on_truncated_input_reports_unexpected_eof() {
+    let mut reader = BitReader::new(&[0x34]);
+
+    assert_eq!(
+        reader.read_u16_le(),
+        Err(FlateError::unexpected_eof_at(ByteOffset::new(0)))
+    );
+}
