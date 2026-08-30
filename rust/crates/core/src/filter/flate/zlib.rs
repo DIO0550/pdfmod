@@ -7,7 +7,7 @@
 use crate::byte_offset::ByteOffset;
 use crate::filter::error::FlateError;
 use crate::filter::flate::bit_reader::BitReader;
-use crate::filter::flate::inflate;
+use crate::filter::flate::inflate::Inflater;
 
 /// zlib トレーラ（Adler-32）のバイト数。
 const ADLER32_LEN: usize = 4;
@@ -169,7 +169,9 @@ pub fn decode(input: &[u8]) -> Result<Vec<u8>, FlateError> {
     // ヘッダは検証だけが目的（展開結果を全量保持する実装ではウィンドウサイズを使わない）
     let _header = ZlibHeader::parse(header_bytes, ByteOffset::new(0))?;
 
-    let output = inflate::inflate(&mut reader)?;
+    let mut inflater = Inflater::new(reader)?;
+    inflater.inflate()?;
+    let (output, mut reader) = inflater.into_parts();
 
     // トレーラはバイト境界から始まる（RFC 1950 §2.2）
     reader.align_to_byte();
