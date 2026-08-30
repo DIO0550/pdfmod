@@ -40,70 +40,27 @@ pub const DISTANCE_SYMBOLS: usize = 32;
 /// ブロックの終端を表すシンボル。
 pub const END_OF_BLOCK: u16 = 256;
 
-/// 固定 Huffman のリテラル／長さ符号長表（RFC 1951 §3.2.6）。
-///
-/// 0..=143 が 8 ビット、144..=255 が 9 ビット、256..=279 が 7 ビット、280..=287 が 8 ビット。
-pub fn fixed_literal_lengths() -> [u8; LITERAL_SYMBOLS] {
-    let mut lengths = [8_u8; LITERAL_SYMBOLS];
-    for (symbol, length) in lengths.iter_mut().enumerate() {
-        *length = match symbol {
-            0..=143 => 8,
-            144..=255 => 9,
-            256..=279 => 7,
-            _ => 8,
-        };
-    }
-    lengths
-}
-
-/// 固定 Huffman の距離符号長表。全 32 シンボルが 5 ビット固定。
-pub fn fixed_distance_lengths() -> [u8; DISTANCE_SYMBOLS] {
-    [5_u8; DISTANCE_SYMBOLS]
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    // 固定符号長表が RFC 1951 §3.2.6 の 4 区間どおりに埋まることを確認する。
-    #[test]
-    fn fixed_literal_lengths_follow_four_ranges() {
-        let lengths = fixed_literal_lengths();
-        let cases: [(usize, u8); 8] = [
-            (0, 8),
-            (143, 8),
-            (144, 9),
-            (255, 9),
-            (256, 7),
-            (279, 7),
-            (280, 8),
-            (287, 8),
-        ];
-
-        for (symbol, expected) in cases {
-            assert_eq!(
-                lengths.get(symbol).copied(),
-                Some(expected),
-                "symbol {symbol} should have length {expected}"
-            );
-        }
-    }
-
-    // 距離符号長表が全シンボル 5 ビットで埋まることを確認する。
-    #[test]
-    fn fixed_distance_lengths_are_all_five_bits() {
-        let lengths = fixed_distance_lengths();
-
-        assert!(
-            lengths.iter().all(|&length| length == 5),
-            "all distance code lengths should be 5"
-        );
-    }
 
     // 長さ／距離の基準値表と追加ビット表の要素数が対応していることを確認する。
     #[test]
     fn base_and_extra_bit_tables_have_matching_lengths() {
         assert_eq!(LENGTH_BASE.len(), LENGTH_EXTRA_BITS.len());
         assert_eq!(DISTANCE_BASE.len(), DISTANCE_EXTRA_BITS.len());
+    }
+
+    // 符号長符号の読み出し順が 19 個の重複ない置換であることを確認する。
+    #[test]
+    fn code_length_order_is_a_permutation_of_all_slots() {
+        let mut seen = [false; CODE_LENGTH_ORDER.len()];
+        for &slot in &CODE_LENGTH_ORDER {
+            let entry = seen.get_mut(slot).expect("slot should be in range");
+            assert!(!*entry, "slot {slot} should appear only once");
+            *entry = true;
+        }
+
+        assert!(seen.iter().all(|&hit| hit), "all slots should appear");
     }
 }

@@ -43,3 +43,38 @@ fn single_bit_codes_build_minimal_table() {
     assert_eq!(table.counts.get(1).copied(), Some(2));
     assert_eq!(table.symbols, vec![0, 1]);
 }
+
+// 固定符号長表が RFC 1951 §3.2.6 の 4 区間どおりに埋まることを確認する。
+#[test]
+fn fixed_literal_lengths_follow_four_ranges() {
+    let lengths = fixed_literal_lengths();
+    let cases: [(usize, u8); 8] = [
+        (0, 8),
+        (143, 8),
+        (144, 9),
+        (255, 9),
+        (256, 7),
+        (279, 7),
+        (280, 8),
+        (287, 8),
+    ];
+
+    for (symbol, expected) in cases {
+        assert_eq!(
+            lengths.get(symbol).copied(),
+            Some(expected),
+            "symbol {symbol} should have length {expected}"
+        );
+    }
+}
+
+// 距離符号長表が全シンボル 5 ビットで埋まることを確認する。
+#[test]
+fn fixed_distance_lengths_are_all_five_bits() {
+    let lengths = fixed_distance_lengths();
+
+    assert!(
+        lengths.iter().all(|&length| length == 5),
+        "all distance code lengths should be 5"
+    );
+}
