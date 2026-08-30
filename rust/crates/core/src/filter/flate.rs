@@ -9,11 +9,11 @@
 // 実装詳細はクレート内に閉じる。外へ出すのは decode_zlib / decode_raw の 2 本だけで、
 // ビットリーダ・符号表・定数表を公開 API に載せると互換性の負債になる
 // （`lexer` が `mod cursor;` / `pub(crate) mod byte_ops;` としているのと同じ扱い）。
-pub(crate) mod back_reference;
 pub(crate) mod bit_reader;
 pub(crate) mod huffman;
 pub(crate) mod inflate;
 pub(crate) mod symbols;
+pub(crate) mod window;
 pub(crate) mod zlib;
 
 use crate::filter::error::FlateError;

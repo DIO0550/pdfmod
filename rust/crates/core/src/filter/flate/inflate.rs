@@ -2,13 +2,10 @@
 
 use crate::byte_offset::ByteOffset;
 use crate::filter::error::FlateError;
-use crate::filter::flate::back_reference;
 use crate::filter::flate::bit_reader::BitReader;
 use crate::filter::flate::huffman::{HuffmanTable, HuffmanTables};
-use crate::filter::flate::symbols::{
-    CODE_LENGTH_ORDER, DISTANCE_BASE, DISTANCE_EXTRA_BITS, END_OF_BLOCK, LENGTH_BASE,
-    LENGTH_EXTRA_BITS,
-};
+use crate::filter::flate::symbols::{CODE_LENGTH_ORDER, END_OF_BLOCK};
+use crate::filter::flate::window::{Distance, Length, Window};
 
 /// HLIT（リテラル／長さ符号の個数）のビット幅と、読み取った値に足す下駄。
 const HLIT_BITS: u32 = 5;
@@ -43,9 +40,6 @@ const REPEAT_ZERO_LONG_BITS: u32 = 7;
 /// 符号長符号 18 の繰り返し回数の下駄。
 const REPEAT_ZERO_LONG_OFFSET: usize = 11;
 
-/// 長さシンボルの最小値（RFC 1951 §3.2.5 の表は 257 から始まる）。
-const FIRST_LENGTH_SYMBOL: usize = 257;
-
 /// ブロックを順に展開し、`BFINAL` が立ったブロックまで処理して展開結果を返す。
 ///
 /// # Errors
@@ -53,7 +47,7 @@ const FIRST_LENGTH_SYMBOL: usize = 257;
 /// 入力が尽きた場合は `UnexpectedEof`、BTYPE が予約値（11）なら `ReservedBlockType`、
 /// 各ブロック種別の展開で検出した破損はそれぞれのエラー種別を返す。
 pub fn inflate(reader: &mut BitReader<'_>) -> Result<Vec<u8>, FlateError> {
-    let mut output = Vec::new();
+    let mut window = Window::new();
     // 固定符号表は RFC 1951 §3.2.6 の定数から作られる不変の表なので、
     // BTYPE=01 のブロックが現れるたびに作り直さず、ループの外で一度だけ構築する。
     let fixed_tables = HuffmanTables::fixed()?;
@@ -65,16 +59,16 @@ pub fn inflate(reader: &mut BitReader<'_>) -> Result<Vec<u8>, FlateError> {
         // 予約値の 3 を置く（万一到達しても ReservedBlockType でエラーになる）。
         let block_type = u8::try_from(reader.read_bits(2)?).unwrap_or(3);
         match block_type {
-            0 => inflate_stored(reader, &mut output)?,
-            1 => inflate_huffman(reader, &mut output, &fixed_tables)?,
+            0 => inflate_stored(reader, &mut window)?,
+            1 => inflate_huffman(reader, &mut window, &fixed_tables)?,
             2 => {
                 let tables = read_dynamic_tables(reader)?;
-                inflate_huffman(reader, &mut output, &tables)?;
+                inflate_huffman(reader, &mut window, &tables)?;
             }
             _ => return Err(FlateError::reserved_block_type_at(position, block_type)),
         }
         if is_final {
-            return Ok(output);
+            return Ok(window.into_bytes());
         }
     }
 }
@@ -83,7 +77,7 @@ pub fn inflate(reader: &mut BitReader<'_>) -> Result<Vec<u8>, FlateError> {
 ///
 /// バイト境界まで切り上げてから LEN / NLEN（各 2 バイト、リトルエンディアン）を読み、
 /// 補数関係を検証したうえで LEN バイトをそのまま出力へ複製する。
-fn inflate_stored(reader: &mut BitReader<'_>, output: &mut Vec<u8>) -> Result<(), FlateError> {
+fn inflate_stored(reader: &mut BitReader<'_>, window: &mut Window) -> Result<(), FlateError> {
     reader.align_to_byte();
     let position = reader.position();
     let len = reader.read_u16_le()?;
@@ -92,55 +86,29 @@ fn inflate_stored(reader: &mut BitReader<'_>, output: &mut Vec<u8>) -> Result<()
         return Err(FlateError::stored_length_mismatch_at(position, len, nlen));
     }
     let data = reader.take_bytes(usize::from(len))?;
-    output.extend_from_slice(data);
+    window.extend_from_slice(data);
     Ok(())
 }
 
 /// Huffman 符号で圧縮されたブロックを、ブロック終端シンボルまで展開する。
 fn inflate_huffman(
     reader: &mut BitReader<'_>,
-    output: &mut Vec<u8>,
+    window: &mut Window,
     tables: &HuffmanTables,
 ) -> Result<(), FlateError> {
     loop {
         let symbol = tables.literal.decode(reader)?;
         match symbol {
-            0..=255 => output.push(u8::try_from(symbol).unwrap_or_default()),
+            0..=255 => window.push_literal(u8::try_from(symbol).unwrap_or_default()),
             END_OF_BLOCK => return Ok(()),
             _ => {
-                let length = read_length(reader, symbol)?;
+                let length = Length::read(reader, symbol)?;
                 let distance_symbol = tables.distance.decode(reader)?;
-                let distance = read_distance(reader, distance_symbol)?;
-                back_reference::copy_match(output, distance, length, reader.position())?;
+                let distance = Distance::read(reader, distance_symbol)?;
+                window.copy_match(distance, length, reader.position())?;
             }
         }
     }
-}
-
-/// 長さシンボル（257..=285）と追加ビットから実際のコピー長を求める。
-fn read_length(reader: &mut BitReader<'_>, symbol: u16) -> Result<usize, FlateError> {
-    let index = usize::from(symbol)
-        .checked_sub(FIRST_LENGTH_SYMBOL)
-        .ok_or_else(|| FlateError::invalid_length_symbol_at(reader.position(), symbol))?;
-    let base = LENGTH_BASE
-        .get(index)
-        .copied()
-        .ok_or_else(|| FlateError::invalid_length_symbol_at(reader.position(), symbol))?;
-    let extra_bits = LENGTH_EXTRA_BITS.get(index).copied().unwrap_or(0);
-    let extra = reader.read_bits(extra_bits)?;
-    Ok(usize::from(base).saturating_add(usize::try_from(extra).unwrap_or(0)))
-}
-
-/// 距離シンボル（0..=29）と追加ビットから実際の後方参照距離を求める。
-fn read_distance(reader: &mut BitReader<'_>, symbol: u16) -> Result<usize, FlateError> {
-    let index = usize::from(symbol);
-    let base = DISTANCE_BASE
-        .get(index)
-        .copied()
-        .ok_or_else(|| FlateError::invalid_distance_symbol_at(reader.position(), symbol))?;
-    let extra_bits = DISTANCE_EXTRA_BITS.get(index).copied().unwrap_or(0);
-    let extra = reader.read_bits(extra_bits)?;
-    Ok(usize::from(base).saturating_add(usize::try_from(extra).unwrap_or(0)))
 }
 
 /// 動的 Huffman ブロックのヘッダから、リテラル／長さ符号表と距離符号表を復元する。
