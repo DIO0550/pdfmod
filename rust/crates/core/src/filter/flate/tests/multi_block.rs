@@ -1,0 +1,28 @@
+use super::*;
+
+// 固定 Huffman ブロックと非圧縮ブロックが混在するストリームが連結順に展開されることを確認する。
+#[test]
+fn mixed_block_types_are_concatenated_in_order() {
+    // 4A 4C ... CF: BFINAL=0 の固定 Huffman ブロック（"abcdefgh"）
+    // 00 00 00 FF FF: BFINAL=0 / LEN=0 の非圧縮ブロック（同期フラッシュ）
+    // 4B 4C ... CF 00 00: BFINAL=1 の固定 Huffman ブロック（"abcdefgh"）
+    let input = [
+        0x78, 0x01, 0x4A, 0x4C, 0x4A, 0x4E, 0x49, 0x4D, 0x4B, 0xCF, 0x00, 0x00, 0x00, 0x00, 0xFF,
+        0xFF, 0x4B, 0x4C, 0x4A, 0x4E, 0x49, 0x4D, 0x4B, 0xCF, 0x00, 0x00, 0x35, 0x20, 0x06, 0x49,
+    ];
+
+    assert_eq!(decode_zlib_ok(&input), b"abcdefghabcdefgh");
+}
+
+// 後続ブロックの後方参照が、直前のブロックが出力したバイトへ届くことを確認する。
+#[test]
+fn back_reference_reaches_across_block_boundary() {
+    // 最後のブロック（4B 84 D2 00）は長さ 8 / 距離 8 の後方参照だけを持ち、
+    // 参照先のバイトは 1 つ目のブロックが出力した "abcdefgh"
+    let input = [
+        0x78, 0x01, 0x4A, 0x4C, 0x4A, 0x4E, 0x49, 0x4D, 0x4B, 0xCF, 0x00, 0x00, 0x00, 0x00, 0xFF,
+        0xFF, 0x4B, 0x84, 0xD2, 0x00, 0x35, 0x20, 0x06, 0x49,
+    ];
+
+    assert_eq!(decode_zlib_ok(&input), b"abcdefghabcdefgh");
+}
