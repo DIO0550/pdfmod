@@ -6,6 +6,9 @@
 use crate::byte_offset::ByteOffset;
 use crate::filter::error::FlateError;
 
+/// リトルエンディアン 16 ビット値のバイト数。
+const U16_LEN: usize = 2;
+
 /// ビット単位で入力を読み進めるカーソル。
 #[derive(Debug)]
 pub struct BitReader<'a> {
@@ -120,6 +123,27 @@ impl<'a> BitReader<'a> {
             .ok_or_else(|| FlateError::unexpected_eof_at(self.position()))?;
         self.byte_pos = end;
         Ok(slice)
+    }
+
+    /// バイト境界からリトルエンディアンの 2 バイトを `u16` として読む。
+    ///
+    /// 非圧縮ブロックの LEN / NLEN（RFC 1951 §3.2.4）がこの形。
+    ///
+    /// # 契約
+    ///
+    /// [`take_bytes`] と同じくバイト境界上で呼ぶこと。
+    ///
+    /// # Errors
+    ///
+    /// 2 バイト読み切る前に入力が尽きた場合は [`FlateErrorKind::UnexpectedEof`]。
+    ///
+    /// [`take_bytes`]: Self::take_bytes
+    /// [`FlateErrorKind::UnexpectedEof`]: crate::filter::error::FlateErrorKind::UnexpectedEof
+    pub fn read_u16_le(&mut self) -> Result<u16, FlateError> {
+        let bytes = self.take_bytes(U16_LEN)?;
+        let low = bytes.first().copied().unwrap_or(0);
+        let high = bytes.get(1).copied().unwrap_or(0);
+        Ok(u16::from(low) | (u16::from(high) << 8))
     }
 }
 

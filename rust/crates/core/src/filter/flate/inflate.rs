@@ -46,9 +46,6 @@ const REPEAT_ZERO_LONG_OFFSET: usize = 11;
 /// 長さシンボルの最小値（RFC 1951 §3.2.5 の表は 257 から始まる）。
 const FIRST_LENGTH_SYMBOL: usize = 257;
 
-/// 非圧縮ブロックの LEN / NLEN のバイト数。
-const STORED_LENGTH_FIELD_LEN: usize = 2;
-
 /// ブロックを順に展開し、`BFINAL` が立ったブロックまで処理して展開結果を返す。
 ///
 /// # Errors
@@ -89,22 +86,14 @@ pub fn inflate(reader: &mut BitReader<'_>) -> Result<Vec<u8>, FlateError> {
 fn inflate_stored(reader: &mut BitReader<'_>, output: &mut Vec<u8>) -> Result<(), FlateError> {
     reader.align_to_byte();
     let position = reader.position();
-    let len = read_u16_le(reader)?;
-    let nlen = read_u16_le(reader)?;
+    let len = reader.read_u16_le()?;
+    let nlen = reader.read_u16_le()?;
     if nlen != !len {
         return Err(FlateError::stored_length_mismatch_at(position, len, nlen));
     }
     let data = reader.take_bytes(usize::from(len))?;
     output.extend_from_slice(data);
     Ok(())
-}
-
-/// バイト境界からリトルエンディアンの 2 バイトを `u16` として読む。
-fn read_u16_le(reader: &mut BitReader<'_>) -> Result<u16, FlateError> {
-    let bytes = reader.take_bytes(STORED_LENGTH_FIELD_LEN)?;
-    let low = bytes.first().copied().unwrap_or(0);
-    let high = bytes.get(1).copied().unwrap_or(0);
-    Ok(u16::from(low) | (u16::from(high) << 8))
 }
 
 /// Huffman 符号で圧縮されたブロックを、ブロック終端シンボルまで展開する。
