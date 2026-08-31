@@ -1,6 +1,7 @@
 mod basic;
 mod byte_preservation;
 mod case;
+mod decode_hex_string;
 mod error;
 mod guard;
 mod padding;
