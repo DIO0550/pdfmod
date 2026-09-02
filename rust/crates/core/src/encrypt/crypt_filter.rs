@@ -4,6 +4,7 @@
 use std::collections::BTreeMap;
 
 use crate::byte_offset::ByteOffset;
+use crate::encrypt::algorithm::KeyLength;
 use crate::encrypt::error::EncryptError;
 use crate::encrypt::key::{CryptFilterKey, EncryptKey, EncryptKeyPath};
 use crate::object::dictionary::PdfDictionary;
@@ -15,6 +16,13 @@ use crate::object::pdf_object::PdfObject;
 /// `/CF` には定義されないため、`/StmF /Identity` を「未定義の filter を指している」
 /// として弾いてはならない。
 const IDENTITY: &[u8] = b"Identity";
+
+/// `/CF` の `/Length` をバイト表記とみなす下限（40 ビット = 5 バイト）。
+const MIN_LENGTH_BYTES: u16 = 5;
+/// `/CF` の `/Length` をバイト表記とみなす上限（128 ビット = 16 バイト）。
+const MAX_LENGTH_BYTES: u16 = 16;
+/// バイト表記をビット表記へ正規化する係数。
+const BITS_PER_BYTE: u16 = 8;
 
 /// crypt filter の集合と、ストリーム・文字列・埋め込みファイルへの割り当て。
 ///
@@ -47,7 +55,7 @@ pub enum CryptFilterSelector {
 pub struct CryptFilter {
     method: CryptFilterMethod,
     auth_event: AuthEvent,
-    length: Option<i64>,
+    length: Option<KeyLength>,
 }
 
 /// `/CFM` — crypt filter の暗号方式。
@@ -296,7 +304,8 @@ impl CryptFilter {
 
         let length = dictionary
             .get(CryptFilterKey::Length.as_bytes())
-            .and_then(PdfObject::as_integer);
+            .and_then(PdfObject::as_integer)
+            .and_then(parse_length);
 
         Ok(Self {
             method,
@@ -317,14 +326,15 @@ impl CryptFilter {
         self.auth_event
     }
 
-    /// `/CF` エントリの `/Length` を返す。
+    /// `/CF` エントリの `/Length` を検証済みの鍵長として返す。
     ///
-    /// ISO 32000-1 表 25 はバイト単位と規定するが、ビット単位で書く実装が広く存在する。
-    /// 単位を決め打つと誤った鍵長で復号を試みることになるため、解釈せずそのまま保持する。
+    /// `/Length` が無い場合と、解釈できない値だった場合は `None`。
+    /// 単位の解釈は `parse_length` が境界で済ませているため、
+    /// 返る [`KeyLength`] は 40..=128 ビットかつ 8 の倍数であることが型で保証される。
     /// ファイル暗号鍵の長さは暗号化辞書直下の `/Length`
     /// （[`StandardAlgorithm::key_length`](crate::encrypt::algorithm::StandardAlgorithm::key_length)）から読む。
     #[must_use]
-    pub fn length(&self) -> Option<i64> {
+    pub fn length(&self) -> Option<KeyLength> {
         self.length
     }
 }
@@ -355,6 +365,23 @@ fn take_method(
     };
     CryptFilterMethod::from_bytes(method_name.as_bytes())
         .ok_or_else(|| EncryptError::unknown_crypt_filter_method_at(position, method_name))
+}
+
+/// `/CF` エントリの `/Length` を検証済みの鍵長に解釈する。
+///
+/// ISO 32000-1 表 25 は `/CF` の `/Length` をバイト単位と規定するが、ビット単位で
+/// 書く実装も存在する（`docs/specs/02b_encryption.md` §4）。バイト表記の定義域
+/// 5..=16 とビット表記の定義域 40..=128 は重ならないため、値から単位を一意に決められる。
+///
+/// 解釈できない値（負値・`u16` 範囲外・どちらの表記としても成立しない値）は `None`。
+/// `/AuthEvent` `/Length` はエラーにせず既定へフォールバックする方針（#607）に従い、
+/// ここでエラーを返さないことで壊れた `/Length` 1 個が文書全体の解析を止めないようにする。
+fn parse_length(raw: i64) -> Option<KeyLength> {
+    let bits = match u16::try_from(raw).ok()? {
+        bytes @ MIN_LENGTH_BYTES..=MAX_LENGTH_BYTES => bytes * BITS_PER_BYTE,
+        bits => bits,
+    };
+    KeyLength::from_bits(bits)
 }
 
 #[cfg(test)]
