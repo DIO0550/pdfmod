@@ -1,5 +1,5 @@
 use super::{encrypt, encrypt_err};
-use crate::encrypt::algorithm::StandardAlgorithm;
+use crate::encrypt::algorithm::{KeyLength, StandardAlgorithm};
 use crate::encrypt::crypt_filter::{
     AuthEvent, CryptFilterMethod, CryptFilterSelector, CryptFilters,
 };
@@ -47,7 +47,8 @@ fn aes_128_crypt_filter_is_resolved_from_stream_and_string_selectors() {
         .get(filters.stream())
         .expect("/StmF should point at a defined crypt filter");
     assert_eq!(filter.method(), CryptFilterMethod::AesV2);
-    assert_eq!(filter.length(), Some(16));
+    // /Length 16 は ISO 32000-1 表 25 のバイト表記。128 ビットへ正規化される。
+    assert_eq!(filter.length(), KeyLength::from_bits(128));
     assert_eq!(filter.auth_event(), AuthEvent::DocOpen);
 }
 
