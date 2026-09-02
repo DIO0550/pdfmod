@@ -386,7 +386,8 @@ fn parse_length(raw: i64) -> Option<KeyLength> {
 
 #[cfg(test)]
 mod tests {
-    use super::{AuthEvent, CryptFilterMethod};
+    use super::{parse_length, AuthEvent, CryptFilterMethod};
+    use crate::encrypt::algorithm::KeyLength;
 
     // ISO 32000-1 表 25 が定める 4 種の /CFM が対応するバリアントになることを確認する
     #[test]
@@ -428,5 +429,41 @@ mod tests {
         assert_eq!(AuthEvent::from_bytes(b"EFOpen"), AuthEvent::EFOpen);
         assert_eq!(AuthEvent::from_bytes(b"DocOpen"), AuthEvent::DocOpen);
         assert_eq!(AuthEvent::from_bytes(b"Unknown"), AuthEvent::DocOpen);
+    }
+
+    // バイト表記（5..=16）が 8 倍されてビット表記の鍵長になることを確認する
+    #[test]
+    fn parse_length_normalizes_byte_notation() {
+        let cases: [(i64, u16); 4] = [(5, 40), (8, 64), (13, 104), (16, 128)];
+        for (raw, expected_bits) in cases {
+            assert_eq!(
+                parse_length(raw),
+                KeyLength::from_bits(expected_bits),
+                "/Length {raw} should be read as {expected_bits} bits"
+            );
+        }
+    }
+
+    // ビット表記（40..=128 かつ 8 の倍数）がそのまま鍵長になることを確認する
+    #[test]
+    fn parse_length_accepts_bit_notation() {
+        // `as` キャストを避けるため、期待ビット数を u16 で明示する
+        let cases: [(i64, u16); 4] = [(40, 40), (48, 48), (120, 120), (128, 128)];
+        for (raw, expected_bits) in cases {
+            assert_eq!(
+                parse_length(raw),
+                KeyLength::from_bits(expected_bits),
+                "/Length {raw} should be read as {expected_bits} bits"
+            );
+        }
+    }
+
+    // どちらの表記としても成立しない値が None になることを確認する
+    #[test]
+    fn parse_length_rejects_uninterpretable_values() {
+        let cases: [i64; 10] = [-8, -1, 0, 4, 17, 39, 41, 136, 200, i64::MAX];
+        for raw in cases {
+            assert_eq!(parse_length(raw), None, "/Length {raw} should be rejected");
+        }
     }
 }
