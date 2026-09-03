@@ -1,5 +1,5 @@
 use super::{encrypt, encrypt_err};
-use crate::encrypt::algorithm::StandardAlgorithm;
+use crate::encrypt::algorithm::{KeyLength, StandardAlgorithm};
 use crate::encrypt::crypt_filter::{
     AuthEvent, CryptFilterMethod, CryptFilterSelector, CryptFilters,
 };
@@ -47,8 +47,106 @@ fn aes_128_crypt_filter_is_resolved_from_stream_and_string_selectors() {
         .get(filters.stream())
         .expect("/StmF should point at a defined crypt filter");
     assert_eq!(filter.method(), CryptFilterMethod::AesV2);
-    assert_eq!(filter.length(), Some(16));
+    // /Length 16 は ISO 32000-1 表 25 のバイト表記。128 ビットへ正規化される。
+    assert_eq!(filter.length(), KeyLength::from_bits(128));
     assert_eq!(filter.auth_event(), AuthEvent::DocOpen);
+}
+
+/// `/StmF` が指す crypt filter の `/Length` を読む。
+fn stream_filter_length(crypt_filter_keys: &str) -> Option<KeyLength> {
+    let filters = crypt_filters(crypt_filter_keys);
+    let filter = filters
+        .get(filters.stream())
+        .expect("/StmF should point at a defined crypt filter");
+    filter.length()
+}
+
+// バイト表記・ビット表記のどちらで書かれた /Length も同じ鍵長に解釈されることを確認する
+#[test]
+fn crypt_filter_length_accepts_both_notations() {
+    let cases: [(&str, u16); 4] = [
+        ("/Length 16", 128),
+        ("/Length 128", 128),
+        ("/Length 5", 40),
+        ("/Length 40", 40),
+    ];
+    for (length_key, expected_bits) in cases {
+        let source = format!("/CF << /StdCF << /CFM /AESV2 {length_key} >> >> /StmF /StdCF");
+        assert_eq!(
+            stream_filter_length(&source),
+            KeyLength::from_bits(expected_bits),
+            "{length_key} should be read as {expected_bits} bits"
+        );
+    }
+}
+
+// 解釈できない /Length がエラーにならず None になることを確認する
+#[test]
+fn uninterpretable_crypt_filter_length_falls_back_to_none() {
+    let cases: [&str; 5] = [
+        "/Length -8",
+        "/Length 0",
+        "/Length 17",
+        "/Length 41",
+        "/Length 200",
+    ];
+    for length_key in cases {
+        let source = format!("/CF << /StdCF << /CFM /AESV2 {length_key} >> >> /StmF /StdCF");
+        assert_eq!(
+            stream_filter_length(&source),
+            None,
+            "{length_key} should fall back to None"
+        );
+    }
+}
+
+// /Length が無いエントリが None になることを確認する
+#[test]
+fn missing_crypt_filter_length_is_none() {
+    let source = "/CF << /StdCF << /CFM /AESV3 >> >> /StmF /StdCF";
+    assert_eq!(stream_filter_length(source), None);
+}
+
+// /Length の解釈失敗が同じエントリの /CFM /AuthEvent に波及しないことを確認する
+#[test]
+fn uninterpretable_length_does_not_affect_sibling_keys() {
+    let filters = crypt_filters(
+        "/CF << /BadCF << /CFM /V2 /Length 200 /AuthEvent /EFOpen >> >> /StmF /BadCF",
+    );
+
+    let filter = filters
+        .get(filters.stream())
+        .expect("/StmF should point at a defined crypt filter");
+    assert_eq!(filter.length(), None);
+    assert_eq!(filter.method(), CryptFilterMethod::V2);
+    assert_eq!(filter.auth_event(), AuthEvent::EFOpen);
+}
+
+// 文字列型の /Length も型不一致フォールバックで None になることを確認する
+#[test]
+fn string_crypt_filter_length_falls_back_to_none() {
+    let source = "/CF << /StdCF << /CFM /AESV2 /Length (17) >> >> /StmF /StdCF";
+    assert_eq!(stream_filter_length(source), None);
+}
+
+// 壊れた /Length を持つエントリが同じ /CF の他エントリに波及しないことを確認する
+#[test]
+fn uninterpretable_length_does_not_affect_other_entries() {
+    let filters = crypt_filters(
+        "/CF << /StdCF << /CFM /AESV2 /Length 16 >> /BadCF << /CFM /V2 /Length 200 >> >> \
+         /StmF /StdCF /StrF /BadCF",
+    );
+
+    assert_eq!(filters.len(), 2);
+    let good = filters
+        .get(filters.stream())
+        .expect("/StmF should point at a defined crypt filter");
+    let bad = filters
+        .get(filters.string())
+        .expect("/StrF should point at a defined crypt filter");
+    assert_eq!(good.length(), KeyLength::from_bits(128));
+    assert_eq!(bad.length(), None);
+    assert_eq!(bad.method(), CryptFilterMethod::V2);
 }
 
 // /CFM の各値が対応する暗号方式になることを確認する
