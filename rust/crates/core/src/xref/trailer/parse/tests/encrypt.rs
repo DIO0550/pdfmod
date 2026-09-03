@@ -1,7 +1,7 @@
 use super::super::ParsedTrailer;
 use super::simple_trailer;
 use crate::byte_offset::ByteOffset;
-use crate::encrypt::algorithm::StandardAlgorithm;
+use crate::encrypt::algorithm::{KeyLength, StandardAlgorithm};
 use crate::encrypt::crypt_filter::CryptFilterMethod;
 use crate::encrypt::error::EncryptErrorKind;
 use crate::encrypt::key::EncryptKey;
@@ -92,7 +92,7 @@ fn encrypt_dictionary_with_nested_crypt_filters_is_typed() {
         .get(crypt_filters.stream())
         .expect("/StmF should point at a defined crypt filter");
     assert_eq!(filter.method(), CryptFilterMethod::AesV2);
-    assert_eq!(filter.length(), Some(16));
+    assert_eq!(filter.length(), KeyLength::from_bits(128));
     assert_eq!(crypt_filters.string(), crypt_filters.stream());
 }
 

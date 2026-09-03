@@ -4,6 +4,7 @@
 use std::collections::BTreeMap;
 
 use crate::byte_offset::ByteOffset;
+use crate::encrypt::algorithm::KeyLength;
 use crate::encrypt::error::EncryptError;
 use crate::encrypt::key::{CryptFilterKey, EncryptKey, EncryptKeyPath};
 use crate::object::dictionary::PdfDictionary;
@@ -15,6 +16,13 @@ use crate::object::pdf_object::PdfObject;
 /// `/CF` には定義されないため、`/StmF /Identity` を「未定義の filter を指している」
 /// として弾いてはならない。
 const IDENTITY: &[u8] = b"Identity";
+
+/// `/CF` の `/Length` をバイト表記とみなす下限（40 ビット = 5 バイト）。
+const MIN_LENGTH_BYTES: u16 = 5;
+/// `/CF` の `/Length` をバイト表記とみなす上限（128 ビット = 16 バイト）。
+const MAX_LENGTH_BYTES: u16 = 16;
+/// バイト表記をビット表記へ正規化する係数。
+const BITS_PER_BYTE: u16 = 8;
 
 /// crypt filter の集合と、ストリーム・文字列・埋め込みファイルへの割り当て。
 ///
@@ -47,7 +55,7 @@ pub enum CryptFilterSelector {
 pub struct CryptFilter {
     method: CryptFilterMethod,
     auth_event: AuthEvent,
-    length: Option<i64>,
+    length: Option<KeyLength>,
 }
 
 /// `/CFM` — crypt filter の暗号方式。
@@ -296,13 +304,31 @@ impl CryptFilter {
 
         let length = dictionary
             .get(CryptFilterKey::Length.as_bytes())
-            .and_then(PdfObject::as_integer);
+            .and_then(PdfObject::as_integer)
+            .and_then(Self::parse_length);
 
         Ok(Self {
             method,
             auth_event,
             length,
         })
+    }
+
+    /// `/CF` エントリの `/Length` を検証済みの鍵長に解釈する。
+    ///
+    /// ISO 32000-1 表 25 は `/CF` の `/Length` をバイト単位と規定するが、ビット単位で
+    /// 書く実装も存在する（`docs/specs/02b_encryption.md` §4）。バイト表記の定義域
+    /// 5..=16 とビット表記の定義域 40..=128 は重ならないため、値から単位を一意に決められる。
+    ///
+    /// 解釈できない値（負値・`u16` 範囲外・どちらの表記としても成立しない値）は `None`。
+    /// `/AuthEvent` `/Length` はエラーにせず既定へフォールバックする方針（#607）に従い、
+    /// ここでエラーを返さないことで壊れた `/Length` 1 個が文書全体の解析を止めないようにする。
+    fn parse_length(raw: i64) -> Option<KeyLength> {
+        let bits = match u16::try_from(raw).ok()? {
+            bytes @ MIN_LENGTH_BYTES..=MAX_LENGTH_BYTES => bytes * BITS_PER_BYTE,
+            written_bits => written_bits,
+        };
+        KeyLength::from_bits(bits)
     }
 
     /// 暗号方式（`/CFM`）を返す。
@@ -317,14 +343,15 @@ impl CryptFilter {
         self.auth_event
     }
 
-    /// `/CF` エントリの `/Length` を返す。
+    /// `/CF` エントリの `/Length` を検証済みの鍵長として返す。
     ///
-    /// ISO 32000-1 表 25 はバイト単位と規定するが、ビット単位で書く実装が広く存在する。
-    /// 単位を決め打つと誤った鍵長で復号を試みることになるため、解釈せずそのまま保持する。
+    /// `/Length` が無い場合と、解釈できない値だった場合は `None`。
+    /// 単位の解釈は `Self::parse_length` が境界で済ませているため、`Some` で返る
+    /// [`KeyLength`] は 40..=128 ビットかつ 8 の倍数であることが型で保証される。
     /// ファイル暗号鍵の長さは暗号化辞書直下の `/Length`
     /// （[`StandardAlgorithm::key_length`](crate::encrypt::algorithm::StandardAlgorithm::key_length)）から読む。
     #[must_use]
-    pub fn length(&self) -> Option<i64> {
+    pub fn length(&self) -> Option<KeyLength> {
         self.length
     }
 }
@@ -359,7 +386,8 @@ fn take_method(
 
 #[cfg(test)]
 mod tests {
-    use super::{AuthEvent, CryptFilterMethod};
+    use super::{AuthEvent, CryptFilter, CryptFilterMethod};
+    use crate::encrypt::algorithm::KeyLength;
 
     // ISO 32000-1 表 25 が定める 4 種の /CFM が対応するバリアントになることを確認する
     #[test]
@@ -401,5 +429,45 @@ mod tests {
         assert_eq!(AuthEvent::from_bytes(b"EFOpen"), AuthEvent::EFOpen);
         assert_eq!(AuthEvent::from_bytes(b"DocOpen"), AuthEvent::DocOpen);
         assert_eq!(AuthEvent::from_bytes(b"Unknown"), AuthEvent::DocOpen);
+    }
+
+    // バイト表記（5..=16）が 8 倍されてビット表記の鍵長になることを確認する
+    #[test]
+    fn parse_length_normalizes_byte_notation() {
+        let cases: [(i64, u16); 4] = [(5, 40), (8, 64), (13, 104), (16, 128)];
+        for (raw, expected_bits) in cases {
+            assert_eq!(
+                CryptFilter::parse_length(raw),
+                KeyLength::from_bits(expected_bits),
+                "/Length {raw} should be read as {expected_bits} bits"
+            );
+        }
+    }
+
+    // ビット表記（40..=128 かつ 8 の倍数）がそのまま鍵長になることを確認する
+    #[test]
+    fn parse_length_accepts_bit_notation() {
+        // `as` キャストを避けるため、期待ビット数を u16 で明示する
+        let cases: [(i64, u16); 4] = [(40, 40), (48, 48), (120, 120), (128, 128)];
+        for (raw, expected_bits) in cases {
+            assert_eq!(
+                CryptFilter::parse_length(raw),
+                KeyLength::from_bits(expected_bits),
+                "/Length {raw} should be read as {expected_bits} bits"
+            );
+        }
+    }
+
+    // どちらの表記としても成立しない値が None になることを確認する
+    #[test]
+    fn parse_length_rejects_uninterpretable_values() {
+        let cases: [i64; 10] = [-8, -1, 0, 4, 17, 39, 41, 136, 200, i64::MAX];
+        for raw in cases {
+            assert_eq!(
+                CryptFilter::parse_length(raw),
+                None,
+                "/Length {raw} should be rejected"
+            );
+        }
     }
 }
