@@ -329,8 +329,8 @@ impl CryptFilter {
     /// `/CF` エントリの `/Length` を検証済みの鍵長として返す。
     ///
     /// `/Length` が無い場合と、解釈できない値だった場合は `None`。
-    /// 単位の解釈は `parse_length` が境界で済ませているため、
-    /// 返る [`KeyLength`] は 40..=128 ビットかつ 8 の倍数であることが型で保証される。
+    /// 単位の解釈は `parse_length` が境界で済ませているため、`Some` で返る
+    /// [`KeyLength`] は 40..=128 ビットかつ 8 の倍数であることが型で保証される。
     /// ファイル暗号鍵の長さは暗号化辞書直下の `/Length`
     /// （[`StandardAlgorithm::key_length`](crate::encrypt::algorithm::StandardAlgorithm::key_length)）から読む。
     #[must_use]
