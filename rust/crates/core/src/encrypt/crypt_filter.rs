@@ -379,7 +379,7 @@ fn take_method(
 fn parse_length(raw: i64) -> Option<KeyLength> {
     let bits = match u16::try_from(raw).ok()? {
         bytes @ MIN_LENGTH_BYTES..=MAX_LENGTH_BYTES => bytes * BITS_PER_BYTE,
-        bits => bits,
+        written_bits => written_bits,
     };
     KeyLength::from_bits(bits)
 }
