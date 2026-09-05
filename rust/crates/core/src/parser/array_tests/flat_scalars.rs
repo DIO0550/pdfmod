@@ -1,5 +1,6 @@
 use super::super::super::object::name::PdfName;
 use super::super::super::object::pdf_object::PdfObject;
+use super::super::super::object::string::PdfString;
 use super::parser;
 
 #[test]
@@ -50,8 +51,8 @@ fn parse_object_returns_array_for_two_literal_strings() {
     assert_eq!(
         p.parse_object(),
         Ok(PdfObject::Array(vec![
-            PdfObject::String(b"s1".to_vec()),
-            PdfObject::String(b"s2".to_vec()),
+            PdfObject::String(PdfString::literal(b"s1")),
+            PdfObject::String(PdfString::literal(b"s2")),
         ]))
     );
 }
@@ -63,8 +64,8 @@ fn parse_object_returns_array_for_two_hex_strings() {
     assert_eq!(
         p.parse_object(),
         Ok(PdfObject::Array(vec![
-            PdfObject::String(b"A".to_vec()),
-            PdfObject::String(b"B".to_vec()),
+            PdfObject::String(PdfString::hex(b"A")),
+            PdfObject::String(PdfString::hex(b"B")),
         ]))
     );
 }

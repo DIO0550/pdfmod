@@ -7,8 +7,9 @@
 //! 間接参照（ISO §7.3.10、`PdfObject::Reference`）を扱い、配列/辞書は要素/値に
 //! 配列・辞書・間接参照を含むネストを再帰的にサポートする。stream は対象外。
 //!
-//! `LiteralString` と `HexString` は出自情報を落として `PdfObject::String` に統合する
-//! （所有ムーブのため clone は発生しない）。`Token::Comment` は透過的にスキップする。
+//! `LiteralString` と `HexString` は同じ `PdfObject::String` バリアントに集約するが、
+//! 字句の出自は [`PdfString`] の `encoding` として
+//! 保持する（所有ムーブのため clone は発生しない）。`Token::Comment` は透過的にスキップする。
 //! 辞書のキーは `Primitive::Name` のみ受理、値が `Null` のエントリは ISO §7.3.7 準拠で
 //! `PdfDictionary` に登録しない（重複キーで既存値がある場合は削除する）。
 //!
@@ -52,6 +53,7 @@ use crate::object::indirect_ref::IndirectRef;
 use crate::object::object_id::ObjectId;
 use crate::object::object_number::ObjectNumber;
 use crate::object::pdf_object::PdfObject;
+use crate::object::string::PdfString;
 use crate::parser::error::ParseError;
 
 /// PDF バイト列から [`PdfObject`] を 1 つずつ取り出すパーサ。
@@ -411,15 +413,16 @@ impl<'a> Parser<'a> {
 
     /// [`Primitive`] を所有ムーブで受け取り、対応する [`PdfObject`] バリアントへ
     /// マップする（スカラ 7 種 → 6 種、`LiteralString`/`HexString` は
-    /// `PdfObject::String` に統合）。`Vec<u8>` / `PdfName` は clone せずムーブする。
+    /// `PdfObject::String` に集約し、字句の出自は `PdfString` の `encoding` に
+    /// 引き継ぐ）。`Vec<u8>` / `PdfName` は clone せずムーブする。
     fn primitive_to_object(p: Primitive) -> PdfObject {
         match p {
             Primitive::Null => PdfObject::Null,
             Primitive::Boolean(b) => PdfObject::Boolean(b),
             Primitive::Integer(i) => PdfObject::Integer(i),
             Primitive::Real(f) => PdfObject::Real(f),
-            Primitive::LiteralString(v) => PdfObject::String(v),
-            Primitive::HexString(v) => PdfObject::String(v),
+            Primitive::LiteralString(v) => PdfObject::String(PdfString::literal(v)),
+            Primitive::HexString(v) => PdfObject::String(PdfString::hex(v)),
             Primitive::Name(n) => PdfObject::Name(n),
         }
     }
@@ -590,16 +593,22 @@ mod tests {
 
     #[test]
     fn parse_object_returns_string_for_literal_string() {
-        // 入力 b"(hello)" で Ok(PdfObject::String(b"hello".to_vec())) を返すことを確認する
+        // 入力 b"(hello)" で Ok(PdfObject::String(PdfString::literal(b"hello"))) を返すことを確認する
         let mut p = parser(b"(hello)");
-        assert_eq!(p.parse_object(), Ok(PdfObject::String(b"hello".to_vec())));
+        assert_eq!(
+            p.parse_object(),
+            Ok(PdfObject::String(PdfString::literal(b"hello")))
+        );
     }
 
     #[test]
     fn parse_object_returns_empty_string_for_empty_literal() {
-        // 境界値: 入力 b"()" で空の String(Vec::new()) を返すことを確認する
+        // 境界値: 入力 b"()" で空の String(PdfString::literal(Vec::new())) を返すことを確認する
         let mut p = parser(b"()");
-        assert_eq!(p.parse_object(), Ok(PdfObject::String(Vec::new())));
+        assert_eq!(
+            p.parse_object(),
+            Ok(PdfObject::String(PdfString::literal(Vec::new())))
+        );
     }
 
     #[test]
@@ -608,22 +617,39 @@ mod tests {
         let mut p = parser(b"(a\0b)");
         assert_eq!(
             p.parse_object(),
-            Ok(PdfObject::String(vec![b'a', 0x00, b'b']))
+            Ok(PdfObject::String(PdfString::literal(vec![
+                b'a', 0x00, b'b'
+            ])))
         );
     }
 
     #[test]
     fn parse_object_returns_string_for_hex_string() {
-        // 入力 b"<48656C6C6F>" で Ok(PdfObject::String(b"Hello".to_vec())) を返すことを確認する
+        // 入力 b"<48656C6C6F>" で Ok(PdfObject::String(PdfString::hex(b"Hello"))) を返すことを確認する
         let mut p = parser(b"<48656C6C6F>");
-        assert_eq!(p.parse_object(), Ok(PdfObject::String(b"Hello".to_vec())));
+        assert_eq!(
+            p.parse_object(),
+            Ok(PdfObject::String(PdfString::hex(b"Hello")))
+        );
     }
 
     #[test]
     fn parse_object_returns_empty_string_for_empty_hex() {
-        // 境界値: 入力 b"<>" で空の String(Vec::new()) を返すことを確認する
+        // 境界値: 入力 b"<>" で空の String(PdfString::hex(Vec::new())) を返すことを確認する
         let mut p = parser(b"<>");
-        assert_eq!(p.parse_object(), Ok(PdfObject::String(Vec::new())));
+        assert_eq!(
+            p.parse_object(),
+            Ok(PdfObject::String(PdfString::hex(Vec::new())))
+        );
+    }
+
+    #[test]
+    fn literal_and_hex_with_same_bytes_are_not_equal() {
+        // 同じバイト列にデコードされる "(Hello)" と "<48656C6C6F>" のパース結果が
+        // encoding の違いで非等価になることを確認する
+        let mut literal = parser(b"(Hello)");
+        let mut hex = parser(b"<48656C6C6F>");
+        assert_ne!(literal.parse_object(), hex.parse_object());
     }
 
     // ---------- 正常系: Name ----------

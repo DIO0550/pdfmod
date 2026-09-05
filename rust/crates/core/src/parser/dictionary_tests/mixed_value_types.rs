@@ -1,6 +1,7 @@
 use super::super::super::object::dictionary::PdfDictionary;
 use super::super::super::object::name::PdfName;
 use super::super::super::object::pdf_object::PdfObject;
+use super::super::super::object::string::PdfString;
 use super::parse_dict;
 
 #[test]
@@ -16,7 +17,7 @@ fn parse_object_returns_dictionary_with_all_value_types_mixed() {
     assert_eq!(dict.get(&PdfName::from("R")), Some(&PdfObject::Real(0.5)));
     assert_eq!(
         dict.get(&PdfName::from("S")),
-        Some(&PdfObject::String(b"x".to_vec()))
+        Some(&PdfObject::String(PdfString::literal(b"x")))
     );
     assert_eq!(
         dict.get(&PdfName::from("N")),

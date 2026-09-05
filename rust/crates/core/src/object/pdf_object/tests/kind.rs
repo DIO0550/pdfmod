@@ -11,7 +11,10 @@ fn kind_returns_matching_object_kind_for_every_variant() {
         (PdfObject::Boolean(true), ObjectKind::Boolean),
         (PdfObject::Integer(0), ObjectKind::Integer),
         (PdfObject::Real(0.0), ObjectKind::Real),
-        (PdfObject::String(Vec::new()), ObjectKind::String),
+        (
+            PdfObject::String(PdfString::literal(Vec::new())),
+            ObjectKind::String,
+        ),
         (PdfObject::Name(PdfName::from("Type")), ObjectKind::Name),
         (PdfObject::Array(Vec::new()), ObjectKind::Array),
         (

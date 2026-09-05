@@ -1,6 +1,7 @@
 use super::super::super::byte_offset::ByteOffset;
 use super::super::super::object::name::PdfName;
 use super::super::super::object::pdf_object::PdfObject;
+use super::super::super::object::string::PdfString;
 use super::parser;
 
 #[test]
@@ -15,7 +16,7 @@ fn parse_object_returns_array_for_iso_3_7_example() {
             PdfObject::Integer(549),
             PdfObject::Real(3.14),
             PdfObject::Boolean(false),
-            PdfObject::String(b"Ralph".to_vec()),
+            PdfObject::String(PdfString::literal(b"Ralph")),
             PdfObject::Name(PdfName::new(b"SomeName".to_vec())),
         ]))
     );
