@@ -26,7 +26,7 @@ fn all_distinct_variants_are_mutually_not_equal() {
         PdfObject::Boolean(false),
         PdfObject::Integer(0),
         PdfObject::Real(0.0),
-        PdfObject::String(b"abc".to_vec()),
+        PdfObject::String(PdfString::literal(b"abc")),
         PdfObject::Name(PdfName::from("Type")),
         PdfObject::Array(vec![PdfObject::Integer(1)]),
         PdfObject::Dictionary(PdfDictionary::new()),

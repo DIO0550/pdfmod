@@ -20,11 +20,11 @@ fn from_f64_builds_real_variant() {
 }
 
 #[test]
-fn from_vec_u8_builds_string_variant() {
-    // 復号済みバイト列から From で変換すると String バリアントになることを確認する
+fn from_pdf_string_builds_string_variant() {
+    // PdfString から From で変換すると String バリアントになり、encoding が保たれることを確認する
     assert_eq!(
-        PdfObject::from(b"abc".to_vec()),
-        PdfObject::String(b"abc".to_vec())
+        PdfObject::from(PdfString::hex(b"abc")),
+        PdfObject::String(PdfString::hex(b"abc"))
     );
 }
 
@@ -98,17 +98,9 @@ fn from_f64_negative_zero_preserves_sign() {
 }
 
 #[test]
-fn from_empty_vec_u8_builds_string_variant() {
-    // 要素型を明示した空 Vec<u8> なら曖昧さなく String バリアントへ変換できることを確認する
-    // （空 vec![].into() は候補 2 件で E0283 になるため、要素型明示が回避策として機能する）
-    let obj: PdfObject = Vec::<u8>::new().into();
-    assert_eq!(obj, PdfObject::String(Vec::new()));
-}
-
-#[test]
 fn from_empty_vec_pdf_object_builds_array_variant() {
-    // 要素型を明示した空 Vec<PdfObject> なら曖昧さなく Array バリアントへ変換できることを確認する
-    // （同じく E0283 の回避策が機能することの固定）
+    // 空の Vec<PdfObject> が Array バリアントへ変換できることを確認する
+    // （From<Vec<u8>> の削除により候補が 1 件になり、要素型の明示なしでも曖昧にならない）
     let obj: PdfObject = Vec::<PdfObject>::new().into();
     assert_eq!(obj, PdfObject::Array(Vec::new()));
 }

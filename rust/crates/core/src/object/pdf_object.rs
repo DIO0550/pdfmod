@@ -12,6 +12,7 @@ use crate::object::indirect_ref::IndirectRef;
 use crate::object::name::PdfName;
 use crate::object::object_kind::ObjectKind;
 use crate::object::stream::PdfStream;
+use crate::object::string::PdfString;
 
 /// PDF 基本オブジェクト（スカラ系・文字列・名前・配列・辞書・ストリーム・参照バリアントを表す enum）。
 ///
@@ -33,12 +34,14 @@ pub enum PdfObject {
     Integer(i64),
     /// 実数オブジェクト（`f64`、`NaN`/`±0.0`/`Inf` を無検証で保持）。
     Real(f64),
-    /// 文字列オブジェクト（**復号後** の生バイト列を保持）。
+    /// 文字列オブジェクト（**復号後** のバイト列と元の表記形式を `PdfString` で保持）。
     ///
     /// テキストエンコーディングを仮定せず、リテラル文字列のエスケープや
     /// 16進文字列のデコードは lexer の責務とする（`PdfName` と同方針）。
     /// 妥当性検証は上位に委譲し、NUL/非UTF-8/空バイト列も無検証で忠実に保持する。
-    String(Vec<u8>),
+    /// リテラル `(...)` と16進 `<...>` の別は `PdfString` の `encoding` が保持するため、
+    /// 同じバイト列でも表記形式が違えば `==` で非等価になる。
+    String(PdfString),
     /// 名前オブジェクト（`/Name` 本体）。`PdfName`（#261）をそのまま内包する。
     Name(PdfName),
     /// 配列オブジェクト（順序付きオブジェクトリスト）。
@@ -107,11 +110,24 @@ impl PdfObject {
 
     /// `String` のとき内部のバイト列を `&[u8]` として `Some` で取り出す（他は `None`）。
     ///
-    /// ヒープ保持のため参照返し（`PdfName::as_bytes` と同方針）。
+    /// ヒープ保持のため参照返し（`PdfName::as_bytes` と同方針）。表記形式
+    /// （リテラル/16進）も必要な場合は `as_pdf_string` を使う。
     #[must_use]
     pub fn as_string_bytes(&self) -> Option<&[u8]> {
         match self {
-            Self::String(bytes) => Some(bytes.as_slice()),
+            Self::String(string) => Some(string.as_bytes()),
+            _ => None,
+        }
+    }
+
+    /// `String` のとき内部の `PdfString` を `&PdfString` として `Some` で取り出す（他は `None`）。
+    ///
+    /// ヒープ保持のため参照返し（`as_name` と同方針）。バイト列だけで足りる場合は
+    /// `as_string_bytes` を使う。
+    #[must_use]
+    pub fn as_pdf_string(&self) -> Option<&PdfString> {
+        match self {
+            Self::String(string) => Some(string),
             _ => None,
         }
     }
@@ -225,19 +241,16 @@ impl From<f64> for PdfObject {
     }
 }
 
-impl From<Vec<u8>> for PdfObject {
-    /// 復号後の生バイト列から `String` バリアントを構築する変換経路。
+impl From<PdfString> for PdfObject {
+    /// `PdfString` から `String` バリアントを構築する変換経路。
     ///
-    /// テキストエンコーディングを仮定せず、空バイト列・NUL・非 UTF-8 バイトを
-    /// 無検証で忠実に保持する。
-    ///
-    /// `Vec<PdfObject>` からの変換と併存するため、要素型が未確定の空ベクタ
-    /// （`vec![].into()` / `Vec::new().into()`）は候補が 2 つになり
-    /// 「type annotations needed」で失敗する。空の文字列オブジェクトを作るときは
-    /// `Vec::<u8>::new().into()` と要素型を明示するか、`PdfObject::String(Vec::new())`
-    /// とバリアントを直接書く。
-    fn from(bytes: Vec<u8>) -> Self {
-        Self::String(bytes)
+    /// `Vec<u8>` からの変換は提供しない。バイト列だけでは表記形式（リテラル/16進）が
+    /// 決まらず、暗黙に一方を選ぶと取り違えを招くため、`PdfString::literal` /
+    /// `PdfString::hex` で表記形式を明示してから変換する。
+    /// 副次的に、旧 `From<Vec<u8>>` と `From<Vec<Self>>` の併存が引き起こしていた
+    /// 空ベクタの「type annotations needed」も解消される。
+    fn from(string: PdfString) -> Self {
+        Self::String(string)
     }
 }
 
@@ -257,10 +270,10 @@ impl From<PdfName> for PdfObject {
 impl From<Vec<Self>> for PdfObject {
     /// 要素列から `Array` バリアントを構築する変換経路。
     ///
-    /// `Vec<u8>` からの変換と併存するため、要素型が未確定の空ベクタは
-    /// 「type annotations needed」で失敗する。空配列は
-    /// `Vec::<PdfObject>::new().into()` と要素型を明示するか、
-    /// `PdfObject::Array(vec![])` とバリアントを直接書く。
+    /// かつては `From<Vec<u8>>`（`String` バリアント）と併存していたため、要素型が
+    /// 未確定の空ベクタが「type annotations needed」で失敗した。`String` の構築が
+    /// `From<PdfString>` に移り `Vec` からの変換が本実装だけになったため、
+    /// `vec![].into()` も曖昧にならない。
     fn from(items: Vec<Self>) -> Self {
         Self::Array(items)
     }
