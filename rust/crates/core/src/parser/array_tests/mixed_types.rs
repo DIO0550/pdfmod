@@ -1,5 +1,6 @@
 use super::super::super::object::name::PdfName;
 use super::super::super::object::pdf_object::PdfObject;
+use super::super::super::object::string::PdfString;
 use super::parser;
 
 #[test]
@@ -12,8 +13,8 @@ fn parse_object_returns_array_for_five_scalar_mix() {
             PdfObject::Null,
             PdfObject::Boolean(true),
             PdfObject::Name(PdfName::new(b"N".to_vec())),
-            PdfObject::String(b"s".to_vec()),
-            PdfObject::String(b"ABC".to_vec()),
+            PdfObject::String(PdfString::literal(b"s")),
+            PdfObject::String(PdfString::hex(b"ABC")),
         ]))
     );
 }

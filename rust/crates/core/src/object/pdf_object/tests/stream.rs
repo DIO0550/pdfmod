@@ -24,7 +24,7 @@ fn as_stream_returns_none_for_non_stream_variants() {
         PdfObject::Boolean(true),
         PdfObject::Integer(0),
         PdfObject::Real(0.0),
-        PdfObject::String(b"abc".to_vec()),
+        PdfObject::String(PdfString::literal(b"abc")),
         PdfObject::Name(PdfName::from("Type")),
         PdfObject::Array(vec![PdfObject::Integer(1)]),
         PdfObject::Dictionary(PdfDictionary::new()),

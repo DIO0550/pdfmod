@@ -1,5 +1,6 @@
 use super::super::super::object::name::PdfName;
 use super::super::super::object::pdf_object::PdfObject;
+use super::super::super::object::string::PdfString;
 use super::parse_dict;
 
 const ISO_SAMPLE: &[u8] = b"<< /Type /Example
@@ -37,7 +38,7 @@ fn parse_object_returns_iso_specification_sample_dictionary() {
     );
     assert_eq!(
         dict.get(&PdfName::from("StringItem")),
-        Some(&PdfObject::String(b"a string".to_vec()))
+        Some(&PdfObject::String(PdfString::literal(b"a string")))
     );
 
     let sub = match dict.get(&PdfName::from("Subdictionary")) {
@@ -56,7 +57,7 @@ fn parse_object_returns_iso_specification_sample_dictionary() {
     );
     assert_eq!(
         sub.get(&PdfName::from("LastItem")),
-        Some(&PdfObject::String(b"not!".to_vec()))
+        Some(&PdfObject::String(PdfString::literal(b"not!")))
     );
 }
 

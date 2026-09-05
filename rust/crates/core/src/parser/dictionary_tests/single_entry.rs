@@ -1,5 +1,6 @@
 use super::super::super::object::name::PdfName;
 use super::super::super::object::pdf_object::PdfObject;
+use super::super::super::object::string::PdfString;
 use super::parse_dict;
 
 #[test]
@@ -33,7 +34,7 @@ fn parse_object_returns_dictionary_with_literal_string_value() {
     let dict = parse_dict(b"<< /K (str) >>");
     assert_eq!(
         dict.get(&PdfName::from("K")),
-        Some(&PdfObject::String(b"str".to_vec()))
+        Some(&PdfObject::String(PdfString::literal(b"str")))
     );
 }
 
@@ -43,7 +44,7 @@ fn parse_object_returns_dictionary_with_hex_string_value() {
     let dict = parse_dict(b"<< /K <48> >>");
     assert_eq!(
         dict.get(&PdfName::from("K")),
-        Some(&PdfObject::String(b"H".to_vec()))
+        Some(&PdfObject::String(PdfString::hex(b"H")))
     );
 }
 

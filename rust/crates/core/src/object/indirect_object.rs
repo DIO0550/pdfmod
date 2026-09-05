@@ -59,6 +59,7 @@ mod tests {
     use crate::object::indirect_ref::IndirectRef;
     use crate::object::name::PdfName;
     use crate::object::object_number::ObjectNumber;
+    use crate::object::string::PdfString;
 
     /// `(n, g)` から `ObjectId` を組み立てるテスト用小ヘルパ。
     fn oid(n: u64, g: u16) -> ObjectId {
@@ -94,10 +95,10 @@ mod tests {
     #[test]
     fn into_parts_decomposes_ownership() {
         // `into_parts()` で `(id, object)` を所有取り出し（消費・ムーブ）すると、構築時の入力と一致する（無損失ムーブ・clone なし）。
-        let io = IndirectObject::new(oid(12, 0), PdfObject::String(b"body".to_vec()));
+        let io = IndirectObject::new(oid(12, 0), PdfObject::String(PdfString::literal(b"body")));
         let (id, object) = io.into_parts();
         assert_eq!(id, oid(12, 0));
-        assert_eq!(object, PdfObject::String(b"body".to_vec()));
+        assert_eq!(object, PdfObject::String(PdfString::literal(b"body")));
     }
 
     #[test]
@@ -204,8 +205,8 @@ mod tests {
     #[test]
     fn content_preserves_string() {
         // content `String(b"abc")` を無損失で保持し `object()` が同一バイト列の `&String` を返す。
-        let io = IndirectObject::new(oid(1, 0), PdfObject::String(b"abc".to_vec()));
-        assert_eq!(io.object(), &PdfObject::String(b"abc".to_vec()));
+        let io = IndirectObject::new(oid(1, 0), PdfObject::String(PdfString::literal(b"abc")));
+        assert_eq!(io.object(), &PdfObject::String(PdfString::literal(b"abc")));
     }
 
     #[test]
