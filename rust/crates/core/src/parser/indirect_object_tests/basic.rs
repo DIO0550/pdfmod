@@ -1,6 +1,7 @@
 use super::super::super::object::dictionary::PdfDictionary;
 use super::super::super::object::name::PdfName;
 use super::super::super::object::pdf_object::PdfObject;
+use super::super::super::object::string::PdfString;
 use super::{indirect_object, parser, reference};
 
 #[test]
@@ -49,7 +50,11 @@ fn parse_indirect_object_returns_string_content() {
     let mut p = parser(b"10 0 obj (abc) endobj");
     assert_eq!(
         p.parse_indirect_object(),
-        Ok(indirect_object(10, 0, PdfObject::String(b"abc".to_vec())))
+        Ok(indirect_object(
+            10,
+            0,
+            PdfObject::String(PdfString::literal(b"abc"))
+        ))
     );
 }
 

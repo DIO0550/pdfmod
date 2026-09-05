@@ -173,7 +173,9 @@ fn take_required_bytes(
         return Err(EncryptError::missing_required_key_at(position, key));
     };
     match value {
-        PdfObject::String(bytes) => Ok(bytes),
+        // encoding（リテラル/16進）は暗号鍵の材料として意味を持たないため捨て、
+        // バイト列だけを所有権ごと取り出す。
+        PdfObject::String(string) => Ok(string.into_bytes()),
         other => Err(EncryptError::invalid_key_type_at(
             position,
             EncryptKeyPath::Root(key),

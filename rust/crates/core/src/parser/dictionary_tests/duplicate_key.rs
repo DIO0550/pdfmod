@@ -1,5 +1,6 @@
 use super::super::super::object::name::PdfName;
 use super::super::super::object::pdf_object::PdfObject;
+use super::super::super::object::string::PdfString;
 use super::parse_dict;
 
 #[test]
@@ -33,6 +34,6 @@ fn parse_object_dedups_different_variant_reinsert_keeping_latest() {
     assert_eq!(dict.len(), 1);
     assert_eq!(
         dict.get(&PdfName::from("A")),
-        Some(&PdfObject::String(b"str".to_vec()))
+        Some(&PdfObject::String(PdfString::literal(b"str")))
     );
 }

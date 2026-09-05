@@ -23,6 +23,9 @@ pub enum ObjectKind {
     /// [`PdfObject::Real`](crate::object::pdf_object::PdfObject::Real)
     Real,
     /// [`PdfObject::String`](crate::object::pdf_object::PdfObject::String)
+    ///
+    /// リテラル `(...)` と16進 `<...>` は区別しない（表記形式は `PdfString` の
+    /// `encoding` が持つ粒度で、`ObjectKind` はバリアント種別だけを表す）。
     String,
     /// [`PdfObject::Name`](crate::object::pdf_object::PdfObject::Name)
     Name,
