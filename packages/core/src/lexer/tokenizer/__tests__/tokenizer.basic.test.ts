@@ -230,12 +230,13 @@ test.each([
   expect(tokens[0]).toMatchObject({ type: TokenType.Name, value: expected });
 });
 
-test("Name の不正hexエスケープ /A#GG は #GG を16進デコードする", () => {
+test("Name の不正hexエスケープ /A#GG は # をリテラル文字として扱う", () => {
   const tokens = tokenize("/A#GG");
-  // parseInt("GG", 16) = NaN → String.fromCharCode(NaN) = "\u0000"
+  // ISO 32000-1 §7.3.5: '#' には2桁の16進数が続く必要がある。
+  // 満たさない場合は '#' をリテラル文字として扱う（網羅ケースは tokenizer.name-escape.test.ts）
   expect(tokens[0]).toMatchObject({
     type: TokenType.Name,
-    value: "A\u0000",
+    value: "A#GG",
   });
 });
 
