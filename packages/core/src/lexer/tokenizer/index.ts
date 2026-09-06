@@ -29,6 +29,9 @@ const AsciiMinus = 45; // '-'
 const AsciiDot = 46; // '.'
 const AsciiBackslash = 92; // '\\'
 const AsciiHash = 35; // '#'
+const AsciiUpperA = 65; // 'A'
+const AsciiUpperF = 70; // 'F'
+const AsciiLowerA = 97; // 'a'
 const AsciiLowerN = 110; // 'n'
 const AsciiLowerR = 114; // 'r'
 const AsciiLowerT = 116; // 't'
@@ -42,6 +45,8 @@ const OctalRadix = 8;
 const HexRadix = 16;
 const MaxOctalFollowingDigits = 2;
 const HexEscapeWidth = 3;
+/** ISO 32000-2 §7.3.5 が名前オブジェクトで禁止するNULのコードポイント。 */
+const NulCharCode = 0;
 
 /**
  * 指定バイトがASCII数字（'0'-'9'）かどうかを判定する。
@@ -57,6 +62,26 @@ const HexEscapeWidth = 3;
  */
 function isDigit(byte: number): boolean {
   return byte >= AsciiDigit0 && byte <= AsciiDigit9;
+}
+
+/**
+ * 指定バイトがASCII16進数字（'0'-'9' / 'A'-'F' / 'a'-'f'）かどうかを判定する。
+ *
+ * @param byte - 判定対象のバイト値
+ * @returns 16進数字であれば `true`
+ *
+ * @example
+ * ```ts
+ * isHexDigit(70); // true ('F')
+ * isHexDigit(103); // false ('g')
+ * ```
+ */
+function isHexDigit(byte: number): boolean {
+  return (
+    isDigit(byte) ||
+    (byte >= AsciiUpperA && byte <= AsciiUpperF) ||
+    (byte >= AsciiLowerA && byte <= AsciiLowerF)
+  );
 }
 
 /**
@@ -373,29 +398,52 @@ export class Tokenizer {
       if (isWhitespace(b) || isDelimiter(b)) {
         break;
       }
-      if (b === AsciiHash && this.pos + HexEscapeWidth - 1 < this.data.length) {
-        name += this.readHexEscapeInName();
-      } else {
-        name += String.fromCharCode(b);
-        this.pos++;
+      if (b === AsciiHash) {
+        const escaped = this.tryReadHexEscapeInName();
+        if (escaped.some) {
+          name += escaped.value;
+          continue;
+        }
       }
+      // エスケープとして不正な '#' はリテラル文字として扱う。
+      // ISO 32000-1 §7.3.5 非適合の入力でも名前を読み進める復旧方針（#332）。
+      name += String.fromCharCode(b);
+      this.pos++;
     }
 
     return { type: TokenType.Name, value: name, offset: ByteOffset.of(offset) };
   }
 
   /**
-   * 名前オブジェクト内の16進エスケープ (#xx) を読み取る。
-   * `#` の後の2バイトを16進数として解釈する。
+   * 名前オブジェクト内の16進エスケープ (#xx) の読み取りを試みる。
+   * `#` の直後2バイトが共にASCII16進数字で、かつ復号結果がNULでない場合のみ消費する。
    *
-   * @returns エスケープされた文字
+   * ISO 32000-1 §7.3.5 は `#` に必ず2桁の16進数が続くことを要求し、
+   * ISO 32000-2 §7.3.5 は名前中のNUL（`#00`）を禁止する。
+   * いずれかの条件を満たさない場合は `pos` を進めず `none` を返し、
+   * 呼び出し元が `#` をリテラル文字として扱う。
+   *
+   * @returns エスケープされた文字。エスケープとして不正な場合は `none`
    */
-  private readHexEscapeInName(): string {
+  private tryReadHexEscapeInName(): Option<string> {
+    if (this.pos + HexEscapeWidth - 1 >= this.data.length) {
+      return none;
+    }
+
     const hi = this.data[this.pos + 1];
     const lo = this.data[this.pos + 2];
+    if (!isHexDigit(hi) || !isHexDigit(lo)) {
+      return none;
+    }
+
     const hex = String.fromCharCode(hi) + String.fromCharCode(lo);
+    const code = parseInt(hex, HexRadix);
+    if (code === NulCharCode) {
+      return none;
+    }
+
     this.pos += HexEscapeWidth;
-    return String.fromCharCode(parseInt(hex, HexRadix));
+    return some(String.fromCharCode(code));
   }
 
   /**
