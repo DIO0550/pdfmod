@@ -80,13 +80,6 @@ const extractPagesRef = (
     });
   }
 
-  if (!NumberEx.isPositiveSafeInteger(pages.objectNumber)) {
-    return err({
-      code: "PAGES_NOT_FOUND",
-      message: "Catalog /Pages has invalid object number",
-    });
-  }
-
   if (!NumberEx.isSafeIntegerAtLeastZero(pages.generationNumber)) {
     return err({
       code: "PAGES_NOT_FOUND",
@@ -103,8 +96,20 @@ const extractPagesRef = (
     });
   }
 
+  // オブジェクト番号の検証基準は ObjectNumber.create に集約している（#334 / D-7）。
+  // production では 0 / 負値 / 非整数は object-parser の folding や手前のガードで
+  // 先に弾かれるため、ここは型の不変条件を保証する第二の壁として働く（D-7b）。
+  const objNum = ObjectNumber.create(pages.objectNumber);
+
+  if (!objNum.ok) {
+    return err({
+      code: "PAGES_NOT_FOUND",
+      message: "Catalog /Pages has invalid object number",
+    });
+  }
+
   return ok({
-    objectNumber: ObjectNumber.of(pages.objectNumber),
+    objectNumber: objNum.value,
     generationNumber: gen.value,
   });
 };
