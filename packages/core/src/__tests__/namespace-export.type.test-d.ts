@@ -4,10 +4,12 @@ import { expectTypeOf, test } from "vitest";
 import type {
   ContentStreamInterpreterExecuteOptions,
   ContentStreamInterpreterResult,
+  FreeObjectNumber,
   GraphicsStateStack,
   InheritedAttrs,
   LoadOptions,
   MarkedContentStack,
+  ObjectNumber,
   OperandStack,
   OperatorHandlerContext,
   ParsedCatalog,
@@ -166,4 +168,9 @@ test("Option.fromResult が公開 API から削除されている", () => {
 
 test("Option.toResult が公開 API から削除されている", () => {
   expectTypeOf(Option).not.toHaveProperty("toResult");
+});
+
+test("FreeObjectNumber 型がルートから参照でき ObjectNumber とは別の型である", () => {
+  expectTypeOf<FreeObjectNumber>().not.toEqualTypeOf<ObjectNumber>();
+  expectTypeOf<FreeObjectNumber>().toExtend<number>();
 });
