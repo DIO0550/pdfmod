@@ -113,7 +113,8 @@ PdfObject を返却
 | ID | ルール | 条件 | 振る舞い |
 |:---|:-------|:-----|:---------|
 | OR-001 | キャッシュヒット | LRUキャッシュにエントリ存在 | キャッシュから返却（xref参照なし） |
-| OR-002 | 循環参照検出 | resolving Set に既に存在 | `CIRCULAR_REFERENCE` エラーを返す |
+| OR-002 | 循環参照検出（チェーン内） | resolving Set に既に存在 | `CIRCULAR_REFERENCE` エラーを返す |
+| OR-011 | 循環参照検出（チェーン間） | 解決中の別チェーンの結果を待とうとしたとき、待機グラフを辿ると自チェーンが解決中のオブジェクトに到達する | 待たずに `CIRCULAR_REFERENCE` エラーを返す（相互待ちによるハングの防止）。閉路を閉じた側の待機のみエラーとし、待たれている側の解決は続行する |
 | OR-003 | xref未登録 | オブジェクト番号がxrefに存在しない | PdfNull `{ type: "null" }` を返却 |
 | OR-004 | 通常オブジェクト | XRefEntry.type = 1 | field2のオフセットにseek → パース |
 | OR-005 | オブジェクトストリーム | XRefEntry.type = 2 | ObjectStreamExtractorで抽出 |
