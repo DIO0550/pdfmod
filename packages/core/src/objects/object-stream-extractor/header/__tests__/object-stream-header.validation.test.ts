@@ -91,3 +91,12 @@ test("parseは負のoffsetでエラーを返す", () => {
   assert(!result.ok);
   expect(result.error.code).toBe("OBJECT_STREAM_HEADER_INVALID");
 });
+
+// ObjStm ヘッダは `N G R` 形ではなく生の整数ペアなので direct-object の folding を通らず、
+// 0 が実際に ObjectNumber.create へ到達する（#334）。
+test("parseはobjNumが0のペアを OBJECT_STREAM_HEADER_INVALID で拒否する", () => {
+  const data = enc("0 0 << /Key /Value >>");
+  const result = ObjectStreamHeader.parse(data, 4, 1);
+  assert(!result.ok);
+  expect(result.error.code).toBe("OBJECT_STREAM_HEADER_INVALID");
+});

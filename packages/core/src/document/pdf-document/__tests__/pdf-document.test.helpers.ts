@@ -609,6 +609,57 @@ export const buildMinimalSinglePagePdfWithXRefStream =
   };
 
 /**
+ * type=2（圧縮オブジェクト）エントリの親ストリーム番号が 0 の xref ストリームを持つ
+ * PDF を生成する。
+ *
+ * オブジェクト番号 0 は ISO 32000-1 §7.3.10 の正整数ではないため
+ * `decodeXRefStreamEntries` が `XREF_STREAM_INVALID` を返す（#334）。
+ * このとき `PdfDocument.load` が全走査フォールバックへ移行し、処理が継続して
+ * `ok` になることを検証する fixture。
+ *
+ * @returns `streamObject` が 0 の type=2 エントリを含む PDF バイト列
+ */
+export const buildPdfWithZeroStreamObjectXRefStream =
+  async (): Promise<Uint8Array> => {
+    const encoder = new TextEncoder();
+    const objectBodies = [CATALOG_BODY, PAGES_BODY_SINGLE, PAGE_BODY];
+    const objs = formatIndirectObjects(objectBodies);
+
+    const offsets: number[] = [];
+    let cursor = encoder.encode(PDF_HEADER).length;
+    for (const obj of objs) {
+      offsets.push(cursor);
+      cursor += encoder.encode(obj).length;
+    }
+    const xrefStreamObjNum = objectBodies.length + 1;
+    const xrefStreamOffset = cursor;
+
+    const rawEntries = [
+      xrefStreamEntryBytes(0, 0, 0),
+      xrefStreamEntryBytes(1, offsets[0], 0),
+      xrefStreamEntryBytes(1, offsets[1], 0),
+      // 親 ObjStm 番号が 0 の圧縮エントリ。ObjectNumber.create が弾く
+      xrefStreamEntryBytes(2, 0, 0),
+      xrefStreamEntryBytes(1, xrefStreamOffset, 0),
+    ].flat();
+    const compressed = await compressFlate(new Uint8Array(rawEntries));
+
+    const size = xrefStreamObjNum + 1;
+    const dict =
+      `<< /Type /XRef /Filter /FlateDecode /W [${XREF_STREAM_W.join(" ")}] ` +
+      `/Size ${size} /Root 1 0 R /Length ${compressed.length} >>`;
+
+    return concatUint8Arrays([
+      encoder.encode(PDF_HEADER),
+      ...objs.map((o) => encoder.encode(o)),
+      encoder.encode(`${xrefStreamObjNum} 0 obj\n${dict}\nstream\n`),
+      compressed,
+      encoder.encode("\nendstream\nendobj\n"),
+      encoder.encode(`startxref\n${xrefStreamOffset}\n%%EOF\n`),
+    ]);
+  };
+
+/**
  * `/Type` が `/XRef` でないストリームを xref ストリーム位置に持つ PDF を生成する。
  *
  * `startxref` が指す間接オブジェクトはストリームだが `/Type /NotXRef` であり、

@@ -5,6 +5,7 @@ mod multiple_subsections;
 mod no_validation;
 mod single_subsection;
 mod terminator;
+mod zero_entry;
 
 /// xref テーブルのバイト列を組み立てる。
 ///

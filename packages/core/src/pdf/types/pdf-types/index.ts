@@ -1,4 +1,5 @@
 import type { ByteOffset } from "../byte-offset/index";
+import type { FreeObjectNumber } from "../free-object-number/index";
 import type { GenerationNumber } from "../generation-number/index";
 import type { IndirectRef } from "../indirect-ref/index";
 import type { ObjectNumber } from "../object-number/index";
@@ -12,8 +13,12 @@ export type { IndirectRef } from "../indirect-ref/index";
 export interface XRefFreeEntry {
   /** エントリ型: フリーオブジェクト */
   type: 0;
-  /** 次のフリーオブジェクトの番号 */
-  nextFreeObject: ObjectNumber;
+  /**
+   * フリーリスト上で次に来る空きオブジェクトの番号（ISO 32000-1 §7.5.4）。
+   * リスト末尾では 0（先頭へ戻る）を指すため `ObjectNumber` ではなく
+   * `FreeObjectNumber` を用いる。
+   */
+  nextFreeObject: FreeObjectNumber;
   /** 世代番号 */
   generationNumber: GenerationNumber;
 }

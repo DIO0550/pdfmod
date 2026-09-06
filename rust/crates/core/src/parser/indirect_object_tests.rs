@@ -22,7 +22,10 @@ fn parser(input: &[u8]) -> Parser<'_> {
 /// `(n, g, object)` から期待値 `IndirectObject` を組み立てる小ヘルパ。
 fn indirect_object(n: u64, g: u16, object: PdfObject) -> IndirectObject {
     IndirectObject::new(
-        ObjectId::new(ObjectNumber::new(n), GenerationNumber::new(g)),
+        ObjectId::new(
+            ObjectNumber::new(n).expect("positive object number"),
+            GenerationNumber::new(g),
+        ),
         object,
     )
 }
@@ -30,7 +33,7 @@ fn indirect_object(n: u64, g: u16, object: PdfObject) -> IndirectObject {
 /// `(n, g)` から content 用の `PdfObject::Reference` を組み立てる小ヘルパ。
 fn reference(n: u64, g: u16) -> PdfObject {
     PdfObject::Reference(IndirectRef::new(ObjectId::new(
-        ObjectNumber::new(n),
+        ObjectNumber::new(n).expect("positive object number"),
         GenerationNumber::new(g),
     )))
 }

@@ -104,6 +104,7 @@ export type {
 } from "./pdf/index";
 export {
   ByteOffset,
+  FreeObjectNumber,
   GenerationNumber,
   IndirectRef,
   ObjectNumber,

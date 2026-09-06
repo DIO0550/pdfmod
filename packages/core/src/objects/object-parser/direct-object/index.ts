@@ -17,6 +17,8 @@ import { decodeHexString, decodeLiteralString } from "../string-decoder/index";
 
 // PDF仕様上の明示的な上限はなく、再帰的な配列/辞書ネストによるスタックオーバーフロー防止のための防御的な上限値。
 const MAX_NESTING_DEPTH = 100;
+/** フリーリストの先頭に予約されたオブジェクト番号（ISO 32000-1 §7.5.4）。 */
+const FREE_LIST_HEAD_OBJECT_NUMBER = 0;
 
 /**
  * direct object (stream を含まない PdfValue) を BufferedTokenizer からパースするコンパニオンオブジェクト。
@@ -152,10 +154,16 @@ function readValue(
  * Integer トークン後の `N G R` パターンを試行する。
  * 3トークン先読みしパターン不一致なら pushBack して None を返す。
  *
+ * `N == 0` のときは参照値ではなく null オブジェクト（`{ type: "null" }`）を返す。
+ * オブジェクト番号 0 は ISO 32000-1 §7.5.4 のフリーリスト先頭に予約された番号で、
+ * `docs/specs/02a_object_resolution.md` §2.4 により常に null に解決されるため
+ * （#334）。関数名は「参照の読み取り試行」のままだが、返り値には null が含まれる。
+ *
  * @param bt - バッファ付きトークナイザ
  * @param baseOffset - 呼び出し元 data 基準の開始オフセット
  * @param intVal - 先頭の integer 値（オブジェクト番号候補）
- * @returns 成立: Some(ok(indirect-ref))、不成立: None、N/G 不正: Some(err(...))
+ * @returns 成立: Some(ok(indirect-ref))、`N == 0`: Some(ok(null))、
+ *   不成立: None、N/G 不正: Some(err(...))
  */
 function tryReadIndirectRef(
   bt: BufferedTokenizer,
@@ -176,23 +184,33 @@ function tryReadIndirectRef(
 
   const third = bt.next();
   if (third.type === TokenType.Keyword && third.value === "R") {
-    const objectNumber = ObjectNumber.create(intVal);
-    if (!objectNumber.ok) {
-      return some(
-        err({
-          code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
-          message: `Invalid indirect reference object number: ${objectNumber.error}`,
-          offset: ByteOffset.add(baseOffset, third.offset),
-        }),
-      );
-    }
-
     const generationNumber = GenerationNumber.create(secondVal);
     if (!generationNumber.ok) {
       return some(
         err({
           code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
           message: `Invalid indirect reference generation number: ${generationNumber.error}`,
+          offset: ByteOffset.add(baseOffset, second.offset),
+        }),
+      );
+    }
+
+    // ISO 32000-1 §7.5.4 / docs/specs/02a_object_resolution.md §2.4:
+    // オブジェクト番号 0 はフリーリストのヘッド専用の予約番号であり、`0 G R` は
+    // 構文としては合法だが解決結果は常に null になる。ObjectNumber（§7.3.10 の正整数）
+    // では表現できないため、参照ノードを作らずここで null オブジェクトを返す。
+    // 構文エラーにしないのは Postel の法則（docs/specs/09_implementation_guide.md §3.1）と、
+    // 解決仕様が「type=0 (Free) → null を返却」と規定していることに従うため。
+    if (intVal === FREE_LIST_HEAD_OBJECT_NUMBER) {
+      return some(ok({ type: "null" }));
+    }
+
+    const objectNumber = ObjectNumber.create(intVal);
+    if (!objectNumber.ok) {
+      return some(
+        err({
+          code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
+          message: `Invalid indirect reference object number: ${objectNumber.error}`,
           offset: ByteOffset.add(baseOffset, third.offset),
         }),
       );

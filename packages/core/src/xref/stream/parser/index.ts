@@ -2,6 +2,7 @@ import { NumberEx } from "../../../ext/number/index";
 import type { PdfParseError } from "../../../pdf/errors/index";
 import type { ByteOffset } from "../../../pdf/types/byte-offset/index";
 import { ByteOffset as ByteOffsetNs } from "../../../pdf/types/byte-offset/index";
+import { FreeObjectNumber } from "../../../pdf/types/free-object-number/index";
 import { GenerationNumber } from "../../../pdf/types/generation-number/index";
 import type { XRefEntry, XRefTable } from "../../../pdf/types/index";
 import { ObjectNumber } from "../../../pdf/types/object-number/index";
@@ -11,6 +12,8 @@ import { err, ok } from "../../../utils/result/index";
 const BYTE_BASE = 256;
 const W_ARRAY_LENGTH = 3;
 const MAX_FIELD_WIDTH = 8;
+/** フリーリストの先頭に予約されたオブジェクト番号（ISO 32000-1 §7.5.4）。 */
+const FREE_LIST_HEAD_OBJECT_NUMBER = 0;
 
 interface XRefStreamParams {
   readonly data: Uint8Array;
@@ -114,9 +117,9 @@ function decodeEntry(
 
   switch (type) {
     case 0: {
-      const objNumResult = ObjectNumber.create(field2);
-      if (!objNumResult.ok) {
-        return failXRefStream(objNumResult.error, absField2Offset);
+      const nextFreeResult = FreeObjectNumber.create(field2);
+      if (!nextFreeResult.ok) {
+        return failXRefStream(nextFreeResult.error, absField2Offset);
       }
       const genResult = GenerationNumber.create(field3);
       if (!genResult.ok) {
@@ -124,7 +127,7 @@ function decodeEntry(
       }
       return ok({
         type: 0,
-        nextFreeObject: objNumResult.value,
+        nextFreeObject: nextFreeResult.value,
         generationNumber: genResult.value,
       });
     }
@@ -263,15 +266,21 @@ export function decodeXRefStreamEntries(
         return entryResult;
       }
 
-      const objNumResult = ObjectNumber.create(firstObj + i);
-      if (!objNumResult.ok) {
-        return failXRefStream(
-          objNumResult.error,
-          ByteOffsetNs.add(baseOffset, ByteOffsetNs.of(dataOffset)),
-        );
+      // オブジェクト番号 0 は ISO 32000-1 §7.5.4 のフリーリスト先頭に予約されており、
+      // 間接オブジェクトの識別子（§7.3.10 の正整数）ではない。`/Index` 既定値 [0, size]
+      // では必ずこのエントリが現れるため、エントリ本体は読み進めたうえで表には登録しない。
+      // スキップは戻り値に痕跡を残さない（xref パーサに警告チャネルが無いため）。
+      const objectNumber = firstObj + i;
+      if (objectNumber !== FREE_LIST_HEAD_OBJECT_NUMBER) {
+        const objNumResult = ObjectNumber.create(objectNumber);
+        if (!objNumResult.ok) {
+          return failXRefStream(
+            objNumResult.error,
+            ByteOffsetNs.add(baseOffset, ByteOffsetNs.of(dataOffset)),
+          );
+        }
+        entries.set(objNumResult.value, entryResult.value);
       }
-
-      entries.set(objNumResult.value, entryResult.value);
       dataOffset += entryWidth;
     }
   }

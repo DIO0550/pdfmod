@@ -62,11 +62,13 @@ export const ObjectStreamHeader = {
           message: `Expected integer objNum at pair ${i}, got ${objNumToken.type}`,
         });
       }
-      const objNumValue = objNumToken.value;
-      if (!NumberEx.isSafeIntegerAtLeastZero(objNumValue)) {
+      // ObjStm ヘッダは生の整数ペアで direct-object の folding を通らないため、
+      // オブジェクト番号 0（ISO 32000-1 §7.3.10 違反）はここで弾かれる（#334）。
+      const objNumResult = ObjectNumber.create(objNumToken.value);
+      if (!objNumResult.ok) {
         return err({
           code: "OBJECT_STREAM_HEADER_INVALID",
-          message: `Invalid objNum in ObjStm header: ${objNumValue}`,
+          message: `Invalid objNum in ObjStm header: ${objNumResult.error}`,
         });
       }
 
@@ -86,7 +88,7 @@ export const ObjectStreamHeader = {
       }
 
       entries.push({
-        objNum: ObjectNumber.of(objNumValue),
+        objNum: objNumResult.value,
         offset: ByteOffset.of(offsetValue),
       });
     }

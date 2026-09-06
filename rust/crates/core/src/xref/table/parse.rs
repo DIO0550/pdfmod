@@ -16,10 +16,21 @@
 //!
 //! # 検証しないこと
 //!
-//! オブジェクト番号 0 の有無、0 番の世代が 65535 か、0 番が free か、
-//! 先頭サブセクションが 0 始まりか、オフセットが指す位置が妥当かは**一切検証しない**。
+//! 0 番の世代が 65535 か、0 番が free か、先頭サブセクションが 0 始まりか、
+//! オフセットが指す位置が妥当かは**一切検証しない**。
 //! [`XRefEntry`] / [`XRefTable`] の無検証方針を解析層でも踏襲し、
 //! 妥当性判断は上位の解決層に委ねる。
+//!
+//! # オブジェクト番号 0 の扱い
+//!
+//! [`XRefTable`] のキーである [`ObjectNumber`] は ISO 32000-1 §7.3.10 の正整数しか
+//! 表せないため、番号 0 のエントリは**エントリ本体を読み進めたうえで表に登録しない**（#334）。
+//! エラーにはしない。標準的な PDF は `0 N` サブセクションを通じて必ず 0 番エントリを
+//! 持つため、弾くと既存ファイルが軒並み読めなくなるからである。
+//! スキップは戻り値に痕跡を残さない（本モジュールに警告チャネルが無いため）。
+//!
+//! この読み飛ばしにより §7.5.4 のフリーリストのヘッドが失われる。将来リストの走査を
+//! 実装する際は、0 番エントリの保持方法を別途設計する必要がある。
 //!
 //! trailer 辞書の解析・xref ストリーム（#588）・`/Prev` を辿るチェーン走査は
 //! 本モジュールの責務ではない。サブセクションを読み終えた位置は
@@ -31,6 +42,7 @@ use crate::lexer::byte_kind::ByteKind;
 use crate::lexer::byte_ops::keyword_end_at;
 use crate::lexer::skip::skip_whitespace_and_comments;
 use crate::lexer::token::Keyword;
+use crate::object::free_object_number::FreeObjectNumber;
 use crate::object::generation_number::GenerationNumber;
 use crate::object::object_number::ObjectNumber;
 use crate::xref::entry::XRefEntry;
@@ -166,10 +178,19 @@ fn parse_subsection(input: &[u8], pos: usize, table: &mut XRefTable) -> Result<u
     for index in 0..count {
         let entry_start = skip_blanks(input, cursor);
         let (entry, after_entry) = read_entry(input, entry_start)?;
-        // 上の checked_add で範囲を確認済みなので、この加算は溢れない。
-        let number = ObjectNumber::new(first_object.saturating_add(index));
-        // 先勝ち。同一番号が既にあれば insert は false を返すが、ここでは結果を使わない。
-        table.insert(number, entry);
+        // 上の checked_add により `first_object + (count - 1)` が u64 に収まることは
+        // 確認済みで、`index` は `count - 1` 以下なのでこの加算は実際には溢れない。
+        // それでも `+` ではなく saturating_add を使うのは、本クレートが
+        // 「任意の入力で panic しない」ことを parser / lexer 各層の契約として持ち、
+        // 上のガードが将来変わっても未検証入力でパースが panic に落ちないようにするため
+        // （`large_first_object_number_does_not_overflow` がこの性質を固定している）。
+        // オブジェクト番号 0 は §7.5.4 のフリーリスト先頭に予約された番号で、
+        // 表のキーである `ObjectNumber`（§7.3.10 の正整数）では表現できない。
+        // エントリ本体は読み進めたうえで登録だけを飛ばす（#334）。
+        if let Some(number) = ObjectNumber::new(first_object.saturating_add(index)) {
+            // 先勝ち。同一番号が既にあれば insert は false を返すが、ここでは結果を使わない。
+            table.insert(number, entry);
+        }
         cursor = after_entry;
     }
 
@@ -212,7 +233,7 @@ fn read_entry(input: &[u8], pos: usize) -> Result<(XRefEntry, usize), XRefError>
             generation,
         },
         FLAG_FREE => XRefEntry::Free {
-            next_free_object: ObjectNumber::new(first_field),
+            next_free_object: FreeObjectNumber::new(first_field),
             generation,
         },
         _ => return Err(XRefError::invalid_entry_flag_at(offset_of(flag_pos), flag)),

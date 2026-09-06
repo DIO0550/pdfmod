@@ -31,9 +31,6 @@ const IndirectRef = {
    * @returns Some(IndirectRef) または None
    */
   from(raw: PdfIndirectRef): Option<IndirectRef> {
-    if (!NumberEx.isPositiveSafeInteger(raw.objectNumber)) {
-      return none;
-    }
     if (!NumberEx.isSafeIntegerAtLeastZero(raw.generationNumber)) {
       return none;
     }
@@ -41,8 +38,13 @@ const IndirectRef = {
     if (!gen.ok) {
       return none;
     }
+    // オブジェクト番号の検証基準は ObjectNumber.create に集約している（#334 / D-7）。
+    const objNum = ObjectNumber.create(raw.objectNumber);
+    if (!objNum.ok) {
+      return none;
+    }
     return some({
-      objectNumber: ObjectNumber.of(raw.objectNumber),
+      objectNumber: objNum.value,
       generationNumber: gen.value,
     });
   },

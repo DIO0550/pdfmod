@@ -1,4 +1,5 @@
 use super::super::*;
+use crate::object::free_object_number::FreeObjectNumber;
 
 // ファイルサイズを超えうる巨大なオフセットも無検証で保持することを確認する。
 // オフセットが実在の位置を指すかの検証は解析・解決層の責務であり、この型は判断しない。
@@ -37,7 +38,7 @@ fn in_use_accepts_generation_reserved_for_free_list_head() {
 #[test]
 fn in_object_stream_accepts_index_beyond_plausible_object_count() {
     let entry = XRefEntry::InObjectStream {
-        stream_object: ObjectNumber::new(5),
+        stream_object: ObjectNumber::new(5).expect("positive object number"),
         index_in_stream: u32::MAX,
     };
 
@@ -56,7 +57,7 @@ fn in_object_stream_accepts_index_beyond_plausible_object_count() {
 #[test]
 fn free_accepts_next_free_object_pointing_to_arbitrary_number() {
     let entry = XRefEntry::Free {
-        next_free_object: ObjectNumber::new(u64::MAX),
+        next_free_object: FreeObjectNumber::new(u64::MAX),
         generation: GenerationNumber::new(0),
     };
 

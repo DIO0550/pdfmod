@@ -18,15 +18,27 @@ const validSize: PdfValue = { type: "integer", value: 10 };
 
 const MAX_GENERATION_NUMBER = 65535;
 
-test("/Root の objectNumber が 0 の場合は Ok を返す", () => {
-  // 境界値: 最小の有効なオブジェクト番号（許容側）
+test("/Root の objectNumber が 0 の場合は ROOT_NOT_FOUND を返す", () => {
+  // 境界値: 0 は ISO 32000-1 §7.3.10 の正整数ではない（拒否側）。
+  // 必須キーなのでカタログを解決できず、キー欠落と同じ扱いにする（#334）
   const result = trailerDictBuilder()
     .root({ type: "indirect-ref", objectNumber: 0, generationNumber: 0 })
     .size(validSize)
     .build();
 
+  assert(!result.ok);
+  expect(result.error.code).toBe("ROOT_NOT_FOUND");
+});
+
+test("/Root の objectNumber が 1 の場合は Ok を返す", () => {
+  // 境界値: 最小の有効なオブジェクト番号（許容側）
+  const result = trailerDictBuilder()
+    .root({ type: "indirect-ref", objectNumber: 1, generationNumber: 0 })
+    .size(validSize)
+    .build();
+
   assert(result.ok);
-  expect(result.value.root.objectNumber).toBe(ObjectNumber.of(0));
+  expect(result.value.root.objectNumber).toBe(ObjectNumber.of(1));
 });
 
 test("/Root の objectNumber が MAX_SAFE_INTEGER の場合は Ok を返す", () => {
@@ -279,8 +291,9 @@ test("/Info の generationNumber が 65536 の場合は TRAILER_DICT_INVALID を
   expect(result.error.code).toBe("TRAILER_DICT_INVALID");
 });
 
-test("/Encrypt の objectNumber が 0 の場合は Ok を返す", () => {
-  // 境界値: 最小の有効なオブジェクト番号（許容側）。拒否側は error を参照
+test("/Encrypt の objectNumber が 0 の場合は非暗号化として正常終了する", () => {
+  // 0 番参照は常に null に解決される（ISO 32000-1 §7.5.4）。/Encrypt は optional なので
+  // 致命エラーにせず「キー無し」に正規化する（#334 / D-5b）
   const result = trailerDictBuilder()
     .root(validRoot)
     .size(validSize)
@@ -288,10 +301,58 @@ test("/Encrypt の objectNumber が 0 の場合は Ok を返す", () => {
     .build();
 
   assert(result.ok);
-  expect(result.value.encrypt).toEqual({
-    objectNumber: ObjectNumber.of(0),
-    generationNumber: GenerationNumber.of(0),
-  });
+  expect(result.value.encrypt).toBeUndefined();
+});
+
+test("/Info の objectNumber が 0 の場合は情報辞書なしとして正常終了する", () => {
+  const result = trailerDictBuilder()
+    .root(validRoot)
+    .size(validSize)
+    .info({ type: "indirect-ref", objectNumber: 0, generationNumber: 0 })
+    .build();
+
+  assert(result.ok);
+  expect(result.value.info).toBeUndefined();
+});
+
+test.each([
+  { key: "info" as const, label: "/Info" },
+  { key: "encrypt" as const, label: "/Encrypt" },
+])("$label の objectNumber が 0 でも世代番号が範囲外なら TRAILER_DICT_INVALID を返す", ({
+  key,
+}) => {
+  // 0 判定を世代番号の検証より先に置くと、範囲外の世代番号まで正常終了してしまう。
+  // その順序回帰を固定する（#334 / D-5b）
+  const builder = trailerDictBuilder().root(validRoot).size(validSize);
+  const result = builder[key]({
+    type: "indirect-ref",
+    objectNumber: 0,
+    generationNumber: MAX_GENERATION_NUMBER + 1,
+  }).build();
+
+  assert(!result.ok);
+  expect(result.error.code).toBe("TRAILER_DICT_INVALID");
+});
+
+// /Prev と /XRefStm は間接参照ではなく xref セクションへのバイトオフセットなので、
+// 0 G R を null に畳んではならない。畳むと mergeXRefChain のチェーン走査が途中で
+// 正常終了し、古い revision のオブジェクトが黙って消える（silent data loss）。
+// そのため従来どおり TRAILER_DICT_INVALID を維持する（#334 / D-5b）。
+test.each([
+  { key: "prev" as const, label: "/Prev" },
+  { key: "xrefStm" as const, label: "/XRefStm" },
+])("$label に 0 G R を与えると TRAILER_DICT_INVALID のままである", ({
+  key,
+}) => {
+  const builder = trailerDictBuilder().root(validRoot).size(validSize);
+  const result = builder[key]({
+    type: "indirect-ref",
+    objectNumber: 0,
+    generationNumber: 0,
+  }).build();
+
+  assert(!result.ok);
+  expect(result.error.code).toBe("TRAILER_DICT_INVALID");
 });
 
 test("/Encrypt の objectNumber が MAX_SAFE_INTEGER の場合は Ok を返す", () => {

@@ -1,5 +1,6 @@
 import { assert, expect, test } from "vitest";
 import { ByteOffset } from "../../../../pdf/types/byte-offset/index";
+import { FreeObjectNumber } from "../../../../pdf/types/free-object-number/index";
 import { GenerationNumber } from "../../../../pdf/types/generation-number/index";
 import { ObjectNumber } from "../../../../pdf/types/object-number/index";
 import { parseXRefTable } from "../index";
@@ -27,33 +28,33 @@ function buildXRefBytes(
 
 test("単一サブセクション (1エントリ, n) をパースできる", () => {
   const data = buildXRefBytes([
-    { header: "0 1", entries: ["0000000100 00000 n"] },
+    { header: "1 1", entries: ["0000000100 00000 n"] },
   ]);
   const result = parseXRefTable(data, ByteOffset.of(0));
   assert(result.ok);
-  expect(result.value.xref.entries.get(ObjectNumber.of(0))).toEqual({
+  expect(result.value.xref.entries.get(ObjectNumber.of(1))).toEqual({
     type: 1,
     offset: ByteOffset.of(100),
     generationNumber: GenerationNumber.of(0),
   });
-  expect(result.value.xref.size).toBe(1);
+  expect(result.value.xref.size).toBe(2);
 });
 
-test("オブジェクト0 (f, gen=65535) + オブジェクト1 (n, gen=0) をパースできる", () => {
+test("フリーエントリ (f, gen=65535) + 使用中エントリ (n, gen=0) をパースできる", () => {
   const data = buildXRefBytes([
     {
-      header: "0 2",
+      header: "1 2",
       entries: ["0000000000 65535 f", "0000000100 00000 n"],
     },
   ]);
   const result = parseXRefTable(data, ByteOffset.of(0));
   assert(result.ok);
-  expect(result.value.xref.entries.get(ObjectNumber.of(0))).toEqual({
+  expect(result.value.xref.entries.get(ObjectNumber.of(1))).toEqual({
     type: 0,
-    nextFreeObject: ObjectNumber.of(0),
+    nextFreeObject: FreeObjectNumber.of(0),
     generationNumber: GenerationNumber.of(65535),
   });
-  expect(result.value.xref.entries.get(ObjectNumber.of(1))).toEqual({
+  expect(result.value.xref.entries.get(ObjectNumber.of(2))).toEqual({
     type: 1,
     offset: ByteOffset.of(100),
     generationNumber: GenerationNumber.of(0),
@@ -70,12 +71,8 @@ test("複数サブセクション (0 2 + 5 1) をパースできる", () => {
   ]);
   const result = parseXRefTable(data, ByteOffset.of(0));
   assert(result.ok);
-  expect(result.value.xref.entries.size).toBe(3);
-  expect(result.value.xref.entries.get(ObjectNumber.of(0))).toEqual({
-    type: 0,
-    nextFreeObject: ObjectNumber.of(0),
-    generationNumber: GenerationNumber.of(65535),
-  });
+  expect(result.value.xref.entries.size).toBe(2);
+  expect(result.value.xref.entries.get(ObjectNumber.of(0))).toBeUndefined();
   expect(result.value.xref.entries.get(ObjectNumber.of(1))).toEqual({
     type: 1,
     offset: ByteOffset.of(100),
@@ -119,12 +116,12 @@ test.each([
   { eol: "\r" as const, label: "CR のみ (0x0D)" },
 ])("EOL: $label をパースできる", ({ eol }) => {
   const data = buildXRefBytes(
-    [{ header: "0 1", entries: ["0000000100 00000 n"] }],
+    [{ header: "1 1", entries: ["0000000100 00000 n"] }],
     eol,
   );
   const result = parseXRefTable(data, ByteOffset.of(0));
   assert(result.ok);
-  expect(result.value.xref.entries.get(ObjectNumber.of(0))).toEqual({
+  expect(result.value.xref.entries.get(ObjectNumber.of(1))).toEqual({
     type: 1,
     offset: ByteOffset.of(100),
     generationNumber: GenerationNumber.of(0),
@@ -133,16 +130,16 @@ test.each([
 
 test("フラグ直後に SPACE が入る形式 (f SP CR LF) をパースできる", () => {
   const raw = encode(
-    "xref\n0 2\n0000000000 65535 f \r\n0000000100 00000 n \r\ntrailer",
+    "xref\n1 2\n0000000000 65535 f \r\n0000000100 00000 n \r\ntrailer",
   );
   const result = parseXRefTable(raw, ByteOffset.of(0));
   assert(result.ok);
-  expect(result.value.xref.entries.get(ObjectNumber.of(0))).toEqual({
+  expect(result.value.xref.entries.get(ObjectNumber.of(1))).toEqual({
     type: 0,
-    nextFreeObject: ObjectNumber.of(0),
+    nextFreeObject: FreeObjectNumber.of(0),
     generationNumber: GenerationNumber.of(65535),
   });
-  expect(result.value.xref.entries.get(ObjectNumber.of(1))).toEqual({
+  expect(result.value.xref.entries.get(ObjectNumber.of(2))).toEqual({
     type: 1,
     offset: ByteOffset.of(100),
     generationNumber: GenerationNumber.of(0),
@@ -151,11 +148,11 @@ test("フラグ直後に SPACE が入る形式 (f SP CR LF) をパースでき�
 
 test("非0世代番号 (gen=00002) の使用中エントリをパースできる", () => {
   const data = buildXRefBytes([
-    { header: "0 1", entries: ["0000000500 00002 n"] },
+    { header: "1 1", entries: ["0000000500 00002 n"] },
   ]);
   const result = parseXRefTable(data, ByteOffset.of(0));
   assert(result.ok);
-  expect(result.value.xref.entries.get(ObjectNumber.of(0))).toEqual({
+  expect(result.value.xref.entries.get(ObjectNumber.of(1))).toEqual({
     type: 1,
     offset: ByteOffset.of(500),
     generationNumber: GenerationNumber.of(2),
@@ -164,13 +161,13 @@ test("非0世代番号 (gen=00002) の使用中エントリをパースできる
 
 test("freeエントリの次freeオブジェクト番号が非0のとき正しく格納される", () => {
   const data = buildXRefBytes([
-    { header: "0 1", entries: ["0000000005 65535 f"] },
+    { header: "1 1", entries: ["0000000005 65535 f"] },
   ]);
   const result = parseXRefTable(data, ByteOffset.of(0));
   assert(result.ok);
-  expect(result.value.xref.entries.get(ObjectNumber.of(0))).toEqual({
+  expect(result.value.xref.entries.get(ObjectNumber.of(1))).toEqual({
     type: 0,
-    nextFreeObject: ObjectNumber.of(5),
+    nextFreeObject: FreeObjectNumber.of(5),
     generationNumber: GenerationNumber.of(65535),
   });
 });
@@ -181,7 +178,7 @@ test("サブセクション間にコメントがあっても次サブセクシ�
   );
   const result = parseXRefTable(raw, ByteOffset.of(0));
   assert(result.ok);
-  expect(result.value.xref.entries.size).toBe(2);
+  expect(result.value.xref.entries.size).toBe(1);
   expect(result.value.xref.entries.get(ObjectNumber.of(5))).toEqual({
     type: 1,
     offset: ByteOffset.of(200),
@@ -191,11 +188,11 @@ test("サブセクション間にコメントがあっても次サブセクシ�
 
 test("巨大だがsafe integerなoffset値を正しく格納する", () => {
   const data = buildXRefBytes([
-    { header: "0 1", entries: ["9999999999 00000 n"] },
+    { header: "1 1", entries: ["9999999999 00000 n"] },
   ]);
   const result = parseXRefTable(data, ByteOffset.of(0));
   assert(result.ok);
-  expect(result.value.xref.entries.get(ObjectNumber.of(0))).toEqual({
+  expect(result.value.xref.entries.get(ObjectNumber.of(1))).toEqual({
     type: 1,
     offset: ByteOffset.of(9999999999),
     generationNumber: GenerationNumber.of(0),
