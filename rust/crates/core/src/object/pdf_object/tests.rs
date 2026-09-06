@@ -15,7 +15,7 @@ use crate::object::object_number::ObjectNumber;
 // テスト用に代表的な IndirectRef を構築するヘルパ（オブジェクト番号 n・世代 g）
 fn make_ref(n: u64, g: u16) -> IndirectRef {
     IndirectRef::new(ObjectId::new(
-        ObjectNumber::new(n),
+        ObjectNumber::new(n).expect("positive object number"),
         GenerationNumber::new(g),
     ))
 }

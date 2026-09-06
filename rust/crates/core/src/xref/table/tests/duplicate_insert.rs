@@ -1,5 +1,6 @@
 use super::super::*;
 use crate::byte_offset::ByteOffset;
+use crate::object::free_object_number::FreeObjectNumber;
 use crate::object::generation_number::GenerationNumber;
 use crate::object::object_number::ObjectNumber;
 
@@ -16,9 +17,12 @@ fn second_insert_for_same_object_number_is_ignored() {
         generation: GenerationNumber::new(0),
     };
 
-    assert!(table.insert(ObjectNumber::new(1), newer));
-    assert!(!table.insert(ObjectNumber::new(1), older));
-    assert_eq!(table.get(ObjectNumber::new(1)), Some(&newer));
+    assert!(table.insert(ObjectNumber::new(1).expect("positive object number"), newer));
+    assert!(!table.insert(ObjectNumber::new(1).expect("positive object number"), older));
+    assert_eq!(
+        table.get(ObjectNumber::new(1).expect("positive object number")),
+        Some(&newer)
+    );
 }
 
 // 再挿入が無視されても件数は増えないことを確認する。
@@ -30,8 +34,8 @@ fn ignored_insert_does_not_increase_len() {
         generation: GenerationNumber::new(0),
     };
 
-    table.insert(ObjectNumber::new(1), entry);
-    table.insert(ObjectNumber::new(1), entry);
+    table.insert(ObjectNumber::new(1).expect("positive object number"), entry);
+    table.insert(ObjectNumber::new(1).expect("positive object number"), entry);
 
     assert_eq!(table.len(), 1);
 }
@@ -45,11 +49,17 @@ fn first_insert_wins_across_different_variants() {
         generation: GenerationNumber::new(0),
     };
     let free = XRefEntry::Free {
-        next_free_object: ObjectNumber::new(0),
+        next_free_object: FreeObjectNumber::new(0),
         generation: GenerationNumber::new(1),
     };
 
-    table.insert(ObjectNumber::new(1), in_use);
-    assert!(!table.insert(ObjectNumber::new(1), free));
-    assert_eq!(table.get(ObjectNumber::new(1)), Some(&in_use));
+    table.insert(
+        ObjectNumber::new(1).expect("positive object number"),
+        in_use,
+    );
+    assert!(!table.insert(ObjectNumber::new(1).expect("positive object number"), free));
+    assert_eq!(
+        table.get(ObjectNumber::new(1).expect("positive object number")),
+        Some(&in_use)
+    );
 }

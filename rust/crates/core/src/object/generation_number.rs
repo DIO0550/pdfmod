@@ -31,9 +31,12 @@ impl GenerationNumber {
     /// 負値と `65535` 超の両方をここで弾き、呼び出し側から
     /// `(0..=i64::from(u16::MAX)).contains(&g)` と `g as u16` を無くす。
     ///
-    /// `Option` を返す理由・`TryFrom` を採らない理由・無検証の [`Self::new`] と
-    /// 併存させる理由は [`ObjectNumber::try_from_i64`](crate::object::object_number::ObjectNumber::try_from_i64)
-    /// と同じ。世代不一致の判定など PDF 仕様上の妥当性は xref レイヤの責務。
+    /// `Option` を返す理由・`TryFrom` を採らない理由は
+    /// [`ObjectNumber::try_from_i64`](crate::object::object_number::ObjectNumber::try_from_i64)
+    /// と同じ。ただし `ObjectNumber` は #334 で無検証の `new` を廃止しており、
+    /// その点だけは本型と異なる（本型の内部型 `u16` は定義域が仕様範囲 `0..=65535` と
+    /// 一致するため、無検証の [`Self::new`] を健全に保てる）。
+    /// 世代不一致の判定など PDF 仕様上の妥当性は xref レイヤの責務。
     #[must_use]
     pub fn try_from_i64(g: i64) -> Option<Self> {
         u16::try_from(g).ok().map(Self)

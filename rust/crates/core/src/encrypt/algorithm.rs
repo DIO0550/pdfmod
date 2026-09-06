@@ -64,7 +64,7 @@ impl AlgorithmKind {
 ///
 /// # 既存方針からの逸脱について
 ///
-/// 本クレートの newtype（`ByteOffset` / `ObjectNumber` / `PdfName` など）は
+/// 本クレートの newtype（`ByteOffset` / `PdfName` など）は
 /// 「生成は無検証、妥当性検証は上位の責務」を方針としている。`KeyLength` は
 /// これに反して検証付きコンストラクタだけを持つ。鍵長が復号アルゴリズムの選択に
 /// 直結し、範囲外の値を保持したまま下流に流すと復号側で再検証が必要になるため
