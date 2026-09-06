@@ -19,7 +19,10 @@ fn minimal_trailer_yields_size_and_root() {
     assert_eq!(trailer.size(), 6);
     assert_eq!(
         trailer.root().target(),
-        ObjectId::new(ObjectNumber::new(1), GenerationNumber::new(0))
+        ObjectId::new(
+            ObjectNumber::new(1).expect("positive object number"),
+            GenerationNumber::new(0)
+        )
     );
     assert_eq!(trailer.prev(), None);
     assert_eq!(trailer.xref_stm(), None);
@@ -39,7 +42,10 @@ fn key_order_does_not_matter() {
     assert_eq!(trailer.size(), 6);
     assert_eq!(
         trailer.root().target(),
-        ObjectId::new(ObjectNumber::new(1), GenerationNumber::new(0))
+        ObjectId::new(
+            ObjectNumber::new(1).expect("positive object number"),
+            GenerationNumber::new(0)
+        )
     );
 }
 
@@ -68,7 +74,10 @@ fn root_with_max_generation_is_accepted() {
         .expect("root with max generation should parse");
     assert_eq!(
         parsed.trailer().root().target(),
-        ObjectId::new(ObjectNumber::new(1), GenerationNumber::new(65535))
+        ObjectId::new(
+            ObjectNumber::new(1).expect("positive object number"),
+            GenerationNumber::new(65535)
+        )
     );
 }
 
