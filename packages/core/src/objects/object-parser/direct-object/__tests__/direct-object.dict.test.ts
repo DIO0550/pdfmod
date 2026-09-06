@@ -65,3 +65,22 @@ test("辞書ネスト深度超過で NESTING_TOO_DEEP エラー", () => {
   assert(!result.ok);
   expect(result.error.code).toBe("NESTING_TOO_DEEP");
 });
+
+test("不正な # エスケープを含む名前がそのまま辞書キーになる", () => {
+  const result = DirectObject.parse(btOf("<</A#zz 1>>"), ByteOffset.of(0), 0);
+  assert(result.ok);
+  const dict = result.value as PdfDictionary;
+  expect(dict.entries.has("A#zz")).toBe(true);
+  expect(dict.entries.has("A")).toBe(false);
+});
+
+test("正当な # エスケープを含む名前はデコードされて辞書キーになる", () => {
+  const result = DirectObject.parse(
+    btOf("<</Font#20Name 1>>"),
+    ByteOffset.of(0),
+    0,
+  );
+  assert(result.ok);
+  const dict = result.value as PdfDictionary;
+  expect(dict.entries.has("Font Name")).toBe(true);
+});
