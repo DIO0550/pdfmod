@@ -1,11 +1,12 @@
 use super::super::*;
+use crate::object::free_object_number::FreeObjectNumber;
 
 // フリーリスト先頭（オブジェクト番号 0 相当）の代表値を構築し、
 // match で取り出したフィールドが構築時の値と一致することを確認する。
 #[test]
 fn free_entry_roundtrips_next_free_object_and_generation() {
     let entry = XRefEntry::Free {
-        next_free_object: ObjectNumber::new(0),
+        next_free_object: FreeObjectNumber::new(0),
         generation: GenerationNumber::new(65535),
     };
 
@@ -17,7 +18,7 @@ fn free_entry_roundtrips_next_free_object_and_generation() {
         panic!("Free バリアントであるべき");
     };
 
-    assert_eq!(next_free_object, ObjectNumber::new(0));
+    assert_eq!(next_free_object, FreeObjectNumber::new(0));
     assert_eq!(generation, GenerationNumber::new(65535));
 }
 
@@ -26,7 +27,7 @@ fn free_entry_roundtrips_next_free_object_and_generation() {
 fn free_entry_roundtrips_boundary_values() {
     for (next, gen) in [(0u64, 65535u16), (1, 0), (42, 1), (u64::MAX, u16::MAX)] {
         let entry = XRefEntry::Free {
-            next_free_object: ObjectNumber::new(next),
+            next_free_object: FreeObjectNumber::new(next),
             generation: GenerationNumber::new(gen),
         };
 
