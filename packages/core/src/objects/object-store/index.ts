@@ -5,7 +5,11 @@
  * @module
  */
 
-import type { PdfError, PdfWarning } from "../../pdf/errors/index";
+import type {
+  PdfCircularReferenceError,
+  PdfError,
+  PdfWarning,
+} from "../../pdf/errors/index";
 import { GenerationNumber } from "../../pdf/types/generation-number/index";
 import type { ObjectNumber } from "../../pdf/types/object-number/index";
 import type { IndirectRef, PdfObject } from "../../pdf/types/pdf-types/index";
@@ -22,6 +26,32 @@ const DEFAULT_CACHE_CAPACITY = 1024;
 const DEFAULT_STREAM_CACHE_CAPACITY = 64;
 
 /**
+ * 解決中（in-flight）のオブジェクト 1 件分の状態。
+ * `waitingOn` はこのキーを解決中のチェーンが現在 await している別キーの集合であり、
+ * 全エントリを合わせるとチェーン間の待機グラフ（wait-for graph）になる。
+ */
+interface InFlightResolution {
+  /** 解決結果の promise */
+  readonly promise: Promise<Result<PdfObject, PdfError>>;
+  /** このキーを解決中のチェーンが待っている in-flight キー */
+  readonly waitingOn: Set<string>;
+}
+
+/**
+ * 循環参照エラーを生成する。
+ *
+ * @param ref - 循環を検出した間接参照
+ * @returns CIRCULAR_REFERENCE エラー
+ */
+function circularReferenceError(ref: IndirectRef): PdfCircularReferenceError {
+  return {
+    code: "CIRCULAR_REFERENCE",
+    message: `Circular reference detected for object ${ref.objectNumber} gen ${ref.generationNumber}`,
+    objectId: ref,
+  };
+}
+
+/**
  * XRefTable を用いて IndirectRef を実体の PdfObject に解決するストア。
  * LRUCache によるメモ化、循環参照検出、XRefEntry の type 別分岐を備える。
  * ObjStm は常時サポート（discriminated union 不要）。
@@ -31,10 +61,7 @@ export class ObjectStore {
   private readonly cache: LRUCache<string, PdfObject>;
   private readonly streamCache: LRUCache<ObjectNumber, Uint8Array> | undefined;
   private readonly onWarning: ((warning: PdfWarning) => void) | undefined;
-  private readonly inFlight = new Map<
-    string,
-    Promise<Result<PdfObject, PdfError>>
-  >();
+  private readonly inFlight = new Map<string, InFlightResolution>();
 
   /**
    * @param source - データソース（xref, data）
@@ -149,21 +176,21 @@ export class ObjectStore {
     }
 
     if (ancestors.has(cacheKey)) {
-      return err({
-        code: "CIRCULAR_REFERENCE" as const,
-        message: `Circular reference detected for object ${ref.objectNumber} gen ${ref.generationNumber}`,
-        objectId: ref,
-      });
+      return err(circularReferenceError(ref));
     }
 
     const existing = this.inFlight.get(cacheKey);
     if (existing !== undefined) {
-      return existing;
+      return this.awaitInFlight(existing, cacheKey, ref, ancestors);
     }
 
     ancestors.add(cacheKey);
-    const promise = this.dispatch(ref, ancestors, cacheKey);
-    this.inFlight.set(cacheKey, promise);
+    // dispatch() は最初の await まで同期実行される。その区間から別キーの待機に入ると
+    // 自分のキーがまだ待機グラフに無く辺が張られないため、登録を先に完了させる
+    const promise = Promise.resolve().then(() =>
+      this.dispatch(ref, ancestors, cacheKey),
+    );
+    this.inFlight.set(cacheKey, { promise, waitingOn: new Set() });
 
     try {
       return await promise;
@@ -171,6 +198,77 @@ export class ObjectStore {
       ancestors.delete(cacheKey);
       this.inFlight.delete(cacheKey);
     }
+  }
+
+  /**
+   * 他チェーンが解決中のオブジェクトの完了を待つ。
+   * 待つと待機グラフに閉路ができる場合は待たずに循環参照エラーを返す。
+   *
+   * @param entry - 待機対象の in-flight エントリ
+   * @param cacheKey - 待機対象のキャッシュキー
+   * @param ref - 待機対象の間接参照（エラー生成に使う）
+   * @param ancestors - 呼び出しチェーンが解決中のキー集合
+   * @returns 解決された PdfObject、または CIRCULAR_REFERENCE エラー
+   */
+  private async awaitInFlight(
+    entry: InFlightResolution,
+    cacheKey: string,
+    ref: IndirectRef,
+    ancestors: ReadonlySet<string>,
+  ): Promise<Result<PdfObject, PdfError>> {
+    if (this.hasWaitPathTo(cacheKey, ancestors)) {
+      return err(circularReferenceError(ref));
+    }
+
+    // 入れ子の解決では外側のキーも内側の完了待ちで塞がるため、解決中の全キーから辺を張る
+    for (const ownedKey of ancestors) {
+      this.inFlight.get(ownedKey)?.waitingOn.add(cacheKey);
+    }
+
+    try {
+      return await entry.promise;
+    } finally {
+      for (const ownedKey of ancestors) {
+        this.inFlight.get(ownedKey)?.waitingOn.delete(cacheKey);
+      }
+    }
+  }
+
+  /**
+   * 待機グラフを start から辿り、呼び出しチェーンが解決中のキーに到達するか判定する。
+   *
+   * @param start - これから待とうとしている in-flight キー
+   * @param ancestors - 呼び出しチェーンが解決中のキー集合
+   * @returns 到達する（＝待つと閉路になる）場合 true
+   */
+  private hasWaitPathTo(
+    start: string,
+    ancestors: ReadonlySet<string>,
+  ): boolean {
+    const stack: string[] = [start];
+    const visited = new Set<string>();
+
+    while (stack.length > 0) {
+      const key = stack.pop();
+      if (key === undefined || visited.has(key)) {
+        continue;
+      }
+      visited.add(key);
+
+      const entry = this.inFlight.get(key);
+      if (entry === undefined) {
+        continue;
+      }
+
+      for (const next of entry.waitingOn) {
+        if (ancestors.has(next)) {
+          return true;
+        }
+        stack.push(next);
+      }
+    }
+
+    return false;
   }
 
   /**
