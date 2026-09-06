@@ -1,4 +1,4 @@
-import { expect, test, vi } from "vitest";
+import { expect, type MockInstance, test, vi } from "vitest";
 import type { PdfError } from "../../../pdf/errors/index";
 import { ObjectNumber } from "../../../pdf/types/object-number/index";
 import type {
@@ -68,6 +68,9 @@ const failsWith =
   async () =>
     err(error);
 
+/** ObjectStreamBody.extract を差し替えたスパイ。 */
+type ExtractSpy = MockInstance<typeof ObjectStreamBody.extract>;
+
 /**
  * オブジェクト番号ごとの振る舞いを持つ偽の ObjStm 抽出をセットアップする。
  * behaviors は呼び出しのたびに参照されるため、途中で差し替えられる。
@@ -75,7 +78,9 @@ const failsWith =
  * @param behaviors - オブジェクト番号 → 振る舞い
  * @returns ObjectStreamBody.extract のスパイ
  */
-const spyExtract = (behaviors: ReadonlyMap<number, ExtractBehavior>) =>
+const spyExtract = (
+  behaviors: ReadonlyMap<number, ExtractBehavior>,
+): ExtractSpy =>
   vi
     .spyOn(ObjectStreamBody, "extract")
     .mockImplementation(async (resolver, _cache, targetObjNum) =>
@@ -118,10 +123,7 @@ const makeStore = (objNumbers: readonly number[]): ObjectStore =>
  * @param objNumber - 対象のオブジェクト番号
  * @returns 呼び出し回数
  */
-const callsFor = (
-  spy: ReturnType<typeof spyExtract>,
-  objNumber: number,
-): number =>
+const callsFor = (spy: ExtractSpy, objNumber: number): number =>
   spy.mock.calls.filter(([, , targetObjNum]) => targetObjNum === objNumber)
     .length;
 
