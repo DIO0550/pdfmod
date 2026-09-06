@@ -139,10 +139,11 @@ fn read_name_decodes_delimiter_byte_via_escape() {
 }
 
 #[test]
-fn read_name_decodes_nul_byte_via_escape() {
-    // '/A#00B' (#00=NUL) で Some(b"A\x00B")・pos == 6 を確認する（任意バイト 0x00 受理）
+fn read_name_treats_nul_escape_as_literal_hash() {
+    // '/A#00B' で Some(b"A#00B")・pos == 6 を確認する。
+    // ISO 32000-2 §7.3.5 は名前中の NUL を禁止するため #00 はエスケープとして不正
     let mut lexer = Lexer::new(b"/A#00B");
-    assert_eq!(lexer.read_name(), Some(PdfName::new(b"A\x00B".to_vec())));
+    assert_eq!(lexer.read_name(), Some(PdfName::new(b"A#00B".to_vec())));
     assert_eq!(lexer.position(), 6);
 }
 
@@ -237,87 +238,88 @@ fn read_name_returns_empty_name_before_delimiter() {
     assert_eq!(lexer.position(), 1);
 }
 
-// Phase 10-G: 不正 #XX エスケープ（巻き戻し検証）
+// Phase 10-G: 不正 #XX エスケープ（'#' のリテラル扱い）
 
 #[test]
-fn read_name_rejects_hash_at_eof() {
-    // '/A#' (# のあと EOF) で None・pos == 0 巻き戻しを確認する
+fn read_name_treats_hash_at_eof_as_literal() {
+    // '/A#' (# のあと EOF) で Some(b"A#")・pos == 3 を確認する
     let mut lexer = Lexer::new(b"/A#");
-    assert_eq!(lexer.read_name(), None);
-    assert_eq!(lexer.position(), 0);
+    assert_eq!(lexer.read_name(), Some(PdfName::new(b"A#".to_vec())));
+    assert_eq!(lexer.position(), 3);
 }
 
 #[test]
-fn read_name_rejects_hash_with_one_hex_then_eof() {
-    // '/A#1' (#1 のあと EOF) で None・pos == 0 巻き戻しを確認する
+fn read_name_treats_hash_with_one_hex_then_eof_as_literal() {
+    // '/A#1' (#1 のあと EOF) で Some(b"A#1")・pos == 4 を確認する
     let mut lexer = Lexer::new(b"/A#1");
-    assert_eq!(lexer.read_name(), None);
-    assert_eq!(lexer.position(), 0);
+    assert_eq!(lexer.read_name(), Some(PdfName::new(b"A#1".to_vec())));
+    assert_eq!(lexer.position(), 4);
 }
 
 #[test]
-fn read_name_rejects_hash_with_non_hex_high() {
-    // '/A#Z' (高位が非16進) で None・pos == 0 巻き戻しを確認する
+fn read_name_treats_hash_with_non_hex_high_as_literal() {
+    // '/A#Z' (高位が非16進) で Some(b"A#Z")・pos == 4 を確認する
     let mut lexer = Lexer::new(b"/A#Z");
-    assert_eq!(lexer.read_name(), None);
-    assert_eq!(lexer.position(), 0);
+    assert_eq!(lexer.read_name(), Some(PdfName::new(b"A#Z".to_vec())));
+    assert_eq!(lexer.position(), 4);
 }
 
 #[test]
-fn read_name_rejects_hash_with_non_hex_low() {
-    // '/A#1Z' (低位が非16進) で None・pos == 0 巻き戻しを確認する
+fn read_name_treats_hash_with_non_hex_low_as_literal() {
+    // '/A#1Z' (低位が非16進) で Some(b"A#1Z")・pos == 5 を確認する
     let mut lexer = Lexer::new(b"/A#1Z");
-    assert_eq!(lexer.read_name(), None);
-    assert_eq!(lexer.position(), 0);
+    assert_eq!(lexer.read_name(), Some(PdfName::new(b"A#1Z".to_vec())));
+    assert_eq!(lexer.position(), 5);
 }
 
 #[test]
-fn read_name_rejects_hash_with_whitespace_low() {
-    // '/A#1 ' (低位が space) で None・pos == 0 巻き戻しを確認する
+fn read_name_treats_hash_with_whitespace_low_as_literal() {
+    // '/A#1 ' (低位が space) で Some(b"A#1")・pos == 4 を確認する（space で名前が終わる）
     let mut lexer = Lexer::new(b"/A#1 ");
-    assert_eq!(lexer.read_name(), None);
-    assert_eq!(lexer.position(), 0);
+    assert_eq!(lexer.read_name(), Some(PdfName::new(b"A#1".to_vec())));
+    assert_eq!(lexer.position(), 4);
 }
 
 #[test]
-fn read_name_rejects_hash_with_delimiter_low() {
-    // '/A#1/' (低位が '/') で None・pos == 0 巻き戻しを確認する
+fn read_name_treats_hash_with_delimiter_low_as_literal() {
+    // '/A#1/' (低位が '/') で Some(b"A#1")・pos == 4 を確認する（delimiter で名前が終わる）
     let mut lexer = Lexer::new(b"/A#1/");
-    assert_eq!(lexer.read_name(), None);
-    assert_eq!(lexer.position(), 0);
+    assert_eq!(lexer.read_name(), Some(PdfName::new(b"A#1".to_vec())));
+    assert_eq!(lexer.position(), 4);
 }
 
 #[test]
-fn read_name_rejects_hash_with_nul_low() {
-    // '/A#1\0' (低位が NUL = is_ascii_hexdigit false) で None・pos == 0 巻き戻しを確認する
+fn read_name_treats_hash_with_nul_low_as_literal() {
+    // '/A#1\0' (低位が生の NUL = token boundary) で Some(b"A#1")・pos == 4 を確認する
     let input = [b'/', b'A', b'#', b'1', 0x00];
     let mut lexer = Lexer::new(&input);
-    assert_eq!(lexer.read_name(), None);
-    assert_eq!(lexer.position(), 0);
+    assert_eq!(lexer.read_name(), Some(PdfName::new(b"A#1".to_vec())));
+    assert_eq!(lexer.position(), 4);
 }
 
 #[test]
-fn read_name_rejects_hash_with_whitespace_high() {
-    // '/A# ' (高位が space = is_ascii_hexdigit false) で None・pos == 0 巻き戻しを確認する
+fn read_name_treats_hash_with_whitespace_high_as_literal() {
+    // '/A# ' (高位が space) で Some(b"A#")・pos == 3 を確認する
     let mut lexer = Lexer::new(b"/A# ");
-    assert_eq!(lexer.read_name(), None);
-    assert_eq!(lexer.position(), 0);
+    assert_eq!(lexer.read_name(), Some(PdfName::new(b"A#".to_vec())));
+    assert_eq!(lexer.position(), 3);
 }
 
 #[test]
-fn read_name_rejects_hash_with_delimiter_high() {
-    // '/A#/' (高位が '/' = is_ascii_hexdigit false) で None・pos == 0 巻き戻しを確認する
+fn read_name_treats_hash_with_delimiter_high_as_literal() {
+    // '/A#/' (高位が '/') で Some(b"A#")・pos == 3 を確認する
     let mut lexer = Lexer::new(b"/A#/");
-    assert_eq!(lexer.read_name(), None);
-    assert_eq!(lexer.position(), 0);
+    assert_eq!(lexer.read_name(), Some(PdfName::new(b"A#".to_vec())));
+    assert_eq!(lexer.position(), 3);
 }
 
 #[test]
-fn read_name_rejects_hash_with_non_hex_high_and_low() {
-    // '/A#GG' (高位・低位とも非16進) で None・pos == 0 巻き戻しを確認する（TS readName バグの代表入力）
+fn read_name_treats_non_hex_high_and_low_as_literal_hash() {
+    // '/A#GG' (高位・低位とも非16進) で Some(b"A#GG")・pos == 5 を確認する。
+    // Issue #332 の代表入力で、TypeScript 実装と同じ名前になることを保証する
     let mut lexer = Lexer::new(b"/A#GG");
-    assert_eq!(lexer.read_name(), None);
-    assert_eq!(lexer.position(), 0);
+    assert_eq!(lexer.read_name(), Some(PdfName::new(b"A#GG".to_vec())));
+    assert_eq!(lexer.position(), 5);
 }
 
 // Phase 10-H: 長名前（仕様推奨上限 127 バイトを超えても受理）
@@ -356,11 +358,11 @@ fn read_name_failure_at_mid_buffer_rolls_back_to_call_site() {
 }
 
 #[test]
-fn read_name_invalid_escape_at_mid_buffer_rolls_back_to_call_site() {
-    // 'x/A#' で advance 後 (pos == 1) に不正エスケープ → pos == 1 巻き戻しを確認する
+fn read_name_invalid_escape_at_mid_buffer_reads_literal_hash() {
+    // 'x/A#' で advance 後 (pos == 1) に不正エスケープ → Some(b"A#")・pos == 4 を確認する
     let mut lexer = Lexer::new(b"x/A#");
     lexer.advance();
     assert_eq!(lexer.position(), 1);
-    assert_eq!(lexer.read_name(), None);
-    assert_eq!(lexer.position(), 1);
+    assert_eq!(lexer.read_name(), Some(PdfName::new(b"A#".to_vec())));
+    assert_eq!(lexer.position(), 4);
 }
