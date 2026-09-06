@@ -5,6 +5,7 @@ import {
   buildPdfWithEncryptDict,
   buildPdfWithHybridXRefStm,
   buildPdfWithWrongTypeXRefStream,
+  buildPdfWithZeroStreamObjectXRefStream,
   buildXRefStreamPdfWithEncrypt,
   buildXRefStreamPdfWithEncryptAndTextTrailer,
   buildXRefStreamPdfWithoutEncrypt,
@@ -99,6 +100,19 @@ test("/TypeがXRefでないストリームがxrefストリーム位置にあるP
     {
       onWarning: (w) => seen.push(w.code),
     },
+  );
+
+  assert(result.ok);
+  expect(seen).toContain("XREF_REBUILD");
+});
+
+// #334: xref ストリームの type=2 エントリの親 ObjStm 番号が 0 だと
+// XREF_STREAM_INVALID になるが、全走査フォールバックへ落ちて load は継続する。
+test("type=2 の streamObject が 0 の xref ストリームPDFはfallback scan経由でXREF_REBUILD warningを伴ってOkになる", async () => {
+  const seen: string[] = [];
+  const result = await PdfDocument.load(
+    await buildPdfWithZeroStreamObjectXRefStream(),
+    { onWarning: (w) => seen.push(w.code) },
   );
 
   assert(result.ok);
