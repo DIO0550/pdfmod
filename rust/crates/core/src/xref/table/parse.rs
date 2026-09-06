@@ -178,7 +178,12 @@ fn parse_subsection(input: &[u8], pos: usize, table: &mut XRefTable) -> Result<u
     for index in 0..count {
         let entry_start = skip_blanks(input, cursor);
         let (entry, after_entry) = read_entry(input, entry_start)?;
-        // 上の checked_add で範囲を確認済みなので、この加算は溢れない。
+        // 上の checked_add により `first_object + (count - 1)` が u64 に収まることは
+        // 確認済みで、`index` は `count - 1` 以下なのでこの加算は実際には溢れない。
+        // それでも `+` ではなく saturating_add を使うのは、本クレートが
+        // 「任意の入力で panic しない」ことを parser / lexer 各層の契約として持ち、
+        // 上のガードが将来変わっても未検証入力でパースが panic に落ちないようにするため
+        // （`large_first_object_number_does_not_overflow` がこの性質を固定している）。
         // オブジェクト番号 0 は §7.5.4 のフリーリスト先頭に予約された番号で、
         // 表のキーである `ObjectNumber`（§7.3.10 の正整数）では表現できない。
         // エントリ本体は読み進めたうえで登録だけを飛ばす（#334）。
