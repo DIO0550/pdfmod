@@ -1,6 +1,7 @@
 import { assert, expect, test } from "vitest";
 import type { PdfError } from "../../../pdf/errors/index";
 import { ByteOffset } from "../../../pdf/types/byte-offset/index";
+import { FreeObjectNumber } from "../../../pdf/types/free-object-number/index";
 import { GenerationNumber } from "../../../pdf/types/generation-number/index";
 import type {
   TrailerDict,
@@ -28,7 +29,7 @@ function usedEntry(offset: number, gen = 0): XRefEntry {
 function freeEntry(nextFree: number, gen = 0): XRefEntry {
   return {
     type: 0,
-    nextFreeObject: ObjectNumber.of(nextFree),
+    nextFreeObject: FreeObjectNumber.of(nextFree),
     generationNumber: GenerationNumber.of(gen),
   };
 }

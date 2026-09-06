@@ -15,11 +15,16 @@ test("空のストリーム（size=0, data長0）で空のXRefTableが返る", (
 
 test("単一エントリのみ", () => {
   const data = new Uint8Array([0x01, 0x00, 0x00, 0x00]);
-  const result = decodeXRefStreamEntries({ data, w: [1, 2, 1], size: 1 });
+  const result = decodeXRefStreamEntries({
+    data,
+    w: [1, 2, 1],
+    size: 2,
+    index: [1, 1],
+  });
 
   assert(result.ok);
   expect(result.value.entries.size).toBe(1);
-  expect(result.value.entries.get(ObjectNumber.of(0))).toEqual({
+  expect(result.value.entries.get(ObjectNumber.of(1))).toEqual({
     type: 1,
     offset: ByteOffset.of(0),
     generationNumber: GenerationNumber.of(0),
@@ -28,10 +33,15 @@ test("単一エントリのみ", () => {
 
 test("4バイト幅フィールドで大きなオフセット値をデコードする", () => {
   const data = new Uint8Array([0x01, 0x00, 0xff, 0xff, 0xff, 0x00, 0x00]);
-  const result = decodeXRefStreamEntries({ data, w: [1, 4, 2], size: 1 });
+  const result = decodeXRefStreamEntries({
+    data,
+    w: [1, 4, 2],
+    size: 2,
+    index: [1, 1],
+  });
 
   assert(result.ok);
-  expect(result.value.entries.get(ObjectNumber.of(0))).toEqual({
+  expect(result.value.entries.get(ObjectNumber.of(1))).toEqual({
     type: 1,
     offset: ByteOffset.of(16777215),
     generationNumber: GenerationNumber.of(0),
@@ -40,10 +50,15 @@ test("4バイト幅フィールドで大きなオフセット値をデコード�
 
 test("W=[1,4,2] で大きなバイト幅の正しいデコード", () => {
   const data = new Uint8Array([0x01, 0x01, 0x02, 0x03, 0x04, 0x01, 0x00]);
-  const result = decodeXRefStreamEntries({ data, w: [1, 4, 2], size: 1 });
+  const result = decodeXRefStreamEntries({
+    data,
+    w: [1, 4, 2],
+    size: 2,
+    index: [1, 1],
+  });
 
   assert(result.ok);
-  expect(result.value.entries.get(ObjectNumber.of(0))).toEqual({
+  expect(result.value.entries.get(ObjectNumber.of(1))).toEqual({
     type: 1,
     offset: ByteOffset.of(16909060),
     generationNumber: GenerationNumber.of(256),
@@ -63,10 +78,15 @@ test("decodeIntBEでNumber.MAX_SAFE_INTEGER超過時にエラー（7バイト以
 
 test("Type 2 の indexInStream が安全整数範囲内であることの検証", () => {
   const data = new Uint8Array([0x02, 0x00, 0x05, 0x64]);
-  const result = decodeXRefStreamEntries({ data, w: [1, 2, 1], size: 1 });
+  const result = decodeXRefStreamEntries({
+    data,
+    w: [1, 2, 1],
+    size: 2,
+    index: [1, 1],
+  });
 
   assert(result.ok);
-  expect(result.value.entries.get(ObjectNumber.of(0))).toEqual({
+  expect(result.value.entries.get(ObjectNumber.of(1))).toEqual({
     type: 2,
     streamObject: ObjectNumber.of(5),
     indexInStream: 100,
@@ -78,13 +98,13 @@ test("/Index範囲が重複した場合、後勝ちで上書きされる", () =>
   const result = decodeXRefStreamEntries({
     data,
     w: [1, 2, 1],
-    size: 1,
-    index: [0, 1, 0, 1],
+    size: 2,
+    index: [1, 1, 1, 1],
   });
 
   assert(result.ok);
   expect(result.value.entries.size).toBe(1);
-  expect(result.value.entries.get(ObjectNumber.of(0))).toEqual({
+  expect(result.value.entries.get(ObjectNumber.of(1))).toEqual({
     type: 1,
     offset: ByteOffset.of(20),
     generationNumber: GenerationNumber.of(0),

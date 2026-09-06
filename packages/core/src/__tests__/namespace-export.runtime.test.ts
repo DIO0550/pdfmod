@@ -5,6 +5,7 @@ import {
   ContentStreamInterpreter,
   ContentStreamTokenizer,
   DocumentInfoParser,
+  FreeObjectNumber,
   GenerationNumber,
   GraphicsState,
   GraphicsStateStack,
@@ -84,7 +85,12 @@ test("PdfVersionコンパニオンがルートからexportされている", () =
 
 test("ObjectNumberコンパニオンがルートからexportされている", () => {
   expect(ObjectNumber.of(1)).toBe(1);
-  expect(ObjectNumber.create(0).ok).toBe(true);
+  expect(ObjectNumber.create(1).ok).toBe(true);
+});
+
+test("FreeObjectNumberコンパニオンがルートからexportされている", () => {
+  expect(FreeObjectNumber.of(0)).toBe(0);
+  expect(FreeObjectNumber.create(0).ok).toBe(true);
 });
 
 test("GenerationNumberコンパニオンがルートからexportされている", () => {
