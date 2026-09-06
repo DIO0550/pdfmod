@@ -190,7 +190,7 @@ function tryReadIndirectRef(
         err({
           code: "OBJECT_PARSE_UNEXPECTED_TOKEN",
           message: `Invalid indirect reference generation number: ${generationNumber.error}`,
-          offset: ByteOffset.add(baseOffset, third.offset),
+          offset: ByteOffset.add(baseOffset, second.offset),
         }),
       );
     }
