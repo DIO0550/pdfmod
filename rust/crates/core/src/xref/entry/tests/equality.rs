@@ -1,4 +1,5 @@
 use super::super::*;
+use crate::object::free_object_number::FreeObjectNumber;
 
 // 同じバリアント・同じフィールド値なら等しいことを確認する。
 #[test]
@@ -34,11 +35,11 @@ fn same_variant_with_different_fields_are_not_equal() {
 #[test]
 fn different_variants_are_not_equal() {
     let free = XRefEntry::Free {
-        next_free_object: ObjectNumber::new(5),
+        next_free_object: FreeObjectNumber::new(5),
         generation: GenerationNumber::new(0),
     };
     let in_object_stream = XRefEntry::InObjectStream {
-        stream_object: ObjectNumber::new(5),
+        stream_object: ObjectNumber::new(5).expect("positive object number"),
         index_in_stream: 0,
     };
 
@@ -49,7 +50,7 @@ fn different_variants_are_not_equal() {
 #[test]
 fn entry_is_copy() {
     let original = XRefEntry::InObjectStream {
-        stream_object: ObjectNumber::new(5),
+        stream_object: ObjectNumber::new(5).expect("positive object number"),
         index_in_stream: 3,
     };
     let copied = original;
