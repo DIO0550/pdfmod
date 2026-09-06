@@ -32,7 +32,7 @@ fn info_is_extracted_as_reference() {
     assert_eq!(
         parsed.trailer().info().map(|r| r.target()),
         Some(ObjectId::new(
-            ObjectNumber::new(5),
+            ObjectNumber::new(5).expect("positive object number"),
             GenerationNumber::new(0)
         ))
     );
@@ -158,7 +158,9 @@ fn optional_key_null_is_treated_as_absent() {
 fn prev_byte_offset_can_feed_xref_table_parse() {
     use crate::xref::table::parse::ParsedXRefTable;
 
-    let older_xref = b"xref\n0 1\n0000000000 65535 f \n";
+    // 主題は /Prev のオフセットをそのまま渡せること。0 番エントリは表に載らない（#334）ため
+    // サブセクションを 1 起点にして len() == 1 の確認を保つ。
+    let older_xref = b"xref\n1 1\n0000000000 65535 f \n";
     let newer_trailer = "trailer\n<< /Size 2 /Root 1 0 R /Prev 0 >>";
     let mut input = older_xref.to_vec();
     input.extend_from_slice(newer_trailer.as_bytes());

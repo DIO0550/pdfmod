@@ -270,10 +270,15 @@ test("Type 1 エントリで field3 (世代番号) が 65535 を超える場合 
 test("Type 1 エントリで field3 (世代番号) が 境界値 65535 の場合は正常にパースされる", () => {
   // W=[1, 2, 3], type=1, offset=10, gen=65535 (0x00FFFF)
   const data = new Uint8Array([0x01, 0x00, 0x0a, 0x00, 0xff, 0xff]);
-  const result = decodeXRefStreamEntries({ data, w: [1, 2, 3], size: 1 });
+  const result = decodeXRefStreamEntries({
+    data,
+    w: [1, 2, 3],
+    size: 2,
+    index: [1, 1],
+  });
 
   assert(result.ok);
-  const entry = result.value.entries.get(ObjectNumber.of(0));
+  const entry = result.value.entries.get(ObjectNumber.of(1));
   assert(entry && entry.type === 1);
   expect(entry.generationNumber).toBe(GenerationNumber.of(65535));
 });

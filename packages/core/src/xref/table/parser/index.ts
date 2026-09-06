@@ -8,6 +8,7 @@ import {
   type ByteOffset,
   ByteOffset as ByteOffsetCompanion,
 } from "../../../pdf/types/byte-offset/index";
+import { FreeObjectNumber } from "../../../pdf/types/free-object-number/index";
 import { GenerationNumber } from "../../../pdf/types/generation-number/index";
 import type {
   XRefEntry,
@@ -38,6 +39,8 @@ const ENTRY_BODY_LENGTH = 18;
 const OFFSET_DIGITS = 10;
 const GENERATION_DIGITS = 5;
 const DECIMAL_RADIX = 10;
+/** フリーリストの先頭に予約されたオブジェクト番号（ISO 32000-1 §7.5.4）。 */
+const FREE_LIST_HEAD_OBJECT_NUMBER = 0;
 
 // --- エラーヘルパー ---
 
@@ -201,7 +204,7 @@ function parseEntry(
   } else if (flagByte === CHAR_F) {
     entry = {
       type: 0,
-      nextFreeObject: ObjectNumber.of(offsetValue),
+      nextFreeObject: FreeObjectNumber.of(offsetValue),
       generationNumber: genResult.value,
     };
   } else {
@@ -424,7 +427,14 @@ export function parseXRefTable(
       if (!entryResult.ok) {
         return entryResult;
       }
-      entries.set(ObjectNumber.of(firstObj + i), entryResult.value.entry);
+      const objectNumber = firstObj + i;
+      // オブジェクト番号 0 は ISO 32000-1 §7.5.4 のフリーリスト先頭に予約されており、
+      // 間接オブジェクトの識別子（§7.3.10 の正整数）ではない。標準的な PDF は必ず
+      // このエントリを持つため、エントリ本体は読み進めたうえで表には登録しない。
+      // スキップは戻り値に痕跡を残さない（xref パーサに警告チャネルが無いため）。
+      if (objectNumber !== FREE_LIST_HEAD_OBJECT_NUMBER) {
+        entries.set(ObjectNumber.of(objectNumber), entryResult.value.entry);
+      }
       entryPos = entryResult.value.nextPos;
     }
 

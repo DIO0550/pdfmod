@@ -21,7 +21,10 @@ fn default_table_equals_new_table() {
 fn empty_table_returns_none_for_any_object_number() {
     let table = XRefTable::new();
 
-    for n in [0u64, 1, 42, u64::MAX] {
-        assert_eq!(table.get(ObjectNumber::new(n)), None);
+    for n in [1u64, 2, 42, u64::MAX] {
+        assert_eq!(
+            table.get(ObjectNumber::new(n).expect("positive object number")),
+            None
+        );
     }
 }

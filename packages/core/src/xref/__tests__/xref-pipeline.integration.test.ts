@@ -67,13 +67,12 @@ test("scanStartXRefの結果をparseXRefTableに渡してend-to-endで解析す�
   const parseResult = parseXRefTable(data, scanResult.value);
   assert(parseResult.ok);
 
-  expect(parseResult.value.xref.entries.size).toBe(2);
+  expect(parseResult.value.xref.entries.size).toBe(1);
+  // /Size は 0 番を含む値のまま。表への未登録は size に影響しない
   expect(parseResult.value.xref.size).toBe(2);
-  expect(parseResult.value.xref.entries.get(ObjectNumber.of(0))).toEqual({
-    type: 0,
-    nextFreeObject: ObjectNumber.of(0),
-    generationNumber: GenerationNumber.of(65535),
-  });
+  expect(
+    parseResult.value.xref.entries.get(ObjectNumber.of(0)),
+  ).toBeUndefined();
   expect(parseResult.value.xref.entries.get(ObjectNumber.of(1))).toEqual({
     type: 1,
     offset: ByteOffset.of(9),
@@ -280,7 +279,7 @@ test("scanStartXRef -> mergeXRefChainで/Prevチェーンをまたいでend-to-e
   );
   assert(mergeResult.ok);
 
-  expect(mergeResult.value.mergedXRef.entries.size).toBe(5);
+  expect(mergeResult.value.mergedXRef.entries.size).toBe(4);
 
   const entry1 = mergeResult.value.mergedXRef.entries.get(ObjectNumber.of(1));
   assert(entry1 !== undefined && entry1.type === 1);

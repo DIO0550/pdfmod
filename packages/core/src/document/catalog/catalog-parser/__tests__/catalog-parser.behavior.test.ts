@@ -344,3 +344,39 @@ test("/Version が minor 上位ならカタログを採用 (header=1.5, catalog=
       .version as string,
   ).toBe("1.7");
 });
+
+// production の `/Pages 0 0 R` は object-parser が先に null へ畳むため、この関数には
+// `{ type: "null" }` として届く。つまり PAGES_NOT_FOUND になる理由は
+// `pages.type !== "indirect-ref"` であり、オブジェクト番号のガードではない（#334 / D-7b）。
+test("/Pages が 0 G R 由来の null の場合 PAGES_NOT_FOUND を返す", async () => {
+  const entries = makeCatalogEntries({
+    type: validCatalogName,
+    pages: { type: "null" },
+  });
+  const result = await CatalogParser.parse(
+    makeTrailerDict(makeRef(1)),
+    pdfVersion("1.7"),
+    resolveToDict(entries),
+  );
+  expect(result.ok).toBe(false);
+  expect((result as { ok: false; error: PdfError }).error.code).toBe(
+    "PAGES_NOT_FOUND",
+  );
+});
+
+// folding を経ずに 0 番の参照が届いた場合も、ObjectNumber.create が第二の壁として弾く。
+test("/Pages の objectNumber が 0 の場合 PAGES_NOT_FOUND を返す", async () => {
+  const entries = makeCatalogEntries({
+    type: validCatalogName,
+    pages: { type: "indirect-ref", objectNumber: 0, generationNumber: 0 },
+  });
+  const result = await CatalogParser.parse(
+    makeTrailerDict(makeRef(1)),
+    pdfVersion("1.7"),
+    resolveToDict(entries),
+  );
+  expect(result.ok).toBe(false);
+  expect((result as { ok: false; error: PdfError }).error.code).toBe(
+    "PAGES_NOT_FOUND",
+  );
+});

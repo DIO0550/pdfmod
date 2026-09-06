@@ -15,8 +15,9 @@
 //!
 //! 間接参照は `Integer(N) Integer(G) Keyword(Keyword::R)` の 3 トークン列を `Lexer` の
 //! token 単位 peek API（`peek_token_at(0/1)` + `take_token`）で検出する。
-//! `N` が [`ObjectNumber`] に、`G` が [`GenerationNumber`] に変換できるときのみ発火し、
-//! `N` を [`PdfObject::Reference`] に格納する。
+//! `N` が非負で `G` が [`GenerationNumber`] に変換できるときのみ発火し、
+//! `N >= 1` なら [`PdfObject::Reference`]、**`N == 0` なら [`PdfObject::Null`]** を返す
+//! （0 は §7.5.4 のフリーリスト先頭に予約された番号で、解決結果が常に null になるため。#334）。
 //! 不成立時は peek 済みトークンが `Lexer` 内部バッファに保留されたまま
 //! `Ok(None)` を返し、呼び出し元は `N` を [`PdfObject::Integer`] として発行する。
 //! 保留中のトークンは次回 `parse_object` 系で透過的に取り出される（ISO 32000-1 §7.3.10）。
@@ -105,8 +106,9 @@ impl<'a> Parser<'a> {
     /// [`PdfObject::Array`] を、[`Token::DictBegin`] を検出した場合は辞書パスに分岐し
     /// [`PdfObject::Dictionary`] を構築する。[`Token::Comment`] は透過的にスキップする。
     /// `Integer(N)` を読んだ直後は `try_parse_indirect_reference` で
-    /// 最大 2 トークン先読みし、`N G R` パターンが成立すれば [`PdfObject::Reference`] を返す
-    /// （ISO 32000-1 §7.3.10）。不成立のときは Integer として通常通り返す。
+    /// 最大 2 トークン先読みし、`N G R` パターンが成立すれば `N >= 1` なら
+    /// [`PdfObject::Reference`]、`N == 0` なら [`PdfObject::Null`] を返す
+    /// （ISO 32000-1 §7.3.10 / §7.5.4）。不成立のときは Integer として通常通り返す。
     /// `obj`/`endobj`/`stream`/`endstream`・キーワード等の対象外トークンが来た場合は
     /// [`ParseErrorKind::UnexpectedToken`](error::ParseErrorKind::UnexpectedToken)、
     /// 入力が尽きていれば [`ParseErrorKind::UnexpectedEof`](error::ParseErrorKind::UnexpectedEof)、
@@ -117,8 +119,8 @@ impl<'a> Parser<'a> {
 
         match token {
             Token::Primitive(Primitive::Integer(n)) => {
-                if let Some(refr) = self.try_parse_indirect_reference(n)? {
-                    return Ok(PdfObject::Reference(refr));
+                if let Some(object) = self.try_parse_indirect_reference(n)? {
+                    return Ok(object);
                 }
                 Ok(PdfObject::Integer(n))
             }
@@ -145,7 +147,11 @@ impl<'a> Parser<'a> {
     /// [`ParseErrorKind::UnexpectedEof`](error::ParseErrorKind::UnexpectedEof)、
     /// lexer が malformed を検知した場合は
     /// [`ParseErrorKind::LexerError`](error::ParseErrorKind::LexerError) を返す。
-    /// 番号の妥当性検証（`N >= 1` 等）は xref レイヤに委譲する。
+    /// オブジェクト番号が正整数（ISO 32000-1 §7.3.10）であることは
+    /// [`ObjectNumber`] の構築時に検証され、`0 G obj` は
+    /// [`ParseErrorKind::UnexpectedToken`](error::ParseErrorKind::UnexpectedToken)
+    /// になる（#334）。参照先の存在・世代の照合など、xref を要する検証は
+    /// 引き続き上位レイヤの責務。
     pub fn parse_indirect_object(&mut self) -> Result<IndirectObject, ParseError> {
         let object_number = self.take_object_number()?;
         let generation = self.take_generation_number()?;
@@ -182,7 +188,7 @@ impl<'a> Parser<'a> {
 
     /// ヘッダ先頭の N を消費し、検証済みの [`ObjectNumber`] として返す。
     ///
-    /// `Integer(N)` かつ [`ObjectNumber::try_from_i64`] が `Some` を返す（= `N >= 0`）
+    /// `Integer(N)` かつ [`ObjectNumber::try_from_i64`] が `Some` を返す（= `N >= 1`）
     /// 場合のみ受理する。非 Integer / 範囲外はどちらも
     /// [`ParseErrorKind::UnexpectedToken`](error::ParseErrorKind::UnexpectedToken)
     /// （範囲外でも token 自体は有効な `Primitive` のため `actual` は `TokenKind::Primitive`）、
@@ -260,7 +266,7 @@ impl<'a> Parser<'a> {
                 Token::ArrayEnd => return Ok(PdfObject::Array(items)),
                 Token::Primitive(Primitive::Integer(n)) => {
                     let item = match self.try_parse_indirect_reference(n)? {
-                        Some(refr) => PdfObject::Reference(refr),
+                        Some(object) => object,
                         None => PdfObject::Integer(n),
                     };
                     items.push(item);
@@ -343,15 +349,26 @@ impl<'a> Parser<'a> {
     /// あるかを最大 2 トークン先読みで検証する（ISO 32000-1 §7.3.10）。
     ///
     /// 成立条件:
-    /// - `N` が [`ObjectNumber`] に変換できる（[`ObjectNumber::try_from_i64`] が `Some`）
+    /// - `N` が非負である（負値は番号として表現できないので参照ではない。
+    ///   0 はここでは弾かず、成立したうえで null に畳む。後述）
     /// - 次トークンが `Integer(G)` かつ `G` が [`GenerationNumber`] に変換できる
     ///   （[`GenerationNumber::try_from_i64`] が `Some`）
     /// - 次々トークンが `Keyword(Keyword::R)`
     ///
-    /// 成立時は `Ok(Some(IndirectRef))` を返し、両 lookahead トークンを `take_token`
+    /// 成立時は `Ok(Some(PdfObject))` を返し、両 lookahead トークンを `take_token`
     /// で 2 回消費する。不成立時は peek 済みトークンを [`Lexer`] のバッファに保留した
     /// まま `Ok(None)` を返す（呼び出し元は Integer(N) として処理し、保留中のトークンは
     /// 次回 `parse_object` 系で透過的に取り出される）。
+    ///
+    /// 返す `PdfObject` は `N >= 1` なら [`PdfObject::Reference`]、
+    /// **`N == 0` なら [`PdfObject::Null`]** になる。オブジェクト番号 0 は ISO 32000-1 §7.5.4 の
+    /// フリーリスト先頭に予約された番号であり、`0 G R` は構文としては合法だが解決結果は
+    /// 常に null になる（`docs/specs/02a_object_resolution.md` §2.4「type=0 (Free) → null を返却」）。
+    /// [`ObjectNumber`] は正整数しか表せないため参照値を構築できず、かつ構文エラーにも
+    /// しないので、参照トークン列を消費したうえで null を返す（#334）。
+    /// 関数名は「参照の読み取り試行」のままだが、返り値には null が含まれる点に注意
+    /// （改名は #334 の差分を不必要に広げるため見送った）。
+    ///
     /// `N` は呼び出し元で `Token::Primitive(Primitive::Integer)` として既に成立済み
     /// （i64 範囲外の N は lexer が `Keyword::Unknown` 化するため、ここには `Integer` のみ届く）。
     ///
@@ -359,10 +376,10 @@ impl<'a> Parser<'a> {
     /// fail-fast で伝播する。エラー位置は [`LexOutcome::Malformed`] が運ぶ `position`
     /// （バッファを無視した生のカーソル位置）をそのまま使う。`Lexer::position` だと
     /// peek 済みトークンの開始位置が返るため、malformed バイト位置と一致しない。
-    fn try_parse_indirect_reference(&mut self, n: i64) -> Result<Option<IndirectRef>, ParseError> {
-        // N が番号として表現できなければ参照ではない。lookahead を始める前に打ち切る
-        // （従来の `if n < 0` と同じ位置・同じ判定を、コンストラクタ経由で表現する）。
-        let Some(number) = ObjectNumber::try_from_i64(n) else {
+    fn try_parse_indirect_reference(&mut self, n: i64) -> Result<Option<PdfObject>, ParseError> {
+        // 負の N は番号として表現できないので参照ではない。lookahead を始める前に打ち切る
+        // （0 はここでは弾かない。R まで成立すれば null 参照として消費するため）。
+        let Ok(raw_number) = u64::try_from(n) else {
             return Ok(None);
         };
 
@@ -390,7 +407,13 @@ impl<'a> Parser<'a> {
         let _ = self.lexer.take_token();
         let _ = self.lexer.take_token();
 
-        Ok(Some(IndirectRef::new(ObjectId::new(number, generation))))
+        let Some(number) = ObjectNumber::new(raw_number) else {
+            return Ok(Some(PdfObject::Null));
+        };
+
+        Ok(Some(PdfObject::Reference(IndirectRef::new(ObjectId::new(
+            number, generation,
+        )))))
     }
 
     fn classify_indirect_ref_generation(peeked: LexOutcome<&Token>) -> PeekClass<i64> {

@@ -3,6 +3,7 @@
 import { expectTypeOf, test } from "vitest";
 import type {
   ByteOffset,
+  FreeObjectNumber,
   GenerationNumber,
   IndirectRef,
   ObjectNumber,
@@ -61,7 +62,9 @@ test("PdfIndirectObject の body には PdfStream を入れられる", () => {
 
 test("XRefFreeEntry のフィールドが Brand 型で定義されている", () => {
   expectTypeOf<XRefFreeEntry["type"]>().toEqualTypeOf<0>();
-  expectTypeOf<XRefFreeEntry["nextFreeObject"]>().toEqualTypeOf<ObjectNumber>();
+  expectTypeOf<
+    XRefFreeEntry["nextFreeObject"]
+  >().toEqualTypeOf<FreeObjectNumber>();
   expectTypeOf<
     XRefFreeEntry["generationNumber"]
   >().toEqualTypeOf<GenerationNumber>();

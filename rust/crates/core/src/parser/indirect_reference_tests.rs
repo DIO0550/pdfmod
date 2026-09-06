@@ -27,7 +27,7 @@ fn parser(input: &[u8]) -> Parser<'_> {
 /// `(n, g)` の組から `PdfObject::Reference` を組み立てる小ヘルパ。
 fn reference(n: u64, g: u16) -> PdfObject {
     PdfObject::Reference(IndirectRef::new(ObjectId::new(
-        ObjectNumber::new(n),
+        ObjectNumber::new(n).expect("positive object number"),
         GenerationNumber::new(g),
     )))
 }

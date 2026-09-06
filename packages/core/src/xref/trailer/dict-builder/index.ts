@@ -10,6 +10,9 @@ import { ObjectNumber } from "../../../pdf/types/object-number/index";
 import type { Result } from "../../../utils/result/index";
 import { err, ok } from "../../../utils/result/index";
 
+/** フリーリストの先頭に予約されたオブジェクト番号（ISO 32000-1 §7.5.4）。 */
+const FREE_LIST_HEAD_OBJECT_NUMBER = 0;
+
 /**
  * オプションフィールドの値が「実在する」か判定する。
  * PDF辞書のnull値はキー不在と同義（ISO 32000-1 §7.3.9）のため、
@@ -112,11 +115,13 @@ export function trailerDictBuilder(): TrailerDictBuilderChain {
           offset: _rootOffset,
         });
       }
-      if (!NumberEx.isSafeIntegerAtLeastZero(_root.objectNumber)) {
+      // ISO 32000-1 §7.3.10: オブジェクト番号は正整数。0（§7.5.4 のフリーリスト先頭）を
+      // 指す /Root ではカタログを解決できないため、必須キー欠落と同じ扱いにする（#334）。
+      const rootObjNumResult = ObjectNumber.create(_root.objectNumber);
+      if (!rootObjNumResult.ok) {
         return err({
           code: "ROOT_NOT_FOUND",
-          message:
-            "/Root entry has an invalid object number (must be a non-negative safe integer)",
+          message: `/Root entry has an invalid object number: ${rootObjNumResult.error}`,
           offset: _rootOffset,
         });
       }
@@ -139,7 +144,7 @@ export function trailerDictBuilder(): TrailerDictBuilderChain {
       }
 
       const root = {
-        objectNumber: ObjectNumber.of(_root.objectNumber),
+        objectNumber: rootObjNumResult.value,
         generationNumber: rootGenResult.value,
       };
 
@@ -188,14 +193,6 @@ export function trailerDictBuilder(): TrailerDictBuilderChain {
             offset: _infoOffset,
           });
         }
-        if (!NumberEx.isSafeIntegerAtLeastZero(_info.objectNumber)) {
-          return err({
-            code: "TRAILER_DICT_INVALID",
-            message:
-              "/Info entry has an invalid object number (must be a non-negative safe integer)",
-            offset: _infoOffset,
-          });
-        }
         if (!NumberEx.isSafeIntegerAtLeastZero(_info.generationNumber)) {
           return err({
             code: "TRAILER_DICT_INVALID",
@@ -213,10 +210,27 @@ export function trailerDictBuilder(): TrailerDictBuilderChain {
           });
         }
 
-        result.info = {
-          objectNumber: ObjectNumber.of(_info.objectNumber),
-          generationNumber: infoGenResult.value,
-        };
+        // ISO 32000-1 §7.5.4 / docs/specs/02a_object_resolution.md §2.4: オブジェクト番号 0
+        // への参照は常に null に解決される。/Info は optional なので致命エラーにせず
+        // 「情報辞書なし」として扱う（#334 / D-5b）。
+        // 判定を世代番号の検証より後ろに置いているのは、`/Info 0 65536 R` のような
+        // 範囲外の世代番号まで正常終了させないため（順序を入れ替えないこと）。
+        // ※ /Prev・/XRefStm は間接参照ではなくバイトオフセットなので対象外
+        //   （TRAILER_DICT_INVALID を維持する。畳むと xref チェーンが黙って切れる）。
+        if (_info.objectNumber !== FREE_LIST_HEAD_OBJECT_NUMBER) {
+          const infoObjNumResult = ObjectNumber.create(_info.objectNumber);
+          if (!infoObjNumResult.ok) {
+            return err({
+              code: "TRAILER_DICT_INVALID",
+              message: `/Info entry has an invalid object number: ${infoObjNumResult.error}`,
+              offset: _infoOffset,
+            });
+          }
+          result.info = {
+            objectNumber: infoObjNumResult.value,
+            generationNumber: infoGenResult.value,
+          };
+        }
       }
 
       // /ID - optional, must be 2-element array of string objects
@@ -258,14 +272,6 @@ export function trailerDictBuilder(): TrailerDictBuilderChain {
       // /Encrypt - optional, IndirectRef or Dictionary
       if (isPresent(_encrypt)) {
         if (_encrypt.type === "indirect-ref") {
-          if (!NumberEx.isSafeIntegerAtLeastZero(_encrypt.objectNumber)) {
-            return err({
-              code: "TRAILER_DICT_INVALID",
-              message:
-                "/Encrypt entry has an invalid object number (must be a non-negative safe integer)",
-              offset: _encryptOffset,
-            });
-          }
           if (!NumberEx.isSafeIntegerAtLeastZero(_encrypt.generationNumber)) {
             return err({
               code: "TRAILER_DICT_INVALID",
@@ -285,10 +291,24 @@ export function trailerDictBuilder(): TrailerDictBuilderChain {
               offset: _encryptOffset,
             });
           }
-          result.encrypt = {
-            objectNumber: ObjectNumber.of(_encrypt.objectNumber),
-            generationNumber: encryptGenResult.value,
-          };
+          // /Info と同じ理由で 0 番参照を「非暗号化」に正規化する（#334 / D-5b）。
+          // 判定順序も同じく世代番号の検証より後ろに置く。
+          if (_encrypt.objectNumber !== FREE_LIST_HEAD_OBJECT_NUMBER) {
+            const encryptObjNumResult = ObjectNumber.create(
+              _encrypt.objectNumber,
+            );
+            if (!encryptObjNumResult.ok) {
+              return err({
+                code: "TRAILER_DICT_INVALID",
+                message: `/Encrypt entry has an invalid object number: ${encryptObjNumResult.error}`,
+                offset: _encryptOffset,
+              });
+            }
+            result.encrypt = {
+              objectNumber: encryptObjNumResult.value,
+              generationNumber: encryptGenResult.value,
+            };
+          }
         } else if (_encrypt.type === "dictionary") {
           result.encrypt = _encrypt;
         } else {

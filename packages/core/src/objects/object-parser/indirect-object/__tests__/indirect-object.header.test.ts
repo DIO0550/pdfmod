@@ -50,3 +50,9 @@ test("負の generationNumber でエラー", () => {
   assert(!result.ok);
   expect(result.error.code).toBe("OBJECT_PARSE_UNEXPECTED_TOKEN");
 });
+
+test("objectNumber が 0 のときエラー（ISO 32000-1 §7.3.10 は正整数を要求する）", () => {
+  const result = IndirectObject.parseHeader(btOf("0 0 obj"), ByteOffset.of(0));
+  assert(!result.ok);
+  expect(result.error.code).toBe("OBJECT_PARSE_UNEXPECTED_TOKEN");
+});

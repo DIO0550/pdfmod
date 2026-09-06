@@ -24,16 +24,27 @@ fn two_subsections_register_disjoint_object_numbers() {
     );
     let parsed =
         ParsedXRefTable::parse(&input, ByteOffset::new(0)).expect("two subsections should parse");
-    assert_eq!(parsed.table().len(), 5);
-    for number in [0u64, 1, 2, 10, 11] {
+    // 0 番は読み進めたうえで登録されない（#334）ため 5 件ではなく 4 件になる
+    assert_eq!(parsed.table().len(), 4);
+    assert!(
+        ObjectNumber::new(0).is_none(),
+        "object number 0 cannot be a table key"
+    );
+    for number in [1u64, 2, 10, 11] {
         assert!(
-            parsed.table().get(ObjectNumber::new(number)).is_some(),
+            parsed
+                .table()
+                .get(ObjectNumber::new(number).expect("positive object number"))
+                .is_some(),
             "object {number} should be registered"
         );
     }
     for number in 3u64..=9 {
         assert!(
-            parsed.table().get(ObjectNumber::new(number)).is_none(),
+            parsed
+                .table()
+                .get(ObjectNumber::new(number).expect("positive object number"))
+                .is_none(),
             "object {number} should not be registered"
         );
     }
@@ -44,7 +55,7 @@ fn two_subsections_register_disjoint_object_numbers() {
 fn three_subsections_register_all_entries() {
     let input = table(
         &[
-            (0, &["0000000000 65535 f"]),
+            (1, &["0000000000 65535 f"]),
             (4, &["0000000017 00000 n", "0000000058 00000 n"]),
             (9, &["0000000100 00000 n"]),
         ],
@@ -54,10 +65,22 @@ fn three_subsections_register_all_entries() {
     let parsed =
         ParsedXRefTable::parse(&input, ByteOffset::new(0)).expect("three subsections should parse");
     assert_eq!(parsed.table().len(), 4);
-    assert!(parsed.table().get(ObjectNumber::new(0)).is_some());
-    assert!(parsed.table().get(ObjectNumber::new(4)).is_some());
-    assert!(parsed.table().get(ObjectNumber::new(5)).is_some());
-    assert!(parsed.table().get(ObjectNumber::new(9)).is_some());
+    assert!(parsed
+        .table()
+        .get(ObjectNumber::new(1).expect("positive object number"))
+        .is_some());
+    assert!(parsed
+        .table()
+        .get(ObjectNumber::new(4).expect("positive object number"))
+        .is_some());
+    assert!(parsed
+        .table()
+        .get(ObjectNumber::new(5).expect("positive object number"))
+        .is_some());
+    assert!(parsed
+        .table()
+        .get(ObjectNumber::new(9).expect("positive object number"))
+        .is_some());
 }
 
 // 件数 0 のサブセクションがエントリを 1 件も登録せずに読み飛ばされることを確認する
@@ -74,7 +97,7 @@ fn zero_count_subsection_registers_nothing() {
 fn zero_count_subsection_in_the_middle_is_tolerated() {
     let input = table(
         &[
-            (0, &["0000000000 65535 f", "0000000017 00000 n"]),
+            (1, &["0000000000 65535 f", "0000000017 00000 n"]),
             (5, &[]),
             (7, &["0000000058 00000 n"]),
         ],
@@ -84,18 +107,33 @@ fn zero_count_subsection_in_the_middle_is_tolerated() {
     let parsed = ParsedXRefTable::parse(&input, ByteOffset::new(0))
         .expect("subsections with zero-count in the middle should parse");
     assert_eq!(parsed.table().len(), 3);
-    assert!(parsed.table().get(ObjectNumber::new(0)).is_some());
-    assert!(parsed.table().get(ObjectNumber::new(1)).is_some());
-    assert!(parsed.table().get(ObjectNumber::new(7)).is_some());
-    assert!(parsed.table().get(ObjectNumber::new(5)).is_none());
-    assert!(parsed.table().get(ObjectNumber::new(6)).is_none());
+    assert!(parsed
+        .table()
+        .get(ObjectNumber::new(1).expect("positive object number"))
+        .is_some());
+    assert!(parsed
+        .table()
+        .get(ObjectNumber::new(2).expect("positive object number"))
+        .is_some());
+    assert!(parsed
+        .table()
+        .get(ObjectNumber::new(7).expect("positive object number"))
+        .is_some());
+    assert!(parsed
+        .table()
+        .get(ObjectNumber::new(5).expect("positive object number"))
+        .is_none());
+    assert!(parsed
+        .table()
+        .get(ObjectNumber::new(6).expect("positive object number"))
+        .is_none());
 }
 
 // 同一番号が 2 度宣言されたとき、先に読んだエントリが残る（先勝ち）ことを確認する
 #[test]
 fn duplicate_object_number_keeps_first_entry() {
     let input = table(
-        &[(0, &["0000000017 00000 n"]), (0, &["0000000999 00000 n"])],
+        &[(1, &["0000000017 00000 n"]), (1, &["0000000999 00000 n"])],
         " \r\n",
         "trailer",
     );
@@ -104,8 +142,8 @@ fn duplicate_object_number_keeps_first_entry() {
     assert_eq!(parsed.table().len(), 1);
     let entry = parsed
         .table()
-        .get(ObjectNumber::new(0))
-        .expect("object 0 should be registered");
+        .get(ObjectNumber::new(1).expect("positive object number"))
+        .expect("object 1 should be registered");
     assert!(
         matches!(entry, XRefEntry::InUse { offset, .. } if *offset == ByteOffset::new(17)),
         "the first entry should win, got {entry:?}"
@@ -118,14 +156,14 @@ fn overlapping_subsections_keep_first_entries_and_add_new_ones() {
     let input = table(
         &[
             (
-                0,
+                1,
                 &[
                     "0000000000 65535 f",
                     "0000000017 00000 n",
                     "0000000058 00000 n",
                 ],
             ),
-            (1, &["0000000999 00000 n", "0000000888 00000 n"]),
+            (2, &["0000000999 00000 n", "0000000888 00000 n"]),
         ],
         " \r\n",
         "trailer",
@@ -133,12 +171,12 @@ fn overlapping_subsections_keep_first_entries_and_add_new_ones() {
     let parsed = ParsedXRefTable::parse(&input, ByteOffset::new(0))
         .expect("overlapping subsections should parse");
     assert_eq!(parsed.table().len(), 3);
-    let entry_1 = parsed
+    let entry_2 = parsed
         .table()
-        .get(ObjectNumber::new(1))
-        .expect("object 1 present");
+        .get(ObjectNumber::new(2).expect("positive object number"))
+        .expect("object 2 present");
     assert_eq!(
-        entry_1,
+        entry_2,
         &XRefEntry::InUse {
             offset: ByteOffset::new(17),
             generation: crate::object::generation_number::GenerationNumber::new(0),

@@ -89,7 +89,20 @@ test("データ末尾ぎりぎりにオブジェクトヘッダがある場合",
   expect(result.value).toEqual({ type: "integer", value: 50 });
 });
 
-test("objNum=0, genNum=0 の最小オブジェクト番号を解決する", async () => {
+test("objNum=1, genNum=0 の最小の有効なオブジェクト番号を解決する", async () => {
+  const data = encode("1 0 obj\n1\nendobj\n");
+
+  const result = await resolveLocalLength(
+    data,
+    ObjectNumber.of(1),
+    GenerationNumber.of(0),
+  );
+
+  assert(result.ok);
+  expect(result.value).toEqual({ type: "integer", value: 1 });
+});
+
+test("0 0 obj は ISO 32000-1 §7.3.10 違反のため解決できない", async () => {
   const data = encode("0 0 obj\n1\nendobj\n");
 
   const result = await resolveLocalLength(
@@ -98,8 +111,7 @@ test("objNum=0, genNum=0 の最小オブジェクト番号を解決する", asyn
     GenerationNumber.of(0),
   );
 
-  assert(result.ok);
-  expect(result.value).toEqual({ type: "integer", value: 1 });
+  assert(!result.ok);
 });
 
 test("同一 objNum/genNum のオブジェクトが複数存在する場合は後方（新しい方）を優先する", async () => {
