@@ -5,7 +5,7 @@ use crate::xref::error::XRefErrorKind;
 // start が xref を直接指す標準的なテーブルが解析できることを確認する
 #[test]
 fn start_points_directly_at_xref_keyword() {
-    let input = b"xref\n0 1\n0000000000 65535 f \ntrailer";
+    let input = b"xref\n1 1\n0000000000 65535 f \ntrailer";
     let parsed = ParsedXRefTable::parse(input, ByteOffset::new(0))
         .expect("standard xref table should parse");
     assert_eq!(parsed.table().len(), 1);
@@ -14,7 +14,7 @@ fn start_points_directly_at_xref_keyword() {
 // start が指す位置に前置きの空白があっても、飛ばして xref を検出することを確認する
 #[test]
 fn whitespace_before_xref_keyword_is_skipped() {
-    let input = b"  \r\nxref\n0 1\n0000000000 65535 f \ntrailer";
+    let input = b"  \r\nxref\n1 1\n0000000000 65535 f \ntrailer";
     let parsed = ParsedXRefTable::parse(input, ByteOffset::new(0))
         .expect("leading whitespace before xref keyword should be skipped");
     assert_eq!(parsed.table().len(), 1);
@@ -23,7 +23,7 @@ fn whitespace_before_xref_keyword_is_skipped() {
 // xref キーワードの前にコメントがあっても飛ばして検出することを確認する
 #[test]
 fn comment_before_xref_keyword_is_skipped() {
-    let input = b"%comment\nxref\n0 1\n0000000000 65535 f \ntrailer";
+    let input = b"%comment\nxref\n1 1\n0000000000 65535 f \ntrailer";
     let parsed = ParsedXRefTable::parse(input, ByteOffset::new(0))
         .expect("comment before xref keyword should be skipped");
     assert_eq!(parsed.table().len(), 1);
@@ -34,7 +34,7 @@ fn comment_before_xref_keyword_is_skipped() {
 fn xref_at_arbitrary_start_offset_returns_absolute_positions() {
     let prefix = b"0123456789";
     let mut input = Vec::from(&prefix[..]);
-    let table_bytes = b"xref\n0 1\n0000000017 00000 n \ntrailer";
+    let table_bytes = b"xref\n1 1\n0000000017 00000 n \ntrailer";
     input.extend_from_slice(table_bytes);
     let start = ByteOffset::new(10);
     let parsed = ParsedXRefTable::parse(&input, start).expect("xref at offset 10 should parse");

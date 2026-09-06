@@ -7,6 +7,7 @@
 //! 解析（バイト列 → `XRefEntry`）は本モジュールの責務ではなく、後続の Issue で追加する。
 
 use crate::byte_offset::ByteOffset;
+use crate::object::free_object_number::FreeObjectNumber;
 use crate::object::generation_number::GenerationNumber;
 use crate::object::object_number::ObjectNumber;
 
@@ -28,11 +29,19 @@ pub enum XRefEntry {
     /// free エントリはリンクリスト（フリーリスト）を構成し、
     /// オブジェクト番号 0 が世代番号 65535 の free エントリとしてその先頭になる。
     /// この番号への間接参照の解決は null オブジェクトを返す（解決層の責務）。
+    ///
+    /// ただし 0 番エントリは `XRefTable` に登録しない（#334）。表のキーである
+    /// `ObjectNumber` が正整数しか表せないため、読み進めたうえで登録を飛ばす。
+    /// この結果フリーリストのヘッドは失われるので、リスト走査を実装する際は
+    /// ヘッドの保持方法を再設計する必要がある。
     Free {
         /// フリーリスト上で次に来る空きオブジェクト番号。
         ///
-        /// リストの末尾では 0（先頭へ戻る）を指す。
-        next_free_object: ObjectNumber,
+        /// リストの末尾では 0（先頭へ戻る）を指すため、正整数しか表せない
+        /// `ObjectNumber` ではなく [`FreeObjectNumber`] を持つ（#334）。
+        ///
+        /// [`FreeObjectNumber`]: crate::object::free_object_number::FreeObjectNumber
+        next_free_object: FreeObjectNumber,
         /// このオブジェクト番号が再利用されるときに使われる世代番号。
         ///
         /// 削除のたびに 1 加算される。フリーリスト先頭（オブジェクト番号 0）では 65535。

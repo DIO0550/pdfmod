@@ -44,7 +44,10 @@ fn encrypt_as_reference_is_extracted() {
         Some(EncryptValue::Reference(r)) => {
             assert_eq!(
                 r.target(),
-                ObjectId::new(ObjectNumber::new(9), GenerationNumber::new(0))
+                ObjectId::new(
+                    ObjectNumber::new(9).expect("positive object number"),
+                    GenerationNumber::new(0)
+                )
             );
         }
         other => panic!("expected EncryptValue::Reference, got {other:?}"),

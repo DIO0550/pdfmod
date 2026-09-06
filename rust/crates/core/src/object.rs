@@ -5,9 +5,10 @@
 //! `PdfObject`（null / boolean / integer / real / string / name / array /
 //! dictionary / stream / reference）と、補助の型（`PdfString` / `StringEncoding` /
 //! `PdfName` / `PdfDictionary` / `PdfStream` / `ObjectId` / `ObjectNumber` /
-//! `GenerationNumber` / `IndirectRef` / `ObjectKind`）を提供する。
+//! `FreeObjectNumber` / `GenerationNumber` / `IndirectRef` / `ObjectKind`）を提供する。
 
 pub mod dictionary;
+pub mod free_object_number;
 pub mod generation_number;
 pub mod indirect_object;
 pub mod indirect_ref;

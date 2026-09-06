@@ -63,7 +63,10 @@ mod tests {
 
     /// `(n, g)` から `ObjectId` を組み立てるテスト用小ヘルパ。
     fn oid(n: u64, g: u16) -> ObjectId {
-        ObjectId::new(ObjectNumber::new(n), GenerationNumber::new(g))
+        ObjectId::new(
+            ObjectNumber::new(n).expect("positive object number"),
+            GenerationNumber::new(g),
+        )
     }
 
     #[test]
@@ -159,9 +162,10 @@ mod tests {
 
     #[test]
     fn accepts_min_boundary_object_id() {
-        // 最小境界 `ObjectId(0, 0)` を無検証で受理し、番号/世代がともに 0 でラウンドトリップが成立する。
-        let io = IndirectObject::new(oid(0, 0), PdfObject::Null);
-        assert_eq!(io.id().object_number().value(), 0);
+        // 最小境界 `ObjectId(1, 0)` を受理し、ラウンドトリップが成立する。
+        // オブジェクト番号の下限は #334 以降 1（ISO 32000-1 §7.3.10 の正整数）。
+        let io = IndirectObject::new(oid(1, 0), PdfObject::Null);
+        assert_eq!(io.id().object_number().value(), 1);
         assert_eq!(io.id().generation_number().value(), 0);
         assert_eq!(io.object(), &PdfObject::Null);
     }
