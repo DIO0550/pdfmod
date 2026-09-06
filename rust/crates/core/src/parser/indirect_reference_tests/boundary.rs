@@ -1,10 +1,19 @@
 use super::{parser, reference};
+use crate::object::pdf_object::PdfObject;
 
 #[test]
-fn parse_object_returns_reference_for_zero_zero_r() {
-    // 境界値: N=0 / G=0 で Reference(0, 0) を返すことを確認する
+fn parse_object_returns_null_for_zero_zero_r() {
+    // 境界値: N=0 はフリーリスト先頭の予約番号（ISO 32000-1 §7.5.4）なので
+    // 参照値ではなく Null に畳まれる。構文エラーにはしない（#334）
     let mut p = parser(b"0 0 R");
-    assert_eq!(p.parse_object(), Ok(reference(0, 0)));
+    assert_eq!(p.parse_object(), Ok(PdfObject::Null));
+}
+
+#[test]
+fn parse_object_returns_reference_for_one_zero_r() {
+    // 境界値: N=1（最小の有効なオブジェクト番号）は従来どおり Reference を返す
+    let mut p = parser(b"1 0 R");
+    assert_eq!(p.parse_object(), Ok(reference(1, 0)));
 }
 
 #[test]
