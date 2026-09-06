@@ -4,6 +4,7 @@ import type {
   PdfWarning,
 } from "../../../pdf/errors/index";
 import { ByteOffset } from "../../../pdf/types/byte-offset/index";
+import { FreeObjectNumber } from "../../../pdf/types/free-object-number/index";
 import { GenerationNumber } from "../../../pdf/types/generation-number/index";
 import { ObjectNumber } from "../../../pdf/types/object-number/index";
 import type {
@@ -72,7 +73,7 @@ test("xref に存在しない ref で get すると PdfNull が返る", async ()
 test("type=0 の XRefFreeEntry で get すると PdfNull が返る", async () => {
   const freeEntry: XRefFreeEntry = {
     type: 0,
-    nextFreeObject: ObjectNumber.of(0),
+    nextFreeObject: FreeObjectNumber.of(0),
     generationNumber: GenerationNumber.of(1),
   };
   const store = unwrapOk(
