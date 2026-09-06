@@ -191,3 +191,13 @@ test("parseIndirectObject /Length がデータ範囲超過の場合エラー", a
   const error = unwrapErr(result);
   expect(error.code).toBe("OBJECT_PARSE_STREAM_LENGTH");
 });
+
+test("/Length 0 0 R のストリームは folding された null により型エラーになる", async () => {
+  const data = enc(
+    "1 0 obj\n<< /Length 0 0 R >>\nstream\nhello\nendstream\nendobj\n",
+  );
+  const result = await ObjectParser.parseIndirectObject(data, ByteOffset.of(0));
+  const error = unwrapErr(result) as PdfError;
+  expect(error.code).toBe("OBJECT_PARSE_STREAM_LENGTH");
+  expect(error.message).toBe("/Length has unexpected type: null");
+});
