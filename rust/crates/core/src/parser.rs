@@ -349,15 +349,26 @@ impl<'a> Parser<'a> {
     /// あるかを最大 2 トークン先読みで検証する（ISO 32000-1 §7.3.10）。
     ///
     /// 成立条件:
-    /// - `N` が [`ObjectNumber`] に変換できる（[`ObjectNumber::try_from_i64`] が `Some`）
+    /// - `N` が非負である（負値は番号として表現できないので参照ではない。
+    ///   0 はここでは弾かず、成立したうえで null に畳む。後述）
     /// - 次トークンが `Integer(G)` かつ `G` が [`GenerationNumber`] に変換できる
     ///   （[`GenerationNumber::try_from_i64`] が `Some`）
     /// - 次々トークンが `Keyword(Keyword::R)`
     ///
-    /// 成立時は `Ok(Some(IndirectRef))` を返し、両 lookahead トークンを `take_token`
+    /// 成立時は `Ok(Some(PdfObject))` を返し、両 lookahead トークンを `take_token`
     /// で 2 回消費する。不成立時は peek 済みトークンを [`Lexer`] のバッファに保留した
     /// まま `Ok(None)` を返す（呼び出し元は Integer(N) として処理し、保留中のトークンは
     /// 次回 `parse_object` 系で透過的に取り出される）。
+    ///
+    /// 返す `PdfObject` は `N >= 1` なら [`PdfObject::Reference`]、
+    /// **`N == 0` なら [`PdfObject::Null`]** になる。オブジェクト番号 0 は ISO 32000-1 §7.5.4 の
+    /// フリーリスト先頭に予約された番号であり、`0 G R` は構文としては合法だが解決結果は
+    /// 常に null になる（`docs/specs/02a_object_resolution.md` §2.4「type=0 (Free) → null を返却」）。
+    /// [`ObjectNumber`] は正整数しか表せないため参照値を構築できず、かつ構文エラーにも
+    /// しないので、参照トークン列を消費したうえで null を返す（#334）。
+    /// 関数名は「参照の読み取り試行」のままだが、返り値には null が含まれる点に注意
+    /// （改名は #334 の差分を不必要に広げるため見送った）。
+    ///
     /// `N` は呼び出し元で `Token::Primitive(Primitive::Integer)` として既に成立済み
     /// （i64 範囲外の N は lexer が `Keyword::Unknown` 化するため、ここには `Integer` のみ届く）。
     ///
@@ -365,14 +376,6 @@ impl<'a> Parser<'a> {
     /// fail-fast で伝播する。エラー位置は [`LexOutcome::Malformed`] が運ぶ `position`
     /// （バッファを無視した生のカーソル位置）をそのまま使う。`Lexer::position` だと
     /// peek 済みトークンの開始位置が返るため、malformed バイト位置と一致しない。
-    /// 成立時は `Ok(Some(PdfObject))` を返す。`N >= 1` なら [`PdfObject::Reference`]、
-    /// **`N == 0` なら [`PdfObject::Null`]** を返す。オブジェクト番号 0 は ISO 32000-1 §7.5.4 の
-    /// フリーリスト先頭に予約された番号であり、`0 G R` は構文としては合法だが解決結果は
-    /// 常に null になる（`docs/specs/02a_object_resolution.md` §2.4「type=0 (Free) → null を返却」）。
-    /// [`ObjectNumber`] は正整数しか表せないため参照値を構築できず、かつ構文エラーにも
-    /// しないので、参照トークン列を消費したうえで null を返す（#334）。
-    /// 関数名は「参照の読み取り試行」のままだが、返り値には null が含まれる点に注意
-    /// （改名は #334 の差分を不必要に広げるため見送った）。
     fn try_parse_indirect_reference(&mut self, n: i64) -> Result<Option<PdfObject>, ParseError> {
         // 負の N は番号として表現できないので参照ではない。lookahead を始める前に打ち切る
         // （0 はここでは弾かない。R まで成立すれば null 参照として消費するため）。
