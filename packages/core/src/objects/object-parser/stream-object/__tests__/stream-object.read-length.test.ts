@@ -40,3 +40,13 @@ test("/Length が不正型（string）でエラー", () => {
   assert(!result.ok);
   expect(result.error.code).toBe("OBJECT_PARSE_STREAM_LENGTH");
 });
+
+// `/Length 0 0 R` は direct-object の folding により null 値として辞書に入るため、
+// `ObjectNumber.create(0)` には到達せず「型が不正」として弾かれる（#334 / D-5）。
+test("/Length が 0 G R 由来の null のとき型エラーになる", () => {
+  const dict = dictOf([["Length", { type: "null" }]]);
+  const result = StreamObject.readLength(dict, ByteOffset.of(0), 0);
+  assert(!result.ok);
+  expect(result.error.code).toBe("OBJECT_PARSE_STREAM_LENGTH");
+  expect(result.error.message).toBe("/Length has unexpected type: null");
+});
