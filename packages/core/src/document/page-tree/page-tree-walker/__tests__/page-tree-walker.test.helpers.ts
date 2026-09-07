@@ -91,12 +91,24 @@ export const makeNumberArray = (values: number[]): PdfValue => ({
  */
 export interface MakePagesDictOptions {
   kids?: IndirectRef[];
+  /** `/Kids` 自体を間接参照にする（配列オブジェクトへの参照） */
+  kidsRef?: IndirectRef;
   count?: number;
   mediaBox?: PdfRectangle;
+  /** `/MediaBox` 自体を間接参照にする */
+  mediaBoxRef?: IndirectRef;
+  /** `/MediaBox` に任意の生値を入れる（malformed ケース用） */
+  mediaBoxValue?: PdfValue;
   resources?: PdfDictionary;
   resourcesRef?: IndirectRef;
   cropBox?: PdfRectangle;
+  /** `/CropBox` 自体を間接参照にする */
+  cropBoxRef?: IndirectRef;
+  /** `/CropBox` に任意の生値を入れる（malformed ケース用） */
+  cropBoxValue?: PdfValue;
   rotate?: PdfValue;
+  /** `/Rotate` 自体を間接参照にする */
+  rotateRef?: IndirectRef;
   type?: PdfValue;
 }
 
@@ -120,8 +132,29 @@ export const makePagesDict = (opts: MakePagesDictOptions): PdfDictionary => {
   if (opts.count !== undefined) {
     entries.set("Count", { type: "integer", value: opts.count });
   }
+  if (opts.kidsRef !== undefined) {
+    entries.set(
+      "Kids",
+      indirectRefValue(
+        opts.kidsRef.objectNumber,
+        opts.kidsRef.generationNumber,
+      ),
+    );
+  }
   if (opts.mediaBox !== undefined) {
     entries.set("MediaBox", makeNumberArray(opts.mediaBox));
+  }
+  if (opts.mediaBoxRef !== undefined) {
+    entries.set(
+      "MediaBox",
+      indirectRefValue(
+        opts.mediaBoxRef.objectNumber,
+        opts.mediaBoxRef.generationNumber,
+      ),
+    );
+  }
+  if (opts.mediaBoxValue !== undefined) {
+    entries.set("MediaBox", opts.mediaBoxValue);
   }
   if (opts.resources !== undefined) {
     entries.set("Resources", opts.resources);
@@ -138,8 +171,29 @@ export const makePagesDict = (opts: MakePagesDictOptions): PdfDictionary => {
   if (opts.cropBox !== undefined) {
     entries.set("CropBox", makeNumberArray(opts.cropBox));
   }
+  if (opts.cropBoxRef !== undefined) {
+    entries.set(
+      "CropBox",
+      indirectRefValue(
+        opts.cropBoxRef.objectNumber,
+        opts.cropBoxRef.generationNumber,
+      ),
+    );
+  }
+  if (opts.cropBoxValue !== undefined) {
+    entries.set("CropBox", opts.cropBoxValue);
+  }
   if (opts.rotate !== undefined) {
     entries.set("Rotate", opts.rotate);
+  }
+  if (opts.rotateRef !== undefined) {
+    entries.set(
+      "Rotate",
+      indirectRefValue(
+        opts.rotateRef.objectNumber,
+        opts.rotateRef.generationNumber,
+      ),
+    );
   }
   return okDict(entries);
 };
@@ -149,10 +203,20 @@ export const makePagesDict = (opts: MakePagesDictOptions): PdfDictionary => {
  */
 export interface MakePageDictOptions {
   mediaBox?: PdfRectangle;
+  /** `/MediaBox` 自体を間接参照にする */
+  mediaBoxRef?: IndirectRef;
+  /** `/MediaBox` に任意の生値を入れる（malformed ケース用） */
+  mediaBoxValue?: PdfValue;
   resources?: PdfDictionary;
   resourcesRef?: IndirectRef;
   cropBox?: PdfRectangle;
+  /** `/CropBox` 自体を間接参照にする */
+  cropBoxRef?: IndirectRef;
+  /** `/CropBox` に任意の生値を入れる（malformed ケース用） */
+  cropBoxValue?: PdfValue;
   rotate?: PdfValue;
+  /** `/Rotate` 自体を間接参照にする */
+  rotateRef?: IndirectRef;
   contents?: PdfValue;
   annots?: PdfValue;
   userUnit?: PdfValue;
@@ -174,6 +238,18 @@ export const makePageDict = (opts: MakePageDictOptions = {}): PdfDictionary => {
   if (opts.mediaBox !== undefined) {
     entries.set("MediaBox", makeNumberArray(opts.mediaBox));
   }
+  if (opts.mediaBoxRef !== undefined) {
+    entries.set(
+      "MediaBox",
+      indirectRefValue(
+        opts.mediaBoxRef.objectNumber,
+        opts.mediaBoxRef.generationNumber,
+      ),
+    );
+  }
+  if (opts.mediaBoxValue !== undefined) {
+    entries.set("MediaBox", opts.mediaBoxValue);
+  }
   if (opts.resources !== undefined) {
     entries.set("Resources", opts.resources);
   }
@@ -189,8 +265,29 @@ export const makePageDict = (opts: MakePageDictOptions = {}): PdfDictionary => {
   if (opts.cropBox !== undefined) {
     entries.set("CropBox", makeNumberArray(opts.cropBox));
   }
+  if (opts.cropBoxRef !== undefined) {
+    entries.set(
+      "CropBox",
+      indirectRefValue(
+        opts.cropBoxRef.objectNumber,
+        opts.cropBoxRef.generationNumber,
+      ),
+    );
+  }
+  if (opts.cropBoxValue !== undefined) {
+    entries.set("CropBox", opts.cropBoxValue);
+  }
   if (opts.rotate !== undefined) {
     entries.set("Rotate", opts.rotate);
+  }
+  if (opts.rotateRef !== undefined) {
+    entries.set(
+      "Rotate",
+      indirectRefValue(
+        opts.rotateRef.objectNumber,
+        opts.rotateRef.generationNumber,
+      ),
+    );
   }
   if (opts.contents !== undefined) {
     entries.set("Contents", opts.contents);

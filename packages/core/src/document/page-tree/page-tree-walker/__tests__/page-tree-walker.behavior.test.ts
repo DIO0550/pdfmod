@@ -10,6 +10,7 @@ import { PageTreeWalker } from "../../page-tree-walker";
 import {
   indirectRefValue,
   makeFailingResolver,
+  makeNumberArray,
   makePageDict,
   makePagesDict,
   makeRef,
@@ -235,7 +236,7 @@ test("継承-3階層シャドウ Rotate: 中間ノードの Rotate が採用さ�
   expect(outcome.pages[0].rotate).toBe(180);
 });
 
-test("ページ /Rotate='90'（文字列）、親 /Rotate=90 → 0 + INVALID_ROTATE（ページ直接定義を優先）", async () => {
+test("ページ /Rotate が文字列、親 /Rotate=90 → 継承 90 + INVALID_ROTATE（無効な局所値は無視）", async () => {
   const root = makeRef(1, 0);
   const leaf = makeRef(2, 0);
   const objects = new Map<string, PdfObject>();
@@ -262,7 +263,7 @@ test("ページ /Rotate='90'（文字列）、親 /Rotate=90 → 0 + INVALID_ROT
   const outcome = unwrapOk(
     await PageTreeWalker.walk(root, makeResolverMap(objects)),
   );
-  expect(outcome.pages[0].rotate).toBe(0);
+  expect(outcome.pages[0].rotate).toBe(90);
   expect(outcome.warnings.some((w) => w.code === "INVALID_ROTATE")).toBe(true);
 });
 
@@ -529,7 +530,7 @@ test("/Resources 解決結果が dictionary でない場合も RESOURCES_RESOLVE
   expect(outcome.pages[0].resources.entries.size).toBe(0);
 });
 
-test("ページ /Resources が invalid（解決失敗）でも親を継承せず空辞書", async () => {
+test("ページ /Resources が invalid（解決失敗）なら親の /Resources を継承する", async () => {
   const root = makeRef(1, 0);
   const leaf = makeRef(2, 0);
   const childResourcesRef = makeRef(10, 0);
@@ -558,7 +559,7 @@ test("ページ /Resources が invalid（解決失敗）でも親を継承せず
   );
   const outcome = unwrapOk(await PageTreeWalker.walk(root, resolver));
   expect(outcome.pages.length).toBe(1);
-  expect(outcome.pages[0].resources.entries.size).toBe(0);
+  expect(outcome.pages[0].resources).toBe(parentResources);
   expect(
     outcome.warnings.some((w) => w.code === "RESOURCES_RESOLVE_FAILED"),
   ).toBe(true);
@@ -674,4 +675,360 @@ test("/Contents が indirect-ref の /Page で正しく読み取られる", asyn
     await PageTreeWalker.walk(pageRef, makeResolverMap(objects)),
   );
   expect(outcome.pages[0].contents).not.toBeNull();
+});
+
+test("間接参照-MediaBox: /Page の /MediaBox が間接参照でも解決される", async () => {
+  const pageRef = makeRef(2, 0);
+  const boxRef = makeRef(10, 0);
+  const objects = new Map<string, PdfObject>();
+  addTo(objects, pageRef, makePageDict({ mediaBoxRef: boxRef }));
+  addTo(objects, boxRef, makeNumberArray([0, 0, 612, 792]));
+  const outcome = unwrapOk(
+    await PageTreeWalker.walk(pageRef, makeResolverMap(objects)),
+  );
+  expect(outcome.pages[0].mediaBox).toEqual([0, 0, 612, 792]);
+  expect(outcome.warnings).toEqual([]);
+});
+
+test("間接参照-MediaBox 継承: /Pages の /MediaBox が間接参照でも子へ継承される", async () => {
+  const root = makeRef(1, 0);
+  const leaf = makeRef(2, 0);
+  const boxRef = makeRef(10, 0);
+  const objects = new Map<string, PdfObject>();
+  addTo(objects, root, makePagesDict({ kids: [leaf], mediaBoxRef: boxRef }));
+  addTo(objects, leaf, makePageDict({}));
+  addTo(objects, boxRef, makeNumberArray([0, 0, 500, 500]));
+  const outcome = unwrapOk(
+    await PageTreeWalker.walk(root, makeResolverMap(objects)),
+  );
+  expect(outcome.pages[0].mediaBox).toEqual([0, 0, 500, 500]);
+  expect(outcome.warnings).toEqual([]);
+});
+
+test("間接参照-MediaBox 要素: 配列要素が間接参照でも解決される", async () => {
+  const pageRef = makeRef(2, 0);
+  const objects = new Map<string, PdfObject>();
+  addTo(
+    objects,
+    pageRef,
+    makePageDict({
+      mediaBoxValue: {
+        type: "array",
+        elements: [
+          { type: "integer", value: 0 },
+          { type: "integer", value: 0 },
+          indirectRefValue(10, 0),
+          { type: "integer", value: 792 },
+        ],
+      },
+    }),
+  );
+  addTo(objects, makeRef(10, 0), { type: "integer", value: 612 });
+  const outcome = unwrapOk(
+    await PageTreeWalker.walk(pageRef, makeResolverMap(objects)),
+  );
+  expect(outcome.pages[0].mediaBox).toEqual([0, 0, 612, 792]);
+  expect(outcome.warnings).toEqual([]);
+});
+
+test("間接参照-CropBox: /CropBox が間接参照でも解決される", async () => {
+  const pageRef = makeRef(2, 0);
+  const cropRef = makeRef(11, 0);
+  const objects = new Map<string, PdfObject>();
+  addTo(
+    objects,
+    pageRef,
+    makePageDict({ mediaBox: [0, 0, 100, 100], cropBoxRef: cropRef }),
+  );
+  addTo(objects, cropRef, makeNumberArray([5, 5, 95, 95]));
+  const outcome = unwrapOk(
+    await PageTreeWalker.walk(pageRef, makeResolverMap(objects)),
+  );
+  expect(outcome.pages[0].cropBox).toEqual([5, 5, 95, 95]);
+  expect(outcome.warnings).toEqual([]);
+});
+
+test("間接参照-Rotate: /Rotate が間接参照でも解決される", async () => {
+  const pageRef = makeRef(2, 0);
+  const rotateRef = makeRef(11, 0);
+  const objects = new Map<string, PdfObject>();
+  addTo(
+    objects,
+    pageRef,
+    makePageDict({ mediaBox: [0, 0, 10, 10], rotateRef }),
+  );
+  addTo(objects, rotateRef, { type: "integer", value: 90 });
+  const outcome = unwrapOk(
+    await PageTreeWalker.walk(pageRef, makeResolverMap(objects)),
+  );
+  expect(outcome.pages[0].rotate).toBe(90);
+  expect(outcome.warnings).toEqual([]);
+});
+
+test("解決失敗-MediaBox: 参照が解決できないと PAGE_ATTR_RESOLVE_FAILED + 祖先の値を採用", async () => {
+  const root = makeRef(1, 0);
+  const leaf = makeRef(2, 0);
+  const objects = new Map<string, PdfObject>();
+  addTo(
+    objects,
+    root,
+    makePagesDict({ kids: [leaf], mediaBox: [0, 0, 500, 500] }),
+  );
+  addTo(objects, leaf, makePageDict({ mediaBoxRef: makeRef(99, 0) }));
+  const outcome = unwrapOk(
+    await PageTreeWalker.walk(root, makeResolverMap(objects)),
+  );
+  expect(outcome.pages[0].mediaBox).toEqual([0, 0, 500, 500]);
+  expect(
+    outcome.warnings.filter((w) => w.code === "PAGE_ATTR_RESOLVE_FAILED")
+      .length,
+  ).toBe(1);
+});
+
+test("malformed-MediaBox: 局所値が非配列なら INVALID_MEDIABOX + 祖先の値を採用", async () => {
+  const root = makeRef(1, 0);
+  const leaf = makeRef(2, 0);
+  const objects = new Map<string, PdfObject>();
+  addTo(
+    objects,
+    root,
+    makePagesDict({ kids: [leaf], mediaBox: [0, 0, 500, 500] }),
+  );
+  addTo(
+    objects,
+    leaf,
+    makePageDict({
+      mediaBoxValue: {
+        type: "string",
+        value: new Uint8Array(),
+        encoding: "literal",
+      },
+    }),
+  );
+  const outcome = unwrapOk(
+    await PageTreeWalker.walk(root, makeResolverMap(objects)),
+  );
+  expect(outcome.pages[0].mediaBox).toEqual([0, 0, 500, 500]);
+  expect(
+    outcome.warnings.filter((w) => w.code === "INVALID_MEDIABOX").length,
+  ).toBe(1);
+});
+
+test("malformed-MediaBox: 祖先にも有効な /MediaBox が無ければ MEDIABOX_NOT_FOUND のまま", async () => {
+  const root = makeRef(1, 0);
+  const leaf = makeRef(2, 0);
+  const objects = new Map<string, PdfObject>();
+  addTo(objects, root, makePagesDict({ kids: [leaf] }));
+  addTo(
+    objects,
+    leaf,
+    makePageDict({
+      mediaBoxValue: {
+        type: "string",
+        value: new Uint8Array(),
+        encoding: "literal",
+      },
+    }),
+  );
+  const error = unwrapErr(
+    await PageTreeWalker.walk(root, makeResolverMap(objects)),
+  );
+  expect(error.code).toBe("MEDIABOX_NOT_FOUND");
+});
+
+test("解放済みオブジェクト-MediaBox: null に解決されると INVALID_MEDIABOX + 継承値", async () => {
+  const root = makeRef(1, 0);
+  const leaf = makeRef(2, 0);
+  const boxRef = makeRef(10, 0);
+  const objects = new Map<string, PdfObject>();
+  addTo(
+    objects,
+    root,
+    makePagesDict({ kids: [leaf], mediaBox: [0, 0, 500, 500] }),
+  );
+  addTo(objects, leaf, makePageDict({ mediaBoxRef: boxRef }));
+  addTo(objects, boxRef, { type: "null" });
+  const outcome = unwrapOk(
+    await PageTreeWalker.walk(root, makeResolverMap(objects)),
+  );
+  expect(outcome.pages[0].mediaBox).toEqual([0, 0, 500, 500]);
+  expect(outcome.warnings.some((w) => w.code === "INVALID_MEDIABOX")).toBe(
+    true,
+  );
+});
+
+test("malformed-CropBox: 局所値が無効なら INVALID_CROPBOX + 祖先の CropBox を採用", async () => {
+  const root = makeRef(1, 0);
+  const leaf = makeRef(2, 0);
+  const objects = new Map<string, PdfObject>();
+  addTo(
+    objects,
+    root,
+    makePagesDict({
+      kids: [leaf],
+      mediaBox: [0, 0, 100, 100],
+      cropBox: [10, 10, 90, 90],
+    }),
+  );
+  addTo(
+    objects,
+    leaf,
+    makePageDict({ cropBoxValue: { type: "integer", value: 42 } }),
+  );
+  const outcome = unwrapOk(
+    await PageTreeWalker.walk(root, makeResolverMap(objects)),
+  );
+  expect(outcome.pages[0].cropBox).toEqual([10, 10, 90, 90]);
+  expect(
+    outcome.warnings.filter((w) => w.code === "INVALID_CROPBOX").length,
+  ).toBe(1);
+});
+
+test("要素だけ解決失敗-MediaBox: PAGE_ATTR_RESOLVE_FAILED + INVALID_MEDIABOX を各 1 件積み継承値を採用", async () => {
+  const root = makeRef(1, 0);
+  const leaf = makeRef(2, 0);
+  const objects = new Map<string, PdfObject>();
+  addTo(
+    objects,
+    root,
+    makePagesDict({ kids: [leaf], mediaBox: [0, 0, 500, 500] }),
+  );
+  addTo(
+    objects,
+    leaf,
+    makePageDict({
+      mediaBoxValue: {
+        type: "array",
+        elements: [
+          { type: "integer", value: 0 },
+          { type: "integer", value: 0 },
+          indirectRefValue(99, 0),
+          { type: "integer", value: 792 },
+        ],
+      },
+    }),
+  );
+  const outcome = unwrapOk(
+    await PageTreeWalker.walk(root, makeResolverMap(objects)),
+  );
+  expect(outcome.pages[0].mediaBox).toEqual([0, 0, 500, 500]);
+  expect(
+    outcome.warnings.filter((w) => w.code === "PAGE_ATTR_RESOLVE_FAILED")
+      .length,
+  ).toBe(1);
+  expect(
+    outcome.warnings.filter((w) => w.code === "INVALID_MEDIABOX").length,
+  ).toBe(1);
+});
+
+test("解決失敗-CropBox/Rotate: どちらも解決できなくても継承値へ落ちる", async () => {
+  const root = makeRef(1, 0);
+  const leaf = makeRef(2, 0);
+  const objects = new Map<string, PdfObject>();
+  addTo(
+    objects,
+    root,
+    makePagesDict({
+      kids: [leaf],
+      mediaBox: [0, 0, 100, 100],
+      cropBox: [10, 10, 90, 90],
+      rotate: { type: "integer", value: 90 },
+    }),
+  );
+  addTo(
+    objects,
+    leaf,
+    makePageDict({ cropBoxRef: makeRef(98, 0), rotateRef: makeRef(97, 0) }),
+  );
+  const outcome = unwrapOk(
+    await PageTreeWalker.walk(root, makeResolverMap(objects)),
+  );
+  expect(outcome.pages[0].cropBox).toEqual([10, 10, 90, 90]);
+  expect(outcome.pages[0].rotate).toBe(90);
+  expect(
+    outcome.warnings.filter((w) => w.code === "PAGE_ATTR_RESOLVE_FAILED")
+      .length,
+  ).toBe(2);
+});
+
+test("間接参照-Kids: /Kids 自体が間接参照でも子ページを収集する", async () => {
+  const root = makeRef(1, 0);
+  const leaf = makeRef(2, 0);
+  const kidsRef = makeRef(20, 0);
+  const objects = new Map<string, PdfObject>();
+  addTo(objects, root, makePagesDict({ kidsRef, mediaBox: [0, 0, 10, 10] }));
+  addTo(objects, kidsRef, {
+    type: "array",
+    elements: [indirectRefValue(2, 0)],
+  });
+  addTo(objects, leaf, makePageDict({}));
+  const outcome = unwrapOk(
+    await PageTreeWalker.walk(root, makeResolverMap(objects)),
+  );
+  expect(outcome.pages.length).toBe(1);
+  expect(outcome.warnings).toEqual([]);
+});
+
+test("解決失敗-Kids: /Kids 参照が解決できないと PAGE_ATTR_RESOLVE_FAILED + MISSING_KIDS", async () => {
+  const root = makeRef(1, 0);
+  const objects = new Map<string, PdfObject>();
+  addTo(
+    objects,
+    root,
+    makePagesDict({ kidsRef: makeRef(20, 0), mediaBox: [0, 0, 10, 10] }),
+  );
+  const outcome = unwrapOk(
+    await PageTreeWalker.walk(root, makeResolverMap(objects)),
+  );
+  expect(outcome.pages.length).toBe(0);
+  expect(
+    outcome.warnings.some((w) => w.code === "PAGE_ATTR_RESOLVE_FAILED"),
+  ).toBe(true);
+  expect(outcome.warnings.some((w) => w.code === "MISSING_KIDS")).toBe(true);
+});
+
+test("深度ちょうど 50 の /Pages チェーンは警告なしで走査できる", async () => {
+  const objects = new Map<string, PdfObject>();
+  const nodeCount = 51;
+  const refs: IndirectRef[] = [];
+  for (let i = 1; i <= nodeCount; i++) {
+    refs.push(makeRef(i, 0));
+  }
+  for (let i = 0; i < nodeCount - 1; i++) {
+    addTo(
+      objects,
+      refs[i],
+      makePagesDict({ kids: [refs[i + 1]], mediaBox: [0, 0, 10, 10] }),
+    );
+  }
+  addTo(objects, refs[nodeCount - 1], makePageDict({}));
+  const outcome = unwrapOk(
+    await PageTreeWalker.walk(refs[0], makeResolverMap(objects)),
+  );
+  expect(outcome.pages.length).toBe(1);
+  expect(outcome.warnings.some((w) => w.code === "PAGE_TREE_TOO_DEEP")).toBe(
+    false,
+  );
+});
+
+test("直値のみの辞書では属性解決のための resolveRef が発生しない", async () => {
+  const root = makeRef(1, 0);
+  const leaf = makeRef(2, 0);
+  const objects = new Map<string, PdfObject>();
+  addTo(
+    objects,
+    root,
+    makePagesDict({
+      kids: [leaf],
+      mediaBox: [0, 0, 100, 100],
+      cropBox: [5, 5, 95, 95],
+      rotate: { type: "integer", value: 90 },
+    }),
+  );
+  addTo(objects, leaf, makePageDict({}));
+  const resolver = makeResolverStub(makeResolverMap(objects));
+  const outcome = unwrapOk(await PageTreeWalker.walk(root, resolver));
+  expect(outcome.pages.length).toBe(1);
+  // ノード自身の解決 2 回（root / leaf）のみ。属性解決の追加呼び出しは無い。
+  expect(resolver).toHaveBeenCalledTimes(2);
 });

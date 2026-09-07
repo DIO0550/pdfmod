@@ -43,24 +43,14 @@ export const InheritanceResolver = {
     pageLeaf: InheritedAttrs,
     pageRef: IndirectRef,
   ): Result<ResolveInheritedOutcome, PdfParseError> {
-    const mediaBoxResult = AttrResolver.mediaBox(
-      pageDict,
-      inherited,
-      pageLeaf,
-      pageRef,
-    );
+    const mediaBoxResult = AttrResolver.mediaBox(inherited, pageLeaf, pageRef);
     if (!mediaBoxResult.ok) {
       return err(mediaBoxResult.error);
     }
     const mediaBox = mediaBoxResult.value;
-    const cropBox = AttrResolver.cropBox(
-      pageDict,
-      inherited,
-      pageLeaf,
-      mediaBox,
-    );
-    const rotate = AttrResolver.rotate(pageDict, inherited, pageLeaf, pageRef);
-    const resources = AttrResolver.resources(pageDict, inherited, pageLeaf);
+    const cropBox = AttrResolver.cropBox(inherited, pageLeaf, mediaBox);
+    const rotate = AttrResolver.rotate(inherited, pageLeaf, pageRef);
+    const resources = AttrResolver.resources(inherited, pageLeaf);
 
     const warnings: PdfWarning[] = [];
     if (rotate.warning.some) {
