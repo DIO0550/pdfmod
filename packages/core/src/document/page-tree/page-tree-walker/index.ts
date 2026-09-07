@@ -1,6 +1,9 @@
 import { NumberEx } from "../../../ext/number/index";
 import type { PdfError } from "../../../pdf/errors/error/index";
-import type { PdfWarning } from "../../../pdf/errors/warning/index";
+import type {
+  PdfWarning,
+  PdfWarningCode,
+} from "../../../pdf/errors/warning/index";
 import { IndirectRef } from "../../../pdf/types/indirect-ref/index";
 import type {
   PdfDictionary,
@@ -15,7 +18,8 @@ import {
   InheritanceResolver,
   type InheritedAttrs,
 } from "../inheritance-resolver";
-import type { ResolvedPage } from "../resolved-page";
+import type { PdfRectangle, ResolvedPage } from "../resolved-page";
+import { type ResolveValueContext, ValueResolver } from "../value-resolver";
 
 /** `PageTreeWalker.walk` の出力。 */
 export interface WalkPageTreeResult {
@@ -66,6 +70,35 @@ const dispatchType = (
   return "unknown";
 };
 
+/** ノード 1 つ分の読み取り文脈。 */
+interface ReadContext {
+  /** `${objectNumber}-${generationNumber}` 形式のノードキー（警告メッセージ用） */
+  nodeKey: string;
+  /** 間接参照解決関数 */
+  resolveRef: ResolveRef;
+  /** 警告の蓄積先（mutable 参照） */
+  warnings: PdfWarning[];
+}
+
+/**
+ * `ReadContext` から `ValueResolver` 用の文脈を組み立てる。
+ *
+ * @param ctx - 読み取り文脈
+ * @param key - 辞書キー名
+ * @param warningCode - 解決失敗時の警告コード
+ * @returns ValueResolver 用文脈
+ */
+const resolveContext = (
+  ctx: ReadContext,
+  key: string,
+  warningCode: PdfWarningCode,
+): ResolveValueContext => ({
+  key,
+  resolveRef: ctx.resolveRef,
+  warnings: ctx.warnings,
+  warningCode,
+});
+
 /** `/Kids` の解析結果。 */
 type KidsRefsResult =
   | { kind: "missing" }
@@ -77,25 +110,34 @@ type KidsRefsResult =
     };
 
 /**
- * `/Kids` を解析する。
+ * `/Kids` を解析する。値自体が間接参照なら 1 段解決してから配列として扱う
+ * （要素は子ノードへの参照なので解決しない）。
  * - キー不在 → `missing`
- * - キーが存在するが配列でない → `invalid-array`
+ * - 解決失敗 / 配列でない → `invalid-array`
  * - 配列のとき → `ok`（indirect-ref のみ抽出 + 非 ref 要素数を返す）
  *
  * @param entries - 辞書エントリ
+ * @param ctx - 読み取り文脈
  * @returns 解析結果
  */
-const getKidsRefs = (entries: Map<string, PdfValue>): KidsRefsResult => {
+const getKidsRefs = async (
+  entries: Map<string, PdfValue>,
+  ctx: ReadContext,
+): Promise<KidsRefsResult> => {
   const value = entries.get("Kids");
   if (value === undefined) {
     return { kind: "missing" };
   }
-  if (value.type !== "array") {
+  const resolved = await ValueResolver.value(
+    value,
+    resolveContext(ctx, "Kids", "PAGE_ATTR_RESOLVE_FAILED"),
+  );
+  if (!resolved.some || resolved.value.type !== "array") {
     return { kind: "invalid-array" };
   }
   const refs: PdfIndirectRef[] = [];
   let invalidElementCount = 0;
-  for (const el of value.elements) {
+  for (const el of resolved.value.elements) {
     if (el.type === "indirect-ref") {
       refs.push(el);
     } else {
@@ -134,8 +176,7 @@ const readCount = (entries: Map<string, PdfValue>): Option<number> => {
  */
 const resolveResources = async (
   entries: Map<string, PdfValue>,
-  resolveRef: ResolveRef,
-  warnings: PdfWarning[],
+  ctx: ReadContext,
 ): Promise<Option<PdfDictionary>> => {
   const value = entries.get("Resources");
   if (value === undefined) {
@@ -145,30 +186,21 @@ const resolveResources = async (
     return some(value);
   }
   if (value.type !== "indirect-ref") {
-    warnings.push({
+    ctx.warnings.push({
       code: "RESOURCES_RESOLVE_FAILED",
       message: `Failed to resolve /Resources: unexpected direct type=${value.type}`,
     });
     return none;
   }
-  const indirectRef = IndirectRef.from(value);
-  if (!indirectRef.some) {
-    warnings.push({
-      code: "RESOURCES_RESOLVE_FAILED",
-      message: `Failed to resolve /Resources indirect-ref ${value.objectNumber} ${value.generationNumber}: invalid indirect reference`,
-    });
-    return none;
-  }
-  const resolved = await resolveRef(indirectRef.value);
-  if (!resolved.ok) {
-    warnings.push({
-      code: "RESOURCES_RESOLVE_FAILED",
-      message: `Failed to resolve /Resources indirect-ref ${value.objectNumber} ${value.generationNumber}: cause=${resolved.error.code}`,
-    });
+  const resolved = await ValueResolver.value(
+    value,
+    resolveContext(ctx, "Resources", "RESOURCES_RESOLVE_FAILED"),
+  );
+  if (!resolved.some) {
     return none;
   }
   if (resolved.value.type !== "dictionary") {
-    warnings.push({
+    ctx.warnings.push({
       code: "RESOURCES_RESOLVE_FAILED",
       message: `Failed to resolve /Resources indirect-ref ${value.objectNumber} ${value.generationNumber}: resolved to non-dictionary`,
     });
@@ -178,34 +210,104 @@ const resolveResources = async (
 };
 
 /**
- * `/Pages` または `/Page` ノードから継承可能 4 属性を読み取る。
- * `/Resources` のみ indirect-ref を 1 段解決する（Resources 解決失敗は警告積み + none）。
- * `/Rotate` はキー存在かつ数値のときだけ生値を詰める（非数値は Resolver 側で判定）。
+ * `/MediaBox` / `/CropBox` を読み取る。間接参照は値・配列要素とも 1 段解決する。
+ * 値は取れたが矩形として無効な場合は警告を積み、局所値なしとして扱う
+ * （呼び出し側で継承値へフォールバックする）。
  *
  * @param entries - 辞書エントリ
- * @param resolveRef - 間接参照解決関数
- * @param warnings - 警告蓄積先
+ * @param key - 読み取るキー名
+ * @param invalidCode - 値が矩形として無効なときに積む警告コード
+ * @param ctx - 読み取り文脈
+ * @returns 有効な矩形なら Some、それ以外 None
+ */
+const readBox = async (
+  entries: Map<string, PdfValue>,
+  key: "MediaBox" | "CropBox",
+  invalidCode: PdfWarningCode,
+  ctx: ReadContext,
+): Promise<Option<PdfRectangle>> => {
+  const raw = entries.get(key);
+  if (raw === undefined) {
+    return none;
+  }
+  const resolved = await ValueResolver.valueWithElements(
+    raw,
+    resolveContext(ctx, key, "PAGE_ATTR_RESOLVE_FAILED"),
+  );
+  if (!resolved.some) {
+    return none;
+  }
+  const box = DictReader.box(resolved.value);
+  if (!box.some) {
+    ctx.warnings.push({
+      code: invalidCode,
+      message: `Node ${ctx.nodeKey}: /${key} is not a valid 4-number array, ignoring local value`,
+    });
+  }
+  return box;
+};
+
+/**
+ * `/Rotate` を読み取る。間接参照は 1 段解決する。
+ * 値は取れたが数値でない場合は `INVALID_ROTATE` を積み、局所値なしとして扱う。
+ *
+ * @param entries - 辞書エントリ
+ * @param ctx - 読み取り文脈
+ * @returns 数値なら Some、それ以外 None
+ */
+const readRotate = async (
+  entries: Map<string, PdfValue>,
+  ctx: ReadContext,
+): Promise<Option<number>> => {
+  const raw = entries.get("Rotate");
+  if (raw === undefined) {
+    return none;
+  }
+  const resolved = await ValueResolver.value(
+    raw,
+    resolveContext(ctx, "Rotate", "PAGE_ATTR_RESOLVE_FAILED"),
+  );
+  if (!resolved.some) {
+    return none;
+  }
+  const rotate = DictReader.rotate(resolved.value);
+  if (!rotate.some) {
+    ctx.warnings.push({
+      code: "INVALID_ROTATE",
+      message: `Node ${ctx.nodeKey}: /Rotate is not a number, ignoring local value`,
+    });
+  }
+  return rotate;
+};
+
+/**
+ * `/Pages` または `/Page` ノードから継承可能 4 属性を読み取る。
+ * 4 属性とも indirect-ref を 1 段解決する（`/MediaBox` `/CropBox` は配列要素も）。
+ * 解決失敗・値不正はいずれも警告を積んだうえで属性未設定として返し、
+ * 呼び出し側で祖先の継承値へフォールバックさせる。
+ *
+ * @param entries - 辞書エントリ
+ * @param ctx - 読み取り文脈
  * @returns 事前解決済みの継承可能属性
  */
 const readInheritableAttrs = async (
   entries: Map<string, PdfValue>,
-  resolveRef: ResolveRef,
-  warnings: PdfWarning[],
+  ctx: ReadContext,
 ): Promise<InheritedAttrs> => {
   const attrs: InheritedAttrs = {};
-  const mediaBox = DictReader.box(entries, "MediaBox");
+  const mediaBox = await readBox(entries, "MediaBox", "INVALID_MEDIABOX", ctx);
   if (mediaBox.some) {
     attrs.mediaBox = mediaBox.value;
   }
-  const cropBox = DictReader.box(entries, "CropBox");
+  const cropBox = await readBox(entries, "CropBox", "INVALID_CROPBOX", ctx);
   if (cropBox.some) {
     attrs.cropBox = cropBox.value;
   }
-  const rotate = DictReader.rotate(entries);
+  const rotate = await readRotate(entries, ctx);
   if (rotate.some) {
     attrs.rotate = rotate.value;
   }
-  const resourcesOpt = await resolveResources(entries, resolveRef, warnings);
+  const resourcesOpt = await resolveResources(entries, ctx);
   if (resourcesOpt.some) {
     attrs.resources = resourcesOpt.value;
   }
@@ -272,12 +374,14 @@ const walkInternal = async (
     return none;
   }
 
+  const readCtx: ReadContext = {
+    nodeKey: key,
+    resolveRef,
+    warnings: state.warnings,
+  };
+
   if (kind === "page") {
-    const pageLeaf = await readInheritableAttrs(
-      dict.entries,
-      resolveRef,
-      state.warnings,
-    );
+    const pageLeaf = await readInheritableAttrs(dict.entries, readCtx);
     const resolveResult = InheritanceResolver.resolve(
       dict,
       stack,
@@ -292,11 +396,7 @@ const walkInternal = async (
     return none;
   }
 
-  const localAttrs = await readInheritableAttrs(
-    dict.entries,
-    resolveRef,
-    state.warnings,
-  );
+  const localAttrs = await readInheritableAttrs(dict.entries, readCtx);
   const nextStack: InheritedAttrs = {
     mediaBox: localAttrs.mediaBox ?? stack.mediaBox,
     resources: localAttrs.resources ?? stack.resources,
@@ -304,7 +404,7 @@ const walkInternal = async (
     rotate: localAttrs.rotate ?? stack.rotate,
   };
 
-  const kids = getKidsRefs(dict.entries);
+  const kids = await getKidsRefs(dict.entries, readCtx);
   if (kids.kind === "missing") {
     state.warnings.push({
       code: "MISSING_KIDS",

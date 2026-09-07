@@ -235,7 +235,7 @@ test("継承-3階層シャドウ Rotate: 中間ノードの Rotate が採用さ�
   expect(outcome.pages[0].rotate).toBe(180);
 });
 
-test("ページ /Rotate='90'（文字列）、親 /Rotate=90 → 0 + INVALID_ROTATE（ページ直接定義を優先）", async () => {
+test("ページ /Rotate が文字列、親 /Rotate=90 → 継承 90 + INVALID_ROTATE（無効な局所値は無視）", async () => {
   const root = makeRef(1, 0);
   const leaf = makeRef(2, 0);
   const objects = new Map<string, PdfObject>();
@@ -262,7 +262,7 @@ test("ページ /Rotate='90'（文字列）、親 /Rotate=90 → 0 + INVALID_ROT
   const outcome = unwrapOk(
     await PageTreeWalker.walk(root, makeResolverMap(objects)),
   );
-  expect(outcome.pages[0].rotate).toBe(0);
+  expect(outcome.pages[0].rotate).toBe(90);
   expect(outcome.warnings.some((w) => w.code === "INVALID_ROTATE")).toBe(true);
 });
 
@@ -529,7 +529,7 @@ test("/Resources 解決結果が dictionary でない場合も RESOURCES_RESOLVE
   expect(outcome.pages[0].resources.entries.size).toBe(0);
 });
 
-test("ページ /Resources が invalid（解決失敗）でも親を継承せず空辞書", async () => {
+test("ページ /Resources が invalid（解決失敗）なら親の /Resources を継承する", async () => {
   const root = makeRef(1, 0);
   const leaf = makeRef(2, 0);
   const childResourcesRef = makeRef(10, 0);
@@ -558,7 +558,7 @@ test("ページ /Resources が invalid（解決失敗）でも親を継承せず
   );
   const outcome = unwrapOk(await PageTreeWalker.walk(root, resolver));
   expect(outcome.pages.length).toBe(1);
-  expect(outcome.pages[0].resources.entries.size).toBe(0);
+  expect(outcome.pages[0].resources).toBe(parentResources);
   expect(
     outcome.warnings.some((w) => w.code === "RESOURCES_RESOLVE_FAILED"),
   ).toBe(true);
