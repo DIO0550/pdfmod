@@ -18,120 +18,114 @@ test("getNumberValue は integer / real で some(number) を返し、非数値�
   expect(getNumberValue(undefined)).toEqual(none);
 });
 
-test("DictReader.box はキーが存在しないとき None を返す", () => {
-  const entries = new Map<string, PdfValue>();
-  expect(DictReader.box(entries, "MediaBox")).toEqual({ some: false });
+test("DictReader.box は値が undefined（キー不在相当）のとき None を返す", () => {
+  expect(DictReader.box(undefined)).toEqual({ some: false });
 });
 
 test("DictReader.box は値が非配列のとき None を返す", () => {
-  const entries = new Map<string, PdfValue>([
-    ["MediaBox", { type: "integer", value: 0 }],
-  ]);
-  expect(DictReader.box(entries, "MediaBox")).toEqual({ some: false });
+  expect(DictReader.box({ type: "integer", value: 0 })).toEqual({
+    some: false,
+  });
 });
 
 test("DictReader.box は要素数が 4 でないとき None を返す", () => {
-  const entries = new Map<string, PdfValue>([
-    ["MediaBox", integerArray([0, 0, 100])],
-  ]);
-  expect(DictReader.box(entries, "MediaBox")).toEqual({ some: false });
+  expect(DictReader.box(integerArray([0, 0, 100]))).toEqual({ some: false });
 });
 
 test("DictReader.box は要素に非数値が混入するとき None を返す", () => {
-  const entries = new Map<string, PdfValue>([
-    [
-      "MediaBox",
-      {
-        type: "array",
-        elements: [
-          { type: "integer", value: 0 },
-          { type: "integer", value: 0 },
-          { type: "name", value: "Foo" },
-          { type: "integer", value: 100 },
-        ],
-      },
-    ],
-  ]);
-  expect(DictReader.box(entries, "MediaBox")).toEqual({ some: false });
+  expect(
+    DictReader.box({
+      type: "array",
+      elements: [
+        { type: "integer", value: 0 },
+        { type: "integer", value: 0 },
+        { type: "name", value: "Foo" },
+        { type: "integer", value: 100 },
+      ],
+    }),
+  ).toEqual({ some: false });
+});
+
+test("DictReader.box は要素が indirect-ref のまま残った配列のとき None を返す", () => {
+  expect(
+    DictReader.box({
+      type: "array",
+      elements: [
+        { type: "integer", value: 0 },
+        { type: "integer", value: 0 },
+        indirectRefValue(99, 0),
+        { type: "integer", value: 792 },
+      ],
+    }),
+  ).toEqual({ some: false });
 });
 
 test("DictReader.box は integer 4 要素のとき Some を返す", () => {
-  const entries = new Map<string, PdfValue>([
-    ["MediaBox", integerArray([0, 0, 612, 792])],
-  ]);
-  expect(DictReader.box(entries, "MediaBox")).toEqual({
+  expect(DictReader.box(integerArray([0, 0, 612, 792]))).toEqual({
     some: true,
     value: [0, 0, 612, 792],
   });
 });
 
 test("DictReader.box は real 混在 4 要素のとき Some を返す", () => {
-  const entries = new Map<string, PdfValue>([
-    [
-      "CropBox",
-      {
-        type: "array",
-        elements: [
-          { type: "integer", value: 0 },
-          { type: "real", value: 0.5 },
-          { type: "real", value: 612.25 },
-          { type: "integer", value: 792 },
-        ],
-      },
-    ],
-  ]);
-  expect(DictReader.box(entries, "CropBox")).toEqual({
+  expect(
+    DictReader.box({
+      type: "array",
+      elements: [
+        { type: "integer", value: 0 },
+        { type: "real", value: 0.5 },
+        { type: "real", value: 612.25 },
+        { type: "integer", value: 792 },
+      ],
+    }),
+  ).toEqual({
     some: true,
     value: [0, 0.5, 612.25, 792],
   });
 });
 
-test("DictReader.rotate はキー不在で None を返す", () => {
-  expect(DictReader.rotate(new Map<string, PdfValue>())).toEqual({
+test("DictReader.rotate は値が undefined（キー不在相当）で None を返す", () => {
+  expect(DictReader.rotate(undefined)).toEqual({ some: false });
+});
+
+test("DictReader.rotate は名前のとき None を返す", () => {
+  expect(DictReader.rotate({ type: "name", value: "Foo" })).toEqual({
     some: false,
   });
 });
 
-test("DictReader.rotate は名前のとき None を返す", () => {
-  const entries = new Map<string, PdfValue>([
-    ["Rotate", { type: "name", value: "Foo" }],
-  ]);
-  expect(DictReader.rotate(entries)).toEqual({ some: false });
-});
-
 test("DictReader.rotate は文字列のとき None を返す", () => {
-  const entries = new Map<string, PdfValue>([
-    [
-      "Rotate",
-      {
-        type: "string",
-        value: new Uint8Array([0x41]),
-        encoding: "literal",
-      },
-    ],
-  ]);
-  expect(DictReader.rotate(entries)).toEqual({ some: false });
+  expect(
+    DictReader.rotate({
+      type: "string",
+      value: new Uint8Array([0x41]),
+      encoding: "literal",
+    }),
+  ).toEqual({ some: false });
 });
 
 test("DictReader.rotate は boolean のとき None を返す", () => {
-  const entries = new Map<string, PdfValue>([
-    ["Rotate", { type: "boolean", value: true }],
-  ]);
-  expect(DictReader.rotate(entries)).toEqual({ some: false });
+  expect(DictReader.rotate({ type: "boolean", value: true })).toEqual({
+    some: false,
+  });
+});
+
+test("DictReader.rotate は indirect-ref のまま残った値で None を返す", () => {
+  expect(DictReader.rotate(indirectRefValue(99, 0))).toEqual({ some: false });
 });
 
 test("DictReader.rotate は integer 90 で Some(90) を返す", () => {
-  const entries = new Map<string, PdfValue>([
-    ["Rotate", { type: "integer", value: 90 }],
-  ]);
-  expect(DictReader.rotate(entries)).toEqual({ some: true, value: 90 });
+  expect(DictReader.rotate({ type: "integer", value: 90 })).toEqual({
+    some: true,
+    value: 90,
+  });
 });
 
 test("DictReader.rotate は real 45.5 で Some(45.5) を返す", () => {
-  const entries = new Map<string, PdfValue>([
-    ["Rotate", { type: "real", value: 45.5 }],
-  ]);
-  expect(DictReader.rotate(entries)).toEqual({ some: true, value: 45.5 });
+  expect(DictReader.rotate({ type: "real", value: 45.5 })).toEqual({
+    some: true,
+    value: 45.5,
+  });
 });
 
 test("DictReader.userUnit はキー不在で 1.0 を返す", () => {
