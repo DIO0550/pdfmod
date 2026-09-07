@@ -28,17 +28,13 @@ export const getNumberValue = (value: PdfValue | undefined): Option<number> => {
  */
 export const DictReader = {
   /**
-   * `/MediaBox` または `/CropBox` を 4 要素 number 配列として取り出す。
+   * 解決済みの `/MediaBox` / `/CropBox` 値を 4 要素 number 配列として取り出す。
+   * 間接参照は呼び出し側で解決済みであることを前提とする。
    *
-   * @param entries - 辞書エントリ
-   * @param key - 読み取るキー名
+   * @param value - 解決済みの値（キー不在なら undefined）
    * @returns 4 要素 number 配列なら Some、それ以外 None
    */
-  box(
-    entries: Map<string, PdfValue>,
-    key: "MediaBox" | "CropBox",
-  ): Option<PdfRectangle> {
-    const value = entries.get(key);
+  box(value: PdfValue | undefined): Option<PdfRectangle> {
     if (value === undefined || value.type !== "array") {
       return none;
     }
@@ -58,13 +54,12 @@ export const DictReader = {
   },
 
   /**
-   * `/Rotate` が数値として格納されていれば生値を返す。
+   * 解決済みの `/Rotate` 値が数値として格納されていれば生値を返す。
    *
-   * @param entries - 辞書エントリ
-   * @returns 数値なら Some、それ以外（キー不在・非数値）は None
+   * @param value - 解決済みの値（キー不在なら undefined）
+   * @returns 数値なら Some、それ以外（undefined・非数値）は None
    */
-  rotate(entries: Map<string, PdfValue>): Option<number> {
-    const value = entries.get("Rotate");
+  rotate(value: PdfValue | undefined): Option<number> {
     return getNumberValue(value);
   },
 
