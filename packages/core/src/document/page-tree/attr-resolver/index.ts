@@ -62,32 +62,31 @@ const createEmptyResources = (): PdfDictionary => ({
 
 /**
  * ページ属性の継承解決 utility を束ねた namespace。
- * 各メソッドは pageDict / inherited / pageLeaf を受け、対応する属性を
- * 1 つだけ解決する純関数。
+ * 各メソッドは inherited / pageLeaf を受け、対応する属性を 1 つだけ解決する純関数。
+ * 「局所値が無効だったか」は pageLeaf の undefined として表現され、
+ * その場合は継承値へフォールバックする（無効の報告は Walker 側の責務）。
  */
 export const AttrResolver = {
   /**
    * `/MediaBox` を解決する。
-   * ページ辞書に /MediaBox キーがあれば pageLeaf、なければ inherited を採用。
-   * どちらも undefined のときは `MEDIABOX_NOT_FOUND` Err。
+   * ページ直属の有効値があればそれを、なければ祖先の継承値を採用する。
+   * どちらも無いときだけ `MEDIABOX_NOT_FOUND` Err。
+   * 局所値が無効だった場合は Walker 側で警告済みで、ここには undefined として届く。
    *
-   * @param pageDict - ページ辞書本体
    * @param inherited - 祖先継承属性
    * @param pageLeaf - ページ直属の事前解決属性
    * @param pageRef - `MEDIABOX_NOT_FOUND` エラーメッセージに含めるページ参照
    * @returns Ok(PdfRectangle) または Err(PdfParseError: `MEDIABOX_NOT_FOUND`)
    */
   mediaBox(
-    pageDict: PdfDictionary,
     inherited: InheritedAttrs,
     pageLeaf: InheritedAttrs,
     pageRef: IndirectRef,
   ): Result<PdfRectangle, PdfParseError> {
-    if (pageDict.entries.has("MediaBox")) {
-      if (pageLeaf.mediaBox !== undefined) {
-        return ok(pageLeaf.mediaBox);
-      }
-    } else if (inherited.mediaBox !== undefined) {
+    if (pageLeaf.mediaBox !== undefined) {
+      return ok(pageLeaf.mediaBox);
+    }
+    if (inherited.mediaBox !== undefined) {
       return ok(inherited.mediaBox);
     }
     return err({
@@ -97,66 +96,42 @@ export const AttrResolver = {
   },
 
   /**
-   * `/CropBox` を解決する。
-   * ページ辞書に /CropBox キーがあれば pageLeaf、なければ inherited を採用し、
-   * どちらも undefined のときは mediaBox にフォールバック。
+   * `/CropBox` を解決する。ページ直属 → 継承 → MediaBox の順にフォールバックする。
    *
-   * @param pageDict - ページ辞書本体
    * @param inherited - 祖先継承属性
    * @param pageLeaf - ページ直属の事前解決属性
-   * @param mediaBoxFallback - 解決できない場合に返す MediaBox
+   * @param mediaBoxFallback - どちらも無い場合に返す MediaBox
    * @returns 解決済み CropBox
    */
   cropBox(
-    pageDict: PdfDictionary,
     inherited: InheritedAttrs,
     pageLeaf: InheritedAttrs,
     mediaBoxFallback: PdfRectangle,
   ): PdfRectangle {
-    if (pageDict.entries.has("CropBox")) {
-      return pageLeaf.cropBox ?? mediaBoxFallback;
-    }
-    return inherited.cropBox ?? mediaBoxFallback;
+    return pageLeaf.cropBox ?? inherited.cropBox ?? mediaBoxFallback;
   },
 
   /**
-   * `/Rotate` を解決する。
-   * - pageDict に /Rotate キー無し → inherited.rotate を射影（警告なし）
-   * - キー有り・非数値 → { 0, INVALID_ROTATE 警告 }
-   * - キー有り・90 倍数 → 正規化値・警告なし
-   * - キー有り・90 非倍数 → 正規化値・INVALID_ROTATE 警告
+   * `/Rotate` を解決する。ページ直属 → 継承 → 0 の順に採用し、90 の倍数へ射影する。
+   * 90 の倍数でない生値を採用したときだけ `INVALID_ROTATE` 警告を返す
+   * （非数値だった場合は Walker 側で警告済み）。
    *
-   * @param pageDict - ページ辞書本体
    * @param inherited - 祖先継承属性
    * @param pageLeaf - ページ直属の事前解決属性
    * @param pageRef - 警告メッセージに含めるページ参照
    * @returns 正規化値と警告（あれば）
    */
   rotate(
-    pageDict: PdfDictionary,
     inherited: InheritedAttrs,
     pageLeaf: InheritedAttrs,
     pageRef: IndirectRef,
   ): { value: PageRotate; warning: Option<PdfWarning> } {
-    const rawKeyPresent = pageDict.entries.has("Rotate");
-    if (!rawKeyPresent) {
-      if (inherited.rotate === undefined) {
-        return { value: PAGE_ROTATE_0, warning: none };
-      }
-      return { value: projectRotate(inherited.rotate), warning: none };
+    const raw = pageLeaf.rotate ?? inherited.rotate;
+    if (raw === undefined) {
+      return { value: PAGE_ROTATE_0, warning: none };
     }
-    const rawPage = pageLeaf.rotate;
-    if (rawPage === undefined) {
-      return {
-        value: PAGE_ROTATE_0,
-        warning: some({
-          code: "INVALID_ROTATE",
-          message: `Page ${pageRef.objectNumber} ${pageRef.generationNumber}: /Rotate is not a number, defaulting to 0`,
-        }),
-      };
-    }
-    const normalized = projectRotate(rawPage);
-    const isMultipleOf90 = rawPage % ROTATE_DIVISOR === 0;
+    const normalized = projectRotate(raw);
+    const isMultipleOf90 = raw % ROTATE_DIVISOR === 0;
     if (isMultipleOf90) {
       return { value: normalized, warning: none };
     }
@@ -164,29 +139,22 @@ export const AttrResolver = {
       value: normalized,
       warning: some({
         code: "INVALID_ROTATE",
-        message: `Page ${pageRef.objectNumber} ${pageRef.generationNumber}: /Rotate ${rawPage} normalized to ${normalized}`,
+        message: `Page ${pageRef.objectNumber} ${pageRef.generationNumber}: /Rotate ${raw} normalized to ${normalized}`,
       }),
     };
   },
 
   /**
-   * `/Resources` を解決する。
-   * ページ辞書に /Resources キーがあれば pageLeaf、なければ inherited を採用し、
-   * どちらも undefined のときは空辞書（毎回新規インスタンス）にフォールバック。
+   * `/Resources` を解決する。ページ直属 → 継承 → 空辞書（毎回新規）の順に採用する。
    *
-   * @param pageDict - ページ辞書本体
    * @param inherited - 祖先継承属性
    * @param pageLeaf - ページ直属の事前解決属性
    * @returns 解決済み Resources 辞書
    */
   resources(
-    pageDict: PdfDictionary,
     inherited: InheritedAttrs,
     pageLeaf: InheritedAttrs,
   ): PdfDictionary {
-    if (pageDict.entries.has("Resources")) {
-      return pageLeaf.resources ?? createEmptyResources();
-    }
-    return inherited.resources ?? createEmptyResources();
+    return pageLeaf.resources ?? inherited.resources ?? createEmptyResources();
   },
 } as const;
