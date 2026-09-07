@@ -120,7 +120,7 @@ test("/Rotate キーが存在しない場合は警告なしで 0", () => {
   expect(outcome.warnings).toEqual([]);
 });
 
-test("/Rotate が文字列（非数値）なら INVALID_ROTATE + 0、継承を無視する", () => {
+test("/Rotate が文字列（pageLeaf 未設定）なら継承 /Rotate を採用し警告なし", () => {
   const outcome = unwrapOk(
     runRotate(
       { type: "string", value: new Uint8Array(), encoding: "literal" },
@@ -128,14 +128,14 @@ test("/Rotate が文字列（非数値）なら INVALID_ROTATE + 0、継承を�
       {},
     ),
   );
-  expect(outcome.page.rotate).toBe(0);
-  expect(outcome.warnings.some((w) => w.code === "INVALID_ROTATE")).toBe(true);
+  expect(outcome.page.rotate).toBe(90);
+  expect(outcome.warnings).toEqual([]);
 });
 
-test("/Rotate が null なら INVALID_ROTATE + 0", () => {
+test("/Rotate が null で継承も未設定なら 0・警告なし（無効値の報告は Walker 側）", () => {
   const outcome = unwrapOk(runRotate({ type: "null" }, {}, {}));
   expect(outcome.page.rotate).toBe(0);
-  expect(outcome.warnings.some((w) => w.code === "INVALID_ROTATE")).toBe(true);
+  expect(outcome.warnings).toEqual([]);
 });
 
 test("/Rotate が 135 なら INVALID_ROTATE + 180", () => {
@@ -168,24 +168,25 @@ test("ページ /Rotate キー不在、継承 /Rotate=90 なら警告なしで 9
   expect(outcome.warnings).toEqual([]);
 });
 
-test("ページに /MediaBox キーがあるが malformed なら親を継承せず MEDIABOX_NOT_FOUND", () => {
+test("ページの /MediaBox が無効（pageLeaf 未設定）でも継承値を採用する", () => {
   const pageDict = makePageDict({});
   pageDict.entries.set("MediaBox", {
     type: "string",
     value: new Uint8Array(),
     encoding: "literal",
   });
-  const result = InheritanceResolver.resolve(
-    pageDict,
-    { mediaBox: [0, 0, 999, 999] },
-    {},
-    PAGE_REF,
+  const outcome = unwrapOk(
+    InheritanceResolver.resolve(
+      pageDict,
+      { mediaBox: [0, 0, 999, 999] },
+      {},
+      PAGE_REF,
+    ),
   );
-  const error = unwrapErr(result);
-  expect(error.code).toBe("MEDIABOX_NOT_FOUND");
+  expect(outcome.page.mediaBox).toEqual([0, 0, 999, 999]);
 });
 
-test("ページに /CropBox キーがあるが malformed なら親を継承せず MediaBox にフォールバック", () => {
+test("ページの /CropBox が無効（pageLeaf 未設定）でも継承 CropBox を採用する", () => {
   const pageDict = makePageDict({ mediaBox: [0, 0, 100, 100] });
   pageDict.entries.set("CropBox", { type: "integer", value: 42 });
   const outcome = unwrapOk(
@@ -196,7 +197,7 @@ test("ページに /CropBox キーがあるが malformed なら親を継承せ�
       PAGE_REF,
     ),
   );
-  expect(outcome.page.cropBox).toEqual([0, 0, 100, 100]);
+  expect(outcome.page.cropBox).toEqual([10, 10, 90, 90]);
 });
 
 test("/CropBox 未定義時は MediaBox と同値になる", () => {
