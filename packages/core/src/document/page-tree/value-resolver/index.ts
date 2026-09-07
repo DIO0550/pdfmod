@@ -85,7 +85,7 @@ const resolveOnce = async (
 const resolveElements = async (
   array: PdfArray,
   ctx: ResolveValueContext,
-): Promise<PdfValue> => {
+): Promise<PdfArray> => {
   const hasRef = array.elements.some((el) => el.type === "indirect-ref");
   if (!hasRef) {
     return array;
