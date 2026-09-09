@@ -431,6 +431,18 @@ test("スキップ対象辞書内で予期せぬトークン(])が現れた場�
   );
 });
 
+test("スキップ対象配列内で予期せぬトークン(>>)が現れた場合にXREF_TABLE_INVALIDエラーが返る", () => {
+  const { data, offset } = trailerAt(
+    "trailer << /Root 1 0 R /Size 10 /Unknown [ >> ] >>",
+  );
+  const result = parseTrailer(data, offset);
+  assert(!result.ok);
+  expect(result.error.code).toBe("XREF_TABLE_INVALID");
+  expect(result.error.message).toContain(
+    "unexpected >> while skipping array value",
+  );
+});
+
 test("スキップ対象辞書内で非Nameキーが現れた場合でもスキップされ正常に処理される", () => {
   const { data, offset } = trailerAt(
     "trailer << /Root 1 0 R /Size 10 /Unknown << 123 /A 1 >> >>",

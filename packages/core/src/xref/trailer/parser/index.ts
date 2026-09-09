@@ -11,8 +11,8 @@ import {
 } from "../../../pdf/types/byte-offset/index";
 import type { PdfValue, Token, TrailerDict } from "../../../pdf/types/index";
 import { TokenType } from "../../../pdf/types/index";
-import type { Option } from "../../../utils/option";
-import { none, some } from "../../../utils/option";
+import type { Option } from "../../../utils/option/index";
+import { none, some } from "../../../utils/option/index";
 import type { Result } from "../../../utils/result/index";
 import { err, ok } from "../../../utils/result/index";
 import { trailerDictBuilder } from "../dict-builder/index";
@@ -97,17 +97,20 @@ function literalStringToBytes(str: string): Option<Uint8Array> {
 }
 
 /**
- * ネスト深さ超過時のエラー Result を生成するヘルパー。
+ * ネスト深さ超過時のエラー値を生成するヘルパー。
+ *
+ * ラップは呼び出し側の責務。`Result` を返す文脈では `err(...)`、
+ * `Option` を返す文脈では `some(...)` で包む。
  *
  * @param offset - 問題が検出されたバイトオフセット
- * @returns `Err<PdfParseError>` (コード: NESTING_TOO_DEEP)
+ * @returns `PdfParseError` (コード: NESTING_TOO_DEEP)
  */
-function failNestingTooDeep(offset: ByteOffset): Result<never, PdfParseError> {
-  return err({
+function nestingTooDeepError(offset: ByteOffset): PdfParseError {
+  return {
     code: "NESTING_TOO_DEEP",
     message: "nesting depth exceeds maximum allowed limit",
     offset,
-  });
+  };
 }
 
 /**
@@ -117,57 +120,63 @@ function failNestingTooDeep(offset: ByteOffset): Result<never, PdfParseError> {
  * @param baseOffset - エラー報告用のベースオフセット
  * @param depth - 現在のネスト深さ
  * @param entryOffset - この構造の開始トークンの絶対オフセット
- * @returns 成功時は `Ok<void>`、失敗時は `Err<PdfParseError>`
+ * @returns 読み飛ばせた場合は `none`、失敗した場合は `some(PdfParseError)`
  */
 function skipNestedArray(
   tokens: BufferedTokenizer,
   baseOffset: ByteOffset,
   depth: number,
   entryOffset: ByteOffset,
-): Result<void, PdfParseError> {
+): Option<PdfParseError> {
   if (depth >= MAX_NESTING_DEPTH) {
-    return failNestingTooDeep(entryOffset);
+    return some(nestingTooDeepError(entryOffset));
   }
 
   while (true) {
     const token = tokens.next();
-    if (token.type === TokenType.ArrayEnd) {
-      return ok(undefined);
-    }
-    if (token.type === TokenType.EOF) {
-      return err({
-        code: "XREF_TABLE_INVALID",
-        message: "unexpected end of data while skipping value",
-        offset: BO.add(baseOffset, token.offset),
-      });
-    }
-    if (token.type === TokenType.DictEnd) {
-      return err({
-        code: "XREF_TABLE_INVALID",
-        message: "unexpected >> while skipping array value",
-        offset: BO.add(baseOffset, token.offset),
-      });
-    }
-    if (token.type === TokenType.ArrayBegin) {
-      const r = skipNestedArray(
-        tokens,
-        baseOffset,
-        depth + 1,
-        BO.add(baseOffset, token.offset),
-      );
-      if (!r.ok) {
-        return r;
+    switch (token.type) {
+      case TokenType.ArrayEnd:
+        return none;
+      case TokenType.EOF:
+        return some({
+          code: "XREF_TABLE_INVALID",
+          message: "unexpected end of data while skipping value",
+          offset: BO.add(baseOffset, token.offset),
+        });
+      case TokenType.DictEnd:
+        return some({
+          code: "XREF_TABLE_INVALID",
+          message: "unexpected >> while skipping array value",
+          offset: BO.add(baseOffset, token.offset),
+        });
+      case TokenType.ArrayBegin: {
+        const nestedError = skipNestedArray(
+          tokens,
+          baseOffset,
+          depth + 1,
+          BO.add(baseOffset, token.offset),
+        );
+        if (nestedError.some) {
+          return nestedError;
+        }
+        break;
       }
-    } else if (token.type === TokenType.DictBegin) {
-      const r = skipNestedDict(
-        tokens,
-        baseOffset,
-        depth + 1,
-        BO.add(baseOffset, token.offset),
-      );
-      if (!r.ok) {
-        return r;
+      case TokenType.DictBegin: {
+        const nestedError = skipNestedDict(
+          tokens,
+          baseOffset,
+          depth + 1,
+          BO.add(baseOffset, token.offset),
+        );
+        if (nestedError.some) {
+          return nestedError;
+        }
+        break;
       }
+      default:
+        // 配列要素として現れるその他のトークン（数値・名前・文字列など）は
+        // 読み捨ててループを継続する
+        break;
     }
   }
 }
@@ -179,80 +188,90 @@ function skipNestedArray(
  * @param baseOffset - エラー報告用のベースオフセット
  * @param depth - 現在のネスト深さ
  * @param entryOffset - この構造の開始トークンの絶対オフセット
- * @returns 成功時は `Ok<void>`、失敗時は `Err<PdfParseError>`
+ * @returns 読み飛ばせた場合は `none`、失敗した場合は `some(PdfParseError)`
  */
 function skipNestedDict(
   tokens: BufferedTokenizer,
   baseOffset: ByteOffset,
   depth: number,
   entryOffset: ByteOffset,
-): Result<void, PdfParseError> {
+): Option<PdfParseError> {
   if (depth >= MAX_NESTING_DEPTH) {
-    return failNestingTooDeep(entryOffset);
+    return some(nestingTooDeepError(entryOffset));
   }
 
   while (true) {
     const keyToken = tokens.next();
-    if (keyToken.type === TokenType.DictEnd) {
-      return ok(undefined);
+    switch (keyToken.type) {
+      case TokenType.DictEnd:
+        return none;
+      case TokenType.EOF:
+        return some({
+          code: "XREF_TABLE_INVALID",
+          message: "unexpected end of data while skipping value",
+          offset: BO.add(baseOffset, keyToken.offset),
+        });
+      case TokenType.ArrayEnd:
+        return some({
+          code: "XREF_TABLE_INVALID",
+          message: "unexpected ] while skipping dictionary value",
+          offset: BO.add(baseOffset, keyToken.offset),
+        });
+      case TokenType.Name:
+        break;
+      default:
+        // キー位置に Name 以外が来た場合は値を読まず次のトークンから読み直す
+        continue;
     }
-    if (keyToken.type === TokenType.EOF) {
-      return err({
-        code: "XREF_TABLE_INVALID",
-        message: "unexpected end of data while skipping value",
-        offset: BO.add(baseOffset, keyToken.offset),
-      });
-    }
-    if (keyToken.type === TokenType.ArrayEnd) {
-      return err({
-        code: "XREF_TABLE_INVALID",
-        message: "unexpected ] while skipping dictionary value",
-        offset: BO.add(baseOffset, keyToken.offset),
-      });
-    }
-    if (keyToken.type !== TokenType.Name) {
-      continue;
-    }
+
     const valueToken = tokens.next();
-    if (valueToken.type === TokenType.EOF) {
-      return err({
-        code: "XREF_TABLE_INVALID",
-        message: "unexpected end of data while skipping value",
-        offset: BO.add(baseOffset, valueToken.offset),
-      });
-    }
-    if (valueToken.type === TokenType.ArrayBegin) {
-      const r = skipNestedArray(
-        tokens,
-        baseOffset,
-        depth + 1,
-        BO.add(baseOffset, valueToken.offset),
-      );
-      if (!r.ok) {
-        return r;
+    switch (valueToken.type) {
+      case TokenType.EOF:
+        return some({
+          code: "XREF_TABLE_INVALID",
+          message: "unexpected end of data while skipping value",
+          offset: BO.add(baseOffset, valueToken.offset),
+        });
+      case TokenType.ArrayBegin: {
+        const nestedError = skipNestedArray(
+          tokens,
+          baseOffset,
+          depth + 1,
+          BO.add(baseOffset, valueToken.offset),
+        );
+        if (nestedError.some) {
+          return nestedError;
+        }
+        break;
       }
-    } else if (valueToken.type === TokenType.DictBegin) {
-      const r = skipNestedDict(
-        tokens,
-        baseOffset,
-        depth + 1,
-        BO.add(baseOffset, valueToken.offset),
-      );
-      if (!r.ok) {
-        return r;
+      case TokenType.DictBegin: {
+        const nestedError = skipNestedDict(
+          tokens,
+          baseOffset,
+          depth + 1,
+          BO.add(baseOffset, valueToken.offset),
+        );
+        if (nestedError.some) {
+          return nestedError;
+        }
+        break;
       }
-    }
-    if (valueToken.type === TokenType.Integer) {
-      const second = tokens.next();
-      if (second.type === TokenType.Integer) {
-        const third = tokens.next();
-        if (!(third.type === TokenType.Keyword && third.value === "R")) {
-          tokens.pushBack(third);
+      case TokenType.Integer: {
+        const second = tokens.next();
+        if (second.type === TokenType.Integer) {
+          const third = tokens.next();
+          if (!(third.type === TokenType.Keyword && third.value === "R")) {
+            tokens.pushBack(third);
+            tokens.pushBack(second);
+          }
+        } else {
           tokens.pushBack(second);
         }
-      } else {
-        tokens.pushBack(second);
+        break;
       }
+      default:
+        // 単一トークンの値（名前・文字列・真偽値など）は消費済みなので何もしない
+        break;
     }
   }
 }
@@ -379,7 +398,7 @@ function readValue(
       return ok({ value: { type: "null" }, offset });
     case TokenType.ArrayBegin: {
       if (depth >= MAX_NESTING_DEPTH) {
-        return failNestingTooDeep(offset);
+        return err(nestingTooDeepError(offset));
       }
       const elements = readArrayElements(tokens, baseOffset, depth + 1);
       if (!elements.ok) {
@@ -392,7 +411,7 @@ function readValue(
     }
     case TokenType.DictBegin: {
       if (depth >= MAX_NESTING_DEPTH) {
-        return failNestingTooDeep(offset);
+        return err(nestingTooDeepError(offset));
       }
       const dictEntries = readDictValueEntries(tokens, baseOffset, depth + 1);
       if (!dictEntries.ok) {
@@ -571,42 +590,44 @@ function readIdArray(
  * @param firstToken - 読み取り済みの値の先頭トークン
  * @param tokens - バッファ付きトークナイザ
  * @param baseOffset - エラー報告用のベースオフセット
- * @returns 成功時は `Ok<void>`、失敗時は `Err<PdfParseError>`
+ * @returns 読み飛ばせた場合は `none`、失敗した場合は `some(PdfParseError)`
  */
 function skipValue(
   firstToken: Token,
   tokens: BufferedTokenizer,
   baseOffset: ByteOffset,
-): Result<void, PdfParseError> {
-  if (firstToken.type === TokenType.ArrayBegin) {
-    return skipNestedArray(
-      tokens,
-      baseOffset,
-      0,
-      BO.add(baseOffset, firstToken.offset),
-    );
-  }
-  if (firstToken.type === TokenType.DictBegin) {
-    return skipNestedDict(
-      tokens,
-      baseOffset,
-      0,
-      BO.add(baseOffset, firstToken.offset),
-    );
-  }
-  if (firstToken.type === TokenType.Integer) {
-    const second = tokens.next();
-    if (second.type === TokenType.Integer) {
-      const third = tokens.next();
-      if (third.type === TokenType.Keyword && third.value === "R") {
-        return ok(undefined);
+): Option<PdfParseError> {
+  switch (firstToken.type) {
+    case TokenType.ArrayBegin:
+      return skipNestedArray(
+        tokens,
+        baseOffset,
+        0,
+        BO.add(baseOffset, firstToken.offset),
+      );
+    case TokenType.DictBegin:
+      return skipNestedDict(
+        tokens,
+        baseOffset,
+        0,
+        BO.add(baseOffset, firstToken.offset),
+      );
+    case TokenType.Integer: {
+      const second = tokens.next();
+      if (second.type === TokenType.Integer) {
+        const third = tokens.next();
+        if (third.type === TokenType.Keyword && third.value === "R") {
+          return none;
+        }
+        tokens.pushBack(third);
       }
-      tokens.pushBack(third);
+      tokens.pushBack(second);
+      return none;
     }
-    tokens.pushBack(second);
+    default:
+      // 単一トークンの値は読み取り済みなので、そのまま成功として返す
+      return none;
   }
-
-  return ok(undefined);
 }
 
 /**
@@ -686,9 +707,9 @@ function parseDictTokens(
       }
       entries.set(key, valueResult.value);
     } else {
-      const skipResult = skipValue(valueToken, tokens, baseOffset);
-      if (!skipResult.ok) {
-        return skipResult;
+      const skipError = skipValue(valueToken, tokens, baseOffset);
+      if (skipError.some) {
+        return err(skipError.value);
       }
     }
   }
