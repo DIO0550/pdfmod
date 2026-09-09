@@ -192,6 +192,15 @@ test("未知キーの値がネストされた配列の場合に正しく読み�
   expect(result.value.size).toBe(10);
 });
 
+test("未知キーの値が間接参照の場合に3トークンとも正しく読み飛ばされる", () => {
+  const { data, offset } = trailerAt(
+    "trailer << /Unknown 1 0 R /Root 1 0 R /Size 10 >>",
+  );
+  const result = parseTrailer(data, offset);
+  assert(result.ok);
+  expect(result.value.size).toBe(10);
+});
+
 test("全キーを含むトレーラ辞書が正しくパースされる", () => {
   const { data, offset } = trailerAt(
     "trailer << /Size 42 /Root 1 0 R /Prev 9876 /Info 5 0 R /ID [<aabb> <ccdd>] >>",
