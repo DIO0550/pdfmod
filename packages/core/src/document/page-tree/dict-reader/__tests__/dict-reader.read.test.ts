@@ -263,6 +263,19 @@ test("DictReader.contents は配列（非 ref 要素混入）で正常 ref の�
   );
 });
 
+test("DictReader.contents は配列（有効 ref なし）で none ではなく some(空配列) を返す", () => {
+  const entries = new Map<string, PdfValue>([
+    [
+      "Contents",
+      {
+        type: "array",
+        elements: [indirectRefValue(0, 0), { type: "integer", value: 1 }],
+      },
+    ],
+  ]);
+  expect(DictReader.contents(entries)).toEqual(some([]));
+});
+
 test("DictReader.contents は非配列・非 ref で none を返す", () => {
   const entries = new Map<string, PdfValue>([
     ["Contents", { type: "integer", value: 100 }],
