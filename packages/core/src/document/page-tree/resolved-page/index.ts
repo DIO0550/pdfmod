@@ -3,6 +3,7 @@ import type {
   PdfDictionary,
   PdfObject,
 } from "../../../pdf/types/pdf-types/index";
+import type { Option } from "../../../utils/option/index";
 
 /**
  * PDF の rectangle 型。
@@ -39,10 +40,10 @@ export interface ResolvedPage {
   cropBox: PdfRectangle;
   /** 表示時の回転角度（0/90/180/270 に正規化済み） */
   rotate: PageRotate;
-  /** コンテンツストリーム参照 */
-  contents: IndirectRef | IndirectRef[] | null;
-  /** アノテーション配列 */
-  annots: PdfObject[] | null;
+  /** コンテンツストリーム参照（`/Contents` 不在・不正時は `none`） */
+  contents: Option<IndirectRef | IndirectRef[]>;
+  /** アノテーション配列（`/Annots` 不在・非配列時は `none`） */
+  annots: Option<PdfObject[]>;
   /** ユーザー空間の単位倍率（デフォルト 1.0） */
   userUnit: number;
   /** 元のページオブジェクトへの参照（ブランド済み） */

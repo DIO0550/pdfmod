@@ -3,6 +3,7 @@ import type {
   PdfDictionary,
   PdfValue,
 } from "../../../../pdf/types/pdf-types/index";
+import { none, some } from "../../../../utils/option/index";
 import {
   InheritanceResolver,
   type InheritedAttrs,
@@ -258,7 +259,7 @@ test("Resources-b: 両方未定義なら空辞書が設定される", () => {
   expect(outcome.page.resources.entries.size).toBe(0);
 });
 
-test("contents-a: /Contents が単一 indirect-ref のとき IndirectRef として取り出される", () => {
+test("contents-a: /Contents が単一 indirect-ref のとき some(IndirectRef) として取り出される", () => {
   const pageDict = makePageDict({
     mediaBox: [0, 0, 10, 10],
     contents: indirectRefValue(7, 0),
@@ -271,13 +272,10 @@ test("contents-a: /Contents が単一 indirect-ref のとき IndirectRef とし�
       PAGE_REF,
     ),
   );
-  expect(outcome.page.contents).not.toBeNull();
-  expect(Array.isArray(outcome.page.contents)).toBe(false);
-  const single = outcome.page.contents as { objectNumber: number };
-  expect(single.objectNumber).toBe(7);
+  expect(outcome.page.contents).toEqual(some(makeRef(7, 0)));
 });
 
-test("contents-b: /Contents が配列のとき IndirectRef[]", () => {
+test("contents-b: /Contents が配列のとき some(IndirectRef[])", () => {
   const pageDict = makePageDict({
     mediaBox: [0, 0, 10, 10],
     contents: {
@@ -293,11 +291,10 @@ test("contents-b: /Contents が配列のとき IndirectRef[]", () => {
       PAGE_REF,
     ),
   );
-  expect(Array.isArray(outcome.page.contents)).toBe(true);
-  expect((outcome.page.contents as unknown[]).length).toBe(2);
+  expect(outcome.page.contents).toEqual(some([makeRef(7, 0), makeRef(8, 0)]));
 });
 
-test("contents-c: /Contents 未定義なら null", () => {
+test("contents-c: /Contents 未定義なら none", () => {
   const pageDict = makePageDict({ mediaBox: [0, 0, 10, 10] });
   const outcome = unwrapOk(
     InheritanceResolver.resolve(
@@ -307,10 +304,10 @@ test("contents-c: /Contents 未定義なら null", () => {
       PAGE_REF,
     ),
   );
-  expect(outcome.page.contents).toBeNull();
+  expect(outcome.page.contents).toEqual(none);
 });
 
-test("annots: /Annots が配列なら PdfObject[]、未定義なら null", () => {
+test("annots: /Annots が配列なら some(PdfObject[])、未定義なら none", () => {
   const withAnnots = makePageDict({
     mediaBox: [0, 0, 10, 10],
     annots: {
@@ -326,8 +323,9 @@ test("annots: /Annots が配列なら PdfObject[]、未定義なら null", () =>
       PAGE_REF,
     ),
   );
-  expect(Array.isArray(outcomeWith.page.annots)).toBe(true);
-  expect(outcomeWith.page.annots?.length).toBe(2);
+  expect(outcomeWith.page.annots).toEqual(
+    some([indirectRefValue(9, 0), indirectRefValue(10, 0)]),
+  );
 
   const withoutAnnots = makePageDict({ mediaBox: [0, 0, 10, 10] });
   const outcomeWithout = unwrapOk(
@@ -338,7 +336,7 @@ test("annots: /Annots が配列なら PdfObject[]、未定義なら null", () =>
       PAGE_REF,
     ),
   );
-  expect(outcomeWithout.page.annots).toBeNull();
+  expect(outcomeWithout.page.annots).toEqual(none);
 });
 
 test("userUnit: /UserUnit 未定義で 1.0", () => {
@@ -418,7 +416,7 @@ test("userUnit: /UserUnit が 2.5 なら 2.5 を採用", () => {
   expect(outcome.page.userUnit).toBe(2.5);
 });
 
-test("contents: 不正な objectNumber の indirect-ref は null として扱う", () => {
+test("contents: 不正な objectNumber の indirect-ref は none として扱う", () => {
   const pageDict = makePageDict({
     mediaBox: [0, 0, 10, 10],
     contents: { type: "indirect-ref", objectNumber: 0, generationNumber: 0 },
@@ -431,7 +429,7 @@ test("contents: 不正な objectNumber の indirect-ref は null として扱う
       PAGE_REF,
     ),
   );
-  expect(outcome.page.contents).toBeNull();
+  expect(outcome.page.contents).toEqual(none);
 });
 
 test("contents: 配列内の不正な indirect-ref はスキップされる", () => {
@@ -453,8 +451,7 @@ test("contents: 配列内の不正な indirect-ref はスキップされる", ()
       PAGE_REF,
     ),
   );
-  expect(Array.isArray(outcome.page.contents)).toBe(true);
-  expect((outcome.page.contents as unknown[]).length).toBe(1);
+  expect(outcome.page.contents).toEqual(some([makeRef(7, 0)]));
 });
 
 test("Rotate: NaN / Infinity は警告ありで 0 に正規化される", () => {
