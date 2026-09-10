@@ -83,23 +83,24 @@ export const DictReader = {
   },
 
   /**
-   * `/Contents` を IndirectRef / IndirectRef[] / null として取り出す。
-   * 不正な番号の indirect-ref は無視される（配列要素は除外、単一参照は null）。
+   * `/Contents` を単一 IndirectRef または IndirectRef 配列として取り出す。
+   * 不正な番号の indirect-ref は無視される（配列要素は除外、単一参照は `none`）。
    *
    * @param entries - 辞書エントリ
-   * @returns 単一 ref / 配列 / null
+   * @returns 単一参照なら `some(IndirectRef)`、配列なら有効な参照だけを集めた `some(IndirectRef[])`
+   *          （有効な要素が 0 件でも `some([])`）。キー不在・不正な単一参照・その他の型は `none`
    */
-  contents(entries: Map<string, PdfValue>): IndirectRef | IndirectRef[] | null {
+  contents(
+    entries: Map<string, PdfValue>,
+  ): Option<IndirectRef | IndirectRef[]> {
     const value = entries.get("Contents");
     if (value === undefined) {
-      return null;
+      return none;
     }
     if (value.type === "indirect-ref") {
-      const indirectRef = IndirectRef.from(value);
-      if (!indirectRef.some) {
-        return null;
-      }
-      return indirectRef.value;
+      // Option<IndirectRef> は Option<IndirectRef | IndirectRef[]> に代入可能なため
+      // 開いて詰め直さずそのまま返す（番号が不正なら from が none を返す）。
+      return IndirectRef.from(value);
     }
     if (value.type === "array") {
       const refs: IndirectRef[] = [];
@@ -111,22 +112,23 @@ export const DictReader = {
           }
         }
       }
-      return refs;
+      return some(refs);
     }
-    return null;
+    return none;
   },
 
   /**
-   * `/Annots` を PdfObject[] として取り出す（未定義・非配列時は null）。
+   * `/Annots` を PdfObject 配列として取り出す。
+   * 返す配列は元の要素列の浅い複製で、呼び出し側の変更は元の辞書に波及しない。
    *
    * @param entries - 辞書エントリ
-   * @returns PdfObject 配列 or null
+   * @returns 配列なら `some(PdfObject[])`（空配列でも `some([])`）、キー不在・非配列は `none`
    */
-  annots(entries: Map<string, PdfValue>): PdfObject[] | null {
+  annots(entries: Map<string, PdfValue>): Option<PdfObject[]> {
     const value = entries.get("Annots");
     if (value === undefined || value.type !== "array") {
-      return null;
+      return none;
     }
-    return [...value.elements];
+    return some([...value.elements]);
   },
 } as const;

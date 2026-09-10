@@ -674,7 +674,7 @@ test("/Contents が indirect-ref の /Page で正しく読み取られる", asyn
   const outcome = unwrapOk(
     await PageTreeWalker.walk(pageRef, makeResolverMap(objects)),
   );
-  expect(outcome.pages[0].contents).not.toBeNull();
+  expect(outcome.pages[0].contents.some).toBe(true);
 });
 
 test("間接参照-MediaBox: /Page の /MediaBox が間接参照でも解決される", async () => {
