@@ -6,6 +6,7 @@ import type {
   ContentStreamInterpreterResult,
   FreeObjectNumber,
   GraphicsStateStack,
+  IndirectRef,
   InheritedAttrs,
   LoadOptions,
   MarkedContentStack,
@@ -16,6 +17,7 @@ import type {
   PdfDictionary,
   PdfDocumentLoadError,
   PdfError,
+  PdfObject,
   PdfPageRectangle,
   PdfRectangle,
   PdfVersion,
@@ -110,6 +112,15 @@ test("ResolvedPage の矩形は mutable な PdfRectangle である", () => {
     [number, number, number, number]
   >();
   expectTypeOf<ResolvedPage["userUnit"]>().toEqualTypeOf<number>();
+});
+
+test("ResolvedPage の contents / annots が Option 型で公開されている", () => {
+  expectTypeOf<ResolvedPage["contents"]>().toEqualTypeOf<
+    Option.Option<IndirectRef | IndirectRef[]>
+  >();
+  expectTypeOf<ResolvedPage["annots"]>().toEqualTypeOf<
+    Option.Option<PdfObject[]>
+  >();
 });
 
 test("InheritedAttrs の全フィールドが省略可能である", () => {
