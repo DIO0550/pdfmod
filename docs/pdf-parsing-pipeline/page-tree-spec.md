@@ -24,9 +24,9 @@
 
 | フィールド | 型 | 説明 |
 |:-----------|:---|:-----|
-| mediaBox | 矩形 [llx, lly, urx, ury] | ページの物理的寸法（ポイント単位） |
+| mediaBox | 矩形 [llx, lly, urx, ury] | ページの物理的寸法（ポイント単位）。左下・右上の順に正規化済み（IH-006） |
 | resources | 辞書 | 描画リソース辞書 |
-| cropBox | 矩形 [llx, lly, urx, ury] | トリミング領域（未指定時はmediaBoxと同一） |
+| cropBox | 矩形 [llx, lly, urx, ury] | トリミング領域（未指定時はmediaBoxと同一）。左下・右上の順に正規化済み（IH-006） |
 | rotate | 0・90・180・270 のいずれか | 表示時の回転角度 |
 | contents | 間接参照、または間接参照の配列（`Option`） | コンテンツストリームへの参照。`/Contents` が無い・不正な場合は `none` |
 | annots | PDFオブジェクトの配列（`Option`） | アノテーション配列。`/Annots` が無い・配列でない場合は `none` |
@@ -119,6 +119,7 @@ walkPageTree(node, inheritedAttrs, visited)
 | IH-003 | MediaBox必須 | ルートまで辿ってもMediaBox未定義 | `MEDIABOX_NOT_FOUND` エラーを返す |
 | IH-004 | Rotate正規化 | 0, 90, 180, 270 以外の値 | 90の倍数に丸め（寛容処理） |
 | IH-005 | CropBoxデフォルト | CropBox未定義 | MediaBoxと同一値を設定 |
+| IH-006 | 矩形正規化 | MediaBox / CropBox が対角逆順（例: `[612 792 0 0]`）で指定 | `PdfRectangle.normalize` で軸ごとに min/max を取り `[llx, lly, urx, ury]` に並べ替える（ISO 32000-1 §7.9.5）。警告は出さない。幅・高さ 0 の退化矩形もそのまま受理 |
 
 ### DocumentInfoParser
 
