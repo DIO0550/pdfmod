@@ -1,3 +1,4 @@
+import { none, type Option, some } from "../../../utils/option/index";
 import type { ByteOffset } from "../byte-offset/index";
 import type { FreeObjectNumber } from "../free-object-number/index";
 import type { GenerationNumber } from "../generation-number/index";
@@ -185,6 +186,31 @@ export type PdfValue =
   | PdfArray
   | PdfDictionary
   | PdfIndirectRef;
+
+/**
+ * `PdfValue` の変換関数を束ねた companion object。
+ * 型と value を同一識別子で公開する declaration merging パターン
+ * (`PdfName` と同流儀)。
+ */
+export const PdfValue = {
+  /**
+   * PdfValue が integer / real なら数値を `some(number)` で返す。
+   * その他の型・undefined は `none`。
+   * 辞書の `entries.get(key)` の戻り値（キー不在なら undefined）をそのまま渡せる。
+   *
+   * @param value - 判定対象（キー不在なら undefined）
+   * @returns `some(number)`、または `none`
+   */
+  asNumber(value: PdfValue | undefined): Option<number> {
+    if (value === undefined) {
+      return none;
+    }
+    if (value.type === "integer" || value.type === "real") {
+      return some(value.value);
+    }
+    return none;
+  },
+} as const;
 
 /**
  * PDF object 全体型 (ISO 32000 7.3)。
