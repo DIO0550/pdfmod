@@ -95,6 +95,41 @@ test("継承-MediaBox: 親 /Pages の /MediaBox が子 /Page に継承される"
   expect(outcome.pages[0].mediaBox).toEqual([0, 0, 500, 500]);
 });
 
+test("正規化-MediaBox 継承: 親 /Pages の /MediaBox が対角逆順でも子 /Page では正規化済み", async () => {
+  const root = makeRef(1, 0);
+  const leaf = makeRef(2, 0);
+  const objects = new Map<string, PdfObject>();
+  addTo(
+    objects,
+    root,
+    makePagesDict({ kids: [leaf], mediaBox: [500, 500, 0, 0] }),
+  );
+  addTo(objects, leaf, makePageDict({}));
+  const outcome = unwrapOk(
+    await PageTreeWalker.walk(root, makeResolverMap(objects)),
+  );
+  expect(outcome.pages[0].mediaBox).toEqual([0, 0, 500, 500]);
+  expect(outcome.warnings).toEqual([]);
+});
+
+test("正規化-CropBox 直属: 子 /Page の /CropBox が対角逆順でも正規化済みで、MediaBox は影響を受けない", async () => {
+  const root = makeRef(1, 0);
+  const leaf = makeRef(2, 0);
+  const objects = new Map<string, PdfObject>();
+  addTo(
+    objects,
+    root,
+    makePagesDict({ kids: [leaf], mediaBox: [0, 0, 612, 792] }),
+  );
+  addTo(objects, leaf, makePageDict({ cropBox: [600, 700, 10, 20] }));
+  const outcome = unwrapOk(
+    await PageTreeWalker.walk(root, makeResolverMap(objects)),
+  );
+  expect(outcome.pages[0].mediaBox).toEqual([0, 0, 612, 792]);
+  expect(outcome.pages[0].cropBox).toEqual([10, 20, 600, 700]);
+  expect(outcome.warnings).toEqual([]);
+});
+
 test("継承-Resources: 親 /Pages の /Resources が子 /Page に継承される", async () => {
   const root = makeRef(1, 0);
   const leaf = makeRef(2, 0);
