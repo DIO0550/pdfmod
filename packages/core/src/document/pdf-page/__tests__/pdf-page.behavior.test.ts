@@ -3,6 +3,7 @@ import { GenerationNumber } from "../../../pdf/types/generation-number/index";
 import type { IndirectRef } from "../../../pdf/types/indirect-ref/index";
 import { ObjectNumber } from "../../../pdf/types/object-number/index";
 import type { PdfDictionary } from "../../../pdf/types/pdf-types/index";
+import { none } from "../../../utils/option/index";
 import type {
   PageRotate,
   PdfRectangle,
@@ -36,8 +37,8 @@ const makeResolvedPage = (args: MakeResolvedPageArgs = {}): ResolvedPage => {
     rotate: args.rotate ?? 0,
     userUnit: args.userUnit ?? 1.0,
     resources: emptyDict,
-    contents: null,
-    annots: null,
+    contents: none,
+    annots: none,
     objectRef: args.objectRef ?? makeRef(1, 0),
   };
 };

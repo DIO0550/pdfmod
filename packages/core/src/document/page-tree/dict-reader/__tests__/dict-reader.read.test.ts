@@ -2,7 +2,7 @@ import { expect, test } from "vitest";
 import { GenerationNumber } from "../../../../pdf/types/generation-number/index";
 import { ObjectNumber } from "../../../../pdf/types/object-number/index";
 import type { PdfValue } from "../../../../pdf/types/pdf-types/index";
-import { none, some } from "../../../../utils/option";
+import { none, some } from "../../../../utils/option/index";
 import { DictReader, getNumberValue } from "../../dict-reader";
 import { indirectRefValue } from "../../page-tree-walker/__tests__/page-tree-walker.test.helpers";
 
@@ -160,28 +160,30 @@ test("DictReader.userUnit は 2.5 で 2.5 を返す", () => {
   expect(DictReader.userUnit(entries)).toBe(2.5);
 });
 
-test("DictReader.contents はキー不在で null を返す", () => {
-  expect(DictReader.contents(new Map<string, PdfValue>())).toBeNull();
+test("DictReader.contents はキー不在で none を返す", () => {
+  expect(DictReader.contents(new Map<string, PdfValue>())).toEqual(none);
 });
 
-test("DictReader.contents は単一 indirect-ref 正常で IndirectRef を返す", () => {
+test("DictReader.contents は単一 indirect-ref 正常で some(IndirectRef) を返す", () => {
   const entries = new Map<string, PdfValue>([
     ["Contents", indirectRefValue(5, 0)],
   ]);
-  expect(DictReader.contents(entries)).toEqual({
-    objectNumber: ObjectNumber.of(5),
-    generationNumber: GenerationNumber.of(0),
-  });
+  expect(DictReader.contents(entries)).toEqual(
+    some({
+      objectNumber: ObjectNumber.of(5),
+      generationNumber: GenerationNumber.of(0),
+    }),
+  );
 });
 
-test("DictReader.contents は単一 indirect-ref 不正 objectNumber で null を返す", () => {
+test("DictReader.contents は単一 indirect-ref 不正 objectNumber で none を返す", () => {
   const entries = new Map<string, PdfValue>([
     ["Contents", indirectRefValue(0, 0)],
   ]);
-  expect(DictReader.contents(entries)).toBeNull();
+  expect(DictReader.contents(entries)).toEqual(none);
 });
 
-test("DictReader.contents は配列（正常 ref のみ）で IndirectRef 配列を返す", () => {
+test("DictReader.contents は配列（正常 ref のみ）で some(IndirectRef 配列) を返す", () => {
   const entries = new Map<string, PdfValue>([
     [
       "Contents",
@@ -191,19 +193,21 @@ test("DictReader.contents は配列（正常 ref のみ）で IndirectRef 配列
       },
     ],
   ]);
-  expect(DictReader.contents(entries)).toEqual([
-    {
-      objectNumber: ObjectNumber.of(1),
-      generationNumber: GenerationNumber.of(0),
-    },
-    {
-      objectNumber: ObjectNumber.of(2),
-      generationNumber: GenerationNumber.of(0),
-    },
-  ]);
+  expect(DictReader.contents(entries)).toEqual(
+    some([
+      {
+        objectNumber: ObjectNumber.of(1),
+        generationNumber: GenerationNumber.of(0),
+      },
+      {
+        objectNumber: ObjectNumber.of(2),
+        generationNumber: GenerationNumber.of(0),
+      },
+    ]),
+  );
 });
 
-test("DictReader.contents は配列（不正 ref 混入）で正常分のみの配列を返す", () => {
+test("DictReader.contents は配列（不正 ref 混入）で正常分のみの some(配列) を返す", () => {
   const entries = new Map<string, PdfValue>([
     [
       "Contents",
@@ -217,19 +221,21 @@ test("DictReader.contents は配列（不正 ref 混入）で正常分のみの�
       },
     ],
   ]);
-  expect(DictReader.contents(entries)).toEqual([
-    {
-      objectNumber: ObjectNumber.of(1),
-      generationNumber: GenerationNumber.of(0),
-    },
-    {
-      objectNumber: ObjectNumber.of(3),
-      generationNumber: GenerationNumber.of(0),
-    },
-  ]);
+  expect(DictReader.contents(entries)).toEqual(
+    some([
+      {
+        objectNumber: ObjectNumber.of(1),
+        generationNumber: GenerationNumber.of(0),
+      },
+      {
+        objectNumber: ObjectNumber.of(3),
+        generationNumber: GenerationNumber.of(0),
+      },
+    ]),
+  );
 });
 
-test("DictReader.contents は配列（非 ref 要素混入）で正常 ref のみの配列を返す", () => {
+test("DictReader.contents は配列（非 ref 要素混入）で正常 ref のみの some(配列) を返す", () => {
   const entries = new Map<string, PdfValue>([
     [
       "Contents",
@@ -243,44 +249,59 @@ test("DictReader.contents は配列（非 ref 要素混入）で正常 ref の�
       },
     ],
   ]);
-  expect(DictReader.contents(entries)).toEqual([
-    {
-      objectNumber: ObjectNumber.of(7),
-      generationNumber: GenerationNumber.of(0),
-    },
-    {
-      objectNumber: ObjectNumber.of(8),
-      generationNumber: GenerationNumber.of(0),
-    },
-  ]);
+  expect(DictReader.contents(entries)).toEqual(
+    some([
+      {
+        objectNumber: ObjectNumber.of(7),
+        generationNumber: GenerationNumber.of(0),
+      },
+      {
+        objectNumber: ObjectNumber.of(8),
+        generationNumber: GenerationNumber.of(0),
+      },
+    ]),
+  );
 });
 
-test("DictReader.contents は非配列・非 ref で null を返す", () => {
+test("DictReader.contents は配列（有効 ref なし）で none ではなく some(空配列) を返す", () => {
+  const entries = new Map<string, PdfValue>([
+    [
+      "Contents",
+      {
+        type: "array",
+        elements: [indirectRefValue(0, 0), { type: "integer", value: 1 }],
+      },
+    ],
+  ]);
+  expect(DictReader.contents(entries)).toEqual(some([]));
+});
+
+test("DictReader.contents は非配列・非 ref で none を返す", () => {
   const entries = new Map<string, PdfValue>([
     ["Contents", { type: "integer", value: 100 }],
   ]);
-  expect(DictReader.contents(entries)).toBeNull();
+  expect(DictReader.contents(entries)).toEqual(none);
 });
 
-test("DictReader.annots はキー不在で null を返す", () => {
-  expect(DictReader.annots(new Map<string, PdfValue>())).toBeNull();
+test("DictReader.annots はキー不在で none を返す", () => {
+  expect(DictReader.annots(new Map<string, PdfValue>())).toEqual(none);
 });
 
-test("DictReader.annots は非配列で null を返す", () => {
+test("DictReader.annots は非配列で none を返す", () => {
   const entries = new Map<string, PdfValue>([
     ["Annots", { type: "integer", value: 1 }],
   ]);
-  expect(DictReader.annots(entries)).toBeNull();
+  expect(DictReader.annots(entries)).toEqual(none);
 });
 
-test("DictReader.annots は空配列で空配列を返す", () => {
+test("DictReader.annots は空配列で some(空配列) を返す", () => {
   const entries = new Map<string, PdfValue>([
     ["Annots", { type: "array", elements: [] }],
   ]);
-  expect(DictReader.annots(entries)).toEqual([]);
+  expect(DictReader.annots(entries)).toEqual(some([]));
 });
 
-test("DictReader.annots は要素付き配列で複製された配列を返す", () => {
+test("DictReader.annots は要素付き配列で some(複製された配列) を返す", () => {
   const elements: PdfValue[] = [
     { type: "integer", value: 1 },
     { type: "integer", value: 2 },
@@ -289,6 +310,7 @@ test("DictReader.annots は要素付き配列で複製された配列を返す",
     ["Annots", { type: "array", elements }],
   ]);
   const got = DictReader.annots(entries);
-  expect(got).toEqual(elements);
-  expect(got).not.toBe(elements);
+  expect(got).toEqual(some(elements));
+  // 複製であることの検証は Some の中身に対して掛け直す
+  expect(got.some && got.value).not.toBe(elements);
 });
