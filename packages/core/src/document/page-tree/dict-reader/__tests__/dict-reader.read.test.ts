@@ -77,6 +77,20 @@ test("DictReader.box は real 混在 4 要素のとき Some を返す", () => {
   });
 });
 
+test("DictReader.box は対角逆順 [612 792 0 0] のとき [0, 0, 612, 792] に正規化して Some を返す", () => {
+  expect(DictReader.box(integerArray([612, 792, 0, 0]))).toEqual({
+    some: true,
+    value: [0, 0, 612, 792],
+  });
+});
+
+test("DictReader.box は退化矩形 [10 10 10 10] のとき None にせず Some を返す", () => {
+  expect(DictReader.box(integerArray([10, 10, 10, 10]))).toEqual({
+    some: true,
+    value: [10, 10, 10, 10],
+  });
+});
+
 test("DictReader.rotate は値が undefined（キー不在相当）で None を返す", () => {
   expect(DictReader.rotate(undefined)).toEqual({ some: false });
 });

@@ -173,3 +173,25 @@ test("ref プロパティが ResolvedPage.objectRef の値と一致する", () =
   const page = PdfPage.from(makeResolvedPage({ objectRef: ref }));
   expect(page.ref).toBe(ref);
 });
+
+test("正規化済み mediaBox [0, 0, 612, 792] から構築すると width/height が正の値になる（#337 回帰）", () => {
+  const page = PdfPage.from(makeResolvedPage({ mediaBox: [0, 0, 612, 792] }));
+  expect(page.width).toBe(612);
+  expect(page.height).toBe(792);
+  expect(page.mediaBox).toEqual([0, 0, 612, 792]);
+});
+
+test("負座標を含む正規化済み mediaBox [-10, -20, 100, 200] でも width/height は正の値になる", () => {
+  const page = PdfPage.from(
+    makeResolvedPage({ mediaBox: [-10, -20, 100, 200] }),
+  );
+  expect(page.width).toBe(110);
+  expect(page.height).toBe(220);
+});
+
+test("退化した mediaBox [0, 0, 0, 0] から構築すると width/height が 0 になり例外は出ない", () => {
+  const page = PdfPage.from(makeResolvedPage({ mediaBox: [0, 0, 0, 0] }));
+  expect(page.width).toBe(0);
+  expect(page.height).toBe(0);
+  expect(page.mediaBox).toEqual([0, 0, 0, 0]);
+});
