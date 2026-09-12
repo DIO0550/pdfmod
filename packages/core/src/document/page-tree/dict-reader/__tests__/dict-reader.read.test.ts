@@ -3,19 +3,12 @@ import { GenerationNumber } from "../../../../pdf/types/generation-number/index"
 import { ObjectNumber } from "../../../../pdf/types/object-number/index";
 import type { PdfValue } from "../../../../pdf/types/pdf-types/index";
 import { none, some } from "../../../../utils/option/index";
-import { DictReader, getNumberValue } from "../../dict-reader";
+import { DictReader } from "../../dict-reader";
 import { indirectRefValue } from "../../page-tree-walker/__tests__/page-tree-walker.test.helpers";
 
 const integerArray = (values: number[]): PdfValue => ({
   type: "array",
   elements: values.map((v) => ({ type: "integer", value: v })),
-});
-
-test("getNumberValue は integer / real で some(number) を返し、非数値・undefined で none を返す", () => {
-  expect(getNumberValue({ type: "integer", value: 42 })).toEqual(some(42));
-  expect(getNumberValue({ type: "real", value: 3.14 })).toEqual(some(3.14));
-  expect(getNumberValue({ type: "name", value: "Foo" })).toEqual(none);
-  expect(getNumberValue(undefined)).toEqual(none);
 });
 
 test("DictReader.box は値が undefined（キー不在相当）のとき None を返す", () => {
@@ -81,6 +74,20 @@ test("DictReader.box は real 混在 4 要素のとき Some を返す", () => {
   ).toEqual({
     some: true,
     value: [0, 0.5, 612.25, 792],
+  });
+});
+
+test("DictReader.box は対角逆順 [612 792 0 0] のとき [0, 0, 612, 792] に正規化して Some を返す", () => {
+  expect(DictReader.box(integerArray([612, 792, 0, 0]))).toEqual({
+    some: true,
+    value: [0, 0, 612, 792],
+  });
+});
+
+test("DictReader.box は退化矩形 [10 10 10 10] のとき None にせず Some を返す", () => {
+  expect(DictReader.box(integerArray([10, 10, 10, 10]))).toEqual({
+    some: true,
+    value: [10, 10, 10, 10],
   });
 });
 

@@ -1,27 +1,11 @@
 import { NumberEx } from "../../../ext/number/index";
 import { IndirectRef } from "../../../pdf/types/indirect-ref/index";
-import type { PdfObject, PdfValue } from "../../../pdf/types/pdf-types/index";
+import { type PdfObject, PdfValue } from "../../../pdf/types/pdf-types/index";
 import { none, type Option, some } from "../../../utils/option/index";
-import type { PdfRectangle } from "../resolved-page";
+import { PdfRectangle } from "../resolved-page";
 
 const BOX_ELEMENT_COUNT = 4;
 const DEFAULT_USER_UNIT = 1.0;
-
-/**
- * PdfValue が integer / real なら数値を Option.some(number) で返す。その他の型・undefined は Option.none。
- *
- * @param value - 判定対象
- * @returns Option.some(number)、または Option.none
- */
-export const getNumberValue = (value: PdfValue | undefined): Option<number> => {
-  if (value === undefined) {
-    return none;
-  }
-  if (value.type === "integer" || value.type === "real") {
-    return some(value.value);
-  }
-  return none;
-};
 
 /**
  * ページ辞書 (`/Page` / `/Pages`) からの属性読み取り utility を束ねた namespace。
@@ -30,9 +14,11 @@ export const DictReader = {
   /**
    * 解決済みの `/MediaBox` / `/CropBox` 値を 4 要素 number 配列として取り出す。
    * 間接参照は呼び出し側で解決済みであることを前提とする。
+   * 任意の対角 2 点で指定された矩形は `PdfRectangle.normalize` で左下・右上の順
+   * `[llx, lly, urx, ury]` に正規化して返す（ISO 32000-1 §7.9.5）。正規化しても警告は出さない。
    *
    * @param value - 解決済みの値（キー不在なら undefined）
-   * @returns 4 要素 number 配列なら Some、それ以外 None
+   * @returns 4 要素 number 配列なら正規化済みの Some、それ以外 None
    */
   box(value: PdfValue | undefined): Option<PdfRectangle> {
     if (value === undefined || value.type !== "array") {
@@ -43,14 +29,14 @@ export const DictReader = {
     }
     const nums: number[] = [];
     for (const el of value.elements) {
-      const nOpt = getNumberValue(el);
+      const nOpt = PdfValue.asNumber(el);
       if (!nOpt.some) {
         return none;
       }
       nums.push(nOpt.value);
     }
-    const [llx, lly, urx, ury] = nums;
-    return some([llx, lly, urx, ury] as PdfRectangle);
+    const [x1, y1, x2, y2] = nums;
+    return some(PdfRectangle.normalize([x1, y1, x2, y2]));
   },
 
   /**
@@ -60,7 +46,7 @@ export const DictReader = {
    * @returns 数値なら Some、それ以外（undefined・非数値）は None
    */
   rotate(value: PdfValue | undefined): Option<number> {
-    return getNumberValue(value);
+    return PdfValue.asNumber(value);
   },
 
   /**
@@ -72,7 +58,7 @@ export const DictReader = {
    */
   userUnit(entries: Map<string, PdfValue>): number {
     const value = entries.get("UserUnit");
-    const nOpt = getNumberValue(value);
+    const nOpt = PdfValue.asNumber(value);
     if (!nOpt.some) {
       return DEFAULT_USER_UNIT;
     }
