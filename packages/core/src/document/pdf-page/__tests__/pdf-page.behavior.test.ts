@@ -174,7 +174,7 @@ test("ref プロパティが ResolvedPage.objectRef の値と一致する", () =
   expect(page.ref).toBe(ref);
 });
 
-test("正規化済み mediaBox [0, 0, 612, 792] から構築すると width/height が正の値になる（#337 回帰）", () => {
+test("正規化済み mediaBox [0, 0, 612, 792] から構築すると width/height が正の値になり、mediaBox がそのまま公開される", () => {
   const page = PdfPage.from(makeResolvedPage({ mediaBox: [0, 0, 612, 792] }));
   expect(page.width).toBe(612);
   expect(page.height).toBe(792);
