@@ -45,3 +45,56 @@ test("辞書値の 0 G R はキーを残したまま null 値になる", () => {
   assert(result.ok && result.value.type === "dictionary");
   expect(result.value.entries.get("Foo")).toEqual({ type: "null" });
 });
+
+test("foldFreeListRef: false のとき 0 G R は objectNumber 0 の indirect-ref のまま返る", () => {
+  const result = DirectObject.parse(btOf("0 0 R"), ByteOffset.of(0), 0, {
+    foldFreeListRef: false,
+  });
+  assert(result.ok);
+  expect(result.value).toEqual({
+    type: "indirect-ref",
+    objectNumber: 0,
+    generationNumber: 0,
+  });
+});
+
+test("foldFreeListRef: false は配列要素・辞書値にも伝播する", () => {
+  const arr = DirectObject.parse(btOf("[ 0 0 R ]"), ByteOffset.of(0), 0, {
+    foldFreeListRef: false,
+  });
+  assert(arr.ok);
+  expect(arr.value).toEqual({
+    type: "array",
+    elements: [{ type: "indirect-ref", objectNumber: 0, generationNumber: 0 }],
+  });
+
+  const dict = DirectObject.parse(
+    btOf("<< /Foo 0 0 R >>"),
+    ByteOffset.of(0),
+    0,
+    {
+      foldFreeListRef: false,
+    },
+  );
+  assert(dict.ok);
+  expect(dict.value).toEqual({
+    type: "dictionary",
+    entries: new Map([
+      ["Foo", { type: "indirect-ref", objectNumber: 0, generationNumber: 0 }],
+    ]),
+  });
+});
+
+test("foldFreeListRef: false でも世代番号の範囲検証は行われる", () => {
+  const result = DirectObject.parse(btOf("0 65536 R"), ByteOffset.of(0), 0, {
+    foldFreeListRef: false,
+  });
+  assert(!result.ok);
+  expect(result.error.code).toBe("OBJECT_PARSE_UNEXPECTED_TOKEN");
+});
+
+test("options を空オブジェクトで渡した場合は既定どおり null に畳む", () => {
+  const result = DirectObject.parse(btOf("0 0 R"), ByteOffset.of(0), 0, {});
+  assert(result.ok);
+  expect(result.value).toEqual({ type: "null" });
+});
