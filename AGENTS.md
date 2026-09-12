@@ -21,6 +21,10 @@ pnpmモノレポ構成で `@pdfmod/core`（PDF処理エンジン）と `@pdfmod/
 - @rules/testing.md — テスト配置・古典学派・assert の見方・ネスト禁止
 - @rules/hooks.md — `@pdfmod/react` のフック設計
 - @rules/components.md — `@pdfmod/react` のコンポーネント設計
+- @rules/rust.md — Rust 実装（`rust/crates/`）の規約
+
+`rust.md` 以外は `packages/` の TypeScript が対象。`rust/` を触るときは `rust.md` を規範とし、
+TypeScript 側の規約は**判断の基準**（帰属先・型で不正を表現させない・テストの書き方）だけを持ち込む。
 
 ## 仕様書
 
@@ -46,7 +50,10 @@ pnpmモノレポ構成で `@pdfmod/core`（PDF処理エンジン）と `@pdfmod/
 
 ## 常時ロードには上限がある
 
-**`AGENTS.md` + `rules/` の合計を 700 行以内に保つ。** これを超えたら、足す前に同量を削る。
+**`AGENTS.md` + `rules/` の合計を 800 行以内に保つ。** これを超えたら、足す前に同量を削る。
+
+上限は言語を1つ増やすたびに見直す（TypeScript のみで 700 行、Rust を足して 800 行）。
+**見直したこと自体を記録に残す**（黙って上げると上限が意味を失う）。
 
 - 数え方: `wc -l AGENTS.md rules/*.md`
 - 閾値に達してから棚卸しするのではなく、**追加のたびに払う**。閾値方式は「超えるまで増え続ける」ことを許すので、超えた時点で必ず大きな棚卸しが要る
@@ -83,4 +90,13 @@ pnpm run lint             # biome check + oxlint
 pnpm run lint:fix         # 自動修正
 pnpm run format           # biome format --write
 pnpm run storybook        # Storybook 起動（ポート 13200）
+```
+
+Rust は `rust/` で実行する：
+
+```bash
+cargo build
+cargo test
+cargo fmt --all -- --check                              # CI と同じ
+cargo clippy --workspace --all-targets -- -D warnings   # CI と同じ。警告は残さない
 ```
