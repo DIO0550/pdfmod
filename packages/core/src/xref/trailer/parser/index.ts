@@ -4,40 +4,45 @@ import {
   skipWhitespaceAndComments,
 } from "../../../lexer/bytes/index";
 import { Tokenizer } from "../../../lexer/tokenizer/index";
+import { BufferedTokenizer } from "../../../objects/object-parser/buffered-tokenizer/index";
+import { DirectObject } from "../../../objects/object-parser/direct-object/index";
 import type { PdfParseError } from "../../../pdf/errors/index";
 import {
   ByteOffset as BO,
   type ByteOffset,
 } from "../../../pdf/types/byte-offset/index";
-import type { PdfValue, Token, TrailerDict } from "../../../pdf/types/index";
-import { TokenType } from "../../../pdf/types/index";
-import type { Option } from "../../../utils/option/index";
-import { none, some } from "../../../utils/option/index";
+import type { PdfValue, TrailerDict } from "../../../pdf/types/index";
 import type { Result } from "../../../utils/result/index";
-import { err, ok } from "../../../utils/result/index";
+import { err } from "../../../utils/result/index";
 import { trailerDictBuilder } from "../dict-builder/index";
 
 /**
- * `trailerDictBuilder` 由来の `TRAILER_DICT_INVALID` を、テキスト形式
- * trailer 経由の外部 API コード `XREF_TABLE_INVALID` に書き換える。
- * 必須フィールド由来 (`ROOT_NOT_FOUND` / `SIZE_NOT_FOUND`) は素通しする。
+ * 委譲先が返す内部エラーコードを、テキスト形式 trailer の外部 API コード
+ * `XREF_TABLE_INVALID` に書き換える。
+ * - `trailerDictBuilder` 由来の `TRAILER_DICT_INVALID`
+ * - `DirectObject.parse` 由来の `OBJECT_PARSE_UNEXPECTED_TOKEN` / `OBJECT_PARSE_UNTERMINATED`
+ * 必須フィールド由来 (`ROOT_NOT_FOUND` / `SIZE_NOT_FOUND`) と `NESTING_TOO_DEEP` は素通しする。
  *
- * @param e - ビルダーが返した PdfParseError
+ * @param e - 委譲先が返した PdfParseError
  * @returns 書き換え後の PdfParseError、または素通しの元エラー
  */
 const mapErr = (e: PdfParseError): PdfParseError => {
-  if (e.code === "TRAILER_DICT_INVALID") {
-    return { ...e, code: "XREF_TABLE_INVALID" };
+  switch (e.code) {
+    case "TRAILER_DICT_INVALID":
+    case "OBJECT_PARSE_UNEXPECTED_TOKEN":
+    case "OBJECT_PARSE_UNTERMINATED":
+      return { ...e, code: "XREF_TABLE_INVALID" };
+    default:
+      return e;
   }
-  return e;
 };
 
 // --- バイト定数 (SCREAMING_SNAKE_CASE) ---
 
 const TRAILER_BYTES = Array.from(new TextEncoder().encode("trailer"));
 const TRAILER_KEYWORD_LENGTH = TRAILER_BYTES.length;
-const MAX_NESTING_DEPTH = 64;
-const MAX_BYTE_VALUE = 0xff;
+/** トップレベル辞書のネスト深度（`DirectObject.parse` の depth 引数の初期値）。 */
+const TOP_LEVEL_DEPTH = 0;
 
 // --- エラーヘルパー ---
 
@@ -55,701 +60,43 @@ function failTrailer(
   return err({ code: "XREF_TABLE_INVALID", message, offset });
 }
 
-// --- 内部ヘルパー ---
+// --- TrailerDict 構築 ---
 
 /**
- * hex 文字列を Uint8Array に変換する。奇数長の場合は末尾に 0 をパディングする。
+ * パース済み辞書エントリから TrailerDict を構築する。
+ * エラー報告用オフセットは全キー共通で辞書先頭 `dictStart` を渡す
+ * （`DirectObject.parse` はエントリ単位の位置情報を返さないため）。
  *
- * @param hex - 16進文字列
- * @returns 変換されたバイト配列、または不正文字を含む場合は Option.none
- */
-function hexStringToBytes(hex: string): Option<Uint8Array> {
-  if (!/^[0-9A-Fa-f]*$/.test(hex)) {
-    return none;
-  }
-
-  const padded = hex.length % 2 === 1 ? `${hex}0` : hex;
-  const bytes = new Uint8Array(padded.length / 2);
-  for (let i = 0; i < padded.length; i += 2) {
-    bytes[i / 2] = parseInt(padded.substring(i, i + 2), 16);
-  }
-
-  return some(bytes);
-}
-
-/**
- * リテラル文字列の各文字をバイト値として Uint8Array に変換する。
- *
- * @param str - リテラル文字列
- * @returns 変換されたバイト配列、または範囲外の code unit を含む場合は Option.none
- */
-function literalStringToBytes(str: string): Option<Uint8Array> {
-  const bytes = new Uint8Array(str.length);
-  for (let i = 0; i < str.length; i++) {
-    const codeUnit = str.charCodeAt(i);
-    if (codeUnit > MAX_BYTE_VALUE) {
-      return none;
-    }
-    bytes[i] = codeUnit;
-  }
-
-  return some(bytes);
-}
-
-/**
- * ネスト深さ超過時のエラー値を生成するヘルパー。
- *
- * ラップは呼び出し側の責務。`Result` を返す文脈では `err(...)`、
- * `Option` を返す文脈では `some(...)` で包む。
- *
- * @param offset - 問題が検出されたバイトオフセット
- * @returns `PdfParseError` (コード: NESTING_TOO_DEEP)
- */
-function nestingTooDeepError(offset: ByteOffset): PdfParseError {
-  return {
-    code: "NESTING_TOO_DEEP",
-    message: "nesting depth exceeds maximum allowed limit",
-    offset,
-  };
-}
-
-/**
- * ネストされた配列 `[` ... `]` のトークンを再帰的に消費して読み飛ばす。
- *
- * @param tokens - バッファ付きトークナイザ
- * @param baseOffset - エラー報告用のベースオフセット
- * @param depth - 現在のネスト深さ
- * @param entryOffset - この構造の開始トークンの絶対オフセット
- * @returns 読み飛ばせた場合は `none`、失敗した場合は `some(PdfParseError)`
- */
-function skipNestedArray(
-  tokens: BufferedTokenizer,
-  baseOffset: ByteOffset,
-  depth: number,
-  entryOffset: ByteOffset,
-): Option<PdfParseError> {
-  if (depth >= MAX_NESTING_DEPTH) {
-    return some(nestingTooDeepError(entryOffset));
-  }
-
-  while (true) {
-    const token = tokens.next();
-    switch (token.type) {
-      case TokenType.ArrayEnd:
-        return none;
-      case TokenType.EOF:
-        return some({
-          code: "XREF_TABLE_INVALID",
-          message: "unexpected end of data while skipping value",
-          offset: BO.add(baseOffset, token.offset),
-        });
-      case TokenType.DictEnd:
-        return some({
-          code: "XREF_TABLE_INVALID",
-          message: "unexpected >> while skipping array value",
-          offset: BO.add(baseOffset, token.offset),
-        });
-      case TokenType.ArrayBegin: {
-        const nestedError = skipNestedArray(
-          tokens,
-          baseOffset,
-          depth + 1,
-          BO.add(baseOffset, token.offset),
-        );
-        if (nestedError.some) {
-          return nestedError;
-        }
-        break;
-      }
-      case TokenType.DictBegin: {
-        const nestedError = skipNestedDict(
-          tokens,
-          baseOffset,
-          depth + 1,
-          BO.add(baseOffset, token.offset),
-        );
-        if (nestedError.some) {
-          return nestedError;
-        }
-        break;
-      }
-      default:
-        // 配列要素として現れるその他のトークン（数値・名前・文字列など）は
-        // 読み捨ててループを継続する
-        break;
-    }
-  }
-}
-
-/**
- * ネストされた辞書 `<<` ... `>>` のトークンを再帰的に消費して読み飛ばす。
- *
- * @param tokens - バッファ付きトークナイザ
- * @param baseOffset - エラー報告用のベースオフセット
- * @param depth - 現在のネスト深さ
- * @param entryOffset - この構造の開始トークンの絶対オフセット
- * @returns 読み飛ばせた場合は `none`、失敗した場合は `some(PdfParseError)`
- */
-function skipNestedDict(
-  tokens: BufferedTokenizer,
-  baseOffset: ByteOffset,
-  depth: number,
-  entryOffset: ByteOffset,
-): Option<PdfParseError> {
-  if (depth >= MAX_NESTING_DEPTH) {
-    return some(nestingTooDeepError(entryOffset));
-  }
-
-  while (true) {
-    const keyToken = tokens.next();
-    switch (keyToken.type) {
-      case TokenType.DictEnd:
-        return none;
-      case TokenType.EOF:
-        return some({
-          code: "XREF_TABLE_INVALID",
-          message: "unexpected end of data while skipping value",
-          offset: BO.add(baseOffset, keyToken.offset),
-        });
-      case TokenType.ArrayEnd:
-        return some({
-          code: "XREF_TABLE_INVALID",
-          message: "unexpected ] while skipping dictionary value",
-          offset: BO.add(baseOffset, keyToken.offset),
-        });
-      case TokenType.Name:
-        break;
-      default:
-        // キー位置に Name 以外が来た場合は値を読まず次のトークンから読み直す
-        continue;
-    }
-
-    const valueToken = tokens.next();
-    switch (valueToken.type) {
-      case TokenType.EOF:
-        return some({
-          code: "XREF_TABLE_INVALID",
-          message: "unexpected end of data while skipping value",
-          offset: BO.add(baseOffset, valueToken.offset),
-        });
-      case TokenType.ArrayBegin: {
-        const nestedError = skipNestedArray(
-          tokens,
-          baseOffset,
-          depth + 1,
-          BO.add(baseOffset, valueToken.offset),
-        );
-        if (nestedError.some) {
-          return nestedError;
-        }
-        break;
-      }
-      case TokenType.DictBegin: {
-        const nestedError = skipNestedDict(
-          tokens,
-          baseOffset,
-          depth + 1,
-          BO.add(baseOffset, valueToken.offset),
-        );
-        if (nestedError.some) {
-          return nestedError;
-        }
-        break;
-      }
-      case TokenType.Integer: {
-        const second = tokens.next();
-        if (second.type === TokenType.Integer) {
-          const third = tokens.next();
-          if (!(third.type === TokenType.Keyword && third.value === "R")) {
-            tokens.pushBack(third);
-            tokens.pushBack(second);
-          }
-        } else {
-          tokens.pushBack(second);
-        }
-        break;
-      }
-      default:
-        // 単一トークンの値（名前・文字列・真偽値など）は消費済みなので何もしない
-        break;
-    }
-  }
-}
-
-interface DictEntry {
-  value: PdfValue;
-  offset: ByteOffset;
-}
-
-class BufferedTokenizer {
-  private tokenizer: Tokenizer;
-  private buffer: Token[] = [];
-
-  constructor(tokenizer: Tokenizer) {
-    this.tokenizer = tokenizer;
-  }
-
-  next(): Token {
-    const buffered = this.buffer.pop();
-    if (buffered) {
-      return buffered;
-    }
-    return this.tokenizer.nextToken();
-  }
-
-  pushBack(token: Token): void {
-    this.buffer.push(token);
-  }
-}
-
-/**
- * トークンから PdfValue を読み取る。Integer の場合は間接参照 (Int Int R) を先読み判定する。
- *
- * @param firstToken - 読み取り済みの先頭トークン
- * @param tokens - バッファ付きトークナイザ
- * @param baseOffset - エラー報告用のベースオフセット
- * @param depth - 現在のネスト深さ
- * @returns 成功時は `Ok<DictEntry>`、失敗時は `Err<PdfParseError>`
- */
-function readValue(
-  firstToken: Token,
-  tokens: BufferedTokenizer,
-  baseOffset: ByteOffset,
-  depth = 0,
-): Result<DictEntry, PdfParseError> {
-  const offset = BO.add(baseOffset, firstToken.offset);
-
-  switch (firstToken.type) {
-    case TokenType.Integer: {
-      const second = tokens.next();
-      if (second.type === TokenType.Integer) {
-        const third = tokens.next();
-        if (third.type === TokenType.Keyword && third.value === "R") {
-          return ok({
-            value: {
-              type: "indirect-ref",
-              objectNumber: firstToken.value,
-              generationNumber: second.value,
-            },
-            offset,
-          });
-        }
-        tokens.pushBack(third);
-      }
-      tokens.pushBack(second);
-      return ok({
-        value: { type: "integer", value: firstToken.value },
-        offset,
-      });
-    }
-    case TokenType.Real:
-      return ok({
-        value: { type: "real", value: firstToken.value },
-        offset,
-      });
-    case TokenType.Name:
-      return ok({
-        value: { type: "name", value: firstToken.value },
-        offset,
-      });
-    case TokenType.HexString: {
-      const hexBytesOpt = hexStringToBytes(firstToken.value);
-      if (!hexBytesOpt.some) {
-        return err({
-          code: "XREF_TABLE_INVALID",
-          message: "invalid hex string: contains non-hex characters",
-          offset,
-        });
-      }
-      return ok({
-        value: {
-          type: "string",
-          value: hexBytesOpt.value,
-          encoding: "hex" as const,
-        },
-        offset,
-      });
-    }
-    case TokenType.LiteralString: {
-      const litBytesOpt = literalStringToBytes(firstToken.value);
-      if (!litBytesOpt.some) {
-        return err({
-          code: "XREF_TABLE_INVALID",
-          message:
-            "invalid literal string: contains code unit outside 0-255 range",
-          offset,
-        });
-      }
-      return ok({
-        value: {
-          type: "string",
-          value: litBytesOpt.value,
-          encoding: "literal" as const,
-        },
-        offset,
-      });
-    }
-    case TokenType.Boolean:
-      return ok({
-        value: { type: "boolean", value: firstToken.value },
-        offset,
-      });
-    case TokenType.Null:
-      return ok({ value: { type: "null" }, offset });
-    case TokenType.ArrayBegin: {
-      if (depth >= MAX_NESTING_DEPTH) {
-        return err(nestingTooDeepError(offset));
-      }
-      const elements = readArrayElements(tokens, baseOffset, depth + 1);
-      if (!elements.ok) {
-        return elements;
-      }
-      return ok({
-        value: { type: "array", elements: elements.value },
-        offset,
-      });
-    }
-    case TokenType.DictBegin: {
-      if (depth >= MAX_NESTING_DEPTH) {
-        return err(nestingTooDeepError(offset));
-      }
-      const dictEntries = readDictValueEntries(tokens, baseOffset, depth + 1);
-      if (!dictEntries.ok) {
-        return dictEntries;
-      }
-      return ok({
-        value: { type: "dictionary", entries: dictEntries.value },
-        offset,
-      });
-    }
-    default:
-      return err({
-        code: "XREF_TABLE_INVALID",
-        message: "unexpected token at value position in trailer dictionary",
-        offset,
-      });
-  }
-}
-
-/**
- * `[` 直後から `]` までの配列要素を読み取り PdfValue 配列として返す。
- *
- * @param tokens - バッファ付きトークナイザ
- * @param baseOffset - エラー報告用のベースオフセット
- * @param depth - 現在のネスト深さ
- * @returns 成功時は `Ok<PdfValue[]>`、失敗時は `Err<PdfParseError>`
- */
-function readArrayElements(
-  tokens: BufferedTokenizer,
-  baseOffset: ByteOffset,
-  depth = 0,
-): Result<PdfValue[], PdfParseError> {
-  const elements: PdfValue[] = [];
-  while (true) {
-    const token = tokens.next();
-    if (token.type === TokenType.ArrayEnd) {
-      return ok(elements);
-    }
-    if (token.type === TokenType.EOF) {
-      return err({
-        code: "XREF_TABLE_INVALID",
-        message:
-          "unexpected end of data while parsing array in trailer dictionary",
-        offset: BO.add(baseOffset, token.offset),
-      });
-    }
-    const elemResult = readValue(token, tokens, baseOffset, depth);
-    if (!elemResult.ok) {
-      return elemResult;
-    }
-    elements.push(elemResult.value.value);
-  }
-}
-
-/**
- * `<<` 直後から `>>` までの辞書エントリを読み取り `Map<string, PdfValue>` として返す。
- * `/Encrypt` の値が直接辞書（間接参照でなく）で与えられる場合（ISO 32000-1 §7.6.1、
- * `docs/specs/02_file_structure.md`）に `readValue` から呼ばれる。
- *
- * @param tokens - バッファ付きトークナイザ
- * @param baseOffset - エラー報告用のベースオフセット
- * @param depth - 現在のネスト深さ
- * @returns 成功時は `Ok<Map<string, PdfValue>>`、失敗時は `Err<PdfParseError>`
- */
-function readDictValueEntries(
-  tokens: BufferedTokenizer,
-  baseOffset: ByteOffset,
-  depth: number,
-): Result<Map<string, PdfValue>, PdfParseError> {
-  const entries = new Map<string, PdfValue>();
-  while (true) {
-    const keyToken = tokens.next();
-    if (keyToken.type === TokenType.DictEnd) {
-      return ok(entries);
-    }
-    if (keyToken.type === TokenType.EOF) {
-      return err({
-        code: "XREF_TABLE_INVALID",
-        message:
-          "unexpected end of data while parsing dictionary value in trailer dictionary",
-        offset: BO.add(baseOffset, keyToken.offset),
-      });
-    }
-    if (keyToken.type !== TokenType.Name) {
-      return err({
-        code: "XREF_TABLE_INVALID",
-        message: "expected name key in nested dictionary value",
-        offset: BO.add(baseOffset, keyToken.offset),
-      });
-    }
-    const valueToken = tokens.next();
-    if (valueToken.type === TokenType.EOF) {
-      return err({
-        code: "XREF_TABLE_INVALID",
-        message:
-          "unexpected end of data while parsing dictionary value in trailer dictionary",
-        offset: BO.add(baseOffset, valueToken.offset),
-      });
-    }
-    const valueResult = readValue(valueToken, tokens, baseOffset, depth);
-    if (!valueResult.ok) {
-      return valueResult;
-    }
-    entries.set(keyToken.value, valueResult.value.value);
-  }
-}
-
-const SUPPORTED_TRAILER_KEYS = new Set([
-  "Root",
-  "Size",
-  "Prev",
-  "Info",
-  "ID",
-  "Encrypt",
-  "XRefStm",
-]);
-const ID_MAX_ELEMENTS = 2;
-
-/**
- * /ID 配列を上限付きでパースする。最大2要素まで読み取り、3要素目が来たら即エラーを返す。
- *
- * @param valueToken - 値の先頭トークン（ArrayBegin であること）
- * @param tokens - バッファ付きトークナイザ
- * @param baseOffset - エラー報告用のベースオフセット
- * @returns 成功時は `Ok<DictEntry>`、失敗時は `Err<PdfParseError>`
- */
-function readIdArray(
-  valueToken: Token,
-  tokens: BufferedTokenizer,
-  baseOffset: ByteOffset,
-): Result<DictEntry, PdfParseError> {
-  const offset = BO.add(baseOffset, valueToken.offset);
-  if (valueToken.type !== TokenType.ArrayBegin) {
-    return err({
-      code: "XREF_TABLE_INVALID",
-      message: "/ID entry must be an array of two strings",
-      offset,
-    });
-  }
-
-  const elements: PdfValue[] = [];
-  while (true) {
-    const token = tokens.next();
-    if (token.type === TokenType.ArrayEnd) {
-      return ok({
-        value: { type: "array", elements },
-        offset,
-      });
-    }
-    if (token.type === TokenType.EOF) {
-      return err({
-        code: "XREF_TABLE_INVALID",
-        message:
-          "unexpected end of data while parsing /ID array in trailer dictionary",
-        offset: BO.add(baseOffset, token.offset),
-      });
-    }
-    if (elements.length >= ID_MAX_ELEMENTS) {
-      return err({
-        code: "XREF_TABLE_INVALID",
-        message: "/ID entry must be a 2-element array of strings",
-        offset: BO.add(baseOffset, token.offset),
-      });
-    }
-    const elemResult = readValue(token, tokens, baseOffset, 0);
-    if (!elemResult.ok) {
-      return elemResult;
-    }
-    elements.push(elemResult.value.value);
-  }
-}
-
-/**
- * 未サポートキーの値をトークンストリームから読み飛ばす。
- *
- * @param firstToken - 読み取り済みの値の先頭トークン
- * @param tokens - バッファ付きトークナイザ
- * @param baseOffset - エラー報告用のベースオフセット
- * @returns 読み飛ばせた場合は `none`、失敗した場合は `some(PdfParseError)`
- */
-function skipValue(
-  firstToken: Token,
-  tokens: BufferedTokenizer,
-  baseOffset: ByteOffset,
-): Option<PdfParseError> {
-  switch (firstToken.type) {
-    case TokenType.ArrayBegin:
-      return skipNestedArray(
-        tokens,
-        baseOffset,
-        0,
-        BO.add(baseOffset, firstToken.offset),
-      );
-    case TokenType.DictBegin:
-      return skipNestedDict(
-        tokens,
-        baseOffset,
-        0,
-        BO.add(baseOffset, firstToken.offset),
-      );
-    case TokenType.Integer: {
-      const second = tokens.next();
-      if (second.type === TokenType.Integer) {
-        const third = tokens.next();
-        if (third.type === TokenType.Keyword && third.value === "R") {
-          return none;
-        }
-        tokens.pushBack(third);
-      }
-      tokens.pushBack(second);
-      return none;
-    }
-    default:
-      // 単一トークンの値は読み取り済みなので、そのまま成功として返す
-      return none;
-  }
-}
-
-/**
- * `<<` ... `>>` 間のトークンを走査し、キーと値のエントリマップを構築する。
- *
- * @param tokens - バッファ付きトークナイザ
- * @param baseOffset - エラー報告用のベースオフセット
- * @returns 成功時は `Ok<Map<string, DictEntry>>`、失敗時は `Err<PdfParseError>`
- */
-function parseDictTokens(
-  tokens: BufferedTokenizer,
-  baseOffset: ByteOffset,
-): Result<Map<string, DictEntry>, PdfParseError> {
-  const beginToken = tokens.next();
-  if (beginToken.type !== TokenType.DictBegin) {
-    return err({
-      code: "XREF_TABLE_INVALID",
-      message: "expected dictionary start (<<) after trailer keyword",
-      offset: BO.add(baseOffset, beginToken.offset),
-    });
-  }
-
-  const entries = new Map<string, DictEntry>();
-
-  while (true) {
-    const token = tokens.next();
-
-    if (token.type === TokenType.DictEnd) {
-      return ok(entries);
-    }
-
-    if (token.type === TokenType.EOF) {
-      return err({
-        code: "XREF_TABLE_INVALID",
-        message: "unexpected end of data while parsing trailer dictionary",
-        offset: BO.add(baseOffset, token.offset),
-      });
-    }
-
-    if (token.type !== TokenType.Name) {
-      return err({
-        code: "XREF_TABLE_INVALID",
-        message: "expected name key in trailer dictionary",
-        offset: BO.add(baseOffset, token.offset),
-      });
-    }
-
-    const key = token.value;
-    const valueToken = tokens.next();
-
-    if (valueToken.type === TokenType.EOF) {
-      return err({
-        code: "XREF_TABLE_INVALID",
-        message: "unexpected end of data while parsing trailer dictionary",
-        offset: BO.add(baseOffset, valueToken.offset),
-      });
-    }
-
-    if (valueToken.type === TokenType.DictEnd) {
-      return err({
-        code: "XREF_TABLE_INVALID",
-        message: "expected value for key in trailer dictionary",
-        offset: BO.add(baseOffset, valueToken.offset),
-      });
-    }
-
-    if (key === "ID" && valueToken.type !== TokenType.Null) {
-      const idResult = readIdArray(valueToken, tokens, baseOffset);
-      if (!idResult.ok) {
-        return idResult;
-      }
-      entries.set(key, idResult.value);
-    } else if (SUPPORTED_TRAILER_KEYS.has(key)) {
-      const valueResult = readValue(valueToken, tokens, baseOffset);
-      if (!valueResult.ok) {
-        return valueResult;
-      }
-      entries.set(key, valueResult.value);
-    } else {
-      const skipError = skipValue(valueToken, tokens, baseOffset);
-      if (skipError.some) {
-        return err(skipError.value);
-      }
-    }
-  }
-}
-
-/**
- * 辞書エントリから必須・オプションキーを検証・抽出し TrailerDict を構築する。
- *
- * @param entries - parseDictTokens で構築された辞書エントリマップ
+ * @param entries - `DirectObject.parse` が返した辞書の entries
+ * @param dictStart - 辞書先頭（`<<`）のバイトオフセット
  * @returns 成功時は `Ok<TrailerDict>`、失敗時は `Err<PdfParseError>`
  */
 function buildTrailerDict(
-  entries: Map<string, DictEntry>,
+  entries: ReadonlyMap<string, PdfValue>,
+  dictStart: ByteOffset,
 ): Result<TrailerDict, PdfParseError> {
-  const rootEntry = entries.get("Root");
-  const sizeEntry = entries.get("Size");
-  const prevEntry = entries.get("Prev");
-  const xrefStmEntry = entries.get("XRefStm");
-  const infoEntry = entries.get("Info");
-  const idEntry = entries.get("ID");
-  const encryptEntry = entries.get("Encrypt");
-
   const result = trailerDictBuilder()
-    .root(rootEntry?.value, rootEntry?.offset)
-    .size(sizeEntry?.value, sizeEntry?.offset)
-    .prev(prevEntry?.value, prevEntry?.offset)
-    .xrefStm(xrefStmEntry?.value, xrefStmEntry?.offset)
-    .info(infoEntry?.value, infoEntry?.offset)
-    .id(idEntry?.value, idEntry?.offset)
-    .encrypt(encryptEntry?.value, encryptEntry?.offset)
+    .root(entries.get("Root"), dictStart)
+    .size(entries.get("Size"), dictStart)
+    .prev(entries.get("Prev"), dictStart)
+    .xrefStm(entries.get("XRefStm"), dictStart)
+    .info(entries.get("Info"), dictStart)
+    .id(entries.get("ID"), dictStart)
+    .encrypt(entries.get("Encrypt"), dictStart)
     .build();
   if (!result.ok) {
     return err(mapErr(result.error));
   }
-
   return result;
 }
 
 /**
  * trailer キーワード位置から辞書を解析し TrailerDict を構築する。
+ *
+ * 辞書本体の構文解析は `DirectObject.parse` に委譲する。`0 G R` は
+ * `foldFreeListRef: false` で null に畳まず raw な参照として受け取り、
+ * `/Prev` `/XRefStm`（バイトオフセットであるべきキー）に来た場合は
+ * `trailerDictBuilder` の型検証でエラーにする（#334: 畳むと xref チェーンが黙って切れる）。
  *
  * @param data - PDF ファイル全体のバイト配列
  * @param offset - trailer キーワードの開始バイトオフセット
@@ -781,17 +128,23 @@ export function parseTrailer(
   }
 
   // 空白スキップ + Tokenizer 初期化
-  const dictStart = skipWhitespaceAndComments(data, afterTrailer);
-  const subData = data.subarray(dictStart);
-  const tokens = new BufferedTokenizer(new Tokenizer(subData));
-  const baseOffset = BO.of(dictStart);
+  const dictStart = BO.of(skipWhitespaceAndComments(data, afterTrailer));
+  const bt = new BufferedTokenizer(new Tokenizer(data.subarray(dictStart)));
 
-  // 辞書パース
-  const dictResult = parseDictTokens(tokens, baseOffset);
-  if (!dictResult.ok) {
-    return dictResult;
+  // 辞書パース（DirectObject に委譲）
+  const valueResult = DirectObject.parse(bt, dictStart, TOP_LEVEL_DEPTH, {
+    foldFreeListRef: false,
+  });
+  if (!valueResult.ok) {
+    return err(mapErr(valueResult.error));
+  }
+  if (valueResult.value.type !== "dictionary") {
+    return failTrailer(
+      "expected dictionary start (<<) after trailer keyword",
+      dictStart,
+    );
   }
 
   // TrailerDict 構築
-  return buildTrailerDict(dictResult.value);
+  return buildTrailerDict(valueResult.value.entries, dictStart);
 }
