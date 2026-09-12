@@ -232,11 +232,11 @@ test("trailerがファイル中間にある場合にオフセット指定でパ�
   expect(result.value.size).toBe(1);
 });
 
-// trailer の readValue はキーの意味を知らないため、ここで 0 G R を null に畳んではならない。
+// trailer は DirectObject.parse に foldFreeListRef: false を渡し、0 G R を null に畳ませない。
 // 畳むと /Prev・/XRefStm（間接参照ではなく xref セクションへのバイトオフセット）まで
 // 巻き込み、mergeXRefChain のチェーン走査が途中で正常終了して古い revision の
 // オブジェクトが黙って消える（silent data loss）。0 の正規化は dict-builder の
-// 参照型 3 キーだけに限定する（#334 / D-5b）。
+// 参照型 3 キーだけに限定する（#334 / D-5b、#304 で委譲後も維持）。
 test("/Prev に 0 G R を与えても null に畳まれずエラーになる", () => {
   const { data, offset } = trailerAt(
     "trailer << /Root 1 0 R /Size 10 /Prev 0 0 R >>",
@@ -246,11 +246,20 @@ test("/Prev に 0 G R を与えても null に畳まれずエラーになる", (
   expect(result.error.code).toBe("XREF_TABLE_INVALID");
 });
 
-test("/Info の 0 G R は readValue を素通りし dict-builder 側で未設定に正規化される", () => {
+test("/Info の 0 G R は DirectObject.parse を素通りし dict-builder 側で未設定に正規化される", () => {
   const { data, offset } = trailerAt(
     "trailer << /Root 1 0 R /Size 10 /Info 0 0 R >>",
   );
   const result = parseTrailer(data, offset);
   assert(result.ok);
   expect(result.value.info).toBeUndefined();
+});
+
+test("/Encrypt の 0 G R は dict-builder 側で未設定に正規化される", () => {
+  const { data, offset } = trailerAt(
+    "trailer << /Root 1 0 R /Size 10 /Encrypt 0 0 R >>",
+  );
+  const result = parseTrailer(data, offset);
+  assert(result.ok);
+  expect(result.value.encrypt).toBeUndefined();
 });
