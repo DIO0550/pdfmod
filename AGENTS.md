@@ -1,16 +1,26 @@
 # AGENTS.md
 
-## プロジェクト概要
+**pdfmod** — React向けPDF編集ライブラリ。ISO 32000-1:2008 (PDF 1.7) / ISO 32000-2:2020 (PDF 2.0) 準拠を目標とする。
 
-**pdfmod** — React向けPDF編集ライブラリ。ISO 32000-1:2008 (PDF 1.7) および ISO 32000-2:2020 (PDF 2.0) 準拠を目標とする。
+pnpm モノレポで `@pdfmod/core`（PDF処理エンジン）と `@pdfmod/react`（Reactコンポーネント）の2パッケージ。
+`rust/crates/` に `std` のみの Rust 再実装（`pdfmod-core`）を持つ。仕様は `docs/specs/` を参照する。
 
-pnpmモノレポ構成で `@pdfmod/core`（PDF処理エンジン）と `@pdfmod/react`（Reactコンポーネント）の2パッケージ。
+## 規約（常時ロード）
 
-## 仕様書
+実装は以下に**必ず**従う。`rust.md` 以外は `packages/` の TypeScript が対象。
 
-実装時は `docs/specs/` 配下の仕様書（`00_overview.md` 〜 `09_implementation_guide.md`）を参照すること。
+- @rules/architecture.md — パッケージ構成・モジュールの公開API・ロジックの帰属先・依存方向
+- @rules/coding.md — コンパニオンオブジェクト・Result / Option・型による境界・コメント
+- @rules/naming.md — 命名
+- @rules/testing.md — テスト配置・古典学派・assert の見方
+- @rules/hooks.md — `@pdfmod/react` のフック設計
+- @rules/components.md — `@pdfmod/react` のコンポーネント設計
+- @rules/rust.md — Rust 実装（`rust/crates/`）
 
-`docs/research/PDFフォーマット仕様調査とライブラリ開発.md` は包括的な調査ドキュメント（日本語）。
+**規約に書いてあることをこのファイルへ写さない。** `AGENTS.md` + `rules/` は合計 800 行以内に保ち、
+超えたら足す前に同量を削る（`wc -l AGENTS.md rules/*.md`）。
+
+規約と衝突しうる変更（パッケージをまたぐ移動・既存モジュールの再配置）は、実装前に選択肢と根拠を示して確認する。
 
 ## PDF重要概念
 
@@ -20,20 +30,22 @@ pnpmモノレポ構成で `@pdfmod/core`（PDF処理エンジン）と `@pdfmod/
 - テキスト抽出には `/ToUnicode` CMAPが必須
 - 圧縮: `/FlateDecode`（zlib）が最も一般的。フィルタは配列でカスケード可能
 
-## Result / Option の使い分け
+## 開発スキル
 
-- **`Result<T, E>`** — 値を生成するか、エラー情報付きで失敗する操作に使う
-- **`Option<T>`** — 値の有無を表す。エラー情報は不要な場合（検索結果がない、パターン不一致など）
-- **`null` は使わない** — `Option` で代替する（例: `tryReadIndirectRef` の「パターン不一致」は `None`）
-- **`Result<void, E>` は避ける** — 成功時に値がない検証系は `Option<E>`（エラーがあれば `Some(error)`、なければ `None`）の方が自然（参照: #83）
+TypeScript を変更する作業では、以下を **Skill ツールで実行**する（memory があっても省略せず最新版を読み込む）。
+**スキルと `rules/` が食い違ったら `rules/` を優先し、その食い違いを報告する。**
 
-## TypeScript 開発ルール
+`implementation-workflow`（実装開始時）/ `coding-standards`（コーディング中）/ `tdd`・`testing`（テスト作成時）/
+`typescript-code-review-skill`（レビュー時）/ `typescript-performance-review-skill`（パフォーマンス確認時）
 
-TypeScript コードを変更するすべての作業で、以下のスキルを **Skill ツールで実行**すること。
-memory に過去の内容があっても省略せず、必ず Skill ツールで最新版を読み込むこと。
+## Commands
 
-- 実装開始時は `implementation-workflow` スキルを Skill ツールで実行し、フローに従う
-- コーディング中は `coding-standards` スキルを Skill ツールで実行
-- テスト作成時は `tdd` および `testing` スキルを Skill ツールで実行
-- コードレビュー時は `typescript-code-review-skill` スキルを Skill ツールで実行
-- パフォーマンス確認時は `typescript-performance-review-skill` スキルを Skill ツールで実行
+ルートで `pnpm run` — `typecheck` / `test:run` / `test:types` / `lint` / `lint:fix` / `build` / `storybook`。
+
+`rust/` では以下。後ろ2つは CI と同じで、**警告は残さない**。
+
+```bash
+cargo test
+cargo fmt --all -- --check
+cargo clippy --workspace --all-targets -- -D warnings
+```
