@@ -212,7 +212,7 @@ export const buildTwoPagePdf = (): Uint8Array =>
  * startxref / xref テーブルまでは妥当だが、`mergeXRefChain` 失敗 →
  * `scanFallback` は `Ok({trailer: None, ...})` を返し、`PdfDocument.load`
  * 側の trailer 不在分岐で `ROOT_NOT_FOUND` が返る。
- * `PdfDocument.load` のエラー伝搬テスト (L-003) で使用する。
+ * `PdfDocument.load` のエラー伝播テスト (L-003) で使用する。
  *
  * @returns `/Root` を欠き、本体に `/Type /Catalog` も持たない PDF バイト列
  */
@@ -224,7 +224,7 @@ export const buildPdfWithoutCatalog = (): Uint8Array =>
  *
  * Page leaf にも親 Pages ノードにも `/MediaBox` が無い構成にすることで、
  * `PageTreeWalker.walk` (継承解決) が `MEDIABOX_NOT_FOUND` を返す入力になる。
- * `PdfDocument.load` のエラー伝搬テスト (L-004) で使用する。
+ * `PdfDocument.load` のエラー伝播テスト (L-004) で使用する。
  *
  * @returns ページ・親いずれも `/MediaBox` を持たない PDF バイト列
  */
