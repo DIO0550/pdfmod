@@ -169,7 +169,7 @@ ISO 32000-1 では `/Size` は「相互参照テーブル内のオブジェク�
 |:---|:------------|:-----|:-----|
 | E-001 | `XREF_PREV_CHAIN_CYCLE` | `/Prev` が既に走査済みのオフセットを指す | 循環を検出。`visited` Set で判定 |
 | E-002 | `XREF_PREV_CHAIN_TOO_DEEP` | `/Prev` チェーンの走査段数が深度制限（デフォルト 100）を超過 | 異常な深さのチェーンを防止 |
-| E-003 | パーサーエラーのパススルー | 各 xref セクションの解析中にエラーが発生 | `parseXRefTable` や `decodeXRefStreamEntries` が返すエラーをそのまま伝搬 |
+| E-003 | パーサーエラーのパススルー | 各 xref セクションの解析中にエラーが発生 | `parseXRefTable` や `decodeXRefStreamEntries` が返すエラーをそのまま伝播 |
 
 エラーオブジェクトはエラーコード（code）とメッセージ（message）を保持する。message 文言の例（一例であり、実装と完全一致することを保証しない）:
 
