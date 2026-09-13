@@ -198,8 +198,8 @@ test("未知キーの値が未閉鎖の配列の場合にErrが返る", () => {
   expect(result.error.code).toBe("XREF_TABLE_INVALID");
 });
 
-test("65段ネストの配列でNESTING_TOO_DEEPエラーが返る", () => {
-  const depth = 65;
+test("トップレベル辞書 + 100段ネストの配列でNESTING_TOO_DEEPエラーが返る", () => {
+  const depth = 100;
   const open = "[".repeat(depth);
   const close = "]".repeat(depth);
   const { data, offset } = trailerAt(
@@ -210,8 +210,8 @@ test("65段ネストの配列でNESTING_TOO_DEEPエラーが返る", () => {
   expect(result.error.code).toBe("NESTING_TOO_DEEP");
 });
 
-test("64段ネストの配列は正常にパースされる", () => {
-  const depth = 64;
+test("トップレベル辞書 + 99段ネストの配列は正常にパースされる", () => {
+  const depth = 99;
   const open = "[".repeat(depth);
   const close = "]".repeat(depth);
   const { data, offset } = trailerAt(
@@ -230,11 +230,11 @@ test("エラー発生時のoffsetがファイル内の正しいバイト位置�
   expect(result.error.code).toBe("ROOT_NOT_FOUND");
 });
 
-test("/Root の世代番号が65535超の場合にROOT_NOT_FOUNDエラーが返る", () => {
+test("/Root の世代番号が65535超の場合にXREF_TABLE_INVALIDエラーが返る", () => {
   const { data, offset } = trailerAt("trailer << /Root 1 99999 R /Size 10 >>");
   const result = parseTrailer(data, offset);
   assert(!result.ok);
-  expect(result.error.code).toBe("ROOT_NOT_FOUND");
+  expect(result.error.code).toBe("XREF_TABLE_INVALID");
 });
 
 test("/Info の世代番号が65535超の場合にXREF_TABLE_INVALIDエラーが返る", () => {
@@ -304,7 +304,7 @@ test("リテラル文字列に0-255範囲外のコードユニット(\\400)が�
   const result = parseTrailer(data, offset);
   assert(!result.ok);
   expect(result.error.code).toBe("XREF_TABLE_INVALID");
-  expect(result.error.message).toContain("outside 0-255");
+  expect(result.error.message).toContain("Invalid literal string byte value");
 });
 
 test("値の位置に予期せぬトークン(])が現れた場合にXREF_TABLE_INVALIDエラーが返る", () => {
@@ -312,13 +312,11 @@ test("値の位置に予期せぬトークン(])が現れた場合にXREF_TABLE_
   const result = parseTrailer(data, offset);
   assert(!result.ok);
   expect(result.error.code).toBe("XREF_TABLE_INVALID");
-  expect(result.error.message).toContain(
-    "unexpected token at value position in trailer dictionary",
-  );
+  expect(result.error.message).toContain("Unexpected token type");
 });
 
-test("/Encryptの値が65段ネストの辞書の場合にNESTING_TOO_DEEPエラーが返る", () => {
-  const depth = 65;
+test("/Encryptの値が100段ネストの辞書の場合にNESTING_TOO_DEEPエラーが返る", () => {
+  const depth = 100;
   const open = "<< /K ".repeat(depth);
   const close = " >>".repeat(depth);
   const { data, offset } = trailerAt(
@@ -329,8 +327,8 @@ test("/Encryptの値が65段ネストの辞書の場合にNESTING_TOO_DEEPエラ
   expect(result.error.code).toBe("NESTING_TOO_DEEP");
 });
 
-test("/Encryptの値が65段ネストの配列の場合にNESTING_TOO_DEEPエラーが返る", () => {
-  const depth = 65;
+test("/Encryptの値が100段ネストの配列の場合にNESTING_TOO_DEEPエラーが返る", () => {
+  const depth = 100;
   const open = "[".repeat(depth);
   const close = "]".repeat(depth);
   const { data, offset } = trailerAt(
@@ -348,9 +346,7 @@ test("ネストした辞書内で非Nameキーが現れた場合にXREF_TABLE_IN
   const result = parseTrailer(data, offset);
   assert(!result.ok);
   expect(result.error.code).toBe("XREF_TABLE_INVALID");
-  expect(result.error.message).toContain(
-    "expected name key in nested dictionary value",
-  );
+  expect(result.error.message).toContain("Dictionary key must be a name");
 });
 
 test("ネストした辞書内で値の直前にEOFに達した場合にXREF_TABLE_INVALIDエラーが返る", () => {
@@ -360,7 +356,7 @@ test("ネストした辞書内で値の直前にEOFに達した場合にXREF_TAB
   const result = parseTrailer(data, offset);
   assert(!result.ok);
   expect(result.error.code).toBe("XREF_TABLE_INVALID");
-  expect(result.error.message).toContain("unexpected end of data");
+  expect(result.error.message).toContain("Unexpected EOF");
 });
 
 test("/IDの値が配列でない場合にXREF_TABLE_INVALIDエラーが返る", () => {
@@ -370,7 +366,7 @@ test("/IDの値が配列でない場合にXREF_TABLE_INVALIDエラーが返る",
   const result = parseTrailer(data, offset);
   assert(!result.ok);
   expect(result.error.code).toBe("XREF_TABLE_INVALID");
-  expect(result.error.message).toContain("/ID entry must be an array");
+  expect(result.error.message).toContain("2-element array");
 });
 
 test("/IDの要素が3個以上の場合にXREF_TABLE_INVALIDエラーが返る", () => {
@@ -390,9 +386,7 @@ test("/ID要素パース中にデータ末尾(EOF)に達した場合にXREF_TABL
   const result = parseTrailer(data, offset);
   assert(!result.ok);
   expect(result.error.code).toBe("XREF_TABLE_INVALID");
-  expect(result.error.message).toContain(
-    "unexpected end of data while parsing /ID array",
-  );
+  expect(result.error.message).toContain("Unterminated array");
 });
 
 test("トップレベルの辞書キーがNameでない場合にXREF_TABLE_INVALIDエラーが返る", () => {
@@ -400,7 +394,7 @@ test("トップレベルの辞書キーがNameでない場合にXREF_TABLE_INVAL
   const result = parseTrailer(data, offset);
   assert(!result.ok);
   expect(result.error.code).toBe("XREF_TABLE_INVALID");
-  expect(result.error.message).toContain("expected name key");
+  expect(result.error.message).toContain("Dictionary key must be a name");
 });
 
 test("トップレベルの辞書値の前にDictEnd(>>)が現れた場合にXREF_TABLE_INVALIDエラーが返る", () => {
@@ -408,7 +402,7 @@ test("トップレベルの辞書値の前にDictEnd(>>)が現れた場合にXRE
   const result = parseTrailer(data, offset);
   assert(!result.ok);
   expect(result.error.code).toBe("XREF_TABLE_INVALID");
-  expect(result.error.message).toContain("expected value for key");
+  expect(result.error.message).toContain("Unexpected token type");
 });
 
 test("トップレベルの辞書値の前にEOFに達した場合にXREF_TABLE_INVALIDエラーが返る", () => {
@@ -416,7 +410,7 @@ test("トップレベルの辞書値の前にEOFに達した場合にXREF_TABLE_
   const result = parseTrailer(data, offset);
   assert(!result.ok);
   expect(result.error.code).toBe("XREF_TABLE_INVALID");
-  expect(result.error.message).toContain("unexpected end of data");
+  expect(result.error.message).toContain("Unexpected EOF");
 });
 
 test("スキップ対象辞書内で予期せぬトークン(])が現れた場合にXREF_TABLE_INVALIDエラーが返る", () => {
@@ -426,9 +420,7 @@ test("スキップ対象辞書内で予期せぬトークン(])が現れた場�
   const result = parseTrailer(data, offset);
   assert(!result.ok);
   expect(result.error.code).toBe("XREF_TABLE_INVALID");
-  expect(result.error.message).toContain(
-    "unexpected ] while skipping dictionary value",
-  );
+  expect(result.error.message).toContain("Dictionary key must be a name");
 });
 
 test("スキップ対象配列内で予期せぬトークン(>>)が現れた場合にXREF_TABLE_INVALIDエラーが返る", () => {
@@ -438,17 +430,17 @@ test("スキップ対象配列内で予期せぬトークン(>>)が現れた場�
   const result = parseTrailer(data, offset);
   assert(!result.ok);
   expect(result.error.code).toBe("XREF_TABLE_INVALID");
-  expect(result.error.message).toContain(
-    "unexpected >> while skipping array value",
-  );
+  expect(result.error.message).toContain("Unexpected token type");
 });
 
-test("スキップ対象辞書内で非Nameキーが現れた場合でもスキップされ正常に処理される", () => {
+test("未知キーの値の辞書内で非Nameキーが現れた場合もXREF_TABLE_INVALIDになる（未知キーも完全パースされる）", () => {
   const { data, offset } = trailerAt(
     "trailer << /Root 1 0 R /Size 10 /Unknown << 123 /A 1 >> >>",
   );
   const result = parseTrailer(data, offset);
-  assert(result.ok);
+  assert(!result.ok);
+  expect(result.error.code).toBe("XREF_TABLE_INVALID");
+  expect(result.error.message).toContain("Dictionary key must be a name");
 });
 
 test("スキップ対象辞書内でキー直後にEOFに達した場合にXREF_TABLE_INVALIDエラーが返る", () => {
@@ -458,7 +450,7 @@ test("スキップ対象辞書内でキー直後にEOFに達した場合にXREF_
   const result = parseTrailer(data, offset);
   assert(!result.ok);
   expect(result.error.code).toBe("XREF_TABLE_INVALID");
-  expect(result.error.message).toContain("unexpected end of data");
+  expect(result.error.message).toContain("Unexpected EOF");
 });
 
 test("ネストした辞書内でキー読み取り直前にEOFに達した場合にXREF_TABLE_INVALIDエラーが返る", () => {
@@ -468,9 +460,7 @@ test("ネストした辞書内でキー読み取り直前にEOFに達した場�
   const result = parseTrailer(data, offset);
   assert(!result.ok);
   expect(result.error.code).toBe("XREF_TABLE_INVALID");
-  expect(result.error.message).toContain(
-    "unexpected end of data while parsing dictionary value",
-  );
+  expect(result.error.message).toContain("Unterminated dictionary");
 });
 
 test("スキップ対象の単体数値のプッシュバック処理が正常に動作する", () => {
@@ -488,7 +478,21 @@ test("スキップ対象で整数が2個連続しRでない場合に2個目の�
   const result = parseTrailer(data, offset);
   assert(!result.ok);
   expect(result.error.code).toBe("XREF_TABLE_INVALID");
-  expect(result.error.message).toContain(
-    "expected name key in trailer dictionary",
+  expect(result.error.message).toContain("Dictionary key must be a name");
+});
+
+test("/XRefStm に 0 G R を与えても null に畳まれずXREF_TABLE_INVALIDエラーになる", () => {
+  const { data, offset } = trailerAt(
+    "trailer << /Root 1 0 R /Size 10 /XRefStm 0 0 R >>",
   );
+  const result = parseTrailer(data, offset);
+  assert(!result.ok);
+  expect(result.error.code).toBe("XREF_TABLE_INVALID");
+});
+
+test("/Root に 0 G R を与えた場合はROOT_NOT_FOUNDエラーになる", () => {
+  const { data, offset } = trailerAt("trailer << /Root 0 0 R /Size 10 >>");
+  const result = parseTrailer(data, offset);
+  assert(!result.ok);
+  expect(result.error.code).toBe("ROOT_NOT_FOUND");
 });

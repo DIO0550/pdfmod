@@ -19,6 +19,21 @@ import { decodeHexString, decodeLiteralString } from "../string-decoder/index";
 const MAX_NESTING_DEPTH = 100;
 /** フリーリストの先頭に予約されたオブジェクト番号（ISO 32000-1 §7.5.4）。 */
 const FREE_LIST_HEAD_OBJECT_NUMBER = 0;
+const DEFAULT_FOLD_FREE_LIST_REF = true;
+
+/**
+ * `DirectObject.parse` の挙動オプション。
+ */
+export interface DirectObjectParseOptions {
+  /**
+   * `0 G R`（ISO 32000-1 §7.5.4 のフリーリスト先頭への参照）を null オブジェクトに畳むか。
+   * 既定は `true`（docs/specs/02a_object_resolution.md §2.4 に従い畳む）。
+   * `false` のときは `objectNumber: 0` の indirect-ref をそのまま返す。
+   * trailer 辞書のように「参照ではなくバイトオフセットであるべきキー」（/Prev, /XRefStm）を
+   * 呼び出し側が検証したい場合に使う（#334 / #304）。
+   */
+  readonly foldFreeListRef?: boolean;
+}
 
 /**
  * direct object (stream を含まない PdfValue) を BufferedTokenizer からパースするコンパニオンオブジェクト。
@@ -32,14 +47,18 @@ export const DirectObject = {
    * @param bt - バッファ付きトークナイザ
    * @param baseOffset - 呼び出し元 data 基準の開始オフセット
    * @param depth - 現在のネスト深度
+   * @param options - 挙動オプション（未指定なら `0 G R` を null に畳む）
    * @returns PdfValue、またはエラー
    */
   parse(
     bt: BufferedTokenizer,
     baseOffset: ByteOffset,
     depth: number,
+    options?: DirectObjectParseOptions,
   ): Result<PdfValue, PdfParseError> {
-    return readValue(bt, baseOffset, depth);
+    const foldFreeListRef =
+      options?.foldFreeListRef ?? DEFAULT_FOLD_FREE_LIST_REF;
+    return readValue(bt, baseOffset, depth, foldFreeListRef);
   },
 } as const;
 
@@ -49,12 +68,14 @@ export const DirectObject = {
  * @param bt - バッファ付きトークナイザ
  * @param baseOffset - 呼び出し元 data 基準の開始オフセット
  * @param depth - 現在のネスト深度
+ * @param foldFreeListRef - 0 G R を null に畳むかどうか
  * @returns PdfValue、またはエラー
  */
 function readValue(
   bt: BufferedTokenizer,
   baseOffset: ByteOffset,
   depth: number,
+  foldFreeListRef: boolean,
 ): Result<PdfValue, PdfParseError> {
   const token = bt.next();
 
@@ -74,7 +95,12 @@ function readValue(
           offset: ByteOffset.add(baseOffset, token.offset),
         });
       }
-      const refResult = tryReadIndirectRef(bt, baseOffset, intVal);
+      const refResult = tryReadIndirectRef(
+        bt,
+        baseOffset,
+        intVal,
+        foldFreeListRef,
+      );
       if (refResult.some) {
         return refResult.value;
       }
@@ -129,10 +155,16 @@ function readValue(
     }
 
     case TokenType.ArrayBegin:
-      return readArrayElements(bt, baseOffset, depth + 1, token);
+      return readArrayElements(
+        bt,
+        baseOffset,
+        depth + 1,
+        token,
+        foldFreeListRef,
+      );
 
     case TokenType.DictBegin:
-      return readDictEntries(bt, baseOffset, depth + 1, token);
+      return readDictEntries(bt, baseOffset, depth + 1, token, foldFreeListRef);
 
     case TokenType.EOF:
       return err({
@@ -154,21 +186,23 @@ function readValue(
  * Integer トークン後の `N G R` パターンを試行する。
  * 3トークン先読みしパターン不一致なら pushBack して None を返す。
  *
- * `N == 0` のときは参照値ではなく null オブジェクト（`{ type: "null" }`）を返す。
+ * `N == 0` のときは `foldFreeListRef` が true なら参照値ではなく null オブジェクト（`{ type: "null" }`）を返す。
  * オブジェクト番号 0 は ISO 32000-1 §7.5.4 のフリーリスト先頭に予約された番号で、
  * `docs/specs/02a_object_resolution.md` §2.4 により常に null に解決されるため
- * （#334）。関数名は「参照の読み取り試行」のままだが、返り値には null が含まれる。
+ * （#334）。`foldFreeListRef` が false のときは raw な参照ノードを返す（#304）。
  *
  * @param bt - バッファ付きトークナイザ
  * @param baseOffset - 呼び出し元 data 基準の開始オフセット
  * @param intVal - 先頭の integer 値（オブジェクト番号候補）
- * @returns 成立: Some(ok(indirect-ref))、`N == 0`: Some(ok(null))、
+ * @param foldFreeListRef - 0 G R を null に畳むかどうか
+ * @returns 成立: Some(ok(indirect-ref))、`N == 0` かつ畳み込み有効: Some(ok(null))、
  *   不成立: None、N/G 不正: Some(err(...))
  */
 function tryReadIndirectRef(
   bt: BufferedTokenizer,
   baseOffset: ByteOffset,
   intVal: number,
+  foldFreeListRef: boolean,
 ): Option<Result<PdfValue, PdfParseError>> {
   const second = bt.next();
   if (second.type !== TokenType.Integer) {
@@ -202,7 +236,19 @@ function tryReadIndirectRef(
     // 構文エラーにしないのは Postel の法則（docs/specs/09_implementation_guide.md §3.1）と、
     // 解決仕様が「type=0 (Free) → null を返却」と規定していることに従うため。
     if (intVal === FREE_LIST_HEAD_OBJECT_NUMBER) {
-      return some(ok({ type: "null" }));
+      // 既定（foldFreeListRef = true）: §2.4 に従い null に畳む
+      if (foldFreeListRef) {
+        return some(ok({ type: "null" }));
+      }
+      // foldFreeListRef = false: ObjectNumber.create(0) は失敗するので通さず、
+      // raw な参照ノードを返す。意味検証は呼び出し側（trailerDictBuilder）が行う。
+      return some(
+        ok({
+          type: "indirect-ref",
+          objectNumber: FREE_LIST_HEAD_OBJECT_NUMBER,
+          generationNumber: generationNumber.value,
+        }),
+      );
     }
 
     const objectNumber = ObjectNumber.create(intVal);
@@ -237,6 +283,7 @@ function tryReadIndirectRef(
  * @param baseOffset - 呼び出し元 data 基準の開始オフセット
  * @param depth - 現在のネスト深度
  * @param openToken - `[` トークン（エラー報告用）
+ * @param foldFreeListRef - 0 G R を null に畳むかどうか
  * @returns 配列 PdfValue、またはエラー
  */
 function readArrayElements(
@@ -244,6 +291,7 @@ function readArrayElements(
   baseOffset: ByteOffset,
   depth: number,
   openToken: Token,
+  foldFreeListRef: boolean,
 ): Result<PdfValue, PdfParseError> {
   if (depth > MAX_NESTING_DEPTH) {
     return err({
@@ -267,7 +315,7 @@ function readArrayElements(
       });
     }
     bt.pushBack(token);
-    const elemResult = readValue(bt, baseOffset, depth);
+    const elemResult = readValue(bt, baseOffset, depth, foldFreeListRef);
     if (!elemResult.ok) {
       return elemResult;
     }
@@ -282,6 +330,7 @@ function readArrayElements(
  * @param baseOffset - 呼び出し元 data 基準の開始オフセット
  * @param depth - 現在のネスト深度
  * @param openToken - `<<` トークン（エラー報告用）
+ * @param foldFreeListRef - 0 G R を null に畳むかどうか
  * @returns 辞書、またはエラー
  */
 function readDictEntries(
@@ -289,6 +338,7 @@ function readDictEntries(
   baseOffset: ByteOffset,
   depth: number,
   openToken: Token,
+  foldFreeListRef: boolean,
 ): Result<PdfDictionary, PdfParseError> {
   if (depth > MAX_NESTING_DEPTH) {
     return err({
@@ -319,7 +369,7 @@ function readDictEntries(
       });
     }
 
-    const valResult = readValue(bt, baseOffset, depth);
+    const valResult = readValue(bt, baseOffset, depth, foldFreeListRef);
     if (!valResult.ok) {
       return valResult;
     }
