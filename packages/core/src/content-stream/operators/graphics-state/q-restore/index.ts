@@ -13,7 +13,7 @@ import type {
  *
  * saved が空の場合（unbalanced restore）は `GraphicsStateStack.restore` が
  * current 維持の新 stack を返すため、handler も no-op 相当で ok を返す。
- * `RestoreResult.warning` は現時点では handler レベルで伝搬しない。
+ * `RestoreResult.warning` は現時点では handler レベルで伝播しない。
  * 将来、interpreter の warnings 配列に追加する拡張が検討される可能性がある。
  *
  * @param context - 実行コンテキスト
