@@ -218,7 +218,7 @@ test("ColorSpace entry value 先頭 (idx=0) で置換された Name の offset �
 });
 
 test("Filter entry value idx=2 で置換された Name の offset が元 token から継承される", () => {
-  // 配列内位置に依らず offset が伝搬する
+  // 配列内位置に依らず offset が伝播する
   const dict = [
     makeEntry("Filter", [
       nameToken("ASCII85Decode", 10),

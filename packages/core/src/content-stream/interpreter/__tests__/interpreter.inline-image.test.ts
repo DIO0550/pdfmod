@@ -60,7 +60,7 @@ test("inline image の前後で operand stack / graphics state stack は同一�
 });
 
 test("必須キー欠落の inline image は INLINE_IMAGE_REQUIRED_KEY_MISSING で中断する", () => {
-  // /W (Width) を欠落させると handler が err を返し interpreter が伝搬する
+  // /W (Width) を欠落させると handler が err を返し interpreter が伝播する
   const result = ContentStreamInterpreter.execute({
     data: encode("BI /H 1 /CS /G /BPC 8 ID x EI"),
     registry: OperatorRegistry.create(),

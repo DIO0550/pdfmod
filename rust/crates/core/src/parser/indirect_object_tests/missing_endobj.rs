@@ -7,7 +7,7 @@ use crate::lexer::token_kind::TokenKind;
 
 #[test]
 fn parse_indirect_object_missing_endobj_at_eof_returns_unexpected_eof() {
-    // endobj 欠落(content 後 EOF): b"1 0 obj 42" は content 読取後に入力が尽きて UnexpectedEof を末尾(10)で返す
+    // endobj 欠落(content 後 EOF): b"1 0 obj 42" は content 読み取り後に入力が尽きて UnexpectedEof を末尾(10)で返す
     let mut p = parser(b"1 0 obj 42");
     assert_eq!(
         p.parse_indirect_object(),

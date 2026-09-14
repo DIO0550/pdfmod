@@ -34,7 +34,7 @@ fn parse_indirect_object_number_and_generation_only_returns_unexpected_eof() {
 
 #[test]
 fn parse_indirect_object_header_without_content_returns_unexpected_eof() {
-    // ヘッダ途中 EOF(N G obj のみ): b"1 0 obj" は content 読取位置で入力が尽き UnexpectedEof を位置 7 で返す（panic しない）
+    // ヘッダ途中 EOF(N G obj のみ): b"1 0 obj" は content 読み取り位置で入力が尽き UnexpectedEof を位置 7 で返す（panic しない）
     let mut p = parser(b"1 0 obj");
     assert_eq!(
         p.parse_indirect_object(),

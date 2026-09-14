@@ -52,9 +52,9 @@ const buildContext = (): OperatorHandlerContext => ({
   markedContentStack: MarkedContentStack.create(),
 });
 
-test("Width 欠落で err.code/missingKey/offset/message を載せる（err 生成と offset 伝搬の統合）", () => {
+test("Width 欠落で err.code/missingKey/offset/message を載せる（err 生成と offset 伝播の統合）", () => {
   // 必須キー欠落バリエーションの網羅は dict 側 required-keys.test.ts に移植済み。
-  // ここでは handler 統合経路で err 生成・offset 伝搬・message 整形が動くことを 1 件 pin down する。
+  // ここでは handler 統合経路で err 生成・offset 伝播・message 整形が動くことを 1 件 pin down する。
   const token = buildToken([
     buildEntry("Height", integerToken(1)),
     buildEntry("BitsPerComponent", integerToken(8)),
