@@ -24,8 +24,8 @@ import { readArrayOperand, readDictOperand } from "./composite-operand/index";
 export type ContentStreamInterpreterExecuteOptions = {
   /** 実行対象の content stream バイト列 */
   readonly data: Uint8Array;
-  /** operator handler の登録簿 */
-  readonly registry: OperatorRegistry;
+  /** operator handler の登録簿。省略時は全ビルトインオペレータを含むデフォルトレジストリが使用される */
+  readonly registry?: OperatorRegistry;
   /** 呼び出し側が指定する任意の初期 context（省略時は新規生成される） */
   readonly initialContext?: OperatorHandlerContext;
 };
@@ -56,12 +56,21 @@ export const ContentStreamInterpreter = {
   /**
    * Content stream の token 列をRPNとしてEOFまで逐次実行する。
    *
-   * @param options - 入力データ、operator registry、任意の初期context
+   * @param options - 入力データ、任意のoperator registry（省略時はデフォルト）、任意の初期context
    * @returns 最終context、またはtokenize / 変換 / handlerのエラー
    */
   execute(
     options: ContentStreamInterpreterExecuteOptions,
   ): Result<ContentStreamInterpreterResult, PdfError> {
+    const registryResult =
+      options.registry !== undefined
+        ? ok(options.registry)
+        : OperatorRegistry.createDefault();
+    if (!registryResult.ok) {
+      return err(registryResult.error);
+    }
+    const registry = registryResult.value;
+
     const tokenizer = new ContentStreamTokenizer(options.data);
     let context = createInitialContext(options.initialContext);
     const warnings: PdfWarning[] = [];
@@ -75,7 +84,7 @@ export const ContentStreamInterpreter = {
       const step = executeToken({
         token: tokenResult.value,
         tokenizer,
-        registry: options.registry,
+        registry,
         context,
         warnings,
       });
