@@ -159,7 +159,11 @@ test("デフォルトレジストリを複数回生成しても互いに独立�
     customHandler,
   );
   expect(registerResult.ok).toBe(true);
+  if (!registerResult.ok) {
+    return;
+  }
 
+  expect(OperatorRegistry.has(registerResult.value, "customOp")).toBe(true);
   expect(OperatorRegistry.has(firstResult.value, "customOp")).toBe(false);
   expect(OperatorRegistry.has(secondResult.value, "customOp")).toBe(false);
 });
