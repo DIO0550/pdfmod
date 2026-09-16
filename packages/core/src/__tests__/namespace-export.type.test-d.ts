@@ -30,6 +30,7 @@ import {
   ContentStreamInterpreter,
   GraphicsState,
   Interop,
+  OperatorRegistry,
   Option,
   Result,
   StringArrayEx,
@@ -184,4 +185,16 @@ test("Option.toResult が公開 API から削除されている", () => {
 test("FreeObjectNumber 型がルートから参照でき ObjectNumber とは別の型である", () => {
   expectTypeOf<FreeObjectNumber>().not.toEqualTypeOf<ObjectNumber>();
   expectTypeOf<FreeObjectNumber>().toExtend<number>();
+});
+
+test("OperatorRegistry 型とコンパニオンがルートから参照でき createDefault を持つ", () => {
+  expectTypeOf(OperatorRegistry.createDefault).returns.toEqualTypeOf<
+    Result.Result<OperatorRegistry, PdfError>
+  >();
+});
+
+test("ContentStreamInterpreterExecuteOptions の registry は省略可能である", () => {
+  expectTypeOf<
+    ContentStreamInterpreterExecuteOptions["registry"]
+  >().toEqualTypeOf<OperatorRegistry | undefined>();
 });
