@@ -157,11 +157,7 @@ fn predictor_constructors_with_payload_pass_through_values_and_position() {
             FlateErrorKind::InvalidPredictorColumns { actual: -1 },
         ),
         (
-            FlateError::invalid_decode_parms_key_type_at(
-                position,
-                "Predictor",
-                ObjectKind::String,
-            ),
+            FlateError::invalid_decode_parms_key_type_at(position, "Predictor", ObjectKind::String),
             FlateErrorKind::InvalidDecodeParmsKeyType {
                 key: "Predictor",
                 actual: ObjectKind::String,
@@ -185,4 +181,3 @@ fn predictor_constructors_with_payload_pass_through_values_and_position() {
         assert_eq!(error.position, position, "position should pass through");
     }
 }
-
