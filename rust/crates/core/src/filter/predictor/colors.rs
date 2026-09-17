@@ -25,6 +25,16 @@ impl Colors {
         Self(NonZeroUsize::MIN)
     }
 
+    /// `usize` 値から [`Colors`] を構築する。`0` の場合は `None` を返す。
+    #[inline]
+    #[must_use]
+    pub const fn from_usize(value: usize) -> Option<Self> {
+        match NonZeroUsize::new(value) {
+            Some(nz) => Some(Self(nz)),
+            None => None,
+        }
+    }
+
     /// 保持する [`NonZeroUsize`] 値を取得する。
     #[inline]
     #[must_use]
