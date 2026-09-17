@@ -257,10 +257,7 @@ impl FlateError {
 
     /// [`FlateErrorKind::InvalidPredictorColumns`] を指定位置・実値で構築する。
     pub fn invalid_predictor_columns_at(position: ByteOffset, actual: i64) -> Self {
-        Self::new(
-            FlateErrorKind::InvalidPredictorColumns { actual },
-            position,
-        )
+        Self::new(FlateErrorKind::InvalidPredictorColumns { actual }, position)
     }
 
     /// [`FlateErrorKind::InvalidDecodeParmsKeyType`] を指定位置・キー名・実種別で構築する。
