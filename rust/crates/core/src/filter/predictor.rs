@@ -610,3 +610,6 @@ pub fn decode_predictor(
         | PredictorAlgorithm::PngOptimum => decode_png_predictor(data, params, position),
     }
 }
+
+#[cfg(test)]
+mod tests;
