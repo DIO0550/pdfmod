@@ -5,6 +5,7 @@
 //! 公開境界での `PdfError` への変換（`From` 実装）は後続 Issue に委ねる。
 
 use crate::byte_offset::ByteOffset;
+use crate::object::object_kind::ObjectKind;
 
 /// フィルタ復号エラーの種別。位置は [`FlateError`] 側が持つ。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -80,6 +81,49 @@ pub enum FlateErrorKind {
         /// 展開結果から計算した値。
         actual: u32,
     },
+    /// サポートされていない Predictor 値が指定された。
+    UnsupportedPredictor {
+        /// 実際に指定された Predictor 値。
+        actual: i64,
+    },
+    /// サポートされていない BitsPerComponent 値が指定された。
+    UnsupportedBitsPerComponent {
+        /// 実際に指定された BitsPerComponent 値。
+        actual: i64,
+    },
+    /// Colors が 1 未満または不正。
+    InvalidPredictorColors {
+        /// 実際に指定された Colors 値。
+        actual: i64,
+    },
+    /// Columns が 1 未満または不正。
+    InvalidPredictorColumns {
+        /// 実際に指定された Columns 値。
+        actual: i64,
+    },
+    /// DecodeParms 辞書のキーの型が不正。
+    InvalidDecodeParmsKeyType {
+        /// 不正だったキー名。
+        key: &'static str,
+        /// 実際のオブジェクト種別。
+        actual: ObjectKind,
+    },
+    /// データのバイト長が行レコードサイズの倍数になっていない。
+    PredictorDataLengthMismatch {
+        /// 期待される1行あたりレコードサイズ。
+        expected_multiple_of: usize,
+        /// 実際のデータ長。
+        actual: usize,
+    },
+    /// 不正な PNG フィルタタグ（0..=4 以外）。
+    InvalidPngFilterTag {
+        /// 実際に読み取ったタグバイト。
+        actual: u8,
+        /// エラーが発生した行番号（0始まり）。
+        row: usize,
+    },
+    /// 行長やオフセット計算での整数オーバーフロー。
+    PredictorParameterOverflow,
 }
 
 /// フィルタ復号エラー。位置情報を必須で保持する。
@@ -191,6 +235,72 @@ impl FlateError {
             FlateErrorKind::ChecksumMismatch { expected, actual },
             position,
         )
+    }
+
+    /// [`FlateErrorKind::UnsupportedPredictor`] を指定位置・実値で構築する。
+    pub fn unsupported_predictor_at(position: ByteOffset, actual: i64) -> Self {
+        Self::new(FlateErrorKind::UnsupportedPredictor { actual }, position)
+    }
+
+    /// [`FlateErrorKind::UnsupportedBitsPerComponent`] を指定位置・実値で構築する。
+    pub fn unsupported_bits_per_component_at(position: ByteOffset, actual: i64) -> Self {
+        Self::new(
+            FlateErrorKind::UnsupportedBitsPerComponent { actual },
+            position,
+        )
+    }
+
+    /// [`FlateErrorKind::InvalidPredictorColors`] を指定位置・実値で構築する。
+    pub fn invalid_predictor_colors_at(position: ByteOffset, actual: i64) -> Self {
+        Self::new(FlateErrorKind::InvalidPredictorColors { actual }, position)
+    }
+
+    /// [`FlateErrorKind::InvalidPredictorColumns`] を指定位置・実値で構築する。
+    pub fn invalid_predictor_columns_at(position: ByteOffset, actual: i64) -> Self {
+        Self::new(
+            FlateErrorKind::InvalidPredictorColumns { actual },
+            position,
+        )
+    }
+
+    /// [`FlateErrorKind::InvalidDecodeParmsKeyType`] を指定位置・キー名・実種別で構築する。
+    pub fn invalid_decode_parms_key_type_at(
+        position: ByteOffset,
+        key: &'static str,
+        actual: ObjectKind,
+    ) -> Self {
+        Self::new(
+            FlateErrorKind::InvalidDecodeParmsKeyType { key, actual },
+            position,
+        )
+    }
+
+    /// [`FlateErrorKind::PredictorDataLengthMismatch`] を指定位置・期待行長・実長で構築する。
+    pub fn predictor_data_length_mismatch_at(
+        position: ByteOffset,
+        expected_multiple_of: usize,
+        actual: usize,
+    ) -> Self {
+        Self::new(
+            FlateErrorKind::PredictorDataLengthMismatch {
+                expected_multiple_of,
+                actual,
+            },
+            position,
+        )
+    }
+
+    /// [`FlateErrorKind::InvalidPngFilterTag`] を指定位置・実タグ・行番号で構築する。
+    pub fn invalid_png_filter_tag_at(position: ByteOffset, actual: u8, row: usize) -> Self {
+        Self::new(
+            FlateErrorKind::InvalidPngFilterTag { actual, row },
+            position,
+        )
+    }
+
+    /// [`FlateErrorKind::PredictorParameterOverflow`] を指定位置で構築する。
+    pub fn predictor_parameter_overflow_at(position: ByteOffset) -> Self {
+        Self::new(FlateErrorKind::PredictorParameterOverflow, position)
     }
 }
 
