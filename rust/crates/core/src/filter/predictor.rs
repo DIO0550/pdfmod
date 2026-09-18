@@ -488,13 +488,19 @@ pub fn decode_tiff_predictor(
     }
 
     let mut out = data.to_vec();
-    let num_rows = data.len() / row_bytes;
 
-    for row_idx in 0..num_rows {
-        let row_start = row_idx * row_bytes;
+    for row in out.chunks_exact_mut(row_bytes) {
         for i in bpp..row_bytes {
-            let prev = out[row_start + i - bpp];
-            out[row_start + i] = out[row_start + i].wrapping_add(prev);
+            let prev_idx = i
+                .checked_sub(bpp)
+                .ok_or_else(|| FlateError::predictor_parameter_overflow_at(position))?;
+            let prev = *row
+                .get(prev_idx)
+                .ok_or_else(|| FlateError::predictor_parameter_overflow_at(position))?;
+            let curr = row
+                .get_mut(i)
+                .ok_or_else(|| FlateError::predictor_parameter_overflow_at(position))?;
+            *curr = curr.wrapping_add(prev);
         }
     }
 
@@ -532,29 +538,51 @@ pub fn decode_png_predictor(
     let mut out = vec![0u8; out_len];
     let bpp = params.colors().get().get();
 
-    for row_idx in 0..num_rows {
-        let in_record = &data[row_idx * record_size..(row_idx + 1) * record_size];
-        let tag = PngFilterTag::from_u8(in_record[0], RowIndex::new(row_idx), position)?;
-        let in_row = &in_record[1..];
-        let out_row_start = row_idx * row_bytes;
+    for (row_idx, in_record) in data.chunks_exact(record_size).enumerate() {
+        let (tag_byte, in_row) = in_record
+            .split_first()
+            .ok_or_else(|| FlateError::predictor_parameter_overflow_at(position))?;
+        let tag = PngFilterTag::from_u8(*tag_byte, RowIndex::new(row_idx), position)?;
+
+        let out_row_start = row_idx
+            .checked_mul(row_bytes)
+            .ok_or_else(|| FlateError::predictor_parameter_overflow_at(position))?;
+        let prev_row_start = row_idx
+            .checked_sub(1)
+            .and_then(|prev| prev.checked_mul(row_bytes));
 
         for i in 0..row_bytes {
             let left = if i >= bpp {
-                out[out_row_start + i - bpp]
+                let left_idx = (out_row_start + i)
+                    .checked_sub(bpp)
+                    .ok_or_else(|| FlateError::predictor_parameter_overflow_at(position))?;
+                *out.get(left_idx)
+                    .ok_or_else(|| FlateError::predictor_parameter_overflow_at(position))?
             } else {
                 0
             };
 
-            let above = if row_idx > 0 {
-                let prev_row_start = (row_idx - 1) * row_bytes;
-                out[prev_row_start + i]
+            let above = if let Some(prev_start) = prev_row_start {
+                let above_idx = prev_start
+                    .checked_add(i)
+                    .ok_or_else(|| FlateError::predictor_parameter_overflow_at(position))?;
+                *out.get(above_idx)
+                    .ok_or_else(|| FlateError::predictor_parameter_overflow_at(position))?
             } else {
                 0
             };
 
-            let upper_left = if row_idx > 0 && i >= bpp {
-                let prev_row_start = (row_idx - 1) * row_bytes;
-                out[prev_row_start + i - bpp]
+            let upper_left = if let Some(prev_start) = prev_row_start {
+                if i >= bpp {
+                    let ul_idx = prev_start
+                        .checked_add(i)
+                        .and_then(|idx| idx.checked_sub(bpp))
+                        .ok_or_else(|| FlateError::predictor_parameter_overflow_at(position))?;
+                    *out.get(ul_idx)
+                        .ok_or_else(|| FlateError::predictor_parameter_overflow_at(position))?
+                } else {
+                    0
+                }
             } else {
                 0
             };
@@ -567,7 +595,16 @@ pub fn decode_png_predictor(
                 PngFilterTag::Paeth => paeth_predictor(left, above, upper_left),
             };
 
-            out[out_row_start + i] = in_row[i].wrapping_add(predicted);
+            let in_val = *in_row
+                .get(i)
+                .ok_or_else(|| FlateError::predictor_parameter_overflow_at(position))?;
+            let dest_idx = out_row_start
+                .checked_add(i)
+                .ok_or_else(|| FlateError::predictor_parameter_overflow_at(position))?;
+            let dest = out
+                .get_mut(dest_idx)
+                .ok_or_else(|| FlateError::predictor_parameter_overflow_at(position))?;
+            *dest = in_val.wrapping_add(predicted);
         }
     }
 
