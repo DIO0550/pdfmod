@@ -446,7 +446,7 @@ fn extract_integer_param(
 /// 最も近い近傍点の値を返す。距離が同等の場合は a, b, c の優先順。
 #[inline]
 #[must_use]
-pub fn paeth_predictor(a: u8, b: u8, c: u8) -> u8 {
+pub(crate) fn paeth_predictor(a: u8, b: u8, c: u8) -> u8 {
     let a_i = a as i16;
     let b_i = b as i16;
     let c_i = c as i16;
@@ -467,7 +467,7 @@ pub fn paeth_predictor(a: u8, b: u8, c: u8) -> u8 {
 ///
 /// 行ごとに同行内の左サンプル（`i - colors`）を加算（`wrapping_add`）して元データを復元する。
 /// 各行は独立しており、次行の先頭サンプルは直前行を参照しない。
-pub fn decode_tiff_predictor(
+pub(crate) fn decode_tiff_predictor(
     data: &[u8],
     params: &PredictorParams,
     position: ByteOffset,
@@ -511,7 +511,7 @@ pub fn decode_tiff_predictor(
 ///
 /// 行ごとに先頭 1 バイトのフィルタタグ（0..=4）に従って左・直上・左上の復号済みバイト
 /// から予測値を計算し、加算（`wrapping_add`）して生データを復元する。
-pub fn decode_png_predictor(
+pub(crate) fn decode_png_predictor(
     data: &[u8],
     params: &PredictorParams,
     position: ByteOffset,
