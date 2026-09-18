@@ -8,3 +8,4 @@
 
 pub mod error;
 pub mod flate;
+pub mod predictor;

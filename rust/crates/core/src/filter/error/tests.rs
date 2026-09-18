@@ -122,3 +122,62 @@ fn boundary_positions_are_preserved() {
         assert_eq!(error.position, position, "position {value} should be kept");
     }
 }
+
+// Predictor 関連の引数なしコンストラクタが kind と position を透過することを確認する。
+#[test]
+fn predictor_constructors_without_payload_pass_through_kind_and_position() {
+    let position = ByteOffset::new(42);
+    let error = FlateError::predictor_parameter_overflow_at(position);
+    assert_eq!(error.kind, FlateErrorKind::PredictorParameterOverflow);
+    assert_eq!(error.position, position);
+}
+
+// Predictor 関連の付随情報を持つコンストラクタが、実値と position を透過することを確認する。
+#[test]
+fn predictor_constructors_with_payload_pass_through_values_and_position() {
+    use crate::object::object_kind::ObjectKind;
+
+    let position = ByteOffset::new(99);
+
+    let cases: [(FlateError, FlateErrorKind); 7] = [
+        (
+            FlateError::unsupported_predictor_at(position, 16),
+            FlateErrorKind::UnsupportedPredictor { actual: 16 },
+        ),
+        (
+            FlateError::unsupported_bits_per_component_at(position, 16),
+            FlateErrorKind::UnsupportedBitsPerComponent { actual: 16 },
+        ),
+        (
+            FlateError::invalid_predictor_colors_at(position, 0),
+            FlateErrorKind::InvalidPredictorColors { actual: 0 },
+        ),
+        (
+            FlateError::invalid_predictor_columns_at(position, -1),
+            FlateErrorKind::InvalidPredictorColumns { actual: -1 },
+        ),
+        (
+            FlateError::invalid_decode_parms_key_type_at(position, "Predictor", ObjectKind::String),
+            FlateErrorKind::InvalidDecodeParmsKeyType {
+                key: "Predictor",
+                actual: ObjectKind::String,
+            },
+        ),
+        (
+            FlateError::predictor_data_length_mismatch_at(position, 5, 12),
+            FlateErrorKind::PredictorDataLengthMismatch {
+                expected_multiple_of: 5,
+                actual: 12,
+            },
+        ),
+        (
+            FlateError::invalid_png_filter_tag_at(position, 5, 2),
+            FlateErrorKind::InvalidPngFilterTag { actual: 5, row: 2 },
+        ),
+    ];
+
+    for (error, expected) in cases {
+        assert_eq!(error.kind, expected, "kind should be {expected:?}");
+        assert_eq!(error.position, position, "position should pass through");
+    }
+}
