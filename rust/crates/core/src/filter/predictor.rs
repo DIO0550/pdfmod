@@ -23,20 +23,21 @@ use crate::object::dictionary::PdfDictionary;
 /// `Colors * Columns * (BitsPerComponent / 8)`（現スコープでは 8bit 固定のため `Colors * Columns`）。
 /// 0 を型レベルで排除する newtype。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct RowBytes(pub(crate) NonZeroUsize);
+pub(crate) struct RowBytes(pub(crate) NonZeroUsize);
 
 impl RowBytes {
     /// 指定された [`NonZeroUsize`] から [`RowBytes`] を構築する。
     #[inline]
     #[must_use]
-    pub const fn new(value: NonZeroUsize) -> Self {
+    pub(crate) const fn new(value: NonZeroUsize) -> Self {
         Self(value)
     }
 
     /// `usize` 値から [`RowBytes`] を構築する。`0` の場合は `None` を返す。
     #[inline]
     #[must_use]
-    pub const fn from_usize(value: usize) -> Option<Self> {
+    #[allow(dead_code)]
+    pub(crate) const fn from_usize(value: usize) -> Option<Self> {
         match NonZeroUsize::new(value) {
             Some(nz) => Some(Self(nz)),
             None => None,
@@ -44,7 +45,7 @@ impl RowBytes {
     }
 
     /// `colors` と `columns` から計算して構築する。乗算オーバーフロー時はエラー。
-    pub fn compute(
+    pub(crate) fn compute(
         colors: Colors,
         columns: Columns,
         position: ByteOffset,
@@ -59,17 +60,10 @@ impl RowBytes {
         Ok(Self(nz))
     }
 
-    /// 保持する [`NonZeroUsize`] 値を取得する。
-    #[inline]
-    #[must_use]
-    pub const fn get(self) -> NonZeroUsize {
-        self.0
-    }
-
     /// バイト長を `usize` として取得する。
     #[inline]
     #[must_use]
-    pub const fn as_usize(self) -> usize {
+    pub(crate) const fn as_usize(self) -> usize {
         self.0.get()
     }
 }
@@ -78,20 +72,14 @@ impl RowBytes {
 ///
 /// `RowBytes + 1`。0 を型レベルで排除する newtype。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct RecordSize(pub(crate) NonZeroUsize);
+pub(crate) struct RecordSize(pub(crate) NonZeroUsize);
 
 impl RecordSize {
-    /// 指定された [`NonZeroUsize`] から [`RecordSize`] を構築する。
-    #[inline]
-    #[must_use]
-    pub const fn new(value: NonZeroUsize) -> Self {
-        Self(value)
-    }
-
     /// `usize` 値から [`RecordSize`] を構築する。`0` の場合は `None` を返す。
     #[inline]
     #[must_use]
-    pub const fn from_usize(value: usize) -> Option<Self> {
+    #[allow(dead_code)]
+    pub(crate) const fn from_usize(value: usize) -> Option<Self> {
         match NonZeroUsize::new(value) {
             Some(nz) => Some(Self(nz)),
             None => None,
@@ -99,7 +87,10 @@ impl RecordSize {
     }
 
     /// [`RowBytes`] にタグ 1 バイトを加算して構築する。加算オーバーフロー時はエラー。
-    pub fn from_row_bytes(row_bytes: RowBytes, position: ByteOffset) -> Result<Self, FlateError> {
+    pub(crate) fn from_row_bytes(
+        row_bytes: RowBytes,
+        position: ByteOffset,
+    ) -> Result<Self, FlateError> {
         let val = row_bytes
             .as_usize()
             .checked_add(1)
@@ -109,37 +100,30 @@ impl RecordSize {
         Ok(Self(nz))
     }
 
-    /// 保持する [`NonZeroUsize`] 値を取得する。
-    #[inline]
-    #[must_use]
-    pub const fn get(self) -> NonZeroUsize {
-        self.0
-    }
-
     /// レコード長を `usize` として取得する。
     #[inline]
     #[must_use]
-    pub const fn as_usize(self) -> usize {
+    pub(crate) const fn as_usize(self) -> usize {
         self.0.get()
     }
 }
 
 /// 行番号を表す newtype（0始まり）。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct RowIndex(pub(crate) usize);
+pub(crate) struct RowIndex(pub(crate) usize);
 
 impl RowIndex {
     /// 指定された行番号から [`RowIndex`] を構築する。
     #[inline]
     #[must_use]
-    pub const fn new(value: usize) -> Self {
+    pub(crate) const fn new(value: usize) -> Self {
         Self(value)
     }
 
     /// 行番号を `usize` として取得する。
     #[inline]
     #[must_use]
-    pub const fn get(self) -> usize {
+    pub(crate) const fn get(self) -> usize {
         self.0
     }
 }
@@ -407,7 +391,7 @@ impl PredictorParams {
     /// 1行あたりの生データ長（バイト数）を取得する。
     #[inline]
     #[must_use]
-    pub const fn row_bytes(&self) -> RowBytes {
+    pub(crate) const fn row_bytes(&self) -> RowBytes {
         self.row_bytes
     }
 
