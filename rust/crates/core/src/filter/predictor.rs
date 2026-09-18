@@ -4,9 +4,9 @@
 //! バイト列に対して TIFF Predictor 2（水平差分）および PNG 各種フィルタ（None, Sub, Up, Average, Paeth）
 //! の逆適用を行う。
 
-pub mod colors;
-pub mod columns;
-pub mod key;
+mod colors;
+mod columns;
+mod key;
 
 pub use colors::Colors;
 pub use columns::Columns;
