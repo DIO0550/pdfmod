@@ -77,3 +77,12 @@ fn read_beyond_remaining() {
     assert_eq!(reader.read_be_uint(3), None);
     assert_eq!(reader.position(), ByteOffset::new(0));
 }
+
+#[test]
+fn read_be_uint_width_greater_than_eight_returns_none() {
+    let data = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    let mut reader = ByteReader::new(&data);
+
+    assert_eq!(reader.read_be_uint(9), None);
+    assert_eq!(reader.position(), ByteOffset::new(0));
+}
