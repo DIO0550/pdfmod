@@ -51,13 +51,13 @@ impl IndexRanges {
         }
 
         let mut ranges = Vec::with_capacity(arr.len() / 2);
-        for chunk in arr.chunks_exact(2) {
-            let first = match chunk.first() {
-                Some(PdfObject::Integer(n)) if *n >= 0 => *n as u64,
+        for [first_obj, count_obj] in arr.as_chunks::<2>().0 {
+            let first = match first_obj {
+                PdfObject::Integer(n) if *n >= 0 => *n as u64,
                 _ => return Err(XRefError::new(XRefErrorKind::InvalidIndexArray, pos)),
             };
-            let count = match chunk.get(1) {
-                Some(PdfObject::Integer(n)) if *n >= 0 => *n as u64,
+            let count = match count_obj {
+                PdfObject::Integer(n) if *n >= 0 => *n as u64,
                 _ => return Err(XRefError::new(XRefErrorKind::InvalidIndexArray, pos)),
             };
             ranges.push((first, count));
