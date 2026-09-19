@@ -44,3 +44,16 @@ fn raw_deflate_passed_to_decode_zlib_is_rejected_by_header_check() {
         FlateErrorKind::UnsupportedCompressionMethod { actual: 0x0B }
     );
 }
+
+// 上限付き展開では、展開後サイズが制限を超えた時点で失敗することを確認する。
+#[test]
+fn bounded_zlib_decode_rejects_output_past_limit() {
+    let input = [
+        0x78, 0x01, 0xCB, 0x48, 0xCD, 0xC9, 0xC9, 0x07, 0x00, 0x06, 0x2C, 0x02, 0x15,
+    ];
+
+    assert_eq!(
+        decode_zlib_bounded_err(&input, 4),
+        FlateErrorKind::OutputLimitExceeded { limit: 4 }
+    );
+}

@@ -1,5 +1,6 @@
 //! DEFLATE ブロック列の展開。RFC 1951 §3.2.3 に対応する。
 
+use crate::byte_offset::ByteOffset;
 use crate::filter::error::FlateError;
 use crate::filter::flate::bit_reader::BitReader;
 use crate::filter::flate::huffman::HuffmanTables;
@@ -30,6 +31,8 @@ pub struct Inflater<'a> {
     window: Window,
     /// 固定 Huffman の符号表。不変なので生成は 1 度だけ。
     fixed_tables: HuffmanTables,
+    /// 展開後サイズの上限。指定時はこれを超える出力を拒否する。
+    max_output_len: Option<usize>,
 }
 
 impl<'a> Inflater<'a> {
@@ -41,12 +44,25 @@ impl<'a> Inflater<'a> {
     ///
     /// 固定符号表の構築に失敗した場合。固定符号長表は常に妥当なので実際には起きない。
     pub fn new(reader: BitReader<'a>) -> Result<Self, FlateError> {
+        Self::build(reader, None)
+    }
+
+    /// 出力サイズ上限付きの展開器を作る。
+    pub fn new_with_limit(
+        reader: BitReader<'a>,
+        max_output_len: usize,
+    ) -> Result<Self, FlateError> {
+        Self::build(reader, Some(max_output_len))
+    }
+
+    fn build(reader: BitReader<'a>, max_output_len: Option<usize>) -> Result<Self, FlateError> {
         Ok(Self {
             reader,
             window: Window::new(),
             // 固定符号表は RFC 1951 §3.2.6 の定数から作られる不変の表なので、
             // BTYPE=01 のブロックが現れるたびに作り直さない。
             fixed_tables: HuffmanTables::fixed()?,
+            max_output_len,
         })
     }
 
@@ -70,11 +86,21 @@ impl<'a> Inflater<'a> {
             match block_type {
                 BLOCK_TYPE_STORED => self.stored_block()?,
                 BLOCK_TYPE_FIXED => {
-                    Self::huffman_block(&mut self.reader, &mut self.window, &self.fixed_tables)?;
+                    Self::huffman_block(
+                        &mut self.reader,
+                        &mut self.window,
+                        &self.fixed_tables,
+                        self.max_output_len,
+                    )?;
                 }
                 BLOCK_TYPE_DYNAMIC => {
                     let tables = HuffmanTables::read_dynamic(&mut self.reader)?;
-                    Self::huffman_block(&mut self.reader, &mut self.window, &tables)?;
+                    Self::huffman_block(
+                        &mut self.reader,
+                        &mut self.window,
+                        &tables,
+                        self.max_output_len,
+                    )?;
                 }
                 _ => return Err(FlateError::reserved_block_type_at(position, block_type)),
             }
@@ -104,7 +130,9 @@ impl<'a> Inflater<'a> {
         if nlen != !len {
             return Err(FlateError::stored_length_mismatch_at(position, len, nlen));
         }
-        let data = self.reader.take_bytes(usize::from(len))?;
+        let len = usize::from(len);
+        self.ensure_output_capacity(len, position)?;
+        let data = self.reader.take_bytes(len)?;
         self.window.extend_from_slice(data);
         Ok(())
     }
@@ -120,19 +148,66 @@ impl<'a> Inflater<'a> {
         reader: &mut BitReader<'a>,
         window: &mut Window,
         tables: &HuffmanTables,
+        max_output_len: Option<usize>,
     ) -> Result<(), FlateError> {
         loop {
             let symbol = tables.literal.decode(reader)?;
             match symbol {
-                0..=255 => window.push_literal(u8::try_from(symbol).unwrap_or_default()),
+                0..=255 => {
+                    Self::ensure_output_capacity_for_window(
+                        window,
+                        1,
+                        max_output_len,
+                        reader.position(),
+                    )?;
+                    window.push_literal(u8::try_from(symbol).unwrap_or_default());
+                }
                 END_OF_BLOCK => return Ok(()),
                 _ => {
                     let length = Length::read(reader, symbol)?;
                     let distance_symbol = tables.distance.decode(reader)?;
                     let distance = Distance::read(reader, distance_symbol)?;
+                    Self::ensure_output_capacity_for_window(
+                        window,
+                        length.value(),
+                        max_output_len,
+                        reader.position(),
+                    )?;
                     window.copy_match(distance, length, reader.position())?;
                 }
             }
         }
+    }
+
+    fn ensure_output_capacity(
+        &self,
+        additional: usize,
+        position: ByteOffset,
+    ) -> Result<(), FlateError> {
+        Self::ensure_output_capacity_for_window(
+            &self.window,
+            additional,
+            self.max_output_len,
+            position,
+        )
+    }
+
+    fn ensure_output_capacity_for_window(
+        window: &Window,
+        additional: usize,
+        max_output_len: Option<usize>,
+        position: ByteOffset,
+    ) -> Result<(), FlateError> {
+        let Some(limit) = max_output_len else {
+            return Ok(());
+        };
+        let next_len = window
+            .len()
+            .checked_add(additional)
+            .ok_or_else(|| FlateError::output_limit_exceeded_at(position, limit))?;
+        if next_len > limit {
+            return Err(FlateError::output_limit_exceeded_at(position, limit));
+        }
+        Ok(())
     }
 }

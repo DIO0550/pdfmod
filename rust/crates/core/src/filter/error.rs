@@ -74,6 +74,11 @@ pub enum FlateErrorKind {
         /// その時点で出力済みのバイト数。
         available: usize,
     },
+    /// 展開結果が呼び出し側の上限を超える。
+    OutputLimitExceeded {
+        /// 許可された展開後サイズの上限。
+        limit: usize,
+    },
     /// Adler-32 チェックサムが展開結果と一致しない。
     ChecksumMismatch {
         /// zlib トレーラに記録されていた値。
@@ -227,6 +232,11 @@ impl FlateError {
             },
             position,
         )
+    }
+
+    /// [`FlateErrorKind::OutputLimitExceeded`] を指定位置・上限値で構築する。
+    pub fn output_limit_exceeded_at(position: ByteOffset, limit: usize) -> Self {
+        Self::new(FlateErrorKind::OutputLimitExceeded { limit }, position)
     }
 
     /// [`FlateErrorKind::ChecksumMismatch`] を指定位置・実値で構築する。

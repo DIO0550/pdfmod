@@ -490,6 +490,19 @@ fn reject_corrupted_stream_data() {
 }
 
 #[test]
+fn reject_compressed_output_exceeding_xref_limit() {
+    let compressed = make_zlib(&[0x01, 0x00, 0x00, 0x00]);
+    let pdf = make_stream_object(
+        10,
+        0,
+        "/Type /XRef /Size 1 /W [1 1 1] /Filter /FlateDecode",
+        &compressed,
+    );
+    let err = ParsedXRefStream::parse(&pdf, ByteOffset::new(0)).unwrap_err();
+    assert_eq!(err.kind, XRefErrorKind::StreamDecodeFailed);
+}
+
+#[test]
 fn reject_data_length_mismatch() {
     // TC-19: 展開データ長とエントリ総数×レコード長が合わない
     let raw = [0x01, 0x00, 0x00]; // 1 entry (3 bytes) but /Size 2 expects 6 bytes

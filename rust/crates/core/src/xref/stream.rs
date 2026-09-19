@@ -7,7 +7,7 @@ pub mod key;
 use std::borrow::Cow;
 
 use crate::byte_offset::ByteOffset;
-use crate::filter::flate::decode_zlib;
+use crate::filter::flate::decode_zlib_bounded;
 use crate::filter::predictor::{decode_predictor, PredictorParams};
 use crate::object::dictionary::PdfDictionary;
 use crate::object::object_kind::ObjectKind;
@@ -95,14 +95,16 @@ impl ParsedXRefStream {
         let widths = FieldWidths::from_dictionary(&dict, offset)?;
         let index_ranges = IndexRanges::from_dictionary(&dict, size, offset)?;
 
-        // /Filter, /DecodeParms による復号（Cow により非圧縮時の余分なアロケーションを排除）
-        let decoded_data = decode_stream_data(&raw_data, &dict, offset)?;
-
-        // データ長検証
+        // データ長検証に使う期待レコード長を先に確定する。
         let expected_len = index_ranges
             .total_entries()
             .checked_mul(widths.record_size())
             .ok_or_else(|| XRefError::new(XRefErrorKind::InvalidIndexArray, offset))?;
+
+        // /Filter, /DecodeParms による復号（Cow により非圧縮時の余分なアロケーションを排除）
+        let decoded_data = decode_stream_data(&raw_data, &dict, offset, expected_len)?;
+
+        // データ長検証
 
         if decoded_data.len() != expected_len {
             return Err(XRefError::new(
@@ -181,28 +183,60 @@ fn decode_stream_data<'a>(
     raw: &'a [u8],
     dict: &PdfDictionary,
     pos: ByteOffset,
+    expected_decoded_len: usize,
 ) -> Result<Cow<'a, [u8]>, XRefError> {
+    let predictor_params =
+        extract_single_decode_parms(dict.get(XRefStreamKey::DecodeParms.as_bytes()), pos)?
+            .map(|parms| PredictorParams::from_dictionary(parms, pos))
+            .transpose()
+            .map_err(|_| XRefError::new(XRefErrorKind::StreamDecodeFailed, pos))?;
+    let max_decompressed_len = max_decompressed_len(expected_decoded_len, predictor_params, pos)
+        .map_err(|_| XRefError::new(XRefErrorKind::StreamDecodeFailed, pos))?;
+
     let decompressed: Cow<'a, [u8]> =
         match extract_single_filter(dict.get(XRefStreamKey::Filter.as_bytes()), pos)? {
             None => Cow::Borrowed(raw),
             Some(name) if name == b"FlateDecode" => {
-                let vec = decode_zlib(raw)
+                let vec = decode_zlib_bounded(raw, max_decompressed_len)
                     .map_err(|_| XRefError::new(XRefErrorKind::StreamDecodeFailed, pos))?;
                 Cow::Owned(vec)
             }
             Some(_) => return Err(XRefError::new(XRefErrorKind::UnsupportedFilter, pos)),
         };
 
-    match extract_single_decode_parms(dict.get(XRefStreamKey::DecodeParms.as_bytes()), pos)? {
+    match predictor_params {
         None => Ok(decompressed),
-        Some(parms) => {
-            let params = PredictorParams::from_dictionary(parms, pos)
-                .map_err(|_| XRefError::new(XRefErrorKind::StreamDecodeFailed, pos))?;
+        Some(params) => {
             let vec = decode_predictor(&decompressed, &params, pos)
                 .map_err(|_| XRefError::new(XRefErrorKind::StreamDecodeFailed, pos))?;
             Ok(Cow::Owned(vec))
         }
     }
+}
+
+fn max_decompressed_len(
+    expected_decoded_len: usize,
+    predictor_params: Option<PredictorParams>,
+    pos: ByteOffset,
+) -> Result<usize, crate::filter::error::FlateError> {
+    let Some(params) = predictor_params else {
+        return Ok(expected_decoded_len);
+    };
+    if !params.algorithm().is_png() {
+        return Ok(expected_decoded_len);
+    }
+
+    let row_bytes = params.row_bytes().as_usize();
+    let row_count = expected_decoded_len
+        .checked_add(row_bytes.saturating_sub(1))
+        .ok_or_else(|| crate::filter::error::FlateError::predictor_parameter_overflow_at(pos))?
+        / row_bytes;
+    let record_size = row_bytes
+        .checked_add(1)
+        .ok_or_else(|| crate::filter::error::FlateError::predictor_parameter_overflow_at(pos))?;
+    row_count
+        .checked_mul(record_size)
+        .ok_or_else(|| crate::filter::error::FlateError::predictor_parameter_overflow_at(pos))
 }
 
 fn extract_single_filter(
