@@ -440,15 +440,32 @@ fn reject_unsupported_filter() {
 }
 
 #[test]
-fn reject_invalid_filter_type() {
-    // /Filter が Name 以外（配列など）の場合は InvalidKeyType
-    let array_filter = make_stream_object(
+fn parse_xref_stream_with_filter_and_decode_parms_arrays() {
+    let png_rows = [0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x01, 0x01, 0x00, 0x00];
+    let compressed = make_zlib(&png_rows);
+    let pdf = make_stream_object(
         10,
         0,
-        "/Type /XRef /Size 1 /W [1 1 1] /Filter [/FlateDecode]",
-        b"abc",
+        "/Type /XRef /Size 2 /W [1 2 1] /Filter [/FlateDecode] /DecodeParms [<< /Predictor 12 /Columns 4 >>] /Root 1 0 R",
+        &compressed,
     );
-    let err = ParsedXRefStream::parse(&array_filter, ByteOffset::new(0)).unwrap_err();
+
+    let parsed = ParsedXRefStream::parse(&pdf, ByteOffset::new(0)).unwrap();
+    let obj1 = ObjectNumber::new(1).unwrap();
+    assert_eq!(
+        parsed.table().get(obj1),
+        Some(&XRefEntry::InUse {
+            offset: ByteOffset::new(256),
+            generation: GenerationNumber::new(0),
+        })
+    );
+}
+
+#[test]
+fn reject_invalid_filter_type() {
+    let invalid_filter =
+        make_stream_object(10, 0, "/Type /XRef /Size 1 /W [1 1 1] /Filter [1]", b"abc");
+    let err = ParsedXRefStream::parse(&invalid_filter, ByteOffset::new(0)).unwrap_err();
     assert!(matches!(
         err.kind,
         XRefErrorKind::InvalidKeyType {
