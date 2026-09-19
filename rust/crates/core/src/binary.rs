@@ -17,7 +17,7 @@ impl<'a> ByteReader<'a> {
 
     /// 現在の読み取り位置（先頭からのバイトオフセット）を返す。
     #[inline]
-    #[must_use]
+    #[allow(dead_code)]
     pub fn position(&self) -> ByteOffset {
         ByteOffset::new(u64::try_from(self.pos).unwrap_or(u64::MAX))
     }
@@ -25,6 +25,7 @@ impl<'a> ByteReader<'a> {
     /// 残りバイト数を返す。
     #[inline]
     #[must_use]
+    #[allow(dead_code)]
     pub const fn remaining(&self) -> usize {
         self.input.len().saturating_sub(self.pos)
     }
@@ -32,6 +33,7 @@ impl<'a> ByteReader<'a> {
     /// すべて読み切ったかを返す。
     #[inline]
     #[must_use]
+    #[allow(dead_code)]
     pub const fn is_empty(&self) -> bool {
         self.pos >= self.input.len()
     }
