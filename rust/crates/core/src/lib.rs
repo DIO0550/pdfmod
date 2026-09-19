@@ -20,6 +20,7 @@
 //! 従来形式トレイラの解析を提供する。
 //! xref ストリームの解析と `/Prev` チェーン走査は後続 PR で追加する。
 
+pub(crate) mod binary;
 pub mod byte_offset;
 pub mod encrypt;
 pub mod error;
