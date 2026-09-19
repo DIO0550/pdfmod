@@ -20,3 +20,10 @@ fn decode_zlib_err(input: &[u8]) -> FlateErrorKind {
         .expect_err("invalid zlib stream should fail")
         .kind
 }
+
+// 上限付き展開に失敗する前提でエラー種別を取り出す。
+fn decode_zlib_bounded_err(input: &[u8], max_output_len: usize) -> FlateErrorKind {
+    decode_zlib_bounded(input, max_output_len)
+        .expect_err("zlib stream should exceed the configured output limit")
+        .kind
+}

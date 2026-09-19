@@ -179,6 +179,13 @@ impl Window {
         Ok(())
     }
 
+    /// 現在までに展開したバイト数を返す。
+    #[inline]
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.bytes.len()
+    }
+
     /// 展開結果のバイト列を取り出す。
     #[must_use]
     pub fn into_bytes(self) -> Vec<u8> {

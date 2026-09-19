@@ -58,6 +58,14 @@ pub fn decode_zlib(input: &[u8]) -> Result<Vec<u8>, FlateError> {
     zlib::decode(input)
 }
 
+/// zlib 形式のバイト列を、展開後サイズの上限付きで展開する。
+pub(crate) fn decode_zlib_bounded(
+    input: &[u8],
+    max_output_len: usize,
+) -> Result<Vec<u8>, FlateError> {
+    zlib::decode_with_limit(input, max_output_len)
+}
+
 /// raw deflate（RFC 1951 のみ、zlib ラッパ無し）のバイト列を展開する。
 ///
 /// ヘッダ検証もチェックサム検証も行わない。

@@ -5,9 +5,13 @@
 //! 公開境界での `PdfError` への変換（`From` 実装）は後続 Issue に委ねる。
 
 use crate::byte_offset::ByteOffset;
+use crate::object::object_kind::ObjectKind;
+use crate::parser::error::ParseErrorKind;
+use crate::xref::stream::key::XRefStreamKey;
+use crate::xref::trailer::error::TrailerErrorKind;
 
 /// xref 解析エラーの種別。
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum XRefErrorKind {
     /// 指定位置（空白・コメントを飛ばした先）に `xref` キーワードが無い。
     ///
@@ -35,10 +39,39 @@ pub enum XRefErrorKind {
     },
     /// 宣言された件数ぶんのエントリを読み切る前に入力が尽きた。
     UnexpectedEof,
+    /// 指定位置のオブジェクトが間接ストリームオブジェクトでない、または `/Type /XRef` でない。
+    NotAnXRefStream,
+    /// 必須キーが辞書に存在しない。
+    MissingRequiredKey { key: XRefStreamKey },
+    /// 辞書エントリの型が期待と異なる。
+    InvalidKeyType {
+        key: XRefStreamKey,
+        actual: ObjectKind,
+    },
+    /// `/W` 配列の要素数や各フィールド幅が不正（3要素でない、負値、上限超過など）。
+    InvalidWArray,
+    /// `/Index` 配列の要素数が偶数でない、または負値が含まれる。
+    InvalidIndexArray,
+    /// 未対応の `/Filter` が指定された。
+    UnsupportedFilter,
+    /// ストリームの復号（FlateDecode または Predictor）に失敗した。
+    StreamDecodeFailed,
+    /// 復号後バイナリデータの長さが `/Index` による総エントリ数 × レコード長と一致しない。
+    DataLengthMismatch { expected: usize, actual: usize },
+    /// エントリの種別（Field 1）が不正（0, 1, 2 以外）。
+    InvalidEntryType { actual: u64 },
+    /// type 2 エントリで親ストリーム番号が 0 など、不正なオブジェクト番号。
+    InvalidObjectNumber,
+    /// トレイラ辞書のパースでエラーが発生した。
+    Trailer(TrailerErrorKind),
+    /// 間接オブジェクトのパースに失敗した。
+    ObjectParseFailed { kind: ParseErrorKind },
+    /// `/Size` 等に負の整数が指定された。
+    NegativeValue { key: XRefStreamKey },
 }
 
 /// xref 解析エラー。位置情報を必須で保持する。
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 #[must_use]
 pub struct XRefError {
     /// エラーの種別と付随情報。
