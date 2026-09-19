@@ -440,6 +440,25 @@ fn reject_unsupported_filter() {
 }
 
 #[test]
+fn reject_invalid_filter_type() {
+    // /Filter が Name 以外（配列など）の場合は InvalidKeyType
+    let array_filter = make_stream_object(
+        10,
+        0,
+        "/Type /XRef /Size 1 /W [1 1 1] /Filter [/FlateDecode]",
+        b"abc",
+    );
+    let err = ParsedXRefStream::parse(&array_filter, ByteOffset::new(0)).unwrap_err();
+    assert!(matches!(
+        err.kind,
+        XRefErrorKind::InvalidKeyType {
+            key: XRefStreamKey::Filter,
+            ..
+        }
+    ));
+}
+
+#[test]
 fn reject_corrupted_stream_data() {
     // TC-18: 壊れた zlib データ
     let corrupted = [0x78, 0x01, 0xff, 0xff, 0xff];

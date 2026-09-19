@@ -189,7 +189,18 @@ fn decode_stream_data<'a>(
                 .map_err(|_| XRefError::new(XRefErrorKind::StreamDecodeFailed, pos))?;
             Cow::Owned(vec)
         }
-        _ => return Err(XRefError::new(XRefErrorKind::UnsupportedFilter, pos)),
+        Some(PdfObject::Name(_)) => {
+            return Err(XRefError::new(XRefErrorKind::UnsupportedFilter, pos))
+        }
+        Some(other) => {
+            return Err(XRefError::new(
+                XRefErrorKind::InvalidKeyType {
+                    key: XRefStreamKey::Filter,
+                    actual: other.kind(),
+                },
+                pos,
+            ))
+        }
     };
 
     match dict.get(XRefStreamKey::DecodeParms.as_bytes()) {
