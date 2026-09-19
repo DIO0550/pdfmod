@@ -14,11 +14,11 @@
 //! byte_offset / encrypt / error / file / filter / lexer / object / parser / xref の各モジュールは実装済み。
 //! `encrypt` は暗号化辞書（`/Encrypt`）の型表現を提供する（復号処理は未実装）。
 //! `file` はヘッダ解析と startxref の末尾スキャンを提供する。
-//! `filter` は `/FlateDecode`（zlib / DEFLATE）の展開を提供する。
-//! 他のフィルタと `/DecodeParms` の Predictor 適用は後続 PR で追加する。
-//! `xref` は xref エントリとテーブルの表現に加え、従来型 xref テーブルの解析と
-//! 従来形式トレイラの解析を提供する。
-//! xref ストリームの解析と `/Prev` チェーン走査は後続 PR で追加する。
+//! `filter` は `/FlateDecode`（zlib / DEFLATE）の展開と Predictor（PNG / TIFF）の適用を提供する。
+//! 他のフィルタは後続 PR で追加する。
+//! `xref` は xref エントリとテーブルの表現に加え、従来型 xref テーブルと相互参照ストリームの解析、
+//! トレイラの解析を提供する。
+//! `/Prev` チェーン走査は後続 PR で追加する。
 
 pub(crate) mod binary;
 pub mod byte_offset;
