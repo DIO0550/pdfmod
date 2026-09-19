@@ -49,8 +49,11 @@ impl<'a> ByteReader<'a> {
 
     /// 指定バイト数（0〜8 バイト）を読み進め、ビッグエンディアン符号なし整数（u64）として返す。
     /// 幅が 0 の場合はカーソルを進めず `Some(0)` を返す。
-    /// 残りバイト数が不足している場合は `None` を返す（カーソルは進まない）。
+    /// 幅が 8 を超える場合、または残りバイト数が不足している場合は `None` を返す（カーソルは進まない）。
     pub fn read_be_uint(&mut self, width: usize) -> Option<u64> {
+        if width > 8 {
+            return None;
+        }
         if width == 0 {
             return Some(0);
         }
