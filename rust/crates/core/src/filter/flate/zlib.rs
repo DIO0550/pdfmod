@@ -184,12 +184,24 @@ impl Default for Adler32 {
 ///
 /// [`decode_zlib`]: crate::filter::flate::decode_zlib
 pub fn decode(input: &[u8]) -> Result<Vec<u8>, FlateError> {
+    decode_impl(input, None)
+}
+
+/// zlib 形式のバイト列を、展開後サイズの上限付きで展開する。
+pub fn decode_with_limit(input: &[u8], max_output_len: usize) -> Result<Vec<u8>, FlateError> {
+    decode_impl(input, Some(max_output_len))
+}
+
+fn decode_impl(input: &[u8], max_output_len: Option<usize>) -> Result<Vec<u8>, FlateError> {
     let mut reader = BitReader::new(input);
     let header_bytes = reader.take_bytes(ZlibHeader::LEN)?;
     // ヘッダは検証だけが目的（展開結果を全量保持する実装ではウィンドウサイズを使わない）
     let _header = ZlibHeader::parse(header_bytes, ByteOffset::new(0))?;
 
-    let mut inflater = Inflater::new(reader)?;
+    let mut inflater = match max_output_len {
+        Some(limit) => Inflater::new_with_limit(reader, limit)?,
+        None => Inflater::new(reader)?,
+    };
     inflater.inflate()?;
     let (output, mut reader) = inflater.into_parts();
 
