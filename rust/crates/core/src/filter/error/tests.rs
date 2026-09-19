@@ -46,7 +46,7 @@ fn constructors_without_payload_pass_through_kind_and_position() {
 #[test]
 fn constructors_with_payload_pass_through_values_and_position() {
     let position = ByteOffset::new(13);
-    let cases: [(FlateError, FlateErrorKind); 10] = [
+    let cases: [(FlateError, FlateErrorKind); 11] = [
         (
             FlateError::unsupported_compression_method_at(position, 7),
             FlateErrorKind::UnsupportedCompressionMethod { actual: 7 },
@@ -89,6 +89,10 @@ fn constructors_with_payload_pass_through_values_and_position() {
                 distance: 5,
                 available: 2,
             },
+        ),
+        (
+            FlateError::output_limit_exceeded_at(position, 4),
+            FlateErrorKind::OutputLimitExceeded { limit: 4 },
         ),
     ];
 
