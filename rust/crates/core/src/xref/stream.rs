@@ -10,6 +10,7 @@ use crate::byte_offset::ByteOffset;
 use crate::filter::flate::decode_zlib;
 use crate::filter::predictor::{decode_predictor, PredictorParams};
 use crate::object::dictionary::PdfDictionary;
+use crate::object::object_kind::ObjectKind;
 use crate::object::object_number::ObjectNumber;
 use crate::object::pdf_object::PdfObject;
 use crate::parser::Parser;
@@ -181,37 +182,82 @@ fn decode_stream_data<'a>(
     dict: &PdfDictionary,
     pos: ByteOffset,
 ) -> Result<Cow<'a, [u8]>, XRefError> {
-    let filter_obj = dict.get(XRefStreamKey::Filter.as_bytes());
-    let decompressed: Cow<'a, [u8]> = match filter_obj {
-        None => Cow::Borrowed(raw),
-        Some(PdfObject::Name(n)) if n.as_bytes() == b"FlateDecode" => {
-            let vec = decode_zlib(raw)
-                .map_err(|_| XRefError::new(XRefErrorKind::StreamDecodeFailed, pos))?;
-            Cow::Owned(vec)
-        }
-        Some(PdfObject::Name(_)) => {
-            return Err(XRefError::new(XRefErrorKind::UnsupportedFilter, pos))
-        }
-        Some(other) => {
-            return Err(XRefError::new(
-                XRefErrorKind::InvalidKeyType {
-                    key: XRefStreamKey::Filter,
-                    actual: other.kind(),
-                },
-                pos,
-            ))
-        }
-    };
+    let decompressed: Cow<'a, [u8]> =
+        match extract_single_filter(dict.get(XRefStreamKey::Filter.as_bytes()), pos)? {
+            None => Cow::Borrowed(raw),
+            Some(name) if name == b"FlateDecode" => {
+                let vec = decode_zlib(raw)
+                    .map_err(|_| XRefError::new(XRefErrorKind::StreamDecodeFailed, pos))?;
+                Cow::Owned(vec)
+            }
+            Some(_) => return Err(XRefError::new(XRefErrorKind::UnsupportedFilter, pos)),
+        };
 
-    match dict.get(XRefStreamKey::DecodeParms.as_bytes()) {
+    match extract_single_decode_parms(dict.get(XRefStreamKey::DecodeParms.as_bytes()), pos)? {
         None => Ok(decompressed),
-        Some(PdfObject::Dictionary(parms)) => {
+        Some(parms) => {
             let params = PredictorParams::from_dictionary(parms, pos)
                 .map_err(|_| XRefError::new(XRefErrorKind::StreamDecodeFailed, pos))?;
             let vec = decode_predictor(&decompressed, &params, pos)
                 .map_err(|_| XRefError::new(XRefErrorKind::StreamDecodeFailed, pos))?;
             Ok(Cow::Owned(vec))
         }
+    }
+}
+
+fn extract_single_filter(
+    filter: Option<&PdfObject>,
+    pos: ByteOffset,
+) -> Result<Option<&[u8]>, XRefError> {
+    match filter {
+        None => Ok(None),
+        Some(PdfObject::Name(name)) => Ok(Some(name.as_bytes())),
+        Some(PdfObject::Array(filters)) => match filters.as_slice() {
+            [] | [_, _, ..] => Err(XRefError::new(XRefErrorKind::UnsupportedFilter, pos)),
+            [PdfObject::Name(name)] => Ok(Some(name.as_bytes())),
+            [other] => Err(XRefError::new(
+                XRefErrorKind::InvalidKeyType {
+                    key: XRefStreamKey::Filter,
+                    actual: other.kind(),
+                },
+                pos,
+            )),
+        },
+        Some(other) => Err(XRefError::new(
+            XRefErrorKind::InvalidKeyType {
+                key: XRefStreamKey::Filter,
+                actual: other.kind(),
+            },
+            pos,
+        )),
+    }
+}
+
+fn extract_single_decode_parms(
+    decode_parms: Option<&PdfObject>,
+    pos: ByteOffset,
+) -> Result<Option<&PdfDictionary>, XRefError> {
+    match decode_parms {
+        None => Ok(None),
+        Some(PdfObject::Dictionary(parms)) => Ok(Some(parms)),
+        Some(PdfObject::Array(values)) => match values.as_slice() {
+            [] | [_, _, ..] => Err(XRefError::new(
+                XRefErrorKind::InvalidKeyType {
+                    key: XRefStreamKey::DecodeParms,
+                    actual: ObjectKind::Array,
+                },
+                pos,
+            )),
+            [PdfObject::Dictionary(parms)] => Ok(Some(parms)),
+            [PdfObject::Null] => Ok(None),
+            [other] => Err(XRefError::new(
+                XRefErrorKind::InvalidKeyType {
+                    key: XRefStreamKey::DecodeParms,
+                    actual: other.kind(),
+                },
+                pos,
+            )),
+        },
         Some(other) => Err(XRefError::new(
             XRefErrorKind::InvalidKeyType {
                 key: XRefStreamKey::DecodeParms,
