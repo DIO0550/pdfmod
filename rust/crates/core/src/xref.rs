@@ -11,5 +11,6 @@
 
 pub mod entry;
 pub mod error;
+pub mod stream;
 pub mod table;
 pub mod trailer;
