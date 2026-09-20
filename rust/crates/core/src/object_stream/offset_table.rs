@@ -64,6 +64,13 @@ impl OffsetTable {
                 }
             };
 
+            if offset_tok < 0 {
+                return Err(ObjectStreamError::new(
+                    ObjectStreamErrorKind::InvalidOffset(offset_tok),
+                    pos,
+                ));
+            }
+
             let rel_offset = usize::try_from(offset_tok).map_err(|_| {
                 ObjectStreamError::new(
                     ObjectStreamErrorKind::OffsetOutOfBounds {
@@ -208,12 +215,6 @@ mod tests {
     fn parse_negative_offset() {
         let header = b"11 -5";
         let err = OffsetTable::parse(header, 1, 60, 100, ByteOffset::new(0)).unwrap_err();
-        assert_eq!(
-            err.kind,
-            ObjectStreamErrorKind::OffsetOutOfBounds {
-                offset: usize::MAX,
-                available_len: 40
-            }
-        );
+        assert_eq!(err.kind, ObjectStreamErrorKind::InvalidOffset(-5));
     }
 }

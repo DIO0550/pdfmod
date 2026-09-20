@@ -46,6 +46,8 @@ pub enum ObjectStreamErrorKind {
     },
     /// 不正なオブジェクト番号（0 または負値）。
     InvalidObjectNumber(i64),
+    /// 不正な相対オフセット値（負値）。
+    InvalidOffset(i64),
     /// オフセットテーブルの相対オフセットがデータ領域長を超えている。
     OffsetOutOfBounds {
         /// `/First` からの相対オフセット
