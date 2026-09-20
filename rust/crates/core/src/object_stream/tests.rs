@@ -147,7 +147,7 @@ fn parse_flatedecode_object_stream() {
 
 #[test]
 fn parse_flatedecode_with_predictor() {
-    // PNG Up predictor:
+    // PNG predictor (Predictor 12, tag 0 = None):
     // row 0: tag 0 (None), 10 bytes -> "30 0 31 4 " (first=10)
     // row 1: tag 0 (None), 10 bytes -> "100 200   "
     // Columns = 10, Predictor = 12
