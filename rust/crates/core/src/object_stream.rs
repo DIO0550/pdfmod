@@ -9,8 +9,6 @@ pub mod offset_table;
 #[cfg(test)]
 mod tests;
 
-use std::borrow::Cow;
-
 use crate::byte_offset::ByteOffset;
 use crate::filter::flate::decode_zlib;
 use crate::filter::predictor::{decode_predictor, PredictorParams};
@@ -35,16 +33,16 @@ use crate::parser::Parser;
 
 /// 解析済みオブジェクトストリーム（ISO 32000-1 §7.5.7）。
 #[derive(Debug, Clone)]
-pub struct ObjectStream<'a> {
+pub struct ObjectStream {
     metadata: ObjectStreamMetadata,
     offset_table: OffsetTable,
-    data: Cow<'a, [u8]>,
+    data: Vec<u8>,
     start_offset: ByteOffset,
 }
 
-impl<'a> ObjectStream<'a> {
+impl ObjectStream {
     /// 入力バイト列中の指定オフセットにあるオブジェクトストリームを解析する。
-    pub fn parse(input: &'a [u8], offset: ByteOffset) -> Result<Self, ObjectStreamError> {
+    pub fn parse(input: &[u8], offset: ByteOffset) -> Result<Self, ObjectStreamError> {
         let usize_offset = usize::try_from(offset.value()).map_err(|_| {
             ObjectStreamError::new(ObjectStreamErrorKind::NotAnObjectStream, offset)
         })?;
@@ -78,11 +76,8 @@ impl<'a> ObjectStream<'a> {
     }
 
     /// 既にパース済みの [`PdfStream`] からオブジェクトストリームを構築する。
-    pub fn from_stream(
-        stream: PdfStream,
-        offset: ByteOffset,
-    ) -> Result<ObjectStream<'static>, ObjectStreamError> {
-        ObjectStream::<'static>::from_stream_internal(stream, offset)
+    pub fn from_stream(stream: PdfStream, offset: ByteOffset) -> Result<Self, ObjectStreamError> {
+        Self::from_stream_internal(stream, offset)
     }
 
     fn from_stream_internal(
@@ -95,7 +90,7 @@ impl<'a> ObjectStream<'a> {
         let metadata = ObjectStreamMetadata::from_dictionary(&dict, offset)?;
 
         // 2. /Filter, /DecodeParms による復号
-        let data = Self::decode_stream_data(Cow::Owned(raw_data), &dict, offset)?;
+        let data = Self::decode_stream_data(raw_data, &dict, offset)?;
 
         // 3. /First 境界チェック
         if metadata.first() > data.len() {
@@ -285,10 +280,10 @@ impl<'a> ObjectStream<'a> {
     // --- プライベート復号ヘルパー（フリー関数を排除し impl に集約） ---
 
     fn decode_stream_data(
-        raw: Cow<'a, [u8]>,
+        raw: Vec<u8>,
         dict: &PdfDictionary,
         pos: ByteOffset,
-    ) -> Result<Cow<'a, [u8]>, ObjectStreamError> {
+    ) -> Result<Vec<u8>, ObjectStreamError> {
         let filter_name =
             Self::extract_single_filter(dict.get(ObjectStreamKey::Filter.as_bytes()), pos)?;
         let decode_parms = Self::extract_single_decode_parms(
@@ -305,12 +300,9 @@ impl<'a> ObjectStream<'a> {
 
         let decompressed = match filter_name {
             None => raw,
-            Some(b"FlateDecode") => {
-                let vec = decode_zlib(raw.as_ref()).map_err(|_| {
-                    ObjectStreamError::new(ObjectStreamErrorKind::StreamDecodeFailed, pos)
-                })?;
-                Cow::Owned(vec)
-            }
+            Some(b"FlateDecode") => decode_zlib(&raw).map_err(|_| {
+                ObjectStreamError::new(ObjectStreamErrorKind::StreamDecodeFailed, pos)
+            })?,
             Some(_) => {
                 return Err(ObjectStreamError::new(
                     ObjectStreamErrorKind::UnsupportedFilter,
@@ -322,10 +314,10 @@ impl<'a> ObjectStream<'a> {
         match predictor_params {
             None => Ok(decompressed),
             Some(params) => {
-                let vec = decode_predictor(decompressed.as_ref(), &params, pos).map_err(|_| {
+                let vec = decode_predictor(&decompressed, &params, pos).map_err(|_| {
                     ObjectStreamError::new(ObjectStreamErrorKind::StreamDecodeFailed, pos)
                 })?;
-                Ok(Cow::Owned(vec))
+                Ok(vec)
             }
         }
     }
