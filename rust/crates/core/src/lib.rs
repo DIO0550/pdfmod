@@ -28,5 +28,6 @@ pub mod file;
 pub mod filter;
 pub mod lexer;
 pub mod object;
+pub mod object_stream;
 pub mod parser;
 pub mod xref;
