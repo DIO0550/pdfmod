@@ -29,6 +29,19 @@ use crate::byte_offset::ByteOffset;
 use crate::lexer::token::{Keyword, Primitive, Token};
 use crate::lexer::LexOutcome;
 use crate::lexer::Lexer;
+use crate::object::array::PdfArray;
+use crate::object::boolean::PdfBoolean;
+use crate::object::dictionary::PdfDictionary;
+use crate::object::generation_number::GenerationNumber;
+use crate::object::indirect_object::IndirectObject;
+use crate::object::indirect_ref::IndirectRef;
+use crate::object::integer::PdfInteger;
+use crate::object::object_id::ObjectId;
+use crate::object::object_number::ObjectNumber;
+use crate::object::pdf_object::PdfObject;
+use crate::object::real::PdfReal;
+use crate::object::string::PdfString;
+use crate::parser::error::ParseError;
 
 /// `try_parse_indirect_reference` 内部で peek 結果を借用切れにしてから分岐するための分類タグ。
 ///
@@ -47,19 +60,6 @@ enum PeekClass<T> {
     Eof,
     Malformed { position: usize },
 }
-use crate::object::array::PdfArray;
-use crate::object::boolean::PdfBoolean;
-use crate::object::dictionary::PdfDictionary;
-use crate::object::generation_number::GenerationNumber;
-use crate::object::indirect_object::IndirectObject;
-use crate::object::indirect_ref::IndirectRef;
-use crate::object::integer::PdfInteger;
-use crate::object::object_id::ObjectId;
-use crate::object::object_number::ObjectNumber;
-use crate::object::pdf_object::PdfObject;
-use crate::object::real::PdfReal;
-use crate::object::string::PdfString;
-use crate::parser::error::ParseError;
 
 /// PDF バイト列から [`PdfObject`] を 1 つずつ取り出すパーサ。
 ///
