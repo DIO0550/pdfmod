@@ -23,7 +23,7 @@ impl IndexRanges {
     ) -> Result<Self, XRefError> {
         match dict.get(XRefStreamKey::Index.as_bytes()) {
             None => Self::from_default(size, pos),
-            Some(PdfObject::Array(arr)) => Self::from_array(arr, size, pos),
+            Some(PdfObject::Array(arr)) => Self::from_array(arr.as_slice(), size, pos),
             Some(other) => Err(XRefError::new(
                 XRefErrorKind::InvalidKeyType {
                     key: XRefStreamKey::Index,
@@ -54,11 +54,11 @@ impl IndexRanges {
         let mut ranges = Vec::with_capacity(arr.len() / 2);
         for [first_obj, count_obj] in arr.as_chunks::<2>().0 {
             let first = match first_obj {
-                PdfObject::Integer(n) if *n >= 0 => *n as u64,
+                PdfObject::Integer(n) if n.value() >= 0 => n.value() as u64,
                 _ => return Err(XRefError::new(XRefErrorKind::InvalidIndexArray, pos)),
             };
             let count = match count_obj {
-                PdfObject::Integer(n) if *n >= 0 => *n as u64,
+                PdfObject::Integer(n) if n.value() >= 0 => n.value() as u64,
                 _ => return Err(XRefError::new(XRefErrorKind::InvalidIndexArray, pos)),
             };
             let end = first
@@ -126,10 +126,10 @@ mod tests {
     fn from_array_multiple_ranges() {
         let pos = ByteOffset::new(0);
         let arr = vec![
-            PdfObject::Integer(1),
-            PdfObject::Integer(3),
-            PdfObject::Integer(10),
-            PdfObject::Integer(2),
+            PdfObject::from(1),
+            PdfObject::from(3),
+            PdfObject::from(10),
+            PdfObject::from(2),
         ];
         let ranges = IndexRanges::from_array(&arr, 15, pos).unwrap();
         assert_eq!(ranges.total_entries(), 5);
@@ -143,11 +143,7 @@ mod tests {
     #[test]
     fn from_array_odd_length_rejected() {
         let pos = ByteOffset::new(0);
-        let arr = vec![
-            PdfObject::Integer(0),
-            PdfObject::Integer(5),
-            PdfObject::Integer(10),
-        ];
+        let arr = vec![PdfObject::from(0), PdfObject::from(5), PdfObject::from(10)];
         assert_eq!(
             IndexRanges::from_array(&arr, 20, pos).unwrap_err().kind,
             XRefErrorKind::InvalidIndexArray
@@ -166,13 +162,13 @@ mod tests {
     #[test]
     fn from_array_negative_integer_rejected() {
         let pos = ByteOffset::new(0);
-        let arr = vec![PdfObject::Integer(-1), PdfObject::Integer(5)];
+        let arr = vec![PdfObject::from(-1), PdfObject::from(5)];
         assert_eq!(
             IndexRanges::from_array(&arr, 10, pos).unwrap_err().kind,
             XRefErrorKind::InvalidIndexArray
         );
 
-        let arr2 = vec![PdfObject::Integer(0), PdfObject::Integer(-5)];
+        let arr2 = vec![PdfObject::from(0), PdfObject::from(-5)];
         assert_eq!(
             IndexRanges::from_array(&arr2, 10, pos).unwrap_err().kind,
             XRefErrorKind::InvalidIndexArray
@@ -183,14 +179,14 @@ mod tests {
     fn from_array_exceeding_size_rejected() {
         let pos = ByteOffset::new(0);
         // size is 5, but range is 0..6 (first 0, count 6 -> end 6 > 5)
-        let arr = vec![PdfObject::Integer(0), PdfObject::Integer(6)];
+        let arr = vec![PdfObject::from(0), PdfObject::from(6)];
         assert_eq!(
             IndexRanges::from_array(&arr, 5, pos).unwrap_err().kind,
             XRefErrorKind::InvalidIndexArray
         );
 
         // size is 10, first is 8, count is 3 -> end 11 > 10
-        let arr2 = vec![PdfObject::Integer(8), PdfObject::Integer(3)];
+        let arr2 = vec![PdfObject::from(8), PdfObject::from(3)];
         assert_eq!(
             IndexRanges::from_array(&arr2, 10, pos).unwrap_err().kind,
             XRefErrorKind::InvalidIndexArray

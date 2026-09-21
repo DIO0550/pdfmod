@@ -78,10 +78,11 @@ impl<'a> Parser<'a> {
             .ok_or_else(|| ParseError::missing_length_at(dict_start))?;
 
         match value {
-            PdfObject::Integer(n) if *n < 0 => Err(ParseError::negative_length_at(dict_start)),
-            PdfObject::Integer(n) => {
-                usize::try_from(*n).map_err(|_| ParseError::length_out_of_range_at(dict_start, *n))
+            PdfObject::Integer(n) if n.value() < 0 => {
+                Err(ParseError::negative_length_at(dict_start))
             }
+            PdfObject::Integer(n) => usize::try_from(n.value())
+                .map_err(|_| ParseError::length_out_of_range_at(dict_start, n.value())),
             PdfObject::Reference(_) => {
                 Err(ParseError::indirect_length_not_supported_at(dict_start))
             }

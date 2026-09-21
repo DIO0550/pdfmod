@@ -24,7 +24,7 @@ impl Field1Width {
     /// PDF オブジェクトから [`Field1Width`] を構築する。
     pub fn try_from_object(obj: &PdfObject, pos: ByteOffset) -> Result<Self, XRefError> {
         match obj {
-            PdfObject::Integer(n) if (0..=2).contains(n) => Ok(Self(*n as u8)),
+            PdfObject::Integer(n) if (0..=2).contains(&n.value()) => Ok(Self(n.value() as u8)),
             _ => Err(XRefError::new(XRefErrorKind::InvalidWArray, pos)),
         }
     }
@@ -60,7 +60,7 @@ impl Field2Width {
     /// PDF オブジェクトから [`Field2Width`] を構築する。
     pub fn try_from_object(obj: &PdfObject, pos: ByteOffset) -> Result<Self, XRefError> {
         match obj {
-            PdfObject::Integer(n) if (0..=8).contains(n) => Ok(Self(*n as u8)),
+            PdfObject::Integer(n) if (0..=8).contains(&n.value()) => Ok(Self(n.value() as u8)),
             _ => Err(XRefError::new(XRefErrorKind::InvalidWArray, pos)),
         }
     }
@@ -91,7 +91,7 @@ impl Field3Width {
     /// PDF オブジェクトから [`Field3Width`] を構築する。
     pub fn try_from_object(obj: &PdfObject, pos: ByteOffset) -> Result<Self, XRefError> {
         match obj {
-            PdfObject::Integer(n) if (0..=4).contains(n) => Ok(Self(*n as u8)),
+            PdfObject::Integer(n) if (0..=4).contains(&n.value()) => Ok(Self(n.value() as u8)),
             _ => Err(XRefError::new(XRefErrorKind::InvalidWArray, pos)),
         }
     }
@@ -141,7 +141,7 @@ impl FieldWidths {
                 ))
             }
         };
-        Self::from_array(arr, pos)
+        Self::from_array(arr.as_slice(), pos)
     }
 
     /// 3 要素の配列オブジェクトから [`FieldWidths`] を構築する。
@@ -239,11 +239,7 @@ mod tests {
     #[test]
     fn field_widths_from_array_valid() {
         let pos = ByteOffset::new(0);
-        let arr = vec![
-            PdfObject::Integer(1),
-            PdfObject::Integer(2),
-            PdfObject::Integer(1),
-        ];
+        let arr = vec![PdfObject::from(1), PdfObject::from(2), PdfObject::from(1)];
         let widths = FieldWidths::from_array(&arr, pos).unwrap();
         assert_eq!(widths.record_size(), 4);
     }
@@ -251,11 +247,7 @@ mod tests {
     #[test]
     fn field_widths_from_array_zero_fields() {
         let pos = ByteOffset::new(0);
-        let arr = vec![
-            PdfObject::Integer(0),
-            PdfObject::Integer(3),
-            PdfObject::Integer(0),
-        ];
+        let arr = vec![PdfObject::from(0), PdfObject::from(3), PdfObject::from(0)];
         let widths = FieldWidths::from_array(&arr, pos).unwrap();
         assert_eq!(widths.record_size(), 3);
     }
@@ -263,11 +255,7 @@ mod tests {
     #[test]
     fn field_widths_from_array_all_zero_rejected() {
         let pos = ByteOffset::new(0);
-        let arr = vec![
-            PdfObject::Integer(0),
-            PdfObject::Integer(0),
-            PdfObject::Integer(0),
-        ];
+        let arr = vec![PdfObject::from(0), PdfObject::from(0), PdfObject::from(0)];
         let err = FieldWidths::from_array(&arr, pos).unwrap_err();
         assert_eq!(err.kind, XRefErrorKind::InvalidWArray);
     }
@@ -275,7 +263,7 @@ mod tests {
     #[test]
     fn field_widths_from_array_invalid_len() {
         let pos = ByteOffset::new(0);
-        let arr = vec![PdfObject::Integer(1), PdfObject::Integer(2)];
+        let arr = vec![PdfObject::from(1), PdfObject::from(2)];
         assert_eq!(
             FieldWidths::from_array(&arr, pos).unwrap_err().kind,
             XRefErrorKind::InvalidWArray
@@ -286,33 +274,21 @@ mod tests {
     fn field_widths_from_array_out_of_range() {
         let pos = ByteOffset::new(0);
         // Field 1 max is 2
-        let arr = vec![
-            PdfObject::Integer(3),
-            PdfObject::Integer(2),
-            PdfObject::Integer(1),
-        ];
+        let arr = vec![PdfObject::from(3), PdfObject::from(2), PdfObject::from(1)];
         assert_eq!(
             FieldWidths::from_array(&arr, pos).unwrap_err().kind,
             XRefErrorKind::InvalidWArray
         );
 
         // Field 2 max is 8
-        let arr = vec![
-            PdfObject::Integer(1),
-            PdfObject::Integer(9),
-            PdfObject::Integer(1),
-        ];
+        let arr = vec![PdfObject::from(1), PdfObject::from(9), PdfObject::from(1)];
         assert_eq!(
             FieldWidths::from_array(&arr, pos).unwrap_err().kind,
             XRefErrorKind::InvalidWArray
         );
 
         // Field 3 max is 4
-        let arr = vec![
-            PdfObject::Integer(1),
-            PdfObject::Integer(2),
-            PdfObject::Integer(5),
-        ];
+        let arr = vec![PdfObject::from(1), PdfObject::from(2), PdfObject::from(5)];
         assert_eq!(
             FieldWidths::from_array(&arr, pos).unwrap_err().kind,
             XRefErrorKind::InvalidWArray
@@ -322,11 +298,7 @@ mod tests {
     #[test]
     fn decode_entry_type1_in_use() {
         let pos = ByteOffset::new(0);
-        let arr = vec![
-            PdfObject::Integer(1),
-            PdfObject::Integer(2),
-            PdfObject::Integer(1),
-        ];
+        let arr = vec![PdfObject::from(1), PdfObject::from(2), PdfObject::from(1)];
         let widths = FieldWidths::from_array(&arr, pos).unwrap();
         // Type 1, offset 258 (0x0102), gen 0 (0x00)
         let record = [0x01, 0x01, 0x02, 0x00];
@@ -343,11 +315,7 @@ mod tests {
     #[test]
     fn decode_entry_type0_free() {
         let pos = ByteOffset::new(0);
-        let arr = vec![
-            PdfObject::Integer(1),
-            PdfObject::Integer(2),
-            PdfObject::Integer(2),
-        ];
+        let arr = vec![PdfObject::from(1), PdfObject::from(2), PdfObject::from(2)];
         let widths = FieldWidths::from_array(&arr, pos).unwrap();
         // Type 0, next_free 0, gen 65535 (0xffff)
         let record = [0x00, 0x00, 0x00, 0xff, 0xff];
@@ -364,11 +332,7 @@ mod tests {
     #[test]
     fn decode_entry_type2_in_object_stream() {
         let pos = ByteOffset::new(0);
-        let arr = vec![
-            PdfObject::Integer(1),
-            PdfObject::Integer(2),
-            PdfObject::Integer(1),
-        ];
+        let arr = vec![PdfObject::from(1), PdfObject::from(2), PdfObject::from(1)];
         let widths = FieldWidths::from_array(&arr, pos).unwrap();
         // Type 2, stream_obj 10 (0x000a), index 3 (0x03)
         let record = [0x02, 0x00, 0x0a, 0x03];
@@ -386,11 +350,7 @@ mod tests {
     fn decode_entry_w0_zero_defaults_to_type1() {
         let pos = ByteOffset::new(0);
         // Field 1 width is 0 -> defaults to type 1
-        let arr = vec![
-            PdfObject::Integer(0),
-            PdfObject::Integer(2),
-            PdfObject::Integer(1),
-        ];
+        let arr = vec![PdfObject::from(0), PdfObject::from(2), PdfObject::from(1)];
         let widths = FieldWidths::from_array(&arr, pos).unwrap();
         let record = [0x01, 0x00, 0x00]; // offset 256, gen 0
         let entry = widths.decode_entry(&record, pos).unwrap();
@@ -406,11 +366,7 @@ mod tests {
     #[test]
     fn decode_entry_type2_with_zero_stream_object_rejected() {
         let pos = ByteOffset::new(0);
-        let arr = vec![
-            PdfObject::Integer(1),
-            PdfObject::Integer(1),
-            PdfObject::Integer(1),
-        ];
+        let arr = vec![PdfObject::from(1), PdfObject::from(1), PdfObject::from(1)];
         let widths = FieldWidths::from_array(&arr, pos).unwrap();
         let record = [0x02, 0x00, 0x00]; // stream_obj 0 -> invalid
         let err = widths.decode_entry(&record, pos).unwrap_err();
@@ -420,11 +376,7 @@ mod tests {
     #[test]
     fn decode_entry_invalid_type_rejected() {
         let pos = ByteOffset::new(0);
-        let arr = vec![
-            PdfObject::Integer(1),
-            PdfObject::Integer(1),
-            PdfObject::Integer(1),
-        ];
+        let arr = vec![PdfObject::from(1), PdfObject::from(1), PdfObject::from(1)];
         let widths = FieldWidths::from_array(&arr, pos).unwrap();
         let record = [0x03, 0x00, 0x00]; // type 3 -> invalid
         let err = widths.decode_entry(&record, pos).unwrap_err();

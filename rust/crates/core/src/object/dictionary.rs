@@ -113,15 +113,15 @@ mod tests {
     fn get_by_byte_slice_returns_inserted_value() {
         // バイトスライスで get すると同じバイト列の PdfName に挿入した値を返すことを確認する
         let mut dict = PdfDictionary::new();
-        dict.insert(PdfName::from("Type"), PdfObject::Integer(42));
-        assert_eq!(dict.get(b"Type".as_slice()), Some(&PdfObject::Integer(42)));
+        dict.insert(PdfName::from("Type"), PdfObject::from(42));
+        assert_eq!(dict.get(b"Type".as_slice()), Some(&PdfObject::from(42)));
     }
 
     #[test]
     fn contains_key_by_byte_slice_returns_true_for_existing_key() {
         // 挿入済みキーをバイトスライスで contains_key すると true を返すことを確認する
         let mut dict = PdfDictionary::new();
-        dict.insert(PdfName::from("Type"), PdfObject::Integer(42));
+        dict.insert(PdfName::from("Type"), PdfObject::from(42));
         assert!(dict.contains_key(b"Type".as_slice()));
     }
 
@@ -129,12 +129,9 @@ mod tests {
     fn remove_by_byte_slice_removes_entry() {
         // バイトスライスで remove すると値を返し、件数を減らしてエントリを削除することを確認する
         let mut dict = PdfDictionary::new();
-        dict.insert(PdfName::from("Type"), PdfObject::Integer(42));
-        dict.insert(PdfName::from("Other"), PdfObject::Integer(7));
-        assert_eq!(
-            dict.remove(b"Type".as_slice()),
-            Some(PdfObject::Integer(42))
-        );
+        dict.insert(PdfName::from("Type"), PdfObject::from(42));
+        dict.insert(PdfName::from("Other"), PdfObject::from(7));
+        assert_eq!(dict.remove(b"Type".as_slice()), Some(PdfObject::from(42)));
         assert_eq!(dict.len(), 1);
         assert_eq!(dict.get(b"Type".as_slice()), None);
     }
@@ -160,18 +157,15 @@ mod tests {
     fn get_returns_some_reference_after_insert() {
         // 1 件 insert した後、同じキーで get すると挿入した値への参照 Some(&value) が返ることを確認する
         let mut dict = PdfDictionary::new();
-        dict.insert(PdfName::from("Type"), PdfObject::Integer(42));
-        assert_eq!(
-            dict.get(&PdfName::from("Type")),
-            Some(&PdfObject::Integer(42))
-        );
+        dict.insert(PdfName::from("Type"), PdfObject::from(42));
+        assert_eq!(dict.get(&PdfName::from("Type")), Some(&PdfObject::from(42)));
     }
 
     #[test]
     fn insert_returns_none_for_new_key() {
         // 未登録キーへの insert は旧値が無いため戻り値 None を返すことを確認する
         let mut dict = PdfDictionary::new();
-        let prev = dict.insert(PdfName::from("Type"), PdfObject::Boolean(true));
+        let prev = dict.insert(PdfName::from("Type"), PdfObject::from(true));
         assert_eq!(prev, None);
     }
 
@@ -179,8 +173,8 @@ mod tests {
     fn len_and_is_empty_reflect_multiple_inserts() {
         // 異なるキーで複数件 insert すると len() が件数を反映し is_empty() が false になることを確認する
         let mut dict = PdfDictionary::new();
-        dict.insert(PdfName::from("A"), PdfObject::Integer(1));
-        dict.insert(PdfName::from("B"), PdfObject::Integer(2));
+        dict.insert(PdfName::from("A"), PdfObject::from(1));
+        dict.insert(PdfName::from("B"), PdfObject::from(2));
         assert_eq!(dict.len(), 2);
         assert!(!dict.is_empty());
     }
@@ -199,7 +193,7 @@ mod tests {
         let mut dict = PdfDictionary::new();
         assert_eq!(dict.len(), 0);
         assert!(dict.is_empty());
-        dict.insert(PdfName::from("Key"), PdfObject::Integer(1));
+        dict.insert(PdfName::from("Key"), PdfObject::from(1));
         assert_eq!(dict.len(), 1);
         assert!(!dict.is_empty());
     }
@@ -223,21 +217,18 @@ mod tests {
         // 別キーに Integer/Real/Boolean/Name を insert し、各キーの get が挿入バリアントを
         // Some(&value) で返す（値型に依存せず格納できる）ことを確認する
         let mut dict = PdfDictionary::new();
-        dict.insert(PdfName::from("Int"), PdfObject::Integer(7));
-        dict.insert(PdfName::from("Real"), PdfObject::Real(1.5));
-        dict.insert(PdfName::from("Bool"), PdfObject::Boolean(false));
+        dict.insert(PdfName::from("Int"), PdfObject::from(7));
+        dict.insert(PdfName::from("Real"), PdfObject::from(1.5));
+        dict.insert(PdfName::from("Bool"), PdfObject::from(false));
         dict.insert(PdfName::from("Name"), PdfObject::Name(PdfName::from("Sub")));
-        assert_eq!(
-            dict.get(&PdfName::from("Int")),
-            Some(&PdfObject::Integer(7))
-        );
+        assert_eq!(dict.get(&PdfName::from("Int")), Some(&PdfObject::from(7)));
         assert_eq!(
             dict.get(&PdfName::from("Real")),
-            Some(&PdfObject::Real(1.5))
+            Some(&PdfObject::from(1.5))
         );
         assert_eq!(
             dict.get(&PdfName::from("Bool")),
-            Some(&PdfObject::Boolean(false))
+            Some(&PdfObject::from(false))
         );
         assert_eq!(
             dict.get(&PdfName::from("Name")),
@@ -251,10 +242,10 @@ mod tests {
         // contains_key=true が一貫することを確認する
         let mut dict = PdfDictionary::new();
         let entries = [
-            (PdfName::from("A"), PdfObject::Integer(1)),
-            (PdfName::from("B"), PdfObject::Integer(2)),
-            (PdfName::from("C"), PdfObject::Integer(3)),
-            (PdfName::from("D"), PdfObject::Integer(4)),
+            (PdfName::from("A"), PdfObject::from(1)),
+            (PdfName::from("B"), PdfObject::from(2)),
+            (PdfName::from("C"), PdfObject::from(3)),
+            (PdfName::from("D"), PdfObject::from(4)),
         ];
         for (key, value) in &entries {
             dict.insert(key.clone(), value.clone());
@@ -271,11 +262,11 @@ mod tests {
         // 同じ (key, value) 集合（有限値のみ）を異なる挿入順で構築した 2 辞書が
         // PartialEq で等価になる（挿入順に依存しない）ことを確認する
         let mut a = PdfDictionary::new();
-        a.insert(PdfName::from("A"), PdfObject::Integer(1));
-        a.insert(PdfName::from("B"), PdfObject::Real(2.5));
+        a.insert(PdfName::from("A"), PdfObject::from(1));
+        a.insert(PdfName::from("B"), PdfObject::from(2.5));
         let mut b = PdfDictionary::new();
-        b.insert(PdfName::from("B"), PdfObject::Real(2.5));
-        b.insert(PdfName::from("A"), PdfObject::Integer(1));
+        b.insert(PdfName::from("B"), PdfObject::from(2.5));
+        b.insert(PdfName::from("A"), PdfObject::from(1));
         assert_eq!(a, b);
     }
 
@@ -284,9 +275,9 @@ mod tests {
         // 同一キーへ同値を 2 回 insert すると 2 回目の戻り値が Some(value)（同値で上書き）になり
         // len() が不変であることを確認する
         let mut dict = PdfDictionary::new();
-        dict.insert(PdfName::from("Type"), PdfObject::Integer(1));
-        let prev = dict.insert(PdfName::from("Type"), PdfObject::Integer(1));
-        assert_eq!(prev, Some(PdfObject::Integer(1)));
+        dict.insert(PdfName::from("Type"), PdfObject::from(1));
+        let prev = dict.insert(PdfName::from("Type"), PdfObject::from(1));
+        assert_eq!(prev, Some(PdfObject::from(1)));
         assert_eq!(dict.len(), 1);
     }
 
@@ -295,12 +286,12 @@ mod tests {
         // エントリを挿入した辞書を clone すると複製が元と == で等価になり、
         // 複製でも get でエントリを取得できることを確認する
         let mut dict = PdfDictionary::new();
-        dict.insert(PdfName::from("Type"), PdfObject::Integer(99));
+        dict.insert(PdfName::from("Type"), PdfObject::from(99));
         let cloned = dict.clone();
         assert_eq!(cloned, dict);
         assert_eq!(
             cloned.get(&PdfName::from("Type")),
-            Some(&PdfObject::Integer(99))
+            Some(&PdfObject::from(99))
         );
     }
 
@@ -309,13 +300,10 @@ mod tests {
         // 同一キーへ 2 回目 insert(key, v2) すると戻り値が旧値 Some(old)、get が新値 Some(&v2)、
         // len() が不変であることを確認する
         let mut dict = PdfDictionary::new();
-        dict.insert(PdfName::from("Type"), PdfObject::Integer(1));
-        let prev = dict.insert(PdfName::from("Type"), PdfObject::Integer(2));
-        assert_eq!(prev, Some(PdfObject::Integer(1)));
-        assert_eq!(
-            dict.get(&PdfName::from("Type")),
-            Some(&PdfObject::Integer(2))
-        );
+        dict.insert(PdfName::from("Type"), PdfObject::from(1));
+        let prev = dict.insert(PdfName::from("Type"), PdfObject::from(2));
+        assert_eq!(prev, Some(PdfObject::from(1)));
+        assert_eq!(dict.get(&PdfName::from("Type")), Some(&PdfObject::from(2)));
         assert_eq!(dict.len(), 1);
     }
 
@@ -324,12 +312,12 @@ mod tests {
         // insert(key, Integer) 後に insert(key, Boolean) すると戻り値が旧バリアント
         // Some(Integer(..))、get が新バリアント Some(&Boolean) になることを確認する
         let mut dict = PdfDictionary::new();
-        dict.insert(PdfName::from("Type"), PdfObject::Integer(10));
-        let prev = dict.insert(PdfName::from("Type"), PdfObject::Boolean(true));
-        assert_eq!(prev, Some(PdfObject::Integer(10)));
+        dict.insert(PdfName::from("Type"), PdfObject::from(10));
+        let prev = dict.insert(PdfName::from("Type"), PdfObject::from(true));
+        assert_eq!(prev, Some(PdfObject::from(10)));
         assert_eq!(
             dict.get(&PdfName::from("Type")),
-            Some(&PdfObject::Boolean(true))
+            Some(&PdfObject::from(true))
         );
     }
 
@@ -338,9 +326,9 @@ mod tests {
         // insert 済みキーを remove すると削除値 Some(value) を返し、
         // その後 get=None / contains_key=false / len()が 1 減ることを確認する
         let mut dict = PdfDictionary::new();
-        dict.insert(PdfName::from("Type"), PdfObject::Integer(42));
+        dict.insert(PdfName::from("Type"), PdfObject::from(42));
         let removed = dict.remove(&PdfName::from("Type"));
-        assert_eq!(removed, Some(PdfObject::Integer(42)));
+        assert_eq!(removed, Some(PdfObject::from(42)));
         assert_eq!(dict.get(&PdfName::from("Type")), None);
         assert!(!dict.contains_key(&PdfName::from("Type")));
         assert_eq!(dict.len(), 0);
@@ -350,7 +338,7 @@ mod tests {
     fn remove_returns_none_for_absent_key() {
         // 未登録キーを remove すると削除対象が無いため None を返し、len() が不変であることを確認する
         let mut dict = PdfDictionary::new();
-        dict.insert(PdfName::from("Type"), PdfObject::Integer(1));
+        dict.insert(PdfName::from("Type"), PdfObject::from(1));
         let removed = dict.remove(&PdfName::from("Missing"));
         assert_eq!(removed, None);
         assert_eq!(dict.len(), 1);
@@ -360,9 +348,9 @@ mod tests {
     fn keys_yields_all_keys_in_sorted_order() {
         // 挿入順と無関係に keys() が全キーを BTreeMap のソート順（昇順）で返すことを確認する
         let mut dict = PdfDictionary::new();
-        dict.insert(PdfName::from("C"), PdfObject::Integer(3));
-        dict.insert(PdfName::from("A"), PdfObject::Integer(1));
-        dict.insert(PdfName::from("B"), PdfObject::Integer(2));
+        dict.insert(PdfName::from("C"), PdfObject::from(3));
+        dict.insert(PdfName::from("A"), PdfObject::from(1));
+        dict.insert(PdfName::from("B"), PdfObject::from(2));
         let keys: Vec<&PdfName> = dict.keys().collect();
         assert_eq!(
             keys,
@@ -385,14 +373,14 @@ mod tests {
     fn iter_yields_all_entries_in_sorted_key_order() {
         // 挿入順と無関係に iter() が全 (キー, 値) ペアをキーのソート順（昇順）で返すことを確認する
         let mut dict = PdfDictionary::new();
-        dict.insert(PdfName::from("B"), PdfObject::Real(2.5));
-        dict.insert(PdfName::from("A"), PdfObject::Integer(1));
+        dict.insert(PdfName::from("B"), PdfObject::from(2.5));
+        dict.insert(PdfName::from("A"), PdfObject::from(1));
         let entries: Vec<(&PdfName, &PdfObject)> = dict.iter().collect();
         assert_eq!(
             entries,
             vec![
-                (&PdfName::from("A"), &PdfObject::Integer(1)),
-                (&PdfName::from("B"), &PdfObject::Real(2.5)),
+                (&PdfName::from("A"), &PdfObject::from(1)),
+                (&PdfName::from("B"), &PdfObject::from(2.5)),
             ]
         );
     }
@@ -409,7 +397,7 @@ mod tests {
         // 同じキーをバイトスライスと PdfName で get すると同じ値を返すことを確認する
         let mut dict = PdfDictionary::new();
         let name = PdfName::from("Type");
-        dict.insert(name.clone(), PdfObject::Integer(42));
+        dict.insert(name.clone(), PdfObject::from(42));
         assert_eq!(dict.get(b"Type".as_slice()), dict.get(&name));
     }
 
@@ -418,8 +406,8 @@ mod tests {
         // 既存の PdfName 参照による get が変更後もコンパイルでき値を返すことを確認する
         let mut dict = PdfDictionary::new();
         let name = PdfName::from("Type");
-        dict.insert(name.clone(), PdfObject::Integer(42));
-        assert_eq!(dict.get(&name), Some(&PdfObject::Integer(42)));
+        dict.insert(name.clone(), PdfObject::from(42));
+        assert_eq!(dict.get(&name), Some(&PdfObject::from(42)));
     }
 
     #[test]
@@ -440,7 +428,7 @@ mod tests {
     fn remove_by_byte_slice_returns_none_for_missing_key() {
         // 未登録キーをバイトスライスで remove すると None を返し件数を維持することを確認する
         let mut dict = PdfDictionary::new();
-        dict.insert(PdfName::from("Type"), PdfObject::Integer(42));
+        dict.insert(PdfName::from("Type"), PdfObject::from(42));
         assert_eq!(dict.remove(b"Missing".as_slice()), None);
         assert_eq!(dict.len(), 1);
     }
@@ -449,28 +437,28 @@ mod tests {
     fn get_by_empty_byte_slice_returns_value_for_empty_name() {
         // 空バイトスライスで get すると空の PdfName に挿入した値を返すことを確認する
         let mut dict = PdfDictionary::new();
-        dict.insert(PdfName::from(""), PdfObject::Integer(42));
-        assert_eq!(dict.get(b"".as_slice()), Some(&PdfObject::Integer(42)));
+        dict.insert(PdfName::from(""), PdfObject::from(42));
+        assert_eq!(dict.get(b"".as_slice()), Some(&PdfObject::from(42)));
     }
 
     #[test]
     fn get_by_byte_slice_distinguishes_prefix_keys() {
         // 前方一致する A と AB の両方があってもバイトスライスと完全一致する値だけを返すことを確認する
         let mut dict = PdfDictionary::new();
-        dict.insert(PdfName::from("A"), PdfObject::Integer(1));
-        dict.insert(PdfName::from("AB"), PdfObject::Integer(2));
-        assert_eq!(dict.get(b"A".as_slice()), Some(&PdfObject::Integer(1)));
-        assert_eq!(dict.get(b"AB".as_slice()), Some(&PdfObject::Integer(2)));
+        dict.insert(PdfName::from("A"), PdfObject::from(1));
+        dict.insert(PdfName::from("AB"), PdfObject::from(2));
+        assert_eq!(dict.get(b"A".as_slice()), Some(&PdfObject::from(1)));
+        assert_eq!(dict.get(b"AB".as_slice()), Some(&PdfObject::from(2)));
     }
 
     #[test]
     fn get_by_byte_slice_matches_non_utf8_key() {
         // NUL と非 UTF-8 を含むバイトスライスでも同じ PdfName の値を返すことを確認する
         let mut dict = PdfDictionary::new();
-        dict.insert(PdfName::new(vec![0x00, 0x80]), PdfObject::Integer(42));
+        dict.insert(PdfName::new(vec![0x00, 0x80]), PdfObject::from(42));
         assert_eq!(
             dict.get([0x00, 0x80].as_slice()),
-            Some(&PdfObject::Integer(42))
+            Some(&PdfObject::from(42))
         );
     }
 }

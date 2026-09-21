@@ -47,13 +47,17 @@ enum PeekClass<T> {
     Eof,
     Malformed { position: usize },
 }
+use crate::object::array::PdfArray;
+use crate::object::boolean::PdfBoolean;
 use crate::object::dictionary::PdfDictionary;
 use crate::object::generation_number::GenerationNumber;
 use crate::object::indirect_object::IndirectObject;
 use crate::object::indirect_ref::IndirectRef;
+use crate::object::integer::PdfInteger;
 use crate::object::object_id::ObjectId;
 use crate::object::object_number::ObjectNumber;
 use crate::object::pdf_object::PdfObject;
+use crate::object::real::PdfReal;
 use crate::object::string::PdfString;
 use crate::parser::error::ParseError;
 
@@ -122,7 +126,7 @@ impl<'a> Parser<'a> {
                 if let Some(object) = self.try_parse_indirect_reference(n)? {
                     return Ok(object);
                 }
-                Ok(PdfObject::Integer(n))
+                Ok(PdfObject::Integer(PdfInteger::new(n)))
             }
             Token::Primitive(p) => Ok(Self::primitive_to_object(p)),
             Token::ArrayBegin => self.parse_array_body(),
@@ -263,11 +267,11 @@ impl<'a> Parser<'a> {
         loop {
             let (token, pos_before) = self.take_token_or_error()?;
             match token {
-                Token::ArrayEnd => return Ok(PdfObject::Array(items)),
+                Token::ArrayEnd => return Ok(PdfObject::Array(PdfArray::from(items))),
                 Token::Primitive(Primitive::Integer(n)) => {
                     let item = match self.try_parse_indirect_reference(n)? {
                         Some(object) => object,
-                        None => PdfObject::Integer(n),
+                        None => PdfObject::Integer(PdfInteger::new(n)),
                     };
                     items.push(item);
                 }
@@ -441,9 +445,9 @@ impl<'a> Parser<'a> {
     fn primitive_to_object(p: Primitive) -> PdfObject {
         match p {
             Primitive::Null => PdfObject::Null,
-            Primitive::Boolean(b) => PdfObject::Boolean(b),
-            Primitive::Integer(i) => PdfObject::Integer(i),
-            Primitive::Real(f) => PdfObject::Real(f),
+            Primitive::Boolean(b) => PdfObject::Boolean(PdfBoolean::new(b)),
+            Primitive::Integer(i) => PdfObject::Integer(PdfInteger::new(i)),
+            Primitive::Real(f) => PdfObject::Real(PdfReal::new(f)),
             Primitive::LiteralString(v) => PdfObject::String(PdfString::literal(v)),
             Primitive::HexString(v) => PdfObject::String(PdfString::hex(v)),
             Primitive::Name(n) => PdfObject::Name(n),
@@ -510,14 +514,20 @@ mod tests {
     fn parse_object_returns_boolean_true_for_true_keyword() {
         // 入力 b"true" で Ok(PdfObject::Boolean(true)) を返すことを確認する
         let mut p = parser(b"true");
-        assert_eq!(p.parse_object(), Ok(PdfObject::Boolean(true)));
+        assert_eq!(
+            p.parse_object(),
+            Ok(PdfObject::Boolean(PdfBoolean::new(true)))
+        );
     }
 
     #[test]
     fn parse_object_returns_boolean_false_for_false_keyword() {
         // 入力 b"false" で Ok(PdfObject::Boolean(false)) を返すことを確認する
         let mut p = parser(b"false");
-        assert_eq!(p.parse_object(), Ok(PdfObject::Boolean(false)));
+        assert_eq!(
+            p.parse_object(),
+            Ok(PdfObject::Boolean(PdfBoolean::new(false)))
+        );
     }
 
     // ---------- 正常系: Integer ----------
@@ -526,35 +536,47 @@ mod tests {
     fn parse_object_returns_integer_for_positive_digits() {
         // 入力 b"42" で Ok(PdfObject::Integer(42)) を返すことを確認する
         let mut p = parser(b"42");
-        assert_eq!(p.parse_object(), Ok(PdfObject::Integer(42)));
+        assert_eq!(
+            p.parse_object(),
+            Ok(PdfObject::Integer(PdfInteger::new(42)))
+        );
     }
 
     #[test]
     fn parse_object_returns_integer_for_negative_digits() {
         // 入力 b"-7" で Ok(PdfObject::Integer(-7)) を返すことを確認する
         let mut p = parser(b"-7");
-        assert_eq!(p.parse_object(), Ok(PdfObject::Integer(-7)));
+        assert_eq!(
+            p.parse_object(),
+            Ok(PdfObject::Integer(PdfInteger::new(-7)))
+        );
     }
 
     #[test]
     fn parse_object_returns_integer_for_zero() {
         // 境界値: 入力 b"0" で Ok(PdfObject::Integer(0)) を返すことを確認する
         let mut p = parser(b"0");
-        assert_eq!(p.parse_object(), Ok(PdfObject::Integer(0)));
+        assert_eq!(p.parse_object(), Ok(PdfObject::Integer(PdfInteger::new(0))));
     }
 
     #[test]
     fn parse_object_returns_integer_for_i64_max() {
         // 境界値: i64::MAX を表す入力で Integer(i64::MAX) を透過保持することを確認する
         let mut p = parser(b"9223372036854775807");
-        assert_eq!(p.parse_object(), Ok(PdfObject::Integer(i64::MAX)));
+        assert_eq!(
+            p.parse_object(),
+            Ok(PdfObject::Integer(PdfInteger::new(i64::MAX)))
+        );
     }
 
     #[test]
     fn parse_object_returns_integer_for_i64_min() {
         // 境界値: i64::MIN を表す入力で Integer(i64::MIN) を透過保持することを確認する
         let mut p = parser(b"-9223372036854775808");
-        assert_eq!(p.parse_object(), Ok(PdfObject::Integer(i64::MIN)));
+        assert_eq!(
+            p.parse_object(),
+            Ok(PdfObject::Integer(PdfInteger::new(i64::MIN)))
+        );
     }
 
     // ---------- 正常系: Real ----------
@@ -563,21 +585,21 @@ mod tests {
     fn parse_object_returns_real_for_decimal() {
         // 入力 b"1.25" で Ok(PdfObject::Real(1.25)) を返すことを確認する
         let mut p = parser(b"1.25");
-        assert_eq!(p.parse_object(), Ok(PdfObject::Real(1.25)));
+        assert_eq!(p.parse_object(), Ok(PdfObject::Real(PdfReal::new(1.25))));
     }
 
     #[test]
     fn parse_object_returns_real_for_leading_dot() {
         // 入力 b".5" で Ok(PdfObject::Real(0.5)) を返すことを確認する
         let mut p = parser(b".5");
-        assert_eq!(p.parse_object(), Ok(PdfObject::Real(0.5)));
+        assert_eq!(p.parse_object(), Ok(PdfObject::Real(PdfReal::new(0.5))));
     }
 
     #[test]
     fn parse_object_returns_real_for_trailing_dot() {
         // 入力 b"5." で Ok(PdfObject::Real(5.0)) を返すことを確認する
         let mut p = parser(b"5.");
-        assert_eq!(p.parse_object(), Ok(PdfObject::Real(5.0)));
+        assert_eq!(p.parse_object(), Ok(PdfObject::Real(PdfReal::new(5.0))));
     }
 
     // ---------- 内部ヘルパ: primitive_to_object（NaN / Inf 透過） ----------
@@ -587,7 +609,7 @@ mod tests {
         // Primitive::Real(NaN) を内部ヘルパで変換すると PdfObject::Real(NaN) として保持されることを確認する
         let obj = Parser::primitive_to_object(Primitive::Real(f64::NAN));
         match obj {
-            PdfObject::Real(f) => assert!(f.is_nan()),
+            PdfObject::Real(f) => assert!(f.value().is_nan()),
             _ => panic!("expected Real(NaN), got {:?}", obj),
         }
     }
@@ -597,7 +619,7 @@ mod tests {
         // Primitive::Real(+Inf) を内部ヘルパで変換すると PdfObject::Real(+Inf) として保持されることを確認する
         let obj = Parser::primitive_to_object(Primitive::Real(f64::INFINITY));
         match obj {
-            PdfObject::Real(f) => assert!(f.is_infinite() && f.is_sign_positive()),
+            PdfObject::Real(f) => assert!(f.value().is_infinite() && f.value().is_sign_positive()),
             _ => panic!("expected Real(+Inf), got {:?}", obj),
         }
     }
@@ -607,7 +629,7 @@ mod tests {
         // Primitive::Real(-Inf) を内部ヘルパで変換すると PdfObject::Real(-Inf) として保持されることを確認する
         let obj = Parser::primitive_to_object(Primitive::Real(f64::NEG_INFINITY));
         match obj {
-            PdfObject::Real(f) => assert!(f.is_infinite() && f.is_sign_negative()),
+            PdfObject::Real(f) => assert!(f.value().is_infinite() && f.value().is_sign_negative()),
             _ => panic!("expected Real(-Inf), got {:?}", obj),
         }
     }
@@ -851,7 +873,10 @@ mod tests {
     fn parse_object_skips_multiple_consecutive_comments() {
         // 入力 b"%a\n%b\n%c\ntrue" で 3 行の連続コメントを透過スキップし Ok(Boolean(true)) を返すことを確認する
         let mut p = parser(b"%a\n%b\n%c\ntrue");
-        assert_eq!(p.parse_object(), Ok(PdfObject::Boolean(true)));
+        assert_eq!(
+            p.parse_object(),
+            Ok(PdfObject::Boolean(PdfBoolean::new(true)))
+        );
     }
 
     #[test]

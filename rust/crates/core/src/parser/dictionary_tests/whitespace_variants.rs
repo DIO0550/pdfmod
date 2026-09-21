@@ -5,10 +5,7 @@ use super::parse_dict;
 
 fn assert_single_int_entry(dict: &PdfDictionary, key: &str, value: i64) {
     assert_eq!(dict.len(), 1);
-    assert_eq!(
-        dict.get(&PdfName::from(key)),
-        Some(&PdfObject::Integer(value))
-    );
+    assert_eq!(dict.get(&PdfName::from(key)), Some(&PdfObject::from(value)));
 }
 
 #[test]

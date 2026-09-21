@@ -34,7 +34,7 @@ fn parse_object_returns_iso_specification_sample_dictionary() {
     assert!((version - 0.01).abs() < 1e-9, "version={}", version);
     assert_eq!(
         dict.get(&PdfName::from("IntegerItem")),
-        Some(&PdfObject::Integer(12))
+        Some(&PdfObject::from(12))
     );
     assert_eq!(
         dict.get(&PdfName::from("StringItem")),
@@ -53,7 +53,7 @@ fn parse_object_returns_iso_specification_sample_dictionary() {
     assert!((item1 - 0.4).abs() < 1e-9, "item1={}", item1);
     assert_eq!(
         sub.get(&PdfName::from("Item2")),
-        Some(&PdfObject::Boolean(true))
+        Some(&PdfObject::from(true))
     );
     assert_eq!(
         sub.get(&PdfName::from("LastItem")),
@@ -71,11 +71,11 @@ fn parse_object_returns_page_dictionary_with_media_box_array() {
     );
     assert_eq!(
         dict.get(&PdfName::from("MediaBox")),
-        Some(&PdfObject::Array(vec![
-            PdfObject::Integer(0),
-            PdfObject::Integer(0),
-            PdfObject::Integer(612),
-            PdfObject::Integer(792),
+        Some(&PdfObject::from(vec![
+            PdfObject::from(0),
+            PdfObject::from(0),
+            PdfObject::from(612),
+            PdfObject::from(792),
         ]))
     );
 }

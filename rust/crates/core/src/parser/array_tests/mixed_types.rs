@@ -9,9 +9,9 @@ fn parse_object_returns_array_for_five_scalar_mix() {
     let mut p = parser(b"[null true /N (s) <414243>]");
     assert_eq!(
         p.parse_object(),
-        Ok(PdfObject::Array(vec![
+        Ok(PdfObject::from(vec![
             PdfObject::Null,
-            PdfObject::Boolean(true),
+            PdfObject::from(true),
             PdfObject::Name(PdfName::new(b"N".to_vec())),
             PdfObject::String(PdfString::literal(b"s")),
             PdfObject::String(PdfString::hex(b"ABC")),
@@ -26,10 +26,10 @@ fn parse_object_returns_array_for_integer_and_real_mix() {
     let mut p = parser(b"[1 3.14 -0]");
     assert_eq!(
         p.parse_object(),
-        Ok(PdfObject::Array(vec![
-            PdfObject::Integer(1),
-            PdfObject::Real(3.14),
-            PdfObject::Integer(0),
+        Ok(PdfObject::from(vec![
+            PdfObject::from(1),
+            PdfObject::from(3.14),
+            PdfObject::from(0),
         ]))
     );
 }
@@ -40,7 +40,7 @@ fn parse_object_returns_array_for_eight_repeated_integers() {
     let mut p = parser(b"[1 1 1 1 1 1 1 1]");
     assert_eq!(
         p.parse_object(),
-        Ok(PdfObject::Array(vec![PdfObject::Integer(1); 8]))
+        Ok(PdfObject::from(vec![PdfObject::from(1); 8]))
     );
 }
 
@@ -50,10 +50,10 @@ fn parse_object_returns_array_for_bool_name_adjacent() {
     let mut p = parser(b"[true /A false /B]");
     assert_eq!(
         p.parse_object(),
-        Ok(PdfObject::Array(vec![
-            PdfObject::Boolean(true),
+        Ok(PdfObject::from(vec![
+            PdfObject::from(true),
             PdfObject::Name(PdfName::new(b"A".to_vec())),
-            PdfObject::Boolean(false),
+            PdfObject::from(false),
             PdfObject::Name(PdfName::new(b"B".to_vec())),
         ]))
     );
@@ -66,10 +66,10 @@ fn parse_object_returns_array_for_negative_and_zero_real() {
     let mut p = parser(b"[-1 -3.14 0.0]");
     assert_eq!(
         p.parse_object(),
-        Ok(PdfObject::Array(vec![
-            PdfObject::Integer(-1),
-            PdfObject::Real(-3.14),
-            PdfObject::Real(0.0),
+        Ok(PdfObject::from(vec![
+            PdfObject::from(-1),
+            PdfObject::from(-3.14),
+            PdfObject::from(0.0),
         ]))
     );
 }

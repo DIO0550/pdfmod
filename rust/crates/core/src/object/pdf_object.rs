@@ -1,39 +1,39 @@
 //! PDF 基本オブジェクトの中核 `PdfObject` を定義するモジュール。
 //!
-//! ISO 32000-1 §7.3 の PDF オブジェクトを 1 つの enum で表す。現時点では
-//! スカラ系 4 バリアント（Null / Boolean / Integer / Real）に加え、文字列
-//! （復号後の生バイト列）・名前（`PdfName`）・配列（`Vec<PdfObject>` の自己再帰）・
-//! 辞書（`PdfDictionary`）・ストリーム（`PdfStream`）・参照（`IndirectRef`）を定義する。
-//! 構築は無検証（infallible）で、テキスト解釈や妥当性検証・正規化は上位
-//! （lexer/parser）に委譲する。
+//! ISO 32000-1 §7.3 の PDF オブジェクトを 1 つの enum で表す。スカラ系 4 バリアント
+//! （Null / Boolean / Integer / Real）に加え、文字列（`PdfString`）・名前（`PdfName`）・
+//! 配列（`PdfArray`）・辞書（`PdfDictionary`）・ストリーム（`PdfStream`）・参照
+//! （`IndirectRef`）を定義する。構築は無検証（infallible）で、テキスト解釈や妥当性検証・
+//! 正規化は上位（lexer/parser）に委譲する。
 
+use crate::object::array::PdfArray;
+use crate::object::boolean::PdfBoolean;
 use crate::object::dictionary::PdfDictionary;
 use crate::object::indirect_ref::IndirectRef;
+use crate::object::integer::PdfInteger;
 use crate::object::name::PdfName;
 use crate::object::object_kind::ObjectKind;
+use crate::object::real::PdfReal;
 use crate::object::stream::PdfStream;
 use crate::object::string::PdfString;
 
 /// PDF 基本オブジェクト（スカラ系・文字列・名前・配列・辞書・ストリーム・参照バリアントを表す enum）。
 ///
-/// 整数幅は `i64`、浮動小数点幅は `f64`（PDF パーサで最も一般的・桁あふれ耐性・
-/// 後続レクサーとの相性で確定）。`Real(f64)` を含むため `Eq`/`Hash`/`Ord` は
-/// derive できない（IEEE 754: `NaN != NaN`）。`Copy` も付けない（後続のヒープ
-/// 保持バリアント追加で必ず外れ、撤回が破壊的変更になるため最初から付けず API を
-/// 安定させる）。`PartialOrd` も付けない（PDF オブジェクト間に意味ある全順序は
-/// なく、`PdfErrorCode` 同様に用途上不要）。よって derive は `Debug, Clone,
-/// PartialEq` のみ。
+/// `Real(PdfReal)` を含むため `Eq`/`Hash`/`Ord` は derive できない（IEEE 754: `NaN != NaN`）。
+/// `Copy` も付けない（ヒープ保持バリアントを含むため）。
+/// `PartialOrd` も付けない（PDF オブジェクト間に意味ある全順序はなく、`PdfErrorCode` 同様に用途上不要）。
+/// よって derive は `Debug, Clone, PartialEq` のみ。
 #[derive(Debug, Clone, PartialEq)]
 #[must_use]
 pub enum PdfObject {
     /// null オブジェクト（値の不在）。
     Null,
-    /// 真偽値オブジェクト（`true` / `false`）。
-    Boolean(bool),
-    /// 整数オブジェクト（`i64`、`i64::MIN..=i64::MAX` を無検証で保持）。
-    Integer(i64),
-    /// 実数オブジェクト（`f64`、`NaN`/`±0.0`/`Inf` を無検証で保持）。
-    Real(f64),
+    /// 真偽値オブジェクト（`PdfBoolean`）。
+    Boolean(PdfBoolean),
+    /// 整数オブジェクト（`PdfInteger`、`i64::MIN..=i64::MAX` を無検証で保持）。
+    Integer(PdfInteger),
+    /// 実数オブジェクト（`PdfReal`、`NaN`/`±0.0`/`Inf` を無検証で保持）。
+    Real(PdfReal),
     /// 文字列オブジェクト（**復号後** のバイト列と元の表記形式を `PdfString` で保持）。
     ///
     /// テキストエンコーディングを仮定せず、リテラル文字列のエスケープや
@@ -44,13 +44,11 @@ pub enum PdfObject {
     String(PdfString),
     /// 名前オブジェクト（`/Name` 本体）。`PdfName`（#261）をそのまま内包する。
     Name(PdfName),
-    /// 配列オブジェクト（順序付きオブジェクトリスト）。
+    /// 配列オブジェクト（`PdfArray`）。
     ///
-    /// 専用ラッパ型を設けず `Vec<PdfObject>` を直接保持し、`PdfObject` の
-    /// 自己再帰によりネスト（配列内に配列・辞書など）を表現する。妥当性検証や
-    /// 正規化は行わず、空配列も無検証で忠実に保持する。要素に `Real(NaN)` を
-    /// 含むと `NaN != NaN` が配列全体に伝播し、配列同士は `==` で非等価になる。
-    Array(Vec<Self>),
+    /// 専用ラッパ型 `PdfArray` を内包し、要素に `PdfReal(NaN)` を含むと
+    /// `NaN != NaN` が配列全体に伝播し、配列同士は `==` で非等価になる。
+    Array(PdfArray),
     /// 辞書オブジェクト。`PdfDictionary`（#264）をそのまま内包する。
     ///
     /// 値型 `PdfObject` を介して配列・辞書を値に持つ多段ネストを表現する。
@@ -81,27 +79,54 @@ impl PdfObject {
         matches!(self, Self::Null)
     }
 
-    /// `Boolean` のとき内部の `bool` を `Some` で取り出す（他は `None`）。
+    /// `Boolean` のとき内部の真偽値を `Some` で取り出す（他は `None`）。
     #[must_use]
     pub fn as_bool(&self) -> Option<bool> {
+        match self {
+            Self::Boolean(b) => Some(b.value()),
+            _ => None,
+        }
+    }
+
+    /// `Boolean` のとき内部の `PdfBoolean` を `Some` で取り出す（他は `None`）。
+    #[must_use]
+    pub fn as_pdf_boolean(&self) -> Option<PdfBoolean> {
         match self {
             Self::Boolean(b) => Some(*b),
             _ => None,
         }
     }
 
-    /// `Integer` のとき内部の `i64` を `Some` で取り出す（他は `None`）。
+    /// `Integer` のとき内部の整数値を `Some` で取り出す（他は `None`）。
     #[must_use]
     pub fn as_integer(&self) -> Option<i64> {
+        match self {
+            Self::Integer(n) => Some(n.value()),
+            _ => None,
+        }
+    }
+
+    /// `Integer` のとき内部の `PdfInteger` を `Some` で取り出す（他は `None`）。
+    #[must_use]
+    pub fn as_pdf_integer(&self) -> Option<PdfInteger> {
         match self {
             Self::Integer(n) => Some(*n),
             _ => None,
         }
     }
 
-    /// `Real` のとき内部の `f64` を `Some` で取り出す（他は `None`）。
+    /// `Real` のとき内部の浮動小数点数値を `Some` で取り出す（他は `None`）。
     #[must_use]
     pub fn as_real(&self) -> Option<f64> {
+        match self {
+            Self::Real(r) => Some(r.value()),
+            _ => None,
+        }
+    }
+
+    /// `Real` のとき内部の `PdfReal` を `Some` で取り出す（他は `None`）。
+    #[must_use]
+    pub fn as_pdf_real(&self) -> Option<PdfReal> {
         match self {
             Self::Real(r) => Some(*r),
             _ => None,
@@ -150,6 +175,15 @@ impl PdfObject {
     pub fn as_array(&self) -> Option<&[Self]> {
         match self {
             Self::Array(items) => Some(items.as_slice()),
+            _ => None,
+        }
+    }
+
+    /// `Array` のとき内部の `PdfArray` を `&PdfArray` として `Some` で取り出す（他は `None`）。
+    #[must_use]
+    pub fn as_pdf_array(&self) -> Option<&PdfArray> {
+        match self {
+            Self::Array(array) => Some(array),
             _ => None,
         }
     }
@@ -216,7 +250,14 @@ impl From<bool> for PdfObject {
     /// バリアント名を明示せずに `true.into()` と書け、`impl Into<PdfObject>` を
     /// 受け取る汎用 API を設計できるようにする目的で提供する。
     fn from(value: bool) -> Self {
-        Self::Boolean(value)
+        Self::Boolean(PdfBoolean::new(value))
+    }
+}
+
+impl From<PdfBoolean> for PdfObject {
+    /// `PdfBoolean` から `Boolean` バリアントを構築する変換経路。
+    fn from(boolean: PdfBoolean) -> Self {
+        Self::Boolean(boolean)
     }
 }
 
@@ -228,7 +269,14 @@ impl From<i64> for PdfObject {
     /// `From<u32>` を追加すると候補が複数になり、既存の `42.into()` が
     /// 「type annotations needed」で壊れる。よって整数型の追加実装はしない。
     fn from(value: i64) -> Self {
-        Self::Integer(value)
+        Self::Integer(PdfInteger::new(value))
+    }
+}
+
+impl From<PdfInteger> for PdfObject {
+    /// `PdfInteger` から `Integer` バリアントを構築する変換経路。
+    fn from(integer: PdfInteger) -> Self {
+        Self::Integer(integer)
     }
 }
 
@@ -237,7 +285,14 @@ impl From<f64> for PdfObject {
     ///
     /// 無検証であり、`NaN` / `±0.0` / `Inf` もそのまま保持する（正規化しない）。
     fn from(value: f64) -> Self {
-        Self::Real(value)
+        Self::Real(PdfReal::new(value))
+    }
+}
+
+impl From<PdfReal> for PdfObject {
+    /// `PdfReal` から `Real` バリアントを構築する変換経路。
+    fn from(real: PdfReal) -> Self {
+        Self::Real(real)
     }
 }
 
@@ -275,7 +330,14 @@ impl From<Vec<Self>> for PdfObject {
     /// `From<PdfString>` に移り `Vec` からの変換が本実装だけになったため、
     /// `vec![].into()` も曖昧にならない。
     fn from(items: Vec<Self>) -> Self {
-        Self::Array(items)
+        Self::Array(PdfArray::from(items))
+    }
+}
+
+impl From<PdfArray> for PdfObject {
+    /// `PdfArray` から `Array` バリアントを構築する変換経路。
+    fn from(array: PdfArray) -> Self {
+        Self::Array(array)
     }
 }
 
