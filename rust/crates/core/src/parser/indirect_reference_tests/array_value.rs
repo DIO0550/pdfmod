@@ -5,10 +5,7 @@ use super::{parser, reference};
 fn parse_object_returns_array_with_single_reference() {
     // 配列内: b"[1 0 R]" は 1 要素 Array<[Reference(1,0)]> を返すことを確認する
     let mut p = parser(b"[1 0 R]");
-    assert_eq!(
-        p.parse_object(),
-        Ok(PdfObject::Array(vec![reference(1, 0)]))
-    );
+    assert_eq!(p.parse_object(), Ok(PdfObject::from(vec![reference(1, 0)])));
 }
 
 #[test]
@@ -17,7 +14,7 @@ fn parse_object_returns_array_with_two_references() {
     let mut p = parser(b"[1 0 R 2 0 R]");
     assert_eq!(
         p.parse_object(),
-        Ok(PdfObject::Array(vec![reference(1, 0), reference(2, 0)]))
+        Ok(PdfObject::from(vec![reference(1, 0), reference(2, 0)]))
     );
 }
 
@@ -27,10 +24,7 @@ fn parse_object_returns_array_mixing_reference_and_integer() {
     let mut p = parser(b"[1 0 R 2]");
     assert_eq!(
         p.parse_object(),
-        Ok(PdfObject::Array(vec![
-            reference(1, 0),
-            PdfObject::Integer(2)
-        ]))
+        Ok(PdfObject::from(vec![reference(1, 0), PdfObject::from(2)]))
     );
 }
 
@@ -40,10 +34,10 @@ fn parse_object_returns_array_of_integers_when_no_r_follows() {
     let mut p = parser(b"[1 2 3]");
     assert_eq!(
         p.parse_object(),
-        Ok(PdfObject::Array(vec![
-            PdfObject::Integer(1),
-            PdfObject::Integer(2),
-            PdfObject::Integer(3),
+        Ok(PdfObject::from(vec![
+            PdfObject::from(1),
+            PdfObject::from(2),
+            PdfObject::from(3),
         ]))
     );
 }
@@ -54,7 +48,7 @@ fn parse_object_returns_nested_array_with_reference() {
     let mut p = parser(b"[[1 0 R]]");
     assert_eq!(
         p.parse_object(),
-        Ok(PdfObject::Array(vec![PdfObject::Array(vec![reference(
+        Ok(PdfObject::from(vec![PdfObject::from(vec![reference(
             1, 0
         )])]))
     );

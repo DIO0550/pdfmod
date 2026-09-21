@@ -7,9 +7,9 @@ fn parse_object_returns_array_skipping_inline_comment() {
     let mut p = parser(b"[1 % comment\n 2]");
     assert_eq!(
         p.parse_object(),
-        Ok(PdfObject::Array(vec![
-            PdfObject::Integer(1),
-            PdfObject::Integer(2),
+        Ok(PdfObject::from(vec![
+            PdfObject::from(1),
+            PdfObject::from(2),
         ]))
     );
 }
@@ -20,7 +20,7 @@ fn parse_object_returns_array_skipping_leading_comments() {
     let mut p = parser(b"[%a\n%b\n 1]");
     assert_eq!(
         p.parse_object(),
-        Ok(PdfObject::Array(vec![PdfObject::Integer(1)]))
+        Ok(PdfObject::from(vec![PdfObject::from(1)]))
     );
 }
 
@@ -30,9 +30,9 @@ fn parse_object_returns_array_skipping_trailing_comment() {
     let mut p = parser(b"[1 2 %tail\n]");
     assert_eq!(
         p.parse_object(),
-        Ok(PdfObject::Array(vec![
-            PdfObject::Integer(1),
-            PdfObject::Integer(2),
+        Ok(PdfObject::from(vec![
+            PdfObject::from(1),
+            PdfObject::from(2),
         ]))
     );
 }

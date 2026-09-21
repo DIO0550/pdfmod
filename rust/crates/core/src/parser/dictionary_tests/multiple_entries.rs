@@ -7,9 +7,9 @@ fn parse_object_returns_dictionary_with_three_entries() {
     // 入力 b"<< /A 1 /B 2 /C 3 >>" で 3 エントリ辞書 (len==3) を返し各キーに対応する値が一致することを確認する
     let dict = parse_dict(b"<< /A 1 /B 2 /C 3 >>");
     assert_eq!(dict.len(), 3);
-    assert_eq!(dict.get(&PdfName::from("A")), Some(&PdfObject::Integer(1)));
-    assert_eq!(dict.get(&PdfName::from("B")), Some(&PdfObject::Integer(2)));
-    assert_eq!(dict.get(&PdfName::from("C")), Some(&PdfObject::Integer(3)));
+    assert_eq!(dict.get(&PdfName::from("A")), Some(&PdfObject::from(1)));
+    assert_eq!(dict.get(&PdfName::from("B")), Some(&PdfObject::from(2)));
+    assert_eq!(dict.get(&PdfName::from("C")), Some(&PdfObject::from(3)));
 }
 
 #[test]
@@ -18,10 +18,7 @@ fn parse_object_returns_dictionary_with_five_entries() {
     let dict = parse_dict(b"<< /A 1 /B 2 /C 3 /D 4 /E 5 >>");
     assert_eq!(dict.len(), 5);
     for (key, value) in [("A", 1), ("B", 2), ("C", 3), ("D", 4), ("E", 5)] {
-        assert_eq!(
-            dict.get(&PdfName::from(key)),
-            Some(&PdfObject::Integer(value))
-        );
+        assert_eq!(dict.get(&PdfName::from(key)), Some(&PdfObject::from(value)));
     }
 }
 
@@ -38,6 +35,6 @@ fn parse_object_returns_dictionary_with_one_hundred_entries() {
     assert_eq!(dict.len(), 100);
     for i in 0..100 {
         let key = PdfName::from(format!("K{}", i).as_str());
-        assert_eq!(dict.get(&key), Some(&PdfObject::Integer(i)));
+        assert_eq!(dict.get(&key), Some(&PdfObject::from(i)));
     }
 }

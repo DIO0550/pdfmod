@@ -38,6 +38,6 @@ fn parse_indirect_object_accepts_generation_u16_max() {
     let mut p = parser(b"5 65535 obj true endobj");
     assert_eq!(
         p.parse_indirect_object(),
-        Ok(indirect_object(5, 65535, PdfObject::Boolean(true)))
+        Ok(indirect_object(5, 65535, PdfObject::from(true)))
     );
 }

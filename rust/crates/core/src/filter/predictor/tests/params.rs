@@ -30,9 +30,9 @@ fn default_parameters_and_accessors() {
 #[test]
 fn from_dictionary_normal_parameters() {
     let mut dict = PdfDictionary::new();
-    dict.insert(PdfName::new(b"Predictor"), PdfObject::Integer(12));
-    dict.insert(PdfName::new(b"Columns"), PdfObject::Integer(4));
-    dict.insert(PdfName::new(b"Colors"), PdfObject::Integer(1));
+    dict.insert(PdfName::new(b"Predictor"), PdfObject::from(12));
+    dict.insert(PdfName::new(b"Columns"), PdfObject::from(4));
+    dict.insert(PdfName::new(b"Colors"), PdfObject::from(1));
 
     let params = PredictorParams::from_dictionary(&dict, ByteOffset::new(10))
         .expect("dictionary should parse");

@@ -7,10 +7,10 @@ fn parse_object_returns_array_for_mixed_whitespace() {
     let mut p = parser(b"[\t1\r\n2\x0C3 ]");
     assert_eq!(
         p.parse_object(),
-        Ok(PdfObject::Array(vec![
-            PdfObject::Integer(1),
-            PdfObject::Integer(2),
-            PdfObject::Integer(3),
+        Ok(PdfObject::from(vec![
+            PdfObject::from(1),
+            PdfObject::from(2),
+            PdfObject::from(3),
         ]))
     );
 }
@@ -21,9 +21,9 @@ fn parse_object_returns_array_for_nul_separator_compound() {
     let mut p = parser(b"[1\x002]");
     assert_eq!(
         p.parse_object(),
-        Ok(PdfObject::Array(vec![
-            PdfObject::Integer(1),
-            PdfObject::Integer(2),
+        Ok(PdfObject::from(vec![
+            PdfObject::from(1),
+            PdfObject::from(2),
         ]))
     );
 }
@@ -34,7 +34,7 @@ fn parse_object_returns_array_for_multiple_spaces() {
     let mut p = parser(b"[   1   ]");
     assert_eq!(
         p.parse_object(),
-        Ok(PdfObject::Array(vec![PdfObject::Integer(1)]))
+        Ok(PdfObject::from(vec![PdfObject::from(1)]))
     );
 }
 
@@ -44,10 +44,10 @@ fn parse_object_returns_array_for_crlf_only_separator() {
     let mut p = parser(b"[1\r\n2\r\n3]");
     assert_eq!(
         p.parse_object(),
-        Ok(PdfObject::Array(vec![
-            PdfObject::Integer(1),
-            PdfObject::Integer(2),
-            PdfObject::Integer(3),
+        Ok(PdfObject::from(vec![
+            PdfObject::from(1),
+            PdfObject::from(2),
+            PdfObject::from(3),
         ]))
     );
 }
@@ -58,9 +58,9 @@ fn parse_object_returns_array_for_nul_only_separator() {
     let mut p = parser(b"[\x001\x002\x00]");
     assert_eq!(
         p.parse_object(),
-        Ok(PdfObject::Array(vec![
-            PdfObject::Integer(1),
-            PdfObject::Integer(2),
+        Ok(PdfObject::from(vec![
+            PdfObject::from(1),
+            PdfObject::from(2),
         ]))
     );
 }

@@ -128,15 +128,15 @@ mod tests {
         let string = || PdfObject::String(PdfString::literal(b"aa"));
         let cases: [Vec<PdfObject>; 5] = [
             // 1 番目が非文字列
-            vec![PdfObject::Integer(42), string()],
+            vec![PdfObject::from(42), string()],
             // 2 番目が非文字列
-            vec![string(), PdfObject::Integer(42)],
+            vec![string(), PdfObject::from(42)],
             // 両方が非文字列
-            vec![PdfObject::Integer(1), PdfObject::Integer(2)],
+            vec![PdfObject::from(1), PdfObject::from(2)],
             // 入れ子の配列
-            vec![PdfObject::Array(vec![string()]), string()],
+            vec![PdfObject::from(vec![string()]), string()],
             // 真偽値
-            vec![string(), PdfObject::Boolean(true)],
+            vec![string(), PdfObject::from(true)],
         ];
 
         for elements in cases {

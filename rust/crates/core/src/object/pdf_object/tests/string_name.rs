@@ -37,9 +37,9 @@ fn as_pdf_string_returns_none_for_non_string_variants() {
     // String 以外（Null/Boolean/Integer/Real/Name/Stream/Reference）では as_pdf_string() が None を返すことを確認する
     let variants = [
         PdfObject::Null,
-        PdfObject::Boolean(true),
-        PdfObject::Integer(0),
-        PdfObject::Real(0.0),
+        PdfObject::from(true),
+        PdfObject::from(0),
+        PdfObject::from(0.0),
         PdfObject::Name(PdfName::from("Type")),
         PdfObject::Stream(make_stream(b"data")),
         PdfObject::Reference(make_ref(1, 0)),
@@ -80,9 +80,9 @@ fn as_string_bytes_returns_none_for_non_string_variants() {
     // String 以外（Null/Boolean/Integer/Real/Name/Stream/Reference）では as_string_bytes() が None を返すことを確認する
     let variants = [
         PdfObject::Null,
-        PdfObject::Boolean(true),
-        PdfObject::Integer(0),
-        PdfObject::Real(0.0),
+        PdfObject::from(true),
+        PdfObject::from(0),
+        PdfObject::from(0.0),
         PdfObject::Name(PdfName::from("Type")),
         PdfObject::Stream(make_stream(b"data")),
         PdfObject::Reference(make_ref(1, 0)),
@@ -97,9 +97,9 @@ fn as_name_returns_none_for_non_name_variants() {
     // Name 以外（Null/Boolean/Integer/Real/String/Stream/Reference）では as_name() が None を返すことを確認する
     let variants = [
         PdfObject::Null,
-        PdfObject::Boolean(true),
-        PdfObject::Integer(0),
-        PdfObject::Real(0.0),
+        PdfObject::from(true),
+        PdfObject::from(0),
+        PdfObject::from(0.0),
         PdfObject::String(PdfString::literal(b"abc")),
         PdfObject::Stream(make_stream(b"data")),
         PdfObject::Reference(make_ref(1, 0)),

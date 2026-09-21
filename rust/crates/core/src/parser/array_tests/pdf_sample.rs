@@ -12,10 +12,10 @@ fn parse_object_returns_array_for_iso_3_7_example() {
     let mut p = parser(input);
     assert_eq!(
         p.parse_object(),
-        Ok(PdfObject::Array(vec![
-            PdfObject::Integer(549),
-            PdfObject::Real(3.14),
-            PdfObject::Boolean(false),
+        Ok(PdfObject::from(vec![
+            PdfObject::from(549),
+            PdfObject::from(3.14),
+            PdfObject::from(false),
             PdfObject::String(PdfString::literal(b"Ralph")),
             PdfObject::Name(PdfName::new(b"SomeName".to_vec())),
         ]))
@@ -29,11 +29,11 @@ fn parse_object_returns_array_for_media_box() {
     let mut p = parser(b"[0 0 612 792]");
     assert_eq!(
         p.parse_object(),
-        Ok(PdfObject::Array(vec![
-            PdfObject::Integer(0),
-            PdfObject::Integer(0),
-            PdfObject::Integer(612),
-            PdfObject::Integer(792),
+        Ok(PdfObject::from(vec![
+            PdfObject::from(0),
+            PdfObject::from(0),
+            PdfObject::from(612),
+            PdfObject::from(792),
         ]))
     );
 }

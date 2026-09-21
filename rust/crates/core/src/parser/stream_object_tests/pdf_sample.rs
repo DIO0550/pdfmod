@@ -58,5 +58,5 @@ fn parse_stream_sample_dictionary_retains_length_entry() {
         .dictionary()
         .get(&PdfName::new(b"Length".to_vec()))
         .expect("/Length must remain in the stream dictionary");
-    assert_eq!(length, &PdfObject::Integer(34));
+    assert_eq!(length, &PdfObject::from(34));
 }
