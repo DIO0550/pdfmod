@@ -2,34 +2,42 @@ import type { PdfError } from "../../../../pdf/errors/index";
 import type { ObjectNumber } from "../../../../pdf/types/object-number/index";
 import type {
   IndirectRef,
+  PdfStream,
   PdfValue,
   XRefCompressedEntry,
 } from "../../../../pdf/types/pdf-types/index";
 import type { Result } from "../../../../utils/result/index";
 import type { LRUCache } from "../../../lru-cache/index";
-import type { StreamResolver } from "../../../object-stream-extractor/index";
 import { ObjectStreamBody } from "../../../object-stream-extractor/index";
 
 /**
- * type=2 の XRefCompressedEntry を読み取り、ObjStm からオブジェクトを抽出する。
+ * readObjectStreamEntry の実行オプション。
+ */
+export interface ReadObjectStreamEntryOptions {
+  /** 解決済みのオブジェクトストリーム。 */
+  readonly stream: PdfStream;
+  /** 解決対象の間接参照（targetObjNum を提供）。 */
+  readonly ref: IndirectRef;
+  /** type=2 の XRefEntry（streamObject, indexInStream）。 */
+  readonly entry: XRefCompressedEntry;
+  /** 展開済みストリームキャッシュ。 */
+  readonly cache?: LRUCache<ObjectNumber, Uint8Array> | undefined;
+}
+
+/**
+ * XRefCompressedEntry（type=2）を読み取る。
  *
- * @param resolver - ObjectStore が生成した StreamResolver adapter
- * @param cache - ストリームキャッシュ（ObjectStore が保有し渡す）
- * @param ref - 解決対象の間接参照
- * @param entry - type=2 の XRefEntry（streamObject, indexInStream）
- * @returns 抽出された PdfValue、またはエラー
+ * @param options - 解決済みストリームおよび抽出パラメータ
+ * @returns 解決された PDF オブジェクト、またはエラー
  */
 export async function readObjectStreamEntry(
-  resolver: StreamResolver,
-  cache: LRUCache<ObjectNumber, Uint8Array> | undefined,
-  ref: IndirectRef,
-  entry: XRefCompressedEntry,
+  options: ReadObjectStreamEntryOptions,
 ): Promise<Result<PdfValue, PdfError>> {
-  return ObjectStreamBody.extract(
-    resolver,
-    cache,
-    ref.objectNumber,
-    entry.streamObject,
-    entry.indexInStream,
-  );
+  return ObjectStreamBody.extract({
+    stream: options.stream,
+    targetObjNum: options.ref.objectNumber,
+    streamObjNum: options.entry.streamObject,
+    indexInStream: options.entry.indexInStream,
+    cache: options.cache,
+  });
 }
