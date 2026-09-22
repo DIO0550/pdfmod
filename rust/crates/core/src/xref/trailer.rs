@@ -175,12 +175,13 @@ fn take_required_size(
         .ok_or_else(|| TrailerError::missing_required_key_at(position, key))?;
 
     match value {
-        PdfObject::Integer(n) if n < 0 => Err(TrailerError::negative_value_at(position, key)),
+        PdfObject::Integer(n) if n.value() < 0 => {
+            Err(TrailerError::negative_value_at(position, key))
+        }
         // n >= 0 が確定しているため try_from は全ターゲットで失敗しないが、
         // panic 不在契約のため unwrap せずエラーに落とす。
-        PdfObject::Integer(n) => {
-            u64::try_from(n).map_err(|_| TrailerError::key_value_out_of_range_at(position, key, n))
-        }
+        PdfObject::Integer(n) => u64::try_from(n.value())
+            .map_err(|_| TrailerError::key_value_out_of_range_at(position, key, n.value())),
         other => Err(TrailerError::invalid_key_type_at(
             position,
             key,
@@ -220,11 +221,13 @@ fn take_optional_offset(
     };
 
     match value {
-        PdfObject::Integer(n) if n < 0 => Err(TrailerError::negative_value_at(position, key)),
+        PdfObject::Integer(n) if n.value() < 0 => {
+            Err(TrailerError::negative_value_at(position, key))
+        }
         // take_required_size と同じく、n >= 0 が確定しているため try_from は失敗しない。
-        PdfObject::Integer(n) => u64::try_from(n)
+        PdfObject::Integer(n) => u64::try_from(n.value())
             .map(|offset| Some(ByteOffset::new(offset)))
-            .map_err(|_| TrailerError::key_value_out_of_range_at(position, key, n)),
+            .map_err(|_| TrailerError::key_value_out_of_range_at(position, key, n.value())),
         other => Err(TrailerError::invalid_key_type_at(
             position,
             key,
@@ -269,7 +272,7 @@ fn take_optional_id(
         return Err(TrailerError::invalid_id_array_at(position));
     };
 
-    FileId::from_array(elements)
+    FileId::from_array(elements.into_vec())
         .map(Some)
         .ok_or_else(|| TrailerError::invalid_id_array_at(position))
 }

@@ -18,10 +18,10 @@ fn parse_object_returns_dictionary_with_integer_array_value() {
     };
     assert_eq!(
         dict.get(&PdfName::from("A")),
-        Some(&PdfObject::Array(vec![
-            PdfObject::Integer(1),
-            PdfObject::Integer(2),
-            PdfObject::Integer(3),
+        Some(&PdfObject::from(vec![
+            PdfObject::from(1),
+            PdfObject::from(2),
+            PdfObject::from(3),
         ]))
     );
 }
@@ -34,10 +34,10 @@ fn parse_object_returns_dictionary_with_array_containing_dictionary() {
         other => panic!("expected Dictionary, got {:?}", other),
     };
     let mut inner = PdfDictionary::new();
-    inner.insert(PdfName::from("K"), PdfObject::Integer(1));
+    inner.insert(PdfName::from("K"), PdfObject::from(1));
     assert_eq!(
         dict.get(&PdfName::from("A")),
-        Some(&PdfObject::Array(vec![PdfObject::Dictionary(inner)]))
+        Some(&PdfObject::from(vec![PdfObject::Dictionary(inner)]))
     );
 }
 
@@ -45,10 +45,10 @@ fn parse_object_returns_dictionary_with_array_containing_dictionary() {
 fn parse_object_returns_array_with_single_dictionary_element() {
     // 入力 b"[ << /K 1 >> ]" で配列要素として辞書 1 個を持つ配列を返すことを確認する（配列対称性、UC-1）
     let mut inner = PdfDictionary::new();
-    inner.insert(PdfName::from("K"), PdfObject::Integer(1));
+    inner.insert(PdfName::from("K"), PdfObject::from(1));
     assert_eq!(
         parse_object_at(b"[ << /K 1 >> ]"),
-        PdfObject::Array(vec![PdfObject::Dictionary(inner)])
+        PdfObject::from(vec![PdfObject::Dictionary(inner)])
     );
 }
 
@@ -56,11 +56,11 @@ fn parse_object_returns_array_with_single_dictionary_element() {
 fn parse_object_returns_array_with_two_dictionary_elements() {
     // 入力 b"[ << /K 1 >> << /K 2 >> ]" で配列要素として辞書 2 個を持つ配列を返すことを確認する
     let mut d1 = PdfDictionary::new();
-    d1.insert(PdfName::from("K"), PdfObject::Integer(1));
+    d1.insert(PdfName::from("K"), PdfObject::from(1));
     let mut d2 = PdfDictionary::new();
-    d2.insert(PdfName::from("K"), PdfObject::Integer(2));
+    d2.insert(PdfName::from("K"), PdfObject::from(2));
     assert_eq!(
         parse_object_at(b"[ << /K 1 >> << /K 2 >> ]"),
-        PdfObject::Array(vec![PdfObject::Dictionary(d1), PdfObject::Dictionary(d2)])
+        PdfObject::from(vec![PdfObject::Dictionary(d1), PdfObject::Dictionary(d2)])
     );
 }

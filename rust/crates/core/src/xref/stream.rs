@@ -156,7 +156,7 @@ fn verify_xref_type(dict: &PdfDictionary, pos: ByteOffset) -> Result<(), XRefErr
 
 fn extract_size(dict: &PdfDictionary, pos: ByteOffset) -> Result<u64, XRefError> {
     match dict.get(XRefStreamKey::Size.as_bytes()) {
-        Some(PdfObject::Integer(n)) if *n >= 0 => Ok(*n as u64),
+        Some(PdfObject::Integer(n)) if n.value() >= 0 => Ok(n.value() as u64),
         Some(PdfObject::Integer(_)) => Err(XRefError::new(
             XRefErrorKind::NegativeValue {
                 key: XRefStreamKey::Size,

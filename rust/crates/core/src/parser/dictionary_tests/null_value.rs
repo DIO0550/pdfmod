@@ -15,9 +15,9 @@ fn parse_object_drops_intermediate_null_value_keeping_others() {
     // 入力 b"<< /A 1 /B null /C 3 >>" で /B が登録されず /A と /C のみ登録、len==2 になることを確認する
     let dict = parse_dict(b"<< /A 1 /B null /C 3 >>");
     assert_eq!(dict.len(), 2);
-    assert_eq!(dict.get(&PdfName::from("A")), Some(&PdfObject::Integer(1)));
+    assert_eq!(dict.get(&PdfName::from("A")), Some(&PdfObject::from(1)));
     assert!(!dict.contains_key(&PdfName::from("B")));
-    assert_eq!(dict.get(&PdfName::from("C")), Some(&PdfObject::Integer(3)));
+    assert_eq!(dict.get(&PdfName::from("C")), Some(&PdfObject::from(3)));
 }
 
 #[test]
@@ -25,7 +25,7 @@ fn parse_object_revives_key_overwritten_with_non_null_after_null() {
     // 入力 b"<< /A null /A 1 >>" で /A の値が Integer(1) として登録され len==1 になることを確認する（null 後の上書きで復活）
     let dict = parse_dict(b"<< /A null /A 1 >>");
     assert_eq!(dict.len(), 1);
-    assert_eq!(dict.get(&PdfName::from("A")), Some(&PdfObject::Integer(1)));
+    assert_eq!(dict.get(&PdfName::from("A")), Some(&PdfObject::from(1)));
 }
 
 #[test]

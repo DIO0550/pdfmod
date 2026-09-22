@@ -10,7 +10,7 @@ fn parse_indirect_object_returns_integer_content() {
     let mut p = parser(b"1 0 obj 42 endobj");
     assert_eq!(
         p.parse_indirect_object(),
-        Ok(indirect_object(1, 0, PdfObject::Integer(42)))
+        Ok(indirect_object(1, 0, PdfObject::from(42)))
     );
 }
 
@@ -20,7 +20,7 @@ fn parse_indirect_object_returns_boolean_content() {
     let mut p = parser(b"3 0 obj true endobj");
     assert_eq!(
         p.parse_indirect_object(),
-        Ok(indirect_object(3, 0, PdfObject::Boolean(true)))
+        Ok(indirect_object(3, 0, PdfObject::from(true)))
     );
 }
 
@@ -40,7 +40,7 @@ fn parse_indirect_object_returns_real_content() {
     let mut p = parser(b"9 0 obj 2.5 endobj");
     assert_eq!(
         p.parse_indirect_object(),
-        Ok(indirect_object(9, 0, PdfObject::Real(2.5)))
+        Ok(indirect_object(9, 0, PdfObject::from(2.5)))
     );
 }
 
@@ -76,10 +76,10 @@ fn parse_indirect_object_returns_name_content() {
 fn parse_indirect_object_returns_array_content() {
     // 配列 content: b"5 0 obj [1 2 3] endobj" が Array[Integer(1),Integer(2),Integer(3)] を content に持つ
     let mut p = parser(b"5 0 obj [1 2 3] endobj");
-    let expected = PdfObject::Array(vec![
-        PdfObject::Integer(1),
-        PdfObject::Integer(2),
-        PdfObject::Integer(3),
+    let expected = PdfObject::from(vec![
+        PdfObject::from(1),
+        PdfObject::from(2),
+        PdfObject::from(3),
     ]);
     assert_eq!(
         p.parse_indirect_object(),
@@ -117,11 +117,11 @@ fn parse_indirect_object_returns_nested_dictionary_content() {
     // ネスト content: b"7 0 obj << /Kids [ << /X 1 >> ] >> endobj" がネスト構造（辞書内配列内辞書）を保持する
     let mut p = parser(b"7 0 obj << /Kids [ << /X 1 >> ] >> endobj");
     let mut inner = PdfDictionary::new();
-    inner.insert(PdfName::from("X"), PdfObject::Integer(1));
+    inner.insert(PdfName::from("X"), PdfObject::from(1));
     let mut outer = PdfDictionary::new();
     outer.insert(
         PdfName::from("Kids"),
-        PdfObject::Array(vec![PdfObject::Dictionary(inner)]),
+        PdfObject::from(vec![PdfObject::Dictionary(inner)]),
     );
     assert_eq!(
         p.parse_indirect_object(),
@@ -135,10 +135,10 @@ fn parse_indirect_object_twice_does_not_overconsume() {
     let mut p = parser(b"1 0 obj 42 endobj 2 0 obj true endobj");
     assert_eq!(
         p.parse_indirect_object(),
-        Ok(indirect_object(1, 0, PdfObject::Integer(42)))
+        Ok(indirect_object(1, 0, PdfObject::from(42)))
     );
     assert_eq!(
         p.parse_indirect_object(),
-        Ok(indirect_object(2, 0, PdfObject::Boolean(true)))
+        Ok(indirect_object(2, 0, PdfObject::from(true)))
     );
 }

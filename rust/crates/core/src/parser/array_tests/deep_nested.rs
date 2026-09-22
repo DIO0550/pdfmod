@@ -7,8 +7,8 @@ fn parse_object_returns_array_for_three_level_nest() {
     let mut p = parser(b"[[[1]]]");
     assert_eq!(
         p.parse_object(),
-        Ok(PdfObject::Array(vec![PdfObject::Array(vec![
-            PdfObject::Array(vec![PdfObject::Integer(1)])
+        Ok(PdfObject::from(vec![PdfObject::from(vec![
+            PdfObject::from(vec![PdfObject::from(1)])
         ])]))
     );
 }
@@ -19,8 +19,8 @@ fn parse_object_returns_array_for_four_level_nest() {
     let mut p = parser(b"[[[[1]]]]");
     assert_eq!(
         p.parse_object(),
-        Ok(PdfObject::Array(vec![PdfObject::Array(vec![
-            PdfObject::Array(vec![PdfObject::Array(vec![PdfObject::Integer(1)])])
+        Ok(PdfObject::from(vec![PdfObject::from(vec![
+            PdfObject::from(vec![PdfObject::from(vec![PdfObject::from(1)])])
         ])]))
     );
 }

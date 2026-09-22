@@ -50,14 +50,16 @@ impl ObjectStreamMetadata {
         // 2. /N 抽出・検証（正整数）
         let n = match dict.get(ObjectStreamKey::N.as_bytes()) {
             Some(PdfObject::Integer(n)) => {
-                if *n <= 0 {
+                let val = n.value();
+                if val <= 0 {
                     return Err(ObjectStreamError::new(
-                        ObjectStreamErrorKind::InvalidN(*n),
+                        ObjectStreamErrorKind::InvalidN(val),
                         pos,
                     ));
                 }
-                usize::try_from(*n)
-                    .map_err(|_| ObjectStreamError::new(ObjectStreamErrorKind::InvalidN(*n), pos))?
+                usize::try_from(val).map_err(|_| {
+                    ObjectStreamError::new(ObjectStreamErrorKind::InvalidN(val), pos)
+                })?
             }
             Some(other) => {
                 return Err(ObjectStreamError::new(
@@ -79,14 +81,15 @@ impl ObjectStreamMetadata {
         // 3. /First 抽出・検証（非負整数）
         let first = match dict.get(ObjectStreamKey::First.as_bytes()) {
             Some(PdfObject::Integer(first)) => {
-                if *first < 0 {
+                let val = first.value();
+                if val < 0 {
                     return Err(ObjectStreamError::new(
-                        ObjectStreamErrorKind::InvalidFirst(*first),
+                        ObjectStreamErrorKind::InvalidFirst(val),
                         pos,
                     ));
                 }
-                usize::try_from(*first).map_err(|_| {
-                    ObjectStreamError::new(ObjectStreamErrorKind::InvalidFirst(*first), pos)
+                usize::try_from(val).map_err(|_| {
+                    ObjectStreamError::new(ObjectStreamErrorKind::InvalidFirst(val), pos)
                 })?
             }
             Some(other) => {
@@ -161,8 +164,8 @@ mod tests {
             PdfName::new(b"Type"),
             PdfObject::Name(PdfName::new(b"ObjStm")),
         );
-        dict.insert(PdfName::new(b"N"), PdfObject::Integer(10));
-        dict.insert(PdfName::new(b"First"), PdfObject::Integer(120));
+        dict.insert(PdfName::new(b"N"), PdfObject::from(10));
+        dict.insert(PdfName::new(b"First"), PdfObject::from(120));
 
         let meta = ObjectStreamMetadata::from_dictionary(&dict, ByteOffset::new(0)).unwrap();
         assert_eq!(meta.n(), 10);
@@ -177,8 +180,8 @@ mod tests {
             PdfName::new(b"Type"),
             PdfObject::Name(PdfName::new(b"ObjStm")),
         );
-        dict.insert(PdfName::new(b"N"), PdfObject::Integer(5));
-        dict.insert(PdfName::new(b"First"), PdfObject::Integer(50));
+        dict.insert(PdfName::new(b"N"), PdfObject::from(5));
+        dict.insert(PdfName::new(b"First"), PdfObject::from(50));
         let target_id = ObjectId::new(ObjectNumber::new(15).unwrap(), GenerationNumber::new(0));
         dict.insert(
             PdfName::new(b"Extends"),
@@ -194,8 +197,8 @@ mod tests {
     #[test]
     fn missing_type_fails() {
         let mut dict = PdfDictionary::new();
-        dict.insert(PdfName::new(b"N"), PdfObject::Integer(1));
-        dict.insert(PdfName::new(b"First"), PdfObject::Integer(10));
+        dict.insert(PdfName::new(b"N"), PdfObject::from(1));
+        dict.insert(PdfName::new(b"First"), PdfObject::from(10));
 
         let err = ObjectStreamMetadata::from_dictionary(&dict, ByteOffset::new(0)).unwrap_err();
         assert_eq!(
@@ -211,8 +214,8 @@ mod tests {
             PdfName::new(b"Type"),
             PdfObject::Name(PdfName::new(b"ObjStm")),
         );
-        dict.insert(PdfName::new(b"N"), PdfObject::Integer(0));
-        dict.insert(PdfName::new(b"First"), PdfObject::Integer(10));
+        dict.insert(PdfName::new(b"N"), PdfObject::from(0));
+        dict.insert(PdfName::new(b"First"), PdfObject::from(10));
 
         let err = ObjectStreamMetadata::from_dictionary(&dict, ByteOffset::new(0)).unwrap_err();
         assert_eq!(err.kind, ObjectStreamErrorKind::InvalidN(0));
@@ -225,8 +228,8 @@ mod tests {
             PdfName::new(b"Type"),
             PdfObject::Name(PdfName::new(b"ObjStm")),
         );
-        dict.insert(PdfName::new(b"N"), PdfObject::Integer(1));
-        dict.insert(PdfName::new(b"First"), PdfObject::Integer(-1));
+        dict.insert(PdfName::new(b"N"), PdfObject::from(1));
+        dict.insert(PdfName::new(b"First"), PdfObject::from(-1));
 
         let err = ObjectStreamMetadata::from_dictionary(&dict, ByteOffset::new(0)).unwrap_err();
         assert_eq!(err.kind, ObjectStreamErrorKind::InvalidFirst(-1));
@@ -239,8 +242,8 @@ mod tests {
             PdfName::new(b"Type"),
             PdfObject::Name(PdfName::new(b"Catalog")),
         );
-        dict.insert(PdfName::new(b"N"), PdfObject::Integer(1));
-        dict.insert(PdfName::new(b"First"), PdfObject::Integer(10));
+        dict.insert(PdfName::new(b"N"), PdfObject::from(1));
+        dict.insert(PdfName::new(b"First"), PdfObject::from(10));
 
         let err = ObjectStreamMetadata::from_dictionary(&dict, ByteOffset::new(0)).unwrap_err();
         assert_eq!(err.kind, ObjectStreamErrorKind::NotAnObjectStream);

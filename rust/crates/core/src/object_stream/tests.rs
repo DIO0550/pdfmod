@@ -72,7 +72,7 @@ fn parse_uncompressed_object_stream() {
     let (id0, obj0) = objstm.get_object(0).unwrap();
     assert_eq!(id0.object_number().value(), 11);
     assert_eq!(id0.generation_number().value(), 0);
-    assert_eq!(obj0, PdfObject::Integer(42));
+    assert_eq!(obj0, PdfObject::from(42));
 
     // インデックス 1 の抽出
     let (id1, obj1) = objstm.get_object(1).unwrap();
@@ -135,7 +135,7 @@ fn parse_flatedecode_object_stream() {
 
     let (id0, obj0) = objstm.get_object(0).unwrap();
     assert_eq!(id0.object_number().value(), 20);
-    assert_eq!(obj0, PdfObject::Boolean(true));
+    assert_eq!(obj0, PdfObject::from(true));
 
     let (id1, obj1) = objstm.get_object(1).unwrap();
     assert_eq!(id1.object_number().value(), 21);
@@ -167,11 +167,11 @@ fn parse_flatedecode_with_predictor() {
 
     let (id0, obj0) = objstm.get_object(0).unwrap();
     assert_eq!(id0.object_number().value(), 30);
-    assert_eq!(obj0, PdfObject::Integer(100));
+    assert_eq!(obj0, PdfObject::from(100));
 
     let (id1, obj1) = objstm.get_object(1).unwrap();
     assert_eq!(id1.object_number().value(), 31);
-    assert_eq!(obj1, PdfObject::Integer(200));
+    assert_eq!(obj1, PdfObject::from(200));
 }
 
 #[test]
@@ -204,8 +204,8 @@ fn from_stream_constructor() {
         PdfName::new(b"Type"),
         PdfObject::Name(PdfName::new(b"ObjStm")),
     );
-    dict.insert(PdfName::new(b"N"), PdfObject::Integer(1));
-    dict.insert(PdfName::new(b"First"), PdfObject::Integer(5));
+    dict.insert(PdfName::new(b"N"), PdfObject::from(1));
+    dict.insert(PdfName::new(b"First"), PdfObject::from(5));
 
     let stream = PdfStream::new(dict, b"10 0 null".to_vec());
     let objstm = ObjectStream::from_stream(stream, ByteOffset::new(100)).unwrap();
@@ -348,7 +348,7 @@ fn header_with_comments_and_whitespace() {
     }
     let (id1, obj1) = objstm.get_object(1).unwrap();
     assert_eq!(id1.object_number().value(), 12);
-    assert_eq!(obj1, PdfObject::Boolean(true));
+    assert_eq!(obj1, PdfObject::from(true));
 }
 
 #[test]
@@ -368,7 +368,7 @@ fn single_object_boundary_n_one() {
     assert_eq!(objstm.n(), 1);
     let (id, obj) = objstm.get_object(0).unwrap();
     assert_eq!(id.object_number().value(), 10);
-    assert_eq!(obj, PdfObject::Integer(42));
+    assert_eq!(obj, PdfObject::from(42));
     assert!(objstm.get_object(1).is_err());
 }
 
@@ -389,7 +389,7 @@ fn large_object_number_and_offset() {
     let objstm = ObjectStream::parse(&pdf, ByteOffset::new(0)).unwrap();
     let (id, obj) = objstm.get_object(0).unwrap();
     assert_eq!(id.object_number().value(), 999999);
-    assert_eq!(obj, PdfObject::Integer(123));
+    assert_eq!(obj, PdfObject::from(123));
 }
 
 #[test]

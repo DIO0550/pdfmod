@@ -113,7 +113,7 @@ fn encrypt_dictionary_with_unknown_handler_is_preserved() {
     assert_eq!(filter, &PdfName::from("Custom.Handler"));
     assert_eq!(
         raw.get(b"CustomKey".as_slice()),
-        Some(&PdfObject::Integer(12345))
+        Some(&PdfObject::from(12345))
     );
     // /Filter も含め、元の辞書が無傷で残っている。
     assert!(raw.contains_key(b"Filter".as_slice()));

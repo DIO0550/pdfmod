@@ -1,22 +1,44 @@
 use super::super::*;
 use super::{make_ref, make_stream};
+use crate::object::array::PdfArray;
+use crate::object::boolean::PdfBoolean;
+use crate::object::integer::PdfInteger;
+use crate::object::real::PdfReal;
 
 #[test]
 fn from_bool_builds_boolean_variant() {
     // bool から From で変換すると Boolean バリアントになり、値が保持されることを確認する
-    assert_eq!(PdfObject::from(true), PdfObject::Boolean(true));
+    assert_eq!(
+        PdfObject::from(true),
+        PdfObject::Boolean(PdfBoolean::new(true))
+    );
+    assert_eq!(
+        PdfObject::from(PdfBoolean::new(true)),
+        PdfObject::Boolean(PdfBoolean::new(true))
+    );
 }
 
 #[test]
 fn from_i64_builds_integer_variant() {
     // i64 から From で変換すると Integer バリアントになり、値が保持されることを確認する
-    assert_eq!(PdfObject::from(42i64), PdfObject::Integer(42));
+    assert_eq!(
+        PdfObject::from(42i64),
+        PdfObject::Integer(PdfInteger::new(42))
+    );
+    assert_eq!(
+        PdfObject::from(PdfInteger::new(42)),
+        PdfObject::Integer(PdfInteger::new(42))
+    );
 }
 
 #[test]
 fn from_f64_builds_real_variant() {
     // f64 から From で変換すると Real バリアントになり、値が保持されることを確認する
-    assert_eq!(PdfObject::from(1.5f64), PdfObject::Real(1.5));
+    assert_eq!(PdfObject::from(1.5f64), PdfObject::Real(PdfReal::new(1.5)));
+    assert_eq!(
+        PdfObject::from(PdfReal::new(1.5)),
+        PdfObject::Real(PdfReal::new(1.5))
+    );
 }
 
 #[test]
@@ -41,8 +63,12 @@ fn from_pdf_name_builds_name_variant() {
 fn from_vec_pdf_object_builds_array_variant() {
     // 要素列から From で変換すると Array バリアントになることを確認する
     assert_eq!(
-        PdfObject::from(vec![PdfObject::Integer(1)]),
-        PdfObject::Array(vec![PdfObject::Integer(1)])
+        PdfObject::from(vec![PdfObject::from(1)]),
+        PdfObject::Array(PdfArray::from(vec![PdfObject::from(1)]))
+    );
+    assert_eq!(
+        PdfObject::from(PdfArray::from(vec![PdfObject::from(1)])),
+        PdfObject::Array(PdfArray::from(vec![PdfObject::from(1)]))
     );
 }
 
@@ -78,7 +104,7 @@ fn integer_literal_into_resolves_to_integer_variant() {
     // 整数リテラルの .into() が From<i64> に一意解決し Integer になることを確認する
     // （追加の整数型 From を実装しない判断が守られていることの回帰ガード）
     let obj: PdfObject = 42.into();
-    assert_eq!(obj, PdfObject::Integer(42));
+    assert_eq!(obj, PdfObject::Integer(PdfInteger::new(42)));
 }
 
 #[test]
@@ -86,7 +112,7 @@ fn float_literal_into_resolves_to_real_variant() {
     // 浮動小数点リテラルの .into() が From<f64> に一意解決し Real になることを確認する
     // （追加の浮動小数点型 From を実装しない判断が守られていることの回帰ガード）
     let obj: PdfObject = 1.5.into();
-    assert_eq!(obj, PdfObject::Real(1.5));
+    assert_eq!(obj, PdfObject::Real(PdfReal::new(1.5)));
 }
 
 #[test]
@@ -102,5 +128,5 @@ fn from_empty_vec_pdf_object_builds_array_variant() {
     // 空の Vec<PdfObject> が Array バリアントへ変換できることを確認する
     // （From<Vec<u8>> の削除により候補が 1 件になり、要素型の明示なしでも曖昧にならない）
     let obj: PdfObject = Vec::<PdfObject>::new().into();
-    assert_eq!(obj, PdfObject::Array(Vec::new()));
+    assert_eq!(obj, PdfObject::Array(PdfArray::new()));
 }

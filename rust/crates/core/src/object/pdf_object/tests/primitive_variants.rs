@@ -1,5 +1,8 @@
 use super::super::*;
 use super::{make_ref, make_stream};
+use crate::object::boolean::PdfBoolean;
+use crate::object::integer::PdfInteger;
+use crate::object::real::PdfReal;
 
 #[test]
 fn null_constructs_and_matches_null_arm() {
@@ -10,30 +13,30 @@ fn null_constructs_and_matches_null_arm() {
 
 #[test]
 fn boolean_constructs_and_matches_with_inner_value() {
-    // Boolean(true) を構築し match の Boolean(b) 腕で b == true になることを確認する
-    let obj = PdfObject::Boolean(true);
+    // Boolean(true) を構築し match の Boolean(b) 腕で b.value() == true になることを確認する
+    let obj = PdfObject::Boolean(PdfBoolean::new(true));
     match obj {
-        PdfObject::Boolean(b) => assert!(b),
+        PdfObject::Boolean(b) => assert!(b.value()),
         _ => panic!("Boolean 腕に入らなかった"),
     }
 }
 
 #[test]
 fn integer_constructs_and_matches_with_inner_value() {
-    // Integer(42) を構築し match の Integer(n) 腕で n == 42 になることを確認する
-    let obj = PdfObject::Integer(42);
+    // Integer(42) を構築し match の Integer(n) 腕で n.value() == 42 になることを確認する
+    let obj = PdfObject::Integer(PdfInteger::new(42));
     match obj {
-        PdfObject::Integer(n) => assert_eq!(n, 42),
+        PdfObject::Integer(n) => assert_eq!(n.value(), 42),
         _ => panic!("Integer 腕に入らなかった"),
     }
 }
 
 #[test]
 fn real_constructs_and_matches_with_inner_value() {
-    // Real(1.5) を構築し match の Real(r) 腕で r == 1.5 になることを確認する
-    let obj = PdfObject::Real(1.5);
+    // Real(1.5) を構築し match の Real(r) 腕で r.value() == 1.5 になることを確認する
+    let obj = PdfObject::Real(PdfReal::new(1.5));
     match obj {
-        PdfObject::Real(r) => assert_eq!(r, 1.5),
+        PdfObject::Real(r) => assert_eq!(r.value(), 1.5),
         _ => panic!("Real 腕に入らなかった"),
     }
 }
@@ -46,29 +49,35 @@ fn is_null_returns_true_for_null() {
 
 #[test]
 fn as_bool_returns_some_for_boolean() {
-    // Boolean(true) に as_bool() を呼ぶと Some(true) を返すことを確認する
-    assert_eq!(PdfObject::Boolean(true).as_bool(), Some(true));
+    // Boolean に as_bool() を呼ぶと Some(true) を返し、as_pdf_boolean() で PdfBoolean が返ることを確認する
+    let obj = PdfObject::Boolean(PdfBoolean::new(true));
+    assert_eq!(obj.as_bool(), Some(true));
+    assert_eq!(obj.as_pdf_boolean(), Some(PdfBoolean::new(true)));
 }
 
 #[test]
 fn as_integer_returns_some_for_integer() {
-    // Integer(7) に as_integer() を呼ぶと Some(7) を返すことを確認する
-    assert_eq!(PdfObject::Integer(7).as_integer(), Some(7));
+    // Integer に as_integer() を呼ぶと Some(7) を返し、as_pdf_integer() で PdfInteger が返ることを確認する
+    let obj = PdfObject::Integer(PdfInteger::new(7));
+    assert_eq!(obj.as_integer(), Some(7));
+    assert_eq!(obj.as_pdf_integer(), Some(PdfInteger::new(7)));
 }
 
 #[test]
 fn as_real_returns_some_for_real() {
-    // Real(2.5) に as_real() を呼ぶと Some(2.5) を返すことを確認する
-    assert_eq!(PdfObject::Real(2.5).as_real(), Some(2.5));
+    // Real に as_real() を呼ぶと Some(2.5) を返し、as_pdf_real() で PdfReal が返ることを確認する
+    let obj = PdfObject::Real(PdfReal::new(2.5));
+    assert_eq!(obj.as_real(), Some(2.5));
+    assert_eq!(obj.as_pdf_real(), Some(PdfReal::new(2.5)));
 }
 
 #[test]
 fn is_null_returns_false_for_non_null_variants() {
     // Null 以外（Boolean/Integer/Real）では is_null() が false を返すことを確認する
     for obj in &[
-        PdfObject::Boolean(true),
-        PdfObject::Integer(0),
-        PdfObject::Real(0.0),
+        PdfObject::from(true),
+        PdfObject::from(0),
+        PdfObject::from(0.0),
     ] {
         assert!(!obj.is_null());
     }
@@ -76,42 +85,45 @@ fn is_null_returns_false_for_non_null_variants() {
 
 #[test]
 fn as_bool_returns_none_for_non_boolean_variants() {
-    // Boolean 以外（Null/Integer/Real/Stream/Reference）では as_bool() が None を返すことを確認する
+    // Boolean 以外（Null/Integer/Real/Stream/Reference）では as_bool() / as_pdf_boolean() が None を返すことを確認する
     for obj in &[
         PdfObject::Null,
-        PdfObject::Integer(0),
-        PdfObject::Real(0.0),
+        PdfObject::from(0),
+        PdfObject::from(0.0),
         PdfObject::Stream(make_stream(b"data")),
         PdfObject::Reference(make_ref(1, 0)),
     ] {
         assert_eq!(obj.as_bool(), None);
+        assert_eq!(obj.as_pdf_boolean(), None);
     }
 }
 
 #[test]
 fn as_integer_returns_none_for_non_integer_variants() {
-    // Integer 以外（Null/Boolean/Real/Stream/Reference）では as_integer() が None を返すことを確認する
+    // Integer 以外（Null/Boolean/Real/Stream/Reference）では as_integer() / as_pdf_integer() が None を返すことを確認する
     for obj in &[
         PdfObject::Null,
-        PdfObject::Boolean(true),
-        PdfObject::Real(0.0),
+        PdfObject::from(true),
+        PdfObject::from(0.0),
         PdfObject::Stream(make_stream(b"data")),
         PdfObject::Reference(make_ref(1, 0)),
     ] {
         assert_eq!(obj.as_integer(), None);
+        assert_eq!(obj.as_pdf_integer(), None);
     }
 }
 
 #[test]
 fn as_real_returns_none_for_non_real_variants() {
-    // Real 以外（Null/Boolean/Integer/Stream/Reference）では as_real() が None を返すことを確認する
+    // Real 以外（Null/Boolean/Integer/Stream/Reference）では as_real() / as_pdf_real() が None を返すことを確認する
     for obj in &[
         PdfObject::Null,
-        PdfObject::Boolean(true),
-        PdfObject::Integer(0),
+        PdfObject::from(true),
+        PdfObject::from(0),
         PdfObject::Stream(make_stream(b"data")),
         PdfObject::Reference(make_ref(1, 0)),
     ] {
         assert_eq!(obj.as_real(), None);
+        assert_eq!(obj.as_pdf_real(), None);
     }
 }

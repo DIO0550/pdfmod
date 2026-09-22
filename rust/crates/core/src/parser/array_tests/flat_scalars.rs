@@ -9,10 +9,10 @@ fn parse_object_returns_array_for_three_integers() {
     let mut p = parser(b"[1 2 3]");
     assert_eq!(
         p.parse_object(),
-        Ok(PdfObject::Array(vec![
-            PdfObject::Integer(1),
-            PdfObject::Integer(2),
-            PdfObject::Integer(3),
+        Ok(PdfObject::from(vec![
+            PdfObject::from(1),
+            PdfObject::from(2),
+            PdfObject::from(3),
         ]))
     );
 }
@@ -23,9 +23,9 @@ fn parse_object_returns_array_for_boolean_and_null_mix() {
     let mut p = parser(b"[true false null]");
     assert_eq!(
         p.parse_object(),
-        Ok(PdfObject::Array(vec![
-            PdfObject::Boolean(true),
-            PdfObject::Boolean(false),
+        Ok(PdfObject::from(vec![
+            PdfObject::from(true),
+            PdfObject::from(false),
             PdfObject::Null,
         ]))
     );
@@ -37,7 +37,7 @@ fn parse_object_returns_array_for_two_names() {
     let mut p = parser(b"[/A /B]");
     assert_eq!(
         p.parse_object(),
-        Ok(PdfObject::Array(vec![
+        Ok(PdfObject::from(vec![
             PdfObject::Name(PdfName::new(b"A".to_vec())),
             PdfObject::Name(PdfName::new(b"B".to_vec())),
         ]))
@@ -50,7 +50,7 @@ fn parse_object_returns_array_for_two_literal_strings() {
     let mut p = parser(b"[(s1) (s2)]");
     assert_eq!(
         p.parse_object(),
-        Ok(PdfObject::Array(vec![
+        Ok(PdfObject::from(vec![
             PdfObject::String(PdfString::literal(b"s1")),
             PdfObject::String(PdfString::literal(b"s2")),
         ]))
@@ -63,7 +63,7 @@ fn parse_object_returns_array_for_two_hex_strings() {
     let mut p = parser(b"[<41> <42>]");
     assert_eq!(
         p.parse_object(),
-        Ok(PdfObject::Array(vec![
+        Ok(PdfObject::from(vec![
             PdfObject::String(PdfString::hex(b"A")),
             PdfObject::String(PdfString::hex(b"B")),
         ]))
@@ -76,6 +76,6 @@ fn parse_object_returns_array_for_single_integer() {
     let mut p = parser(b"[1]");
     assert_eq!(
         p.parse_object(),
-        Ok(PdfObject::Array(vec![PdfObject::Integer(1)]))
+        Ok(PdfObject::from(vec![PdfObject::from(1)]))
     );
 }
