@@ -25,12 +25,12 @@ fn as_reference_returns_none_for_non_reference_variants() {
     // Reference 以外（Null/Boolean/Integer/Real/String/Name/Array/Dictionary/Stream）では as_reference() が None を返すことを確認する
     let variants = [
         PdfObject::Null,
-        PdfObject::Boolean(true),
-        PdfObject::Integer(0),
-        PdfObject::Real(0.0),
+        PdfObject::from(true),
+        PdfObject::from(0),
+        PdfObject::from(0.0),
         PdfObject::String(PdfString::literal(b"abc")),
         PdfObject::Name(PdfName::from("Type")),
-        PdfObject::Array(vec![PdfObject::Integer(1)]),
+        PdfObject::from(vec![PdfObject::from(1)]),
         PdfObject::Dictionary(PdfDictionary::new()),
         PdfObject::Stream(make_stream(b"data")),
     ];

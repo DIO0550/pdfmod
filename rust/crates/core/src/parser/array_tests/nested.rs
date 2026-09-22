@@ -7,9 +7,9 @@ fn parse_object_returns_array_for_two_sub_arrays() {
     let mut p = parser(b"[[1 2] [3 4]]");
     assert_eq!(
         p.parse_object(),
-        Ok(PdfObject::Array(vec![
-            PdfObject::Array(vec![PdfObject::Integer(1), PdfObject::Integer(2)]),
-            PdfObject::Array(vec![PdfObject::Integer(3), PdfObject::Integer(4)]),
+        Ok(PdfObject::from(vec![
+            PdfObject::from(vec![PdfObject::from(1), PdfObject::from(2)]),
+            PdfObject::from(vec![PdfObject::from(3), PdfObject::from(4)]),
         ]))
     );
 }
@@ -20,7 +20,7 @@ fn parse_object_returns_array_for_single_empty_nested() {
     let mut p = parser(b"[[]]");
     assert_eq!(
         p.parse_object(),
-        Ok(PdfObject::Array(vec![PdfObject::Array(Vec::new())]))
+        Ok(PdfObject::from(vec![PdfObject::from(vec![])]))
     );
 }
 
@@ -30,10 +30,10 @@ fn parse_object_returns_array_for_scalar_sub_array_scalar() {
     let mut p = parser(b"[1 [2] 3]");
     assert_eq!(
         p.parse_object(),
-        Ok(PdfObject::Array(vec![
-            PdfObject::Integer(1),
-            PdfObject::Array(vec![PdfObject::Integer(2)]),
-            PdfObject::Integer(3),
+        Ok(PdfObject::from(vec![
+            PdfObject::from(1),
+            PdfObject::from(vec![PdfObject::from(2)]),
+            PdfObject::from(3),
         ]))
     );
 }

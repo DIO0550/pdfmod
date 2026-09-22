@@ -7,7 +7,7 @@ fn parse_indirect_object_skips_comment_between_n_and_g() {
     let mut p = parser(b"1 % c\n0 obj 42 endobj");
     assert_eq!(
         p.parse_indirect_object(),
-        Ok(indirect_object(1, 0, PdfObject::Integer(42)))
+        Ok(indirect_object(1, 0, PdfObject::from(42)))
     );
 }
 
@@ -17,7 +17,7 @@ fn parse_indirect_object_skips_comment_between_g_and_obj() {
     let mut p = parser(b"1 0 % c\nobj 42 endobj");
     assert_eq!(
         p.parse_indirect_object(),
-        Ok(indirect_object(1, 0, PdfObject::Integer(42)))
+        Ok(indirect_object(1, 0, PdfObject::from(42)))
     );
 }
 
@@ -27,7 +27,7 @@ fn parse_indirect_object_skips_comment_between_obj_and_content() {
     let mut p = parser(b"1 0 obj % c\n42 endobj");
     assert_eq!(
         p.parse_indirect_object(),
-        Ok(indirect_object(1, 0, PdfObject::Integer(42)))
+        Ok(indirect_object(1, 0, PdfObject::from(42)))
     );
 }
 
@@ -37,6 +37,6 @@ fn parse_indirect_object_skips_comment_between_content_and_endobj() {
     let mut p = parser(b"1 0 obj 42 % c\nendobj");
     assert_eq!(
         p.parse_indirect_object(),
-        Ok(indirect_object(1, 0, PdfObject::Integer(42)))
+        Ok(indirect_object(1, 0, PdfObject::from(42)))
     );
 }

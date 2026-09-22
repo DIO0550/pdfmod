@@ -7,7 +7,7 @@ use crate::object::pdf_object::PdfObject;
 fn new_at_starts_reading_from_given_position() {
     let input = b"999 (skipped) 42";
     let mut parser = Parser::new_at(input, b"999 (skipped) ".len());
-    assert_eq!(parser.parse_object(), Ok(PdfObject::Integer(42)));
+    assert_eq!(parser.parse_object(), Ok(PdfObject::from(42)));
 }
 
 // 消費後の position が入力先頭起点の絶対オフセットであることを確認する

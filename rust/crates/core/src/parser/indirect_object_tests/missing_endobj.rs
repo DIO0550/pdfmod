@@ -59,7 +59,7 @@ fn parse_indirect_object_stream_content_returns_stream_object_for_empty_data() {
         .dictionary()
         .get(&PdfName::new(b"Length".to_vec()))
         .expect("dictionary must retain /Length after stream promotion");
-    assert_eq!(length, &PdfObject::Integer(0));
+    assert_eq!(length, &PdfObject::from(0));
 }
 
 #[test]

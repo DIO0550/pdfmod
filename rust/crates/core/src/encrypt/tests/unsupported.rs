@@ -30,7 +30,7 @@ fn custom_handler_keeps_the_raw_dictionary() {
     assert_eq!(filter, PdfName::from("Custom.Handler"));
     assert_eq!(
         raw.get(b"CustomKey".as_slice()),
-        Some(&PdfObject::Integer(12345))
+        Some(&PdfObject::from(12345))
     );
     assert_eq!(
         raw.get(b"Filter".as_slice()),

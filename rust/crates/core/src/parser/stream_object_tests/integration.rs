@@ -27,7 +27,7 @@ fn parse_indirect_object_returns_stream_object_end_to_end() {
         .dictionary()
         .get(&PdfName::new(b"Length".to_vec()))
         .expect("/Length must remain in the stream dictionary");
-    assert_eq!(length, &PdfObject::Integer(11));
+    assert_eq!(length, &PdfObject::from(11));
 
     let type_entry = stream
         .dictionary()

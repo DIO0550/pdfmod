@@ -16,7 +16,7 @@ fn parse_object_returns_two_level_nested_dictionary() {
     let dict = parse_dict(b"<< /Sub << /K 1 >> >>");
     let inner = expect_inner_dict(&dict, "Sub");
     assert_eq!(inner.len(), 1);
-    assert_eq!(inner.get(&PdfName::from("K")), Some(&PdfObject::Integer(1)));
+    assert_eq!(inner.get(&PdfName::from("K")), Some(&PdfObject::from(1)));
 }
 
 #[test]
@@ -26,10 +26,7 @@ fn parse_object_returns_three_level_nested_dictionary() {
     let level1 = expect_inner_dict(&dict, "A");
     let level2 = expect_inner_dict(level1, "B");
     assert_eq!(level2.len(), 1);
-    assert_eq!(
-        level2.get(&PdfName::from("C")),
-        Some(&PdfObject::Integer(1))
-    );
+    assert_eq!(level2.get(&PdfName::from("C")), Some(&PdfObject::from(1)));
 }
 
 #[test]
@@ -38,9 +35,9 @@ fn parse_object_returns_two_sibling_nested_dictionaries() {
     let dict = parse_dict(b"<< /A << /X 1 >> /B << /Y 2 >> >>");
     assert_eq!(dict.len(), 2);
     let a = expect_inner_dict(&dict, "A");
-    assert_eq!(a.get(&PdfName::from("X")), Some(&PdfObject::Integer(1)));
+    assert_eq!(a.get(&PdfName::from("X")), Some(&PdfObject::from(1)));
     let b = expect_inner_dict(&dict, "B");
-    assert_eq!(b.get(&PdfName::from("Y")), Some(&PdfObject::Integer(2)));
+    assert_eq!(b.get(&PdfName::from("Y")), Some(&PdfObject::from(2)));
 }
 
 #[test]
@@ -51,5 +48,5 @@ fn parse_object_returns_five_level_nested_dictionary() {
     let l2 = expect_inner_dict(l1, "B");
     let l3 = expect_inner_dict(l2, "C");
     let l4 = expect_inner_dict(l3, "D");
-    assert_eq!(l4.get(&PdfName::from("E")), Some(&PdfObject::Integer(1)));
+    assert_eq!(l4.get(&PdfName::from("E")), Some(&PdfObject::from(1)));
 }

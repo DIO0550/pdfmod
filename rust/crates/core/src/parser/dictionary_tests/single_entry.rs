@@ -8,24 +8,21 @@ fn parse_object_returns_dictionary_with_integer_value() {
     // 入力 b"<< /K 1 >>" で値が Integer(1) の単一エントリ辞書を返すことを確認する
     let dict = parse_dict(b"<< /K 1 >>");
     assert_eq!(dict.len(), 1);
-    assert_eq!(dict.get(&PdfName::from("K")), Some(&PdfObject::Integer(1)));
+    assert_eq!(dict.get(&PdfName::from("K")), Some(&PdfObject::from(1)));
 }
 
 #[test]
 fn parse_object_returns_dictionary_with_real_value() {
     // 入力 b"<< /K 1.5 >>" で値が Real(1.5) の単一エントリ辞書を返すことを確認する
     let dict = parse_dict(b"<< /K 1.5 >>");
-    assert_eq!(dict.get(&PdfName::from("K")), Some(&PdfObject::Real(1.5)));
+    assert_eq!(dict.get(&PdfName::from("K")), Some(&PdfObject::from(1.5)));
 }
 
 #[test]
 fn parse_object_returns_dictionary_with_boolean_value() {
     // 入力 b"<< /K true >>" で値が Boolean(true) の単一エントリ辞書を返すことを確認する
     let dict = parse_dict(b"<< /K true >>");
-    assert_eq!(
-        dict.get(&PdfName::from("K")),
-        Some(&PdfObject::Boolean(true))
-    );
+    assert_eq!(dict.get(&PdfName::from("K")), Some(&PdfObject::from(true)));
 }
 
 #[test]
@@ -75,9 +72,9 @@ fn parse_object_returns_dictionary_with_array_value() {
     let dict = parse_dict(b"<< /K [1 2] >>");
     assert_eq!(
         dict.get(&PdfName::from("K")),
-        Some(&PdfObject::Array(vec![
-            PdfObject::Integer(1),
-            PdfObject::Integer(2),
+        Some(&PdfObject::from(vec![
+            PdfObject::from(1),
+            PdfObject::from(2),
         ]))
     );
 }
@@ -91,5 +88,5 @@ fn parse_object_returns_dictionary_with_nested_dictionary_value() {
         other => panic!("expected nested Dictionary, got {:?}", other),
     };
     assert_eq!(inner.len(), 1);
-    assert_eq!(inner.get(&PdfName::from("X")), Some(&PdfObject::Integer(1)));
+    assert_eq!(inner.get(&PdfName::from("X")), Some(&PdfObject::from(1)));
 }

@@ -21,12 +21,12 @@ fn as_stream_returns_none_for_non_stream_variants() {
     // Stream 以外（Null/Boolean/Integer/Real/String/Name/Array/Dictionary/Reference）では as_stream() が None を返すことを確認する
     let variants = [
         PdfObject::Null,
-        PdfObject::Boolean(true),
-        PdfObject::Integer(0),
-        PdfObject::Real(0.0),
+        PdfObject::from(true),
+        PdfObject::from(0),
+        PdfObject::from(0.0),
         PdfObject::String(PdfString::literal(b"abc")),
         PdfObject::Name(PdfName::from("Type")),
-        PdfObject::Array(vec![PdfObject::Integer(1)]),
+        PdfObject::from(vec![PdfObject::from(1)]),
         PdfObject::Dictionary(PdfDictionary::new()),
         PdfObject::Reference(make_ref(1, 0)),
     ];
@@ -39,7 +39,7 @@ fn as_stream_returns_none_for_non_stream_variants() {
 fn as_stream_then_accessors_roundtrip() {
     // as_stream().unwrap().dictionary() / .data() で構築時の辞書・バイト列が返る（後段借用経路）ことを確認する
     let mut dict = PdfDictionary::new();
-    dict.insert(PdfName::from("Length"), PdfObject::Integer(4));
+    dict.insert(PdfName::from("Length"), PdfObject::from(4));
     let obj = PdfObject::Stream(PdfStream::new(dict.clone(), b"body"));
     let stream = obj.as_stream().unwrap();
     assert_eq!(stream.dictionary(), &dict);
@@ -59,7 +59,7 @@ fn same_content_streams_wrapped_are_equal() {
 fn stream_and_dictionary_with_same_dictionary_are_not_equal() {
     // 同一辞書を持つ Stream（空データ）と Dictionary は異バリアントのため != で非等価になることを確認する
     let mut dict = PdfDictionary::new();
-    dict.insert(PdfName::from("Type"), PdfObject::Integer(1));
+    dict.insert(PdfName::from("Type"), PdfObject::from(1));
     assert_ne!(
         PdfObject::Stream(PdfStream::new(dict.clone(), b"")),
         PdfObject::Dictionary(dict)
@@ -70,9 +70,9 @@ fn stream_and_dictionary_with_same_dictionary_are_not_equal() {
 fn stream_containing_nan_is_not_equal_to_itself_content() {
     // 辞書値に Real(NaN) を含む Stream 同士は NaN != NaN が enum まで伝播し != になることを確認する
     let mut dict_a = PdfDictionary::new();
-    dict_a.insert(PdfName::from("N"), PdfObject::Real(f64::NAN));
+    dict_a.insert(PdfName::from("N"), PdfObject::from(f64::NAN));
     let mut dict_b = PdfDictionary::new();
-    dict_b.insert(PdfName::from("N"), PdfObject::Real(f64::NAN));
+    dict_b.insert(PdfName::from("N"), PdfObject::from(f64::NAN));
     assert_ne!(
         PdfObject::Stream(PdfStream::new(dict_a, b"data")),
         PdfObject::Stream(PdfStream::new(dict_b, b"data"))

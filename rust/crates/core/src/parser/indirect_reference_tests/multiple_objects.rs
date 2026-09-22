@@ -17,7 +17,7 @@ fn parse_object_returns_reference_then_trailing_integer() {
     // 連続: b"1 0 R 2" は 1 回目に Reference(1,0)、2 回目に Integer(2) を返すことを確認する
     let mut p = parser(b"1 0 R 2");
     assert_eq!(p.parse_object(), Ok(reference(1, 0)));
-    assert_eq!(p.parse_object(), Ok(PdfObject::Integer(2)));
+    assert_eq!(p.parse_object(), Ok(PdfObject::from(2)));
     let err = p.parse_object().expect_err("third call must EOF");
     assert_eq!(err.kind, ParseErrorKind::UnexpectedEof);
 }
