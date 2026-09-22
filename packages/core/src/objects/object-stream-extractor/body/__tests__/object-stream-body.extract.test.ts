@@ -1,6 +1,5 @@
 import { assert, expect, test, vi } from "vitest";
 import { ByteOffset } from "../../../../pdf/types/byte-offset/index";
-import { GenerationNumber } from "../../../../pdf/types/generation-number/index";
 import { ObjectNumber } from "../../../../pdf/types/object-number/index";
 import { err, ok } from "../../../../utils/result/index";
 import { LRUCache } from "../../../lru-cache/index";
@@ -10,26 +9,25 @@ import { ObjectStreamBody } from "../index";
 import {
   enc,
   makeObjStmDict,
-  stubResolver,
+  makeStreamObj,
 } from "./object-stream-body.test.helpers";
 
 test("オブジェクトストリームから指定インデックスのオブジェクトを抽出できる", async () => {
   const data = enc("10 0 true");
   const dict = makeObjStmDict();
   dict.entries.delete("Filter");
-  const resolver = stubResolver(ok({ type: "stream", dictionary: dict, data }));
+  const stream = makeStreamObj(data, dict);
   const parseSpy = vi
     .spyOn(ObjectParser, "parse")
     .mockReturnValue(ok({ type: "boolean", value: true }));
 
   try {
-    const result = await ObjectStreamBody.extract(
-      resolver,
-      undefined,
-      ObjectNumber.of(10),
-      ObjectNumber.of(15),
-      0,
-    );
+    const result = await ObjectStreamBody.extract({
+      stream,
+      targetObjNum: ObjectNumber.of(10),
+      streamObjNum: ObjectNumber.of(15),
+      indexInStream: 0,
+    });
     assert(result.ok);
     expect(result.value).toEqual({ type: "boolean", value: true });
   } finally {
@@ -41,22 +39,19 @@ test("/Filter不在の未圧縮ObjStmからオブジェクトを抽出できる"
   const rawData = enc("10 0 true");
   const dict = makeObjStmDict();
   dict.entries.delete("Filter");
-  const resolver = stubResolver(
-    ok({ type: "stream", dictionary: dict, data: rawData }),
-  );
+  const stream = makeStreamObj(rawData, dict);
   const flateSpy = vi.spyOn(flateDecompressorModule, "createFlateDecompressor");
   const parseSpy = vi
     .spyOn(ObjectParser, "parse")
     .mockReturnValue(ok({ type: "boolean", value: true }));
 
   try {
-    const result = await ObjectStreamBody.extract(
-      resolver,
-      undefined,
-      ObjectNumber.of(10),
-      ObjectNumber.of(15),
-      0,
-    );
+    const result = await ObjectStreamBody.extract({
+      stream,
+      targetObjNum: ObjectNumber.of(10),
+      streamObjNum: ObjectNumber.of(15),
+      indexInStream: 0,
+    });
     assert(result.ok);
     expect(flateSpy).not.toHaveBeenCalled();
   } finally {
@@ -74,9 +69,7 @@ test("同一ストリームの2回目のアクセスでキャッシュから展�
     First: { type: "integer", value: 10 },
   });
 
-  const resolver = stubResolver(
-    ok({ type: "stream", dictionary: dict, data: enc("compressed") }),
-  );
+  const stream = makeStreamObj(enc("compressed"), dict);
   const parseSpy = vi
     .spyOn(ObjectParser, "parse")
     .mockReturnValue(ok({ type: "boolean", value: true }));
@@ -94,23 +87,23 @@ test("同一ストリームの2回目のアクセスでキャッシュから展�
     assert(cacheResult.ok);
     const cache = cacheResult.value;
 
-    const r1 = await ObjectStreamBody.extract(
-      resolver,
+    const r1 = await ObjectStreamBody.extract({
+      stream,
       cache,
-      ObjectNumber.of(10),
-      ObjectNumber.of(15),
-      0,
-    );
+      targetObjNum: ObjectNumber.of(10),
+      streamObjNum: ObjectNumber.of(15),
+      indexInStream: 0,
+    });
     assert(r1.ok);
     expect(decompressCount).toBe(1);
 
-    const r2 = await ObjectStreamBody.extract(
-      resolver,
+    const r2 = await ObjectStreamBody.extract({
+      stream,
       cache,
-      ObjectNumber.of(11),
-      ObjectNumber.of(15),
-      1,
-    );
+      targetObjNum: ObjectNumber.of(11),
+      streamObjNum: ObjectNumber.of(15),
+      indexInStream: 1,
+    });
     assert(r2.ok);
     expect(decompressCount).toBe(1);
   } finally {
@@ -119,48 +112,9 @@ test("同一ストリームの2回目のアクセスでキャッシュから展�
   }
 });
 
-test("StreamResolverがエラーを返した場合にエラーを伝播する", async () => {
-  const resolver = stubResolver(
-    err({
-      code: "CIRCULAR_REFERENCE",
-      message: "circular",
-      objectId: {
-        objectNumber: ObjectNumber.of(15),
-        generationNumber: GenerationNumber.of(0),
-      },
-    }),
-  );
-
-  const result = await ObjectStreamBody.extract(
-    resolver,
-    undefined,
-    ObjectNumber.of(10),
-    ObjectNumber.of(15),
-    0,
-  );
-  assert(!result.ok);
-  expect(result.error.code).toBe("CIRCULAR_REFERENCE");
-});
-
-test("解決されたオブジェクトがstream型でない場合にエラーを返す", async () => {
-  const resolver = stubResolver(ok({ type: "dictionary", entries: new Map() }));
-
-  const result = await ObjectStreamBody.extract(
-    resolver,
-    undefined,
-    ObjectNumber.of(10),
-    ObjectNumber.of(15),
-    0,
-  );
-  assert(!result.ok);
-  expect(result.error.code).toBe("OBJECT_STREAM_INVALID");
-});
-
 test("FlateDecode展開がエラーを返した場合にエラーを伝播する", async () => {
   const dict = makeObjStmDict();
-  const resolver = stubResolver(
-    ok({ type: "stream", dictionary: dict, data: enc("compressed") }),
-  );
+  const stream = makeStreamObj(enc("compressed"), dict);
   const flateSpy = vi
     .spyOn(flateDecompressorModule, "createFlateDecompressor")
     .mockReturnValue({
@@ -174,13 +128,12 @@ test("FlateDecode展開がエラーを返した場合にエラーを伝播する
     });
 
   try {
-    const result = await ObjectStreamBody.extract(
-      resolver,
-      undefined,
-      ObjectNumber.of(10),
-      ObjectNumber.of(15),
-      0,
-    );
+    const result = await ObjectStreamBody.extract({
+      stream,
+      targetObjNum: ObjectNumber.of(10),
+      streamObjNum: ObjectNumber.of(15),
+      indexInStream: 0,
+    });
     assert(!result.ok);
     expect(result.error.code).toBe("FLATEDECODE_FAILED");
   } finally {
@@ -192,43 +145,40 @@ test("インデックスが/N以上の場合にエラーを返す", async () => 
   const data = enc("10 0 true");
   const dict = makeObjStmDict();
   dict.entries.delete("Filter");
-  const resolver = stubResolver(ok({ type: "stream", dictionary: dict, data }));
+  const stream = makeStreamObj(data, dict);
 
-  const result = await ObjectStreamBody.extract(
-    resolver,
-    undefined,
-    ObjectNumber.of(10),
-    ObjectNumber.of(15),
-    5,
-  );
+  const result = await ObjectStreamBody.extract({
+    stream,
+    targetObjNum: ObjectNumber.of(10),
+    streamObjNum: ObjectNumber.of(15),
+    indexInStream: 5,
+  });
   assert(!result.ok);
   expect(result.error.code).toBe("OBJECT_STREAM_INDEX_OUT_OF_RANGE");
 });
 
 test("インデックスが負値の場合にエラーを返す", async () => {
-  const resolver = stubResolver(ok({ type: "null" }));
+  const stream = makeStreamObj(new Uint8Array(0));
 
-  const result = await ObjectStreamBody.extract(
-    resolver,
-    undefined,
-    ObjectNumber.of(10),
-    ObjectNumber.of(15),
-    -1,
-  );
+  const result = await ObjectStreamBody.extract({
+    stream,
+    targetObjNum: ObjectNumber.of(10),
+    streamObjNum: ObjectNumber.of(15),
+    indexInStream: -1,
+  });
   assert(!result.ok);
   expect(result.error.code).toBe("OBJECT_STREAM_INVALID");
 });
 
 test("インデックスが非整数の場合にエラーを返す", async () => {
-  const resolver = stubResolver(ok({ type: "null" }));
+  const stream = makeStreamObj(new Uint8Array(0));
 
-  const result = await ObjectStreamBody.extract(
-    resolver,
-    undefined,
-    ObjectNumber.of(10),
-    ObjectNumber.of(15),
-    0.5,
-  );
+  const result = await ObjectStreamBody.extract({
+    stream,
+    targetObjNum: ObjectNumber.of(10),
+    streamObjNum: ObjectNumber.of(15),
+    indexInStream: 0.5,
+  });
   assert(!result.ok);
   expect(result.error.code).toBe("OBJECT_STREAM_INVALID");
 });
@@ -236,17 +186,14 @@ test("インデックスが非整数の場合にエラーを返す", async () =>
 test("/Firstが展開済みデータ長を超える場合にエラーを返す", async () => {
   const dict = makeObjStmDict({ First: { type: "integer", value: 999 } });
   dict.entries.delete("Filter");
-  const resolver = stubResolver(
-    ok({ type: "stream", dictionary: dict, data: enc("short") }),
-  );
+  const stream = makeStreamObj(enc("short"), dict);
 
-  const result = await ObjectStreamBody.extract(
-    resolver,
-    undefined,
-    ObjectNumber.of(10),
-    ObjectNumber.of(15),
-    0,
-  );
+  const result = await ObjectStreamBody.extract({
+    stream,
+    targetObjNum: ObjectNumber.of(10),
+    streamObjNum: ObjectNumber.of(15),
+    indexInStream: 0,
+  });
   assert(!result.ok);
   expect(result.error.code).toBe("OBJECT_STREAM_INVALID");
   expect(result.error.message).toContain("/First");
@@ -259,15 +206,14 @@ test("ヘッダのトークンが不足している場合にエラーを返す",
     First: { type: "integer", value: 3 },
   });
   dict.entries.delete("Filter");
-  const resolver = stubResolver(ok({ type: "stream", dictionary: dict, data }));
+  const stream = makeStreamObj(data, dict);
 
-  const result = await ObjectStreamBody.extract(
-    resolver,
-    undefined,
-    ObjectNumber.of(10),
-    ObjectNumber.of(15),
-    0,
-  );
+  const result = await ObjectStreamBody.extract({
+    stream,
+    targetObjNum: ObjectNumber.of(10),
+    streamObjNum: ObjectNumber.of(15),
+    indexInStream: 0,
+  });
   assert(!result.ok);
   expect(result.error.code).toBe("OBJECT_STREAM_HEADER_INVALID");
 });
@@ -279,15 +225,14 @@ test("対象オブジェクトのoffsetが展開済みデータの本文範囲�
     N: { type: "integer", value: 1 },
   });
   dict.entries.delete("Filter");
-  const resolver = stubResolver(ok({ type: "stream", dictionary: dict, data }));
+  const stream = makeStreamObj(data, dict);
 
-  const result = await ObjectStreamBody.extract(
-    resolver,
-    undefined,
-    ObjectNumber.of(10),
-    ObjectNumber.of(15),
-    0,
-  );
+  const result = await ObjectStreamBody.extract({
+    stream,
+    targetObjNum: ObjectNumber.of(10),
+    streamObjNum: ObjectNumber.of(15),
+    indexInStream: 0,
+  });
   assert(!result.ok);
   expect(result.error.code).toBe("OBJECT_STREAM_INVALID");
   expect(result.error.message).toContain("offset");
@@ -297,7 +242,7 @@ test("ObjectParser.parseがエラーを返した場合にエラーを伝播す�
   const data = enc("10 0 true");
   const dict = makeObjStmDict();
   dict.entries.delete("Filter");
-  const resolver = stubResolver(ok({ type: "stream", dictionary: dict, data }));
+  const stream = makeStreamObj(data, dict);
   const parseSpy = vi
     .spyOn(ObjectParser, "parse")
     .mockReturnValue(
@@ -305,13 +250,12 @@ test("ObjectParser.parseがエラーを返した場合にエラーを伝播す�
     );
 
   try {
-    const result = await ObjectStreamBody.extract(
-      resolver,
-      undefined,
-      ObjectNumber.of(10),
-      ObjectNumber.of(15),
-      0,
-    );
+    const result = await ObjectStreamBody.extract({
+      stream,
+      targetObjNum: ObjectNumber.of(10),
+      streamObjNum: ObjectNumber.of(15),
+      indexInStream: 0,
+    });
     assert(!result.ok);
     expect(result.error.code).toBe("OBJECT_STREAM_INVALID");
   } finally {
@@ -323,7 +267,7 @@ test("抽出結果がstream型の場合にエラーを返す", async () => {
   const data = enc("10 0 true");
   const dict = makeObjStmDict();
   dict.entries.delete("Filter");
-  const resolver = stubResolver(ok({ type: "stream", dictionary: dict, data }));
+  const stream = makeStreamObj(data, dict);
   const parseSpy = vi.spyOn(ObjectParser, "parse").mockReturnValue(
     ok({
       type: "stream",
@@ -333,13 +277,12 @@ test("抽出結果がstream型の場合にエラーを返す", async () => {
   );
 
   try {
-    const result = await ObjectStreamBody.extract(
-      resolver,
-      undefined,
-      ObjectNumber.of(10),
-      ObjectNumber.of(15),
-      0,
-    );
+    const result = await ObjectStreamBody.extract({
+      stream,
+      targetObjNum: ObjectNumber.of(10),
+      streamObjNum: ObjectNumber.of(15),
+      indexInStream: 0,
+    });
     assert(!result.ok);
     expect(result.error.code).toBe("OBJECT_STREAM_INVALID");
     expect(result.error.message).toContain("stream");
@@ -352,15 +295,14 @@ test("ヘッダのobjNumがtargetObjNumと不一致の場合にエラーを返�
   const data = enc("99 0 true");
   const dict = makeObjStmDict();
   dict.entries.delete("Filter");
-  const resolver = stubResolver(ok({ type: "stream", dictionary: dict, data }));
+  const stream = makeStreamObj(data, dict);
 
-  const result = await ObjectStreamBody.extract(
-    resolver,
-    undefined,
-    ObjectNumber.of(10),
-    ObjectNumber.of(15),
-    0,
-  );
+  const result = await ObjectStreamBody.extract({
+    stream,
+    targetObjNum: ObjectNumber.of(10),
+    streamObjNum: ObjectNumber.of(15),
+    indexInStream: 0,
+  });
   assert(!result.ok);
   expect(result.error.code).toBe("OBJECT_STREAM_INVALID");
   expect(result.error.message).toContain("does not match");
@@ -373,7 +315,7 @@ test("同一ストリームの異なるインデックスのオブジェクト�
     First: { type: "integer", value: 10 },
   });
   dict.entries.delete("Filter");
-  const resolver = stubResolver(ok({ type: "stream", dictionary: dict, data }));
+  const stream = makeStreamObj(data, dict);
 
   let parseCallData: Uint8Array = new Uint8Array(0);
   const parseSpy = vi
@@ -385,23 +327,21 @@ test("同一ストリームの異なるインデックスのオブジェクト�
     });
 
   try {
-    const r1 = await ObjectStreamBody.extract(
-      resolver,
-      undefined,
-      ObjectNumber.of(10),
-      ObjectNumber.of(15),
-      0,
-    );
+    const r1 = await ObjectStreamBody.extract({
+      stream,
+      targetObjNum: ObjectNumber.of(10),
+      streamObjNum: ObjectNumber.of(15),
+      indexInStream: 0,
+    });
     assert(r1.ok);
     expect(new TextDecoder().decode(parseCallData)).toBe("true ");
 
-    const r2 = await ObjectStreamBody.extract(
-      resolver,
-      undefined,
-      ObjectNumber.of(11),
-      ObjectNumber.of(15),
-      1,
-    );
+    const r2 = await ObjectStreamBody.extract({
+      stream,
+      targetObjNum: ObjectNumber.of(11),
+      streamObjNum: ObjectNumber.of(15),
+      indexInStream: 1,
+    });
     assert(r2.ok);
     expect(new TextDecoder().decode(parseCallData)).toBe("<< /K /V >>");
   } finally {
@@ -416,15 +356,14 @@ test("extractはオブジェクトデータ範囲が空の場合にエラーを�
     First: { type: "integer", value: 10 },
   });
   dict.entries.delete("Filter");
-  const resolver = stubResolver(ok({ type: "stream", dictionary: dict, data }));
+  const stream = makeStreamObj(data, dict);
 
-  const result = await ObjectStreamBody.extract(
-    resolver,
-    undefined,
-    ObjectNumber.of(10),
-    ObjectNumber.of(15),
-    0,
-  );
+  const result = await ObjectStreamBody.extract({
+    stream,
+    targetObjNum: ObjectNumber.of(10),
+    streamObjNum: ObjectNumber.of(15),
+    indexInStream: 0,
+  });
   assert(!result.ok);
   expect(result.error.code).toBe("OBJECT_STREAM_INVALID");
   expect(result.error.message).toContain("empty");
@@ -437,19 +376,18 @@ test("cache=undefinedでキャッシュ無効化して正常に抽出できる",
     First: { type: "integer", value: 4 },
   });
   dict.entries.delete("Filter");
-  const resolver = stubResolver(ok({ type: "stream", dictionary: dict, data }));
+  const stream = makeStreamObj(data, dict);
   const parseSpy = vi
     .spyOn(ObjectParser, "parse")
     .mockReturnValue(ok({ type: "boolean", value: true }));
 
   try {
-    const result = await ObjectStreamBody.extract(
-      resolver,
-      undefined,
-      ObjectNumber.of(10),
-      ObjectNumber.of(15),
-      0,
-    );
+    const result = await ObjectStreamBody.extract({
+      stream,
+      targetObjNum: ObjectNumber.of(10),
+      streamObjNum: ObjectNumber.of(15),
+      indexInStream: 0,
+    });
     assert(result.ok);
     expect(result.value).toStrictEqual({ type: "boolean", value: true });
   } finally {
