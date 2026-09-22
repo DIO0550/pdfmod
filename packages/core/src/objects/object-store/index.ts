@@ -17,7 +17,6 @@ import type { Result } from "../../utils/result/index";
 import { err, ok } from "../../utils/result/index";
 import { LRUCache } from "../lru-cache/index";
 import type { ObjectResolver } from "../object-parser/index";
-import type { StreamResolver } from "../object-stream-extractor/index";
 import { readInlineEntry } from "./entry-readers/inline";
 import { readObjectStreamEntry } from "./entry-readers/object-stream";
 import type { ObjectStoreOptions, ObjectStoreSource } from "./types";
@@ -346,23 +345,33 @@ export class ObjectStore {
           return ok({ type: "null" });
         }
 
-        const adapter: StreamResolver = {
-          /** @param objNum - 解決対象のオブジェクト番号 */
-          resolve: (objNum: ObjectNumber) => {
-            const adapterRef: IndirectRef = {
-              objectNumber: objNum,
-              generationNumber: GenerationNumber.of(0),
-            };
-            return this.resolveImpl(adapterRef, ancestors);
-          },
+        const streamRef: IndirectRef = {
+          objectNumber: entry.streamObject,
+          generationNumber: GenerationNumber.of(0),
         };
 
-        const extractResult = await readObjectStreamEntry(
-          adapter,
-          this.streamCache,
+        const streamResolveResult = await this.resolveImpl(
+          streamRef,
+          ancestors,
+        );
+        if (!streamResolveResult.ok) {
+          return streamResolveResult;
+        }
+
+        const streamObj = streamResolveResult.value;
+        if (streamObj.type !== "stream") {
+          return err({
+            code: "OBJECT_STREAM_INVALID",
+            message: `Expected stream object for ObjStm ${entry.streamObject as number}, got ${streamObj.type}`,
+          });
+        }
+
+        const extractResult = await readObjectStreamEntry({
+          stream: streamObj,
           ref,
           entry,
-        );
+          cache: this.streamCache,
+        });
 
         if (extractResult.ok) {
           this.cache.set(cacheKey, extractResult.value);
