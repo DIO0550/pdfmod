@@ -21,7 +21,7 @@ export interface ReadObjectStreamEntryOptions {
   /** type=2 の XRefEntry（streamObject, indexInStream）。 */
   readonly entry: XRefCompressedEntry;
   /** 展開済みストリームキャッシュ。 */
-  readonly cache?: LRUCache<ObjectNumber, Uint8Array> | undefined;
+  readonly cache?: LRUCache<ObjectNumber, Uint8Array>;
 }
 
 /**
