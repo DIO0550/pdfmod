@@ -5,6 +5,7 @@
  * @module
  */
 
+import { NumberEx } from "../../ext/number/index";
 import type {
   PdfCircularReferenceError,
   PdfError,
@@ -345,6 +346,13 @@ export class ObjectStore {
           return ok({ type: "null" });
         }
 
+        if (!NumberEx.isSafeIntegerAtLeastZero(entry.indexInStream)) {
+          return err({
+            code: "OBJECT_STREAM_INVALID",
+            message: `indexInStream must be a non-negative safe integer, got ${entry.indexInStream}`,
+          });
+        }
+
         const streamRef: IndirectRef = {
           objectNumber: entry.streamObject,
           generationNumber: GenerationNumber.of(0),
@@ -362,7 +370,7 @@ export class ObjectStore {
         if (streamObj.type !== "stream") {
           return err({
             code: "OBJECT_STREAM_INVALID",
-            message: `Expected stream object for ObjStm ${entry.streamObject as number}, got ${streamObj.type}`,
+            message: `Expected stream object for ObjStm ${entry.streamObject}, got ${streamObj.type}`,
           });
         }
 
