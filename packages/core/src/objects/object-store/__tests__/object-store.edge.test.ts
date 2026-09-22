@@ -235,6 +235,40 @@ test("type=2 で generation !== 0 の場合は PdfNull が返る", async () => {
   expect(resolved).toEqual({ ok: true, value: { type: "null" } });
 });
 
+test("type=2 で indexInStream が負数の場合に親ストリーム解決前に OBJECT_STREAM_INVALID が返る", async () => {
+  const entry: XRefCompressedEntry = {
+    type: 2,
+    streamObject: ObjectNumber.of(10),
+    indexInStream: -1,
+  };
+  const store = unwrapOk(
+    ObjectStore.create(makeStoreSource({ xref: makeXRefTable([[5, entry]]) })),
+  );
+  const result = await store.get(makeRef(5));
+  const error = unwrapErr(result);
+  expect(error.code).toBe("OBJECT_STREAM_INVALID");
+  expect(error.message).toContain(
+    "indexInStream must be a non-negative safe integer",
+  );
+});
+
+test("type=2 で indexInStream が小数の場合に親ストリーム解決前に OBJECT_STREAM_INVALID が返る", async () => {
+  const entry: XRefCompressedEntry = {
+    type: 2,
+    streamObject: ObjectNumber.of(10),
+    indexInStream: 0.5,
+  };
+  const store = unwrapOk(
+    ObjectStore.create(makeStoreSource({ xref: makeXRefTable([[5, entry]]) })),
+  );
+  const result = await store.get(makeRef(5));
+  const error = unwrapErr(result);
+  expect(error.code).toBe("OBJECT_STREAM_INVALID");
+  expect(error.message).toContain(
+    "indexInStream must be a non-negative safe integer",
+  );
+});
+
 test("type=2 で ObjectStreamBody.extract に正しい引数が渡される", async () => {
   const entry: XRefCompressedEntry = {
     type: 2,
