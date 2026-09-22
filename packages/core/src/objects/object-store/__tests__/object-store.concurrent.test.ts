@@ -1,14 +1,16 @@
 import { expect, type MockInstance, test, vi } from "vitest";
 import type { PdfError } from "../../../pdf/errors/index";
+import { ByteOffset } from "../../../pdf/types/byte-offset/index";
+import { GenerationNumber } from "../../../pdf/types/generation-number/index";
 import { ObjectNumber } from "../../../pdf/types/object-number/index";
 import type {
   PdfValue,
-  XRefCompressedEntry,
+  XRefUsedEntry,
 } from "../../../pdf/types/pdf-types/index";
 import type { Result } from "../../../utils/result/index";
 import { err, map, ok } from "../../../utils/result/index";
-import type { StreamResolver } from "../../object-stream-extractor/index";
-import { ObjectStreamBody } from "../../object-stream-extractor/index";
+import type { ObjectResolver } from "../../object-parser/index";
+import { ObjectParser } from "../../object-parser/index";
 import { ObjectStore } from "../index";
 import {
   makeRef,
@@ -25,9 +27,9 @@ const READ_FAILURE: PdfError = {
   message: "fake read failure",
 };
 
-/** 偽の ObjStm 抽出 1 件分の振る舞い。 */
-type ExtractBehavior = (
-  resolver: StreamResolver,
+/** 偽の間接オブジェクトパース 1 件分の振る舞い。 */
+type ParseBehavior = (
+  resolver: ObjectResolver | undefined,
 ) => Promise<Result<PdfValue, PdfError>>;
 
 /**
@@ -35,25 +37,31 @@ type ExtractBehavior = (
  *
  * @param target - 参照先のオブジェクト番号
  * @param value - 参照先の解決に成功した場合に自分が返す値
- * @returns ExtractBehavior
+ * @returns ParseBehavior
  */
 const refersTo =
-  (target: number, value: PdfValue): ExtractBehavior =>
+  (target: number, value: PdfValue): ParseBehavior =>
   async (resolver) => {
+    if (resolver === undefined) {
+      return ok(value);
+    }
     // 各チェーンが in-flight 登録を終えてから参照に入るよう 1 tick 譲る。
     // 同期的に再帰すると 1 本のチェーンに畳まれ、既存の ancestors 検出に捕まってしまう
     await Promise.resolve();
-    return map(await resolver.resolve(ObjectNumber.of(target)), () => value);
+    return map(
+      await resolver(ObjectNumber.of(target), GenerationNumber.of(0)),
+      () => value,
+    );
   };
 
 /**
  * 参照を持たず固定値を返す振る舞いを作る。
  *
  * @param value - 返す値
- * @returns ExtractBehavior
+ * @returns ParseBehavior
  */
 const yieldsValue =
-  (value: PdfValue): ExtractBehavior =>
+  (value: PdfValue): ParseBehavior =>
   async () =>
     ok(value);
 
@@ -61,46 +69,54 @@ const yieldsValue =
  * 参照を持たず固定エラーを返す振る舞いを作る。
  *
  * @param error - 返すエラー
- * @returns ExtractBehavior
+ * @returns ParseBehavior
  */
 const failsWith =
-  (error: PdfError): ExtractBehavior =>
+  (error: PdfError): ParseBehavior =>
   async () =>
     err(error);
 
-/** ObjectStreamBody.extract を差し替えたスパイ。 */
-type ExtractSpy = MockInstance<typeof ObjectStreamBody.extract>;
+/** ObjectParser.parseIndirectObject を差し替えたスパイ。 */
+type ParseSpy = MockInstance<typeof ObjectParser.parseIndirectObject>;
 
 /**
- * オブジェクト番号ごとの振る舞いを持つ偽の ObjStm 抽出をセットアップする。
+ * オブジェクト番号ごとの振る舞いを持つ偽の間接オブジェクトパースをセットアップする。
  * behaviors は呼び出しのたびに参照されるため、途中で差し替えられる。
  *
  * @param behaviors - オブジェクト番号 → 振る舞い
- * @returns ObjectStreamBody.extract のスパイ
+ * @returns ObjectParser.parseIndirectObject のスパイ
  */
-const spyExtract = (
-  behaviors: ReadonlyMap<number, ExtractBehavior>,
-): ExtractSpy =>
+const spyParse = (behaviors: ReadonlyMap<number, ParseBehavior>): ParseSpy =>
   vi
-    .spyOn(ObjectStreamBody, "extract")
-    .mockImplementation(async (resolver, _cache, targetObjNum) =>
-      (behaviors.get(targetObjNum) ?? yieldsValue({ type: "null" }))(resolver),
-    );
+    .spyOn(ObjectParser, "parseIndirectObject")
+    .mockImplementation(async (_data, offset, resolver) => {
+      const objNum = offset as number;
+      const behavior = behaviors.get(objNum) ?? yieldsValue({ type: "null" });
+      const result = await behavior(resolver);
+      if (!result.ok) {
+        return result;
+      }
+      return ok({
+        objectNumber: ObjectNumber.of(objNum),
+        generationNumber: GenerationNumber.of(0),
+        body: result.value,
+      });
+    });
 
 /**
- * type=2 エントリを生成する。
+ * type=1 エントリを生成する。offset にオブジェクト番号を格納する。
  *
- * @param streamObject - 格納元 ObjStm のオブジェクト番号
- * @returns XRefCompressedEntry
+ * @param objNum - オブジェクト番号
+ * @returns XRefUsedEntry
  */
-const compressed = (streamObject: number): XRefCompressedEntry => ({
-  type: 2,
-  streamObject: ObjectNumber.of(streamObject),
-  indexInStream: 0,
+const used = (objNum: number): XRefUsedEntry => ({
+  type: 1,
+  offset: ByteOffset.of(objNum),
+  generationNumber: GenerationNumber.of(0),
 });
 
 /**
- * 指定オブジェクトをそれぞれ別 ObjStm の type=2 エントリとして登録したストアを作る。
+ * 指定オブジェクトを type=1 エントリとして登録したストアを作る。
  *
  * @param objNumbers - 登録するオブジェクト番号
  * @returns ObjectStore
@@ -109,9 +125,7 @@ const makeStore = (objNumbers: readonly number[]): ObjectStore =>
   unwrapOk(
     ObjectStore.create(
       makeStoreSource({
-        xref: makeXRefTable(
-          objNumbers.map((n) => [n, compressed(n + 100)] as const),
-        ),
+        xref: makeXRefTable(objNumbers.map((n) => [n, used(n)] as const)),
       }),
     ),
   );
@@ -119,17 +133,17 @@ const makeStore = (objNumbers: readonly number[]): ObjectStore =>
 /**
  * スパイのうち指定オブジェクト番号を対象とした呼び出し回数を数える。
  *
- * @param spy - spyExtract が返したスパイ
+ * @param spy - spyParse が返したスパイ
  * @param objNumber - 対象のオブジェクト番号
  * @returns 呼び出し回数
  */
-const callsFor = (spy: ExtractSpy, objNumber: number): number =>
-  spy.mock.calls.filter(([, , targetObjNum]) => targetObjNum === objNumber)
+const callsFor = (spy: ParseSpy, objNumber: number): number =>
+  spy.mock.calls.filter(([, offset]) => (offset as number) === objNumber)
     .length;
 
 test("閉路のない並行解決で共通の子オブジェクトの読み取りが 1 回に集約される", async () => {
   const store = makeStore([1, 2, 3]);
-  const extractSpy = spyExtract(
+  const parseSpy = spyParse(
     new Map([
       [1, refersTo(3, FORTY_TWO)],
       [2, refersTo(3, FORTY_TWO)],
@@ -143,15 +157,15 @@ test("閉路のない並行解決で共通の子オブジェクトの読み取�
       store.get(makeRef(2)),
     ]);
     expect(results.map((r) => unwrapOk(r))).toEqual([FORTY_TWO, FORTY_TWO]);
-    expect(callsFor(extractSpy, 3)).toBe(1);
+    expect(callsFor(parseSpy, 3)).toBe(1);
   } finally {
-    extractSpy.mockRestore();
+    parseSpy.mockRestore();
   }
 });
 
 test("相互参照する 2 オブジェクトの並行 get はハングせず CIRCULAR_REFERENCE を返す", async () => {
   const store = makeStore([1, 2]);
-  const extractSpy = spyExtract(
+  const parseSpy = spyParse(
     new Map([
       [1, refersTo(2, FIVE)],
       [2, refersTo(1, FIVE)],
@@ -168,13 +182,13 @@ test("相互参照する 2 オブジェクトの並行 get はハングせず CI
       "CIRCULAR_REFERENCE",
     ]);
   } finally {
-    extractSpy.mockRestore();
+    parseSpy.mockRestore();
   }
 });
 
 test("3 者循環（1→2→3→1）の並行 get はハングせず CIRCULAR_REFERENCE を返す", async () => {
   const store = makeStore([1, 2, 3]);
-  const extractSpy = spyExtract(
+  const parseSpy = spyParse(
     new Map([
       [1, refersTo(2, FIVE)],
       [2, refersTo(3, FIVE)],
@@ -194,13 +208,13 @@ test("3 者循環（1→2→3→1）の並行 get はハングせず CIRCULAR_RE
       "CIRCULAR_REFERENCE",
     ]);
   } finally {
-    extractSpy.mockRestore();
+    parseSpy.mockRestore();
   }
 });
 
 test("待たれている側の解決失敗は循環参照に置き換えられずそのまま伝わる", async () => {
   const store = makeStore([1, 2, 3]);
-  const extractSpy = spyExtract(
+  const parseSpy = spyParse(
     new Map([
       [1, refersTo(3, FIVE)],
       [2, refersTo(3, FIVE)],
@@ -218,7 +232,7 @@ test("待たれている側の解決失敗は循環参照に置き換えられ�
       "OBJECT_STREAM_INVALID",
     ]);
   } finally {
-    extractSpy.mockRestore();
+    parseSpy.mockRestore();
   }
 });
 
@@ -228,7 +242,7 @@ test("循環検出の後に待った側・検出した側のどちらを get し
     [1, refersTo(2, FIVE)],
     [2, refersTo(1, FIVE)],
   ]);
-  const extractSpy = spyExtract(behaviors);
+  const parseSpy = spyParse(behaviors);
 
   try {
     const circular = await Promise.all([
@@ -245,13 +259,13 @@ test("循環検出の後に待った側・検出した側のどちらを get し
     expect(unwrapOk(await store.get(makeRef(1)))).toEqual(FIVE);
     expect(unwrapOk(await store.get(makeRef(2)))).toEqual(FIVE);
   } finally {
-    extractSpy.mockRestore();
+    parseSpy.mockRestore();
   }
 });
 
 test("先行チェーンの完了後に同じ子オブジェクトを待っても閉路と判定されない", async () => {
   const store = makeStore([1, 2, 3]);
-  const extractSpy = spyExtract(
+  const parseSpy = spyParse(
     new Map([
       [1, refersTo(3, FIVE)],
       [2, refersTo(3, FIVE)],
@@ -263,7 +277,7 @@ test("先行チェーンの完了後に同じ子オブジェクトを待って�
     expect(unwrapOk(await store.get(makeRef(1)))).toEqual(FIVE);
     expect(unwrapOk(await store.get(makeRef(2)))).toEqual(FIVE);
   } finally {
-    extractSpy.mockRestore();
+    parseSpy.mockRestore();
   }
 });
 
@@ -274,7 +288,7 @@ test("循環以外のエラーが伝播した後も再 get で再解決される
     [2, refersTo(3, FIVE)],
     [3, failsWith(READ_FAILURE)],
   ]);
-  const extractSpy = spyExtract(behaviors);
+  const parseSpy = spyParse(behaviors);
 
   try {
     const failed = await Promise.all([
@@ -290,6 +304,6 @@ test("循環以外のエラーが伝播した後も再 get で再解決される
     expect(unwrapOk(await store.get(makeRef(1)))).toEqual(FIVE);
     expect(unwrapOk(await store.get(makeRef(3)))).toEqual(FIVE);
   } finally {
-    extractSpy.mockRestore();
+    parseSpy.mockRestore();
   }
 });
