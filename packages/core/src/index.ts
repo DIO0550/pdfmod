@@ -55,13 +55,11 @@ export type {
   ObjectStoreOptions,
   ObjectStoreSource,
   ObjectStreamHeaderEntry,
-  StreamResolver,
 } from "./objects/index";
 export {
   LRUCache,
   ObjectParser,
   ObjectStore,
-  ObjectStreamBody,
   ObjectStreamHeader,
 } from "./objects/index";
 export type {
