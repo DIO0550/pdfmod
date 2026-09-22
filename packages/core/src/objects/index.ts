@@ -23,8 +23,8 @@ export type {
   ObjectStoreSource,
 } from "./object-store/types";
 export type {
+  ObjectStreamExtractOptions,
   ObjectStreamHeaderEntry,
-  StreamResolver,
 } from "./object-stream-extractor/index";
 export {
   ObjectStreamBody,

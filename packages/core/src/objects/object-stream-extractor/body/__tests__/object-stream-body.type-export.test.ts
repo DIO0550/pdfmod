@@ -1,25 +1,25 @@
 import { expect, test } from "vitest";
-import type {
-  ObjectStreamHeaderEntry,
-  StreamResolver,
-} from "../../../../index";
+import type { ObjectStreamHeaderEntry } from "../../../../index";
 import {
   ByteOffset,
   ObjectNumber,
-  ObjectStreamBody,
   ObjectStreamHeader,
 } from "../../../../index";
+import { ObjectStreamBody, type ObjectStreamExtractOptions } from "../../index";
 
-test("公開型がルートからインポート可能である", () => {
-  const resolver: StreamResolver = {
-    resolve: () => Promise.resolve({ ok: true, value: { type: "null" } }),
-  };
-
-  expect(resolver.resolve).toBeDefined();
+test("ObjectStreamBody.extractがモジュールからインポート可能である", () => {
+  expect(typeof ObjectStreamBody.extract).toBe("function");
 });
 
-test("ObjectStreamBody.extractがルートからインポート可能である", () => {
-  expect(typeof ObjectStreamBody.extract).toBe("function");
+test("ObjectStreamExtractOptionsが型として利用可能である", () => {
+  type _Options = ObjectStreamExtractOptions;
+  expect(true).toBe(true);
+});
+
+test("StreamResolverは削除されている", () => {
+  // @ts-expect-error StreamResolver は削除済み
+  type _Resolver = import("../../index").StreamResolver;
+  expect(true).toBe(true);
 });
 
 test("ObjectStreamHeader.parseがルートからインポート可能である", () => {

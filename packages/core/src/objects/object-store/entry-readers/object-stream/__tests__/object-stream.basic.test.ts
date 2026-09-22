@@ -1,10 +1,19 @@
 import { assert, expect, test, vi } from "vitest";
 import { ObjectNumber } from "../../../../../pdf/types/object-number/index";
-import type { XRefCompressedEntry } from "../../../../../pdf/types/pdf-types/index";
+import type {
+  PdfStream,
+  XRefCompressedEntry,
+} from "../../../../../pdf/types/pdf-types/index";
 import { err, ok } from "../../../../../utils/result/index";
 import { ObjectStreamBody } from "../../../../object-stream-extractor/index";
 import { makeRef } from "../../../__tests__/object-store.test.helpers";
 import { readObjectStreamEntry } from "../../object-stream";
+
+const dummyStream: PdfStream = {
+  type: "stream",
+  dictionary: { type: "dictionary", entries: new Map() },
+  data: new Uint8Array(),
+};
 
 test("readObjectStreamEntry は ObjectStreamBody.extract を呼び result を返す", async () => {
   const spy = vi
@@ -17,16 +26,12 @@ test("readObjectStreamEntry は ObjectStreamBody.extract を呼び result を返
       streamObject: ObjectNumber.of(10),
       indexInStream: 0,
     };
-    const resolver = {
-      resolve: () => Promise.resolve(ok({ type: "null" as const })),
-    };
 
-    const result = await readObjectStreamEntry(
-      resolver,
-      undefined,
-      makeRef(5),
+    const result = await readObjectStreamEntry({
+      stream: dummyStream,
+      ref: makeRef(5),
       entry,
-    );
+    });
     assert(result.ok);
     expect(result.value).toEqual({ type: "boolean", value: true });
   } finally {
@@ -45,19 +50,21 @@ test("readObjectStreamEntry は extract に正しい引数を渡す", async () =
       streamObject: ObjectNumber.of(20),
       indexInStream: 3,
     };
-    const resolver = {
-      resolve: () => Promise.resolve(ok({ type: "null" as const })),
-    };
 
-    await readObjectStreamEntry(resolver, undefined, makeRef(7), entry);
+    await readObjectStreamEntry({
+      stream: dummyStream,
+      ref: makeRef(7),
+      entry,
+    });
 
     expect(spy).toHaveBeenCalledOnce();
-    const args = spy.mock.calls[0];
-    expect(args[0]).toBe(resolver);
-    expect(args[1]).toBeUndefined();
-    expect(args[2]).toBe(ObjectNumber.of(7));
-    expect(args[3]).toBe(ObjectNumber.of(20));
-    expect(args[4]).toBe(3);
+    expect(spy).toHaveBeenCalledWith({
+      stream: dummyStream,
+      targetObjNum: ObjectNumber.of(7),
+      streamObjNum: ObjectNumber.of(20),
+      indexInStream: 3,
+      cache: undefined,
+    });
   } finally {
     spy.mockRestore();
   }
@@ -76,16 +83,12 @@ test("readObjectStreamEntry は extract のエラーをそのまま返す", asyn
       streamObject: ObjectNumber.of(10),
       indexInStream: 0,
     };
-    const resolver = {
-      resolve: () => Promise.resolve(ok({ type: "null" as const })),
-    };
 
-    const result = await readObjectStreamEntry(
-      resolver,
-      undefined,
-      makeRef(5),
+    const result = await readObjectStreamEntry({
+      stream: dummyStream,
+      ref: makeRef(5),
       entry,
-    );
+    });
     assert(!result.ok);
     expect(result.error.code).toBe("OBJECT_STREAM_INVALID");
   } finally {

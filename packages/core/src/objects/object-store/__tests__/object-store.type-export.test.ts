@@ -1,9 +1,5 @@
 import { expect, test } from "vitest";
-import type {
-  ObjectStoreOptions,
-  ObjectStoreSource,
-  StreamResolver,
-} from "../../../index";
+import type { ObjectStoreOptions, ObjectStoreSource } from "../../../index";
 import { ObjectStore } from "../../../index";
 
 test("ObjectStore と公開型がルートからインポート可能である", () => {
@@ -17,11 +13,6 @@ test("ObjectStore と公開型がルートからインポート可能である",
 
   const options: ObjectStoreOptions = { cacheCapacity: 128 };
   expect(options.cacheCapacity).toBe(128);
-
-  const resolver: StreamResolver = {
-    resolve: () => Promise.resolve({ ok: true, value: { type: "null" } }),
-  };
-  expect(resolver.resolve).toBeDefined();
 });
 
 test("削除された型はルートからインポートできない", () => {
@@ -39,6 +30,10 @@ test("削除された型はルートからインポートできない", () => {
   const _f: import("../../../index").StreamDecompressor = {};
   // @ts-expect-error CreateFlateDecompressorOptions は削除済み
   const _g: import("../../../index").CreateFlateDecompressorOptions = {};
+  // @ts-expect-error StreamResolver は削除済み
+  const _h: import("../../../index").StreamResolver = {};
+  // @ts-expect-error ObjectStreamBody はルートから削除済み
+  const _i: import("../../../index").ObjectStreamBody = {};
 
   expect(true).toBe(true);
 });
