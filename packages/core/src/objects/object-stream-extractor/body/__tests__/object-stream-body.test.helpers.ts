@@ -1,11 +1,8 @@
-import type { PdfError } from "../../../../pdf/errors/index";
 import type {
   PdfDictionary,
-  PdfObject,
+  PdfStream,
   PdfValue,
 } from "../../../../pdf/types/pdf-types/index";
-import type { Result } from "../../../../utils/result/index";
-import type { StreamResolver } from "../../types";
 
 /**
  * 文字列を UTF-8 バイト列にエンコードする。
@@ -41,12 +38,12 @@ export function makeObjStmDict(
  *
  * @param data - ストリームデータ
  * @param dict - ストリーム辞書（省略時はデフォルト ObjStm 辞書）
- * @returns ストリーム PdfObject
+ * @returns ストリーム PdfStream
  */
 export function makeStreamObj(
   data: Uint8Array,
   dict?: PdfDictionary,
-): PdfObject {
+): PdfStream {
   return {
     type: "stream",
     dictionary: dict ?? makeObjStmDict(),
@@ -70,16 +67,4 @@ export function makeDict(
     Filter: { type: "name", value: "FlateDecode" },
   };
   return new Map(Object.entries({ ...defaults, ...overrides }));
-}
-
-/**
- * StreamResolver のテスト用スタブを生成する。
- *
- * @param result - resolve() が返す固定値
- * @returns StreamResolver スタブ
- */
-export function stubResolver(
-  result: Result<PdfObject, PdfError>,
-): StreamResolver {
-  return { resolve: () => Promise.resolve(result) };
 }

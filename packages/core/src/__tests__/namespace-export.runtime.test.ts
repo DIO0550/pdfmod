@@ -15,7 +15,6 @@ import {
   ObjectNumber,
   ObjectParser,
   ObjectStore,
-  ObjectStreamBody,
   ObjectStreamHeader,
   OperandStack,
   Operator,
@@ -60,7 +59,6 @@ test.each([
     value: ObjectParser.parseIndirectObject,
   },
   { name: "ObjectStore.create", value: ObjectStore.create },
-  { name: "ObjectStreamBody.extract", value: ObjectStreamBody.extract },
   { name: "ObjectStreamHeader.parse", value: ObjectStreamHeader.parse },
   { name: "CatalogParser.parse", value: CatalogParser.parse },
   { name: "PageTreeWalker.walk", value: PageTreeWalker.walk },
@@ -161,4 +159,10 @@ test("Option.noneがルートからexportされている", () => {
 test("ContentStreamTokenizerの初期positionが0である", () => {
   const tokenizer = new ContentStreamTokenizer(new Uint8Array());
   expect(tokenizer.position).toBe(0);
+});
+
+test("StreamResolver および ObjectStreamBody がルートから export されていない", async () => {
+  const rootExports = await import("../index");
+  expect("ObjectStreamBody" in rootExports).toBe(false);
+  expect("StreamResolver" in rootExports).toBe(false);
 });

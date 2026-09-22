@@ -1,16 +1,14 @@
 import { NumberEx } from "../../../ext/number/index";
 import type { PdfError } from "../../../pdf/errors/index";
 import { ByteOffset } from "../../../pdf/types/byte-offset/index";
-import type { ObjectNumber } from "../../../pdf/types/object-number/index";
 import type { PdfValue } from "../../../pdf/types/pdf-types/index";
 import type { Result } from "../../../utils/result/index";
 import { err, ok } from "../../../utils/result/index";
-import type { LRUCache } from "../../lru-cache/index";
 import { ObjectParser } from "../../object-parser/index";
 import { ObjectStreamDict } from "../dict/index";
 import { createFlateDecompressor } from "../flate-decompressor/index";
 import { ObjectStreamHeader } from "../header/index";
-import type { StreamResolver } from "../types";
+import type { ObjectStreamExtractOptions } from "../types";
 
 /**
  * ObjStm ボディ部からオブジェクトを抽出するコンパニオンオブジェクト。
@@ -19,20 +17,15 @@ export const ObjectStreamBody = {
   /**
    * オブジェクトストリーム（ObjStm）から指定オブジェクトを抽出する。
    *
-   * @param resolver - ストリームオブジェクトを解決するリゾルバ
-   * @param cache - 展開済みストリームのキャッシュ（undefined でキャッシュ無効）
-   * @param targetObjNum - 抽出対象のオブジェクト番号
-   * @param streamObjNum - ObjStm 自体のオブジェクト番号
-   * @param indexInStream - ObjStm 内でのインデックス（0始まり）
+   * @param options - 抽出パラメータ（ストリーム、対象オブジェクト番号、インデックス、キャッシュ）
    * @returns 抽出されたPDFオブジェクト、またはエラー
    */
   async extract(
-    resolver: StreamResolver,
-    cache: LRUCache<ObjectNumber, Uint8Array> | undefined,
-    targetObjNum: ObjectNumber,
-    streamObjNum: ObjectNumber,
-    indexInStream: number,
+    options: ObjectStreamExtractOptions,
   ): Promise<Result<PdfValue, PdfError>> {
+    const { stream, targetObjNum, streamObjNum, indexInStream, cache } =
+      options;
+
     if (!NumberEx.isSafeIntegerAtLeastZero(indexInStream)) {
       return err({
         code: "OBJECT_STREAM_INVALID",
@@ -40,20 +33,7 @@ export const ObjectStreamBody = {
       });
     }
 
-    const resolveResult = await resolver.resolve(streamObjNum);
-    if (!resolveResult.ok) {
-      return resolveResult;
-    }
-
-    const streamObj = resolveResult.value;
-    if (streamObj.type !== "stream") {
-      return err({
-        code: "OBJECT_STREAM_INVALID",
-        message: `Expected stream object, got ${streamObj.type}`,
-      });
-    }
-
-    const dictResult = ObjectStreamDict.parse(streamObj.dictionary.entries);
+    const dictResult = ObjectStreamDict.parse(stream.dictionary.entries);
     if (!dictResult.ok) {
       return dictResult;
     }
@@ -74,7 +54,7 @@ export const ObjectStreamBody = {
         decompressedData = cached;
       } else {
         const decompressResult = await createFlateDecompressor().decompress(
-          streamObj.data,
+          stream.data,
         );
         if (!decompressResult.ok) {
           return decompressResult;
@@ -83,7 +63,7 @@ export const ObjectStreamBody = {
         cache?.set(streamObjNum, decompressedData);
       }
     } else {
-      decompressedData = streamObj.data;
+      decompressedData = stream.data;
     }
 
     if (first > decompressedData.length) {
