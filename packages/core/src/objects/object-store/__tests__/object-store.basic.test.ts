@@ -240,13 +240,30 @@ test("type=1 で obj ヘッダの objNum が xref と不一致の場合エラー
 });
 
 test("get 2回目はキャッシュヒットし extract が呼ばれない", async () => {
+  const body = "5 0 true ";
+  const streamData = new TextEncoder().encode(
+    `10 0 obj\n<< /Type /ObjStm /N 1 /First 4 /Length ${body.length} >>\nstream\n${body}\nendstream\nendobj`,
+  );
+  const streamEntry: XRefUsedEntry = {
+    type: 1,
+    offset: ByteOffset.of(0),
+    generationNumber: GenerationNumber.of(0),
+  };
   const entry: XRefCompressedEntry = {
     type: 2,
     streamObject: ObjectNumber.of(10),
     indexInStream: 0,
   };
   const store = unwrapOk(
-    ObjectStore.create(makeStoreSource({ xref: makeXRefTable([[5, entry]]) })),
+    ObjectStore.create(
+      makeStoreSource({
+        xref: makeXRefTable([
+          [10, streamEntry],
+          [5, entry],
+        ]),
+        data: streamData,
+      }),
+    ),
   );
   const extractSpy = vi
     .spyOn(ObjectStreamBody, "extract")
@@ -261,6 +278,90 @@ test("get 2回目はキャッシュヒットし extract が呼ばれない", asy
   } finally {
     extractSpy.mockRestore();
   }
+});
+
+test("Type=2 エントリで親ストリームが事前解決され内部オブジェクトが解決される", async () => {
+  const body = "5 0 true ";
+  const streamData = new TextEncoder().encode(
+    `10 0 obj\n<< /Type /ObjStm /N 1 /First 4 /Length ${body.length} >>\nstream\n${body}\nendstream\nendobj`,
+  );
+  const streamEntry: XRefUsedEntry = {
+    type: 1,
+    offset: ByteOffset.of(0),
+    generationNumber: GenerationNumber.of(0),
+  };
+  const compressedEntry: XRefCompressedEntry = {
+    type: 2,
+    streamObject: ObjectNumber.of(10),
+    indexInStream: 0,
+  };
+  const store = unwrapOk(
+    ObjectStore.create(
+      makeStoreSource({
+        xref: makeXRefTable([
+          [10, streamEntry],
+          [5, compressedEntry],
+        ]),
+        data: streamData,
+      }),
+    ),
+  );
+  const extractSpy = vi
+    .spyOn(ObjectStreamBody, "extract")
+    .mockResolvedValue({ ok: true, value: { type: "boolean", value: true } });
+
+  try {
+    const result = await store.get(makeRef(5));
+    const val = unwrapOk(result);
+    expect(val).toEqual({ type: "boolean", value: true });
+    expect(extractSpy).toHaveBeenCalledTimes(1);
+    const options = extractSpy.mock.calls[0][0];
+    expect(options.stream.type).toBe("stream");
+    expect(options.targetObjNum).toBe(ObjectNumber.of(5));
+    expect(options.streamObjNum).toBe(ObjectNumber.of(10));
+    expect(options.indexInStream).toBe(0);
+  } finally {
+    extractSpy.mockRestore();
+  }
+});
+
+test("同一親ストリーム内の異なる Type=2 オブジェクト連続解決時の展開キャッシュ利用", async () => {
+  const body = "5 0 6 5 true << /K /V >>";
+  const streamData = new TextEncoder().encode(
+    `10 0 obj\n<< /Type /ObjStm /N 2 /First 8 /Length ${body.length} >>\nstream\n${body}\nendstream\nendobj`,
+  );
+  const streamEntry: XRefUsedEntry = {
+    type: 1,
+    offset: ByteOffset.of(0),
+    generationNumber: GenerationNumber.of(0),
+  };
+  const entryA: XRefCompressedEntry = {
+    type: 2,
+    streamObject: ObjectNumber.of(10),
+    indexInStream: 0,
+  };
+  const entryB: XRefCompressedEntry = {
+    type: 2,
+    streamObject: ObjectNumber.of(10),
+    indexInStream: 1,
+  };
+  const store = unwrapOk(
+    ObjectStore.create(
+      makeStoreSource({
+        xref: makeXRefTable([
+          [10, streamEntry],
+          [5, entryA],
+          [6, entryB],
+        ]),
+        data: streamData,
+      }),
+    ),
+  );
+
+  const resA = await store.get(makeRef(5));
+  const resB = await store.get(makeRef(6));
+  expect(unwrapOk(resA)).toEqual({ type: "boolean", value: true });
+  expect(unwrapOk(resB).type).toBe("dictionary");
 });
 
 test("getAs で期待型と一致する場合、その型の PdfObject が返る", async () => {
