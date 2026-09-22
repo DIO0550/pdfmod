@@ -1,14 +1,21 @@
-import type { PdfError } from "../../pdf/errors/index";
 import type { ObjectNumber } from "../../pdf/types/object-number/index";
-import type { PdfObject } from "../../pdf/types/pdf-types/index";
-import type { Result } from "../../utils/result/index";
+import type { PdfStream } from "../../pdf/types/pdf-types/index";
+import type { LRUCache } from "../lru-cache/index";
 
 /**
- * ストリームオブジェクトを解決するインタフェース。
- * 具象実装を ObjectStreamBody に注入して使用する。
+ * オブジェクトストリームからの抽出オプション。
  */
-export interface StreamResolver {
-  resolve(objNum: ObjectNumber): Promise<Result<PdfObject, PdfError>>;
+export interface ObjectStreamExtractOptions {
+  /** 対象のオブジェクトストリーム。 */
+  readonly stream: PdfStream;
+  /** 抽出対象のオブジェクト番号。 */
+  readonly targetObjNum: ObjectNumber;
+  /** オブジェクトストリーム自体のオブジェクト番号（キャッシュキー用）。 */
+  readonly streamObjNum: ObjectNumber;
+  /** オブジェクトストリーム内でのインデックス（0始まり）。 */
+  readonly indexInStream: number;
+  /** 展開済みストリームのキャッシュ（undefined でキャッシュ無効）。 */
+  readonly cache?: LRUCache<ObjectNumber, Uint8Array> | undefined;
 }
 
 /**
