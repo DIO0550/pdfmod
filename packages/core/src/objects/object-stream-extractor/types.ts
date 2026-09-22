@@ -14,8 +14,8 @@ export interface ObjectStreamExtractOptions {
   readonly streamObjNum: ObjectNumber;
   /** オブジェクトストリーム内でのインデックス（0始まり）。 */
   readonly indexInStream: number;
-  /** 展開済みストリームのキャッシュ（undefined でキャッシュ無効）。 */
-  readonly cache?: LRUCache<ObjectNumber, Uint8Array> | undefined;
+  /** 展開済みストリームのキャッシュ（省略時はキャッシュ無効）。 */
+  readonly cache?: LRUCache<ObjectNumber, Uint8Array>;
 }
 
 /**
