@@ -72,12 +72,28 @@ test("parseは/Filterが/FlateDecodeでない場合にエラーを返す", () =>
   expect(result.error.message).toContain("LZWDecode");
 });
 
-test("parseは/Filterが配列の場合にエラーを返す", () => {
+test("parseは/Filterが単一要素配列[/FlateDecode]の場合に成功する", () => {
   const result = ObjectStreamDict.parse(
     makeDict({
       Filter: {
         type: "array",
         elements: [{ type: "name", value: "FlateDecode" }],
+      },
+    }),
+  );
+  assert(result.ok);
+  expect(result.value.needsDecompress).toBe(true);
+});
+
+test("parseは/Filterが複数要素配列の場合にエラーを返す", () => {
+  const result = ObjectStreamDict.parse(
+    makeDict({
+      Filter: {
+        type: "array",
+        elements: [
+          { type: "name", value: "ASCII85Decode" },
+          { type: "name", value: "FlateDecode" },
+        ],
       },
     }),
   );

@@ -12,6 +12,7 @@
 import { isPdfTokenBoundary } from "../../../lexer/bytes/index";
 import { ObjectParser } from "../../../objects/object-parser/index";
 import type { PdfError } from "../../../pdf/errors/index";
+import { decompressFlate } from "../../../pdf/filter/index";
 import { ByteOffset } from "../../../pdf/types/byte-offset/index";
 import type { GenerationNumber } from "../../../pdf/types/generation-number/index";
 import type { TrailerDict, XRefTable } from "../../../pdf/types/index";
@@ -20,7 +21,6 @@ import type { PdfObject } from "../../../pdf/types/pdf-types/index";
 import type { Result } from "../../../utils/result/index";
 import { err, ok } from "../../../utils/result/index";
 import { XRefStreamDict } from "../dict/index";
-import { decompressFlate } from "../flatedecode/index";
 import { decodeXRefStreamEntries } from "../parser/index";
 import { Predictor } from "../predictor/index";
 import { buildXRefStreamTrailerDict } from "../trailer/index";
