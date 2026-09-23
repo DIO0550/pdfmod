@@ -1,3 +1,5 @@
+import { none, type Option, some } from "../../utils/option/index";
+
 // --- PDFバイト定数 (ISO 32000) ---
 // ホワイトスペース (Table 1)
 const PdfNul = 0x00;
@@ -109,6 +111,70 @@ export function isPdfTokenBoundary(byte: number): boolean {
 export function isPdfLineBreak(byte: number): boolean {
   return LINE_BREAK.has(byte);
 }
+
+/**
+ * PDF仕様 (ISO 32000-1 Table 1) で定義される行末コード（EOL）の種別。
+ */
+export type PdfEol = "lf" | "cr" | "crlf";
+
+/**
+ * PDF仕様における行末コード（EOL）の判定・操作を提供するコンパニオンオブジェクト。
+ */
+export const PdfEol = {
+  Lf: "lf",
+  Cr: "cr",
+  CrLf: "crlf",
+
+  /**
+   * 指定バイト配列の指定位置にある行末コード（EOL）を判定する。
+   * ISO 32000-1 Table 1 で定義される EOL マーカー（LF, CR, CRLF）を判定する。
+   *
+   * @param data - 判定対象のバイト配列
+   * @param pos - 判定開始位置
+   * @returns 一致した EOL 種別を保持する Option。EOL でない場合や範囲外の場合は `none`
+   *
+   * @example
+   * ```ts
+   * PdfEol.matchAt(new Uint8Array([0x0a]), 0); // some("lf")
+   * PdfEol.matchAt(new Uint8Array([0x0d, 0x0a]), 0); // some("crlf")
+   * PdfEol.matchAt(new Uint8Array([0x0d]), 0); // some("cr")
+   * PdfEol.matchAt(new Uint8Array([0x20]), 0); // none
+   * ```
+   */
+  matchAt(data: Uint8Array, pos: number): Option<PdfEol> {
+    if (pos >= data.length) {
+      return none;
+    }
+    const b = data[pos];
+    if (b === PdfLf) {
+      return some("lf");
+    }
+    if (b === PdfCr) {
+      if (pos + 1 < data.length && data[pos + 1] === PdfLf) {
+        return some("crlf");
+      }
+      return some("cr");
+    }
+    return none;
+  },
+
+  /**
+   * EOL 種別に対応するバイト長を返す。
+   *
+   * @param eol - 対象の EOL 種別
+   * @returns CRLF の場合は 2、LF または CR の場合は 1
+   *
+   * @example
+   * ```ts
+   * PdfEol.byteLengthOf("crlf"); // 2
+   * PdfEol.byteLengthOf("lf");   // 1
+   * PdfEol.byteLengthOf("cr");   // 1
+   * ```
+   */
+  byteLengthOf(eol: PdfEol): number {
+    return eol === "crlf" ? 2 : 1;
+  },
+} as const;
 
 /**
  * 指定バイトがASCII数字（'0'-'9'）かどうかを判定する。

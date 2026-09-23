@@ -7,6 +7,7 @@ import { none, some } from "../../utils/option/index";
 import {
   isPdfDelimiter,
   isPdfWhitespace,
+  PdfEol,
   skipWhitespaceAndComments as skipWsAndComments,
 } from "../bytes/index";
 
@@ -291,7 +292,7 @@ export class Tokenizer {
 
   /**
    * リテラル文字列トークンを読み取る: `(chars)`。
-   * 括弧のネストに対応し、エスケープシーケンスを処理する。
+   * 括弧のネストに対応し、エスケープシーケンスの処理および生EOLのLF正規化を行う。
    *
    * nextTokenから "(" を検出した際に呼び出される内部メソッド。
    *
@@ -303,6 +304,13 @@ export class Tokenizer {
     let depth = 1;
 
     while (this.pos < this.data.length && depth > 0) {
+      const eol = PdfEol.matchAt(this.data, this.pos);
+      if (eol.some) {
+        this.pos += PdfEol.byteLengthOf(eol.value);
+        result += "\n";
+        continue;
+      }
+
       const b = this.read();
       if (b === AsciiLeftParen) {
         depth++;
@@ -328,13 +336,19 @@ export class Tokenizer {
 
   /**
    * リテラル文字列内のエスケープシーケンスを処理する。
-   * `\n`, `\r`, `\t`, `\b`, `\f`, `\(`, `\)`, `\\` および8進エスケープに対応する。
+   * 行継続（`\` + EOL破棄）、`\n`, `\r`, `\t`, `\b`, `\f`, `\(`, `\)`, `\\` および8進エスケープに対応する。
    *
    * readLiteralStringからエスケープ文字検出時に呼び出される内部メソッド。
    *
    * @returns エスケープシーケンスに対応する文字
    */
   private readEscapeChar(): string {
+    const eol = PdfEol.matchAt(this.data, this.pos);
+    if (eol.some) {
+      this.pos += PdfEol.byteLengthOf(eol.value);
+      return "";
+    }
+
     const b = this.read();
     switch (b) {
       case AsciiLowerN:
