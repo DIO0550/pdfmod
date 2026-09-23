@@ -1,10 +1,12 @@
 import { expect, test } from "vitest";
+import { none, some } from "../../../utils/option/index";
 import {
   isPdfDelimiter,
   isPdfDigit,
   isPdfLineBreak,
   isPdfTokenBoundary,
   isPdfWhitespace,
+  PdfEol,
   skipWhitespaceAndComments,
 } from "../index";
 
@@ -152,4 +154,43 @@ test("endがコメント途中のケースで途中まで進む", () => {
 test("開始位置が非空白のケースで即座に返す", () => {
   const data = encode("ABC");
   expect(skipWhitespaceAndComments(data, 0)).toBe(0);
+});
+
+// --- PdfEol ---
+
+test("PdfEol.matchAt は LF (0x0A) を検出して some('lf') を返す", () => {
+  const data = encode("\n");
+  expect(PdfEol.matchAt(data, 0)).toEqual(some("lf"));
+});
+
+test("PdfEol.matchAt は CR (0x0D) の直後が非 LF のとき some('cr') を返す", () => {
+  const data = encode("\rA");
+  expect(PdfEol.matchAt(data, 0)).toEqual(some("cr"));
+});
+
+test("PdfEol.matchAt は CRLF (0x0D, 0x0A) を検出して some('crlf') を返す", () => {
+  const data = encode("\r\n");
+  expect(PdfEol.matchAt(data, 0)).toEqual(some("crlf"));
+});
+
+test("PdfEol.matchAt は配列末尾の CR (pos === length - 1) で some('cr') を返す", () => {
+  const data = encode("\r");
+  expect(PdfEol.matchAt(data, 0)).toEqual(some("cr"));
+});
+
+test("PdfEol.matchAt は非 EOL バイトで none を返す", () => {
+  const data = encode(" A");
+  expect(PdfEol.matchAt(data, 0)).toEqual(none);
+});
+
+test("PdfEol.matchAt は範囲外 (pos >= length) で none を返す", () => {
+  const data = encode("A");
+  expect(PdfEol.matchAt(data, 1)).toEqual(none);
+  expect(PdfEol.matchAt(data, 5)).toEqual(none);
+});
+
+test("PdfEol.byteLengthOf は crlf で 2、lf と cr で 1 を返す", () => {
+  expect(PdfEol.byteLengthOf("crlf")).toBe(2);
+  expect(PdfEol.byteLengthOf("lf")).toBe(1);
+  expect(PdfEol.byteLengthOf("cr")).toBe(1);
 });

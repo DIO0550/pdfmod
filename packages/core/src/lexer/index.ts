@@ -7,6 +7,7 @@ export {
   isPdfDelimiter,
   isPdfTokenBoundary,
   isPdfWhitespace,
+  PdfEol,
   skipWhitespaceAndComments,
 } from "./bytes/index";
 export { Tokenizer } from "./tokenizer/index";
