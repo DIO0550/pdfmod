@@ -42,7 +42,7 @@ endstream
 **入力**: 圧縮データのバイト列、および任意指定の展開後最大サイズ（`maxDecompressedSize`、整数）
 **出力**: 非同期に完了する。成功時は展開後のバイト列を Ok で返し、失敗時は `PdfParseError` を Err で返す
 
-**ファイル:** `packages/core/src/xref/stream/flatedecode/index.ts`
+**ファイル:** `packages/core/src/pdf/filter/flatedecode/index.ts`
 
 Web Streams API の `DecompressionStream('deflate')` を使用した非同期 zlib 展開。外部ライブラリに依存せず、ブラウザ・Node.js 双方で動作する。
 
@@ -193,6 +193,6 @@ scanStartXRef
 
 以下の API を xref サブモジュール内で提供する（パッケージの root export ではなく、各モジュールから import する内部 API）:
 
-- `decompressFlate`（`xref/stream/flatedecode`）— FlateDecode 展開
+- `decompressFlate`（`pdf/filter/flatedecode`）— FlateDecode 展開
 - `buildXRefStreamTrailerDict`（`xref/stream/trailer`）— xref ストリーム TrailerDict 構築
 - `trailerDictBuilder`（`xref/trailer/dict-builder`）— 共通 TrailerDict ビルダー
