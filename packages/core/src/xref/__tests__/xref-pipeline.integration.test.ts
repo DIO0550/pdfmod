@@ -1,6 +1,7 @@
 import { assert, expect, test } from "vitest";
 import { ObjectParser } from "../../objects/object-parser/index";
 import type { PdfParseError } from "../../pdf/errors/index";
+import { decompressFlate } from "../../pdf/filter/index";
 import { ByteOffset } from "../../pdf/types/byte-offset/index";
 import { GenerationNumber } from "../../pdf/types/generation-number/index";
 import type { PdfValue, TrailerDict, XRefTable } from "../../pdf/types/index";
@@ -13,7 +14,6 @@ import { scanStartXRef } from "../startxref/scanner/index";
 import {
   buildXRefStreamTrailerDict,
   decodeXRefStreamEntries,
-  decompressFlate,
 } from "../stream/index";
 import { parseXRefTable } from "../table/parser/index";
 import { parseTrailer } from "../trailer/parser/index";

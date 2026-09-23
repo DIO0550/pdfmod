@@ -11,7 +11,6 @@ export { scanStartXRef } from "./startxref/index";
 export {
   buildXRefStreamTrailerDict,
   decodeXRefStreamEntries,
-  decompressFlate,
 } from "./stream/index";
 export { parseXRefTable } from "./table/index";
 export { parseTrailer, trailerDictBuilder } from "./trailer/index";
