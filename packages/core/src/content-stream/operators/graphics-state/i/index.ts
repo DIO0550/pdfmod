@@ -1,14 +1,13 @@
-import type { PdfError } from "../../../../pdf/errors/index";
 import { err, ok } from "../../../../utils/result/index";
 import {
   GraphicsState,
   GraphicsStateStack,
 } from "../../../graphics-state/index";
-import { OperandStack } from "../../../operand-stack/index";
 import type {
   OperatorHandler,
   OperatorHandlerContext,
 } from "../../../operator-registry/index";
+import { OperandExtractor } from "../../operand-extractor/index";
 
 const OPERATOR_NAME = "i";
 
@@ -26,32 +25,17 @@ const OPERATOR_NAME = "i";
 export const flatnessHandler: OperatorHandler = (
   context: OperatorHandlerContext,
 ) => {
-  const popped = OperandStack.pop(context.operandStack);
-  if (!popped.some) {
-    const error: PdfError = {
-      code: "OPERATOR_OPERAND_MISSING",
-      message: `Operator '${OPERATOR_NAME}' requires 1 operand(s), got 0`,
-      operatorName: OPERATOR_NAME,
-      required: 1,
-      actual: 0,
-    };
-    return err(error);
+  const operandResult = OperandExtractor.popNumber(
+    context.operandStack,
+    OPERATOR_NAME,
+  );
+  if (!operandResult.ok) {
+    return err(operandResult.error);
   }
-
-  const operand = popped.value;
-  if (operand.type !== "integer" && operand.type !== "real") {
-    const error: PdfError = {
-      code: "OPERATOR_OPERAND_TYPE_MISMATCH",
-      message: `Operator '${OPERATOR_NAME}' expected number operand, got ${operand.type}`,
-      operatorName: OPERATOR_NAME,
-      expected: "number",
-      actual: operand.type,
-    };
-    return err(error);
-  }
+  const flatness = operandResult.value;
 
   const current = GraphicsStateStack.current(context.graphicsStateStack);
-  const next = GraphicsState.update(current, { flatness: operand.value });
+  const next = GraphicsState.update(current, { flatness });
   const graphicsStateStack = GraphicsStateStack.replaceCurrent(
     context.graphicsStateStack,
     next,
