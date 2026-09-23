@@ -1,5 +1,3 @@
-import type { PdfError } from "../../../../pdf/errors/index";
-import { PdfName } from "../../../../pdf/types/pdf-types/index";
 import { some } from "../../../../utils/option/index";
 import { err, ok } from "../../../../utils/result/index";
 import {
@@ -7,12 +5,11 @@ import {
   GraphicsStateStack,
   TextState,
 } from "../../../graphics-state/index";
-import { OperandStack } from "../../../operand-stack/index";
 import type {
   OperatorHandler,
   OperatorHandlerContext,
 } from "../../../operator-registry/index";
-import { NumericPdfObject } from "../../graphics-state/numeric-pdf-object/index";
+import { OperandExtractor } from "../../operand-extractor/index";
 
 const OPERATOR_NAME = "Tf";
 const OPERAND_COUNT = 2;
@@ -32,58 +29,32 @@ const OPERAND_COUNT = 2;
  * @returns 成功なら更新後コンテキスト、失敗なら PdfError
  */
 export const tfHandler: OperatorHandler = (context: OperatorHandlerContext) => {
-  const poppedSize = OperandStack.pop(context.operandStack);
-  if (!poppedSize.some) {
-    const error: PdfError = {
-      code: "OPERATOR_OPERAND_MISSING",
-      message: `Operator '${OPERATOR_NAME}' requires ${OPERAND_COUNT} operand(s), got 0`,
-      operatorName: OPERATOR_NAME,
-      required: OPERAND_COUNT,
-      actual: 0,
-    };
-    return err(error);
+  const sizeResult = OperandExtractor.popNumber(
+    context.operandStack,
+    OPERATOR_NAME,
+    OPERAND_COUNT,
+    0,
+  );
+  if (!sizeResult.ok) {
+    return err(sizeResult.error);
   }
+  const sizeValue = sizeResult.value;
 
-  const size = poppedSize.value;
-  if (!NumericPdfObject.is(size)) {
-    const error: PdfError = {
-      code: "OPERATOR_OPERAND_TYPE_MISMATCH",
-      message: `Operator '${OPERATOR_NAME}' expected number operand, got ${size.type}`,
-      operatorName: OPERATOR_NAME,
-      expected: "number",
-      actual: size.type,
-    };
-    return err(error);
+  const fontResult = OperandExtractor.popName(
+    context.operandStack,
+    OPERATOR_NAME,
+    OPERAND_COUNT,
+    1,
+  );
+  if (!fontResult.ok) {
+    return err(fontResult.error);
   }
-
-  const poppedFont = OperandStack.pop(context.operandStack);
-  if (!poppedFont.some) {
-    const error: PdfError = {
-      code: "OPERATOR_OPERAND_MISSING",
-      message: `Operator '${OPERATOR_NAME}' requires ${OPERAND_COUNT} operand(s), got 1`,
-      operatorName: OPERATOR_NAME,
-      required: OPERAND_COUNT,
-      actual: 1,
-    };
-    return err(error);
-  }
-
-  const font = poppedFont.value;
-  if (!PdfName.is(font)) {
-    const error: PdfError = {
-      code: "OPERATOR_OPERAND_TYPE_MISMATCH",
-      message: `Operator '${OPERATOR_NAME}' expected name operand, got ${font.type}`,
-      operatorName: OPERATOR_NAME,
-      expected: "name",
-      actual: font.type,
-    };
-    return err(error);
-  }
+  const fontName = fontResult.value;
 
   const current = GraphicsStateStack.current(context.graphicsStateStack);
   const nextTextState = TextState.update(current.textState, {
-    fontName: some(font.value),
-    fontSize: size.value,
+    fontName: some(fontName),
+    fontSize: sizeValue,
   });
   const next = GraphicsState.update(current, { textState: nextTextState });
   const graphicsStateStack = GraphicsStateStack.replaceCurrent(
