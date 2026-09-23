@@ -191,7 +191,7 @@ scanStartXRef
 
 ## 提供 API
 
-以下の API を xref サブモジュール内で提供する（パッケージの root export ではなく、各モジュールから import する内部 API）:
+以下の API を各サブモジュール内で提供する（パッケージの root export ではなく、各モジュールから import する内部 API）:
 
 - `decompressFlate`（`pdf/filter/flatedecode`）— FlateDecode 展開
 - `buildXRefStreamTrailerDict`（`xref/stream/trailer`）— xref ストリーム TrailerDict 構築
