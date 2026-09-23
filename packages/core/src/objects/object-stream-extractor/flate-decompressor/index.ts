@@ -1,6 +1,6 @@
 import type { PdfParseError } from "../../../pdf/errors/index";
+import { decompressFlate } from "../../../pdf/filter/index";
 import type { Result } from "../../../utils/result/index";
-import { decompressFlate } from "../../../xref/stream/flatedecode/index";
 import type { CreateFlateDecompressorOptions } from "../types";
 
 const BYTES_PER_KB = 1024;
