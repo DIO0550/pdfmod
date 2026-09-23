@@ -51,16 +51,62 @@ test("PDF構造キーワード xref/trailer/startxref をトークナイズす�
 });
 
 test.each([
-  ["\\+LF", "(a\\\nb)", "a\nb"],
-  ["\\+CR", "(a\\\rb)", "a\rb"],
-  ["\\+CRLF", "(a\\\r\nb)", "a\r\nb"],
-])("リテラル文字列内のエスケープ %s はEOL文字をそのまま通す", (_label, input, expected) => {
+  ["\\+LF", "(a\\\nb)", "ab"],
+  ["\\+CR", "(a\\\rb)", "ab"],
+  ["\\+CRLF", "(a\\\r\nb)", "ab"],
+])("リテラル文字列内の行継続 %s はバックスラッシュとEOLを破棄して直結する", (_label, input, expected) => {
   const bytes = new TextEncoder().encode(input);
   const tokenizer = new Tokenizer(bytes);
   const token = tokenizer.nextToken();
   expect(token).toMatchObject({
     type: TokenType.LiteralString,
     value: expected,
+  });
+});
+
+test.each([
+  ["生LF", "(a\nb)", "a\nb"],
+  ["生CR", "(a\rb)", "a\nb"],
+  ["生CRLF", "(a\r\nb)", "a\nb"],
+  ["連続生EOL (CRLF + LF)", "(a\r\n\nb)", "a\n\nb"],
+  ["ネスト括弧内の生CRLF", "(a(\r\n)b)", "a(\n)b"],
+])("リテラル文字列内の非エスケープEOL %s は単一のLF(\\n)に正規化される", (_label, input, expected) => {
+  const bytes = new TextEncoder().encode(input);
+  const tokenizer = new Tokenizer(bytes);
+  const token = tokenizer.nextToken();
+  expect(token).toMatchObject({
+    type: TokenType.LiteralString,
+    value: expected,
+  });
+});
+
+test("リテラル文字列内のエスケープ \\r や \\n は正規化の影響を受けずそのまま保持される", () => {
+  const bytes = new TextEncoder().encode("(a\\r\\nb)");
+  const tokenizer = new Tokenizer(bytes);
+  const token = tokenizer.nextToken();
+  expect(token).toMatchObject({
+    type: TokenType.LiteralString,
+    value: "a\r\nb",
+  });
+});
+
+test("リテラル文字列末尾でバックスラッシュ直後にEOFとなる場合、それまでの文字列を返す", () => {
+  const bytes = new TextEncoder().encode("(abc\\");
+  const tokenizer = new Tokenizer(bytes);
+  const token = tokenizer.nextToken();
+  expect(token).toMatchObject({
+    type: TokenType.LiteralString,
+    value: "abc",
+  });
+});
+
+test("リテラル文字列末尾で行継続直後にEOFとなる場合、それまでの文字列を返す", () => {
+  const bytes = new TextEncoder().encode("(abc\\\r\n");
+  const tokenizer = new Tokenizer(bytes);
+  const token = tokenizer.nextToken();
+  expect(token).toMatchObject({
+    type: TokenType.LiteralString,
+    value: "abc",
   });
 });
 
