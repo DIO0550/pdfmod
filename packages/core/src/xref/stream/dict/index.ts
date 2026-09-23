@@ -6,6 +6,7 @@
  */
 
 import type { PdfParseError } from "../../../pdf/errors/index";
+import { PdfFilter } from "../../../pdf/filter/index";
 import { PdfType } from "../../../pdf/types/pdf-type/index";
 import type { PdfValue } from "../../../pdf/types/pdf-types/index";
 import type { Result } from "../../../utils/result/index";
@@ -107,49 +108,6 @@ function readIndex(
   return ok(values);
 }
 
-const SUPPORTED_FILTER_NAME = "FlateDecode";
-
-/**
- * `/Filter` エントリを検証し、フィルタ名を返す。
- *
- * xref ストリームの `/Filter` は仕様上 name または array で表現できる
- * （ISO 32000-1 §7.4）。単一要素配列（例: `[/FlateDecode]`）は単体名と
- * 同義として受理する。複数要素配列（カスケードフィルタ）は未サポート。
- *
- * `pdf/filter/index.ts` の `PdfFilter.parse` は ObjStm 側と共有されており
- * 配列を一律拒否する既存挙動に依存するテストがあるため、ここでは流用せず
- * xref ストリーム専用にローカル実装する。
- *
- * @param entries - ストリーム辞書のエントリ
- * @returns フィルタ名（未指定時は `undefined`）、または `XREF_STREAM_INVALID` エラー
- */
-function readFilter(
-  entries: Map<string, PdfValue>,
-): Result<string | undefined, PdfParseError> {
-  const entry = entries.get("Filter");
-  if (entry === undefined) {
-    return ok(undefined);
-  }
-
-  let nameEntry = entry;
-  if (entry.type === "array") {
-    if (entry.elements.length !== 1) {
-      return failDict(
-        `/Filter array with ${entry.elements.length} filters is not supported for xref streams`,
-      );
-    }
-    nameEntry = entry.elements[0];
-  }
-
-  if (nameEntry.type !== "name") {
-    return failDict(`/Filter must be a name, got ${nameEntry.type}`);
-  }
-  if (nameEntry.value !== SUPPORTED_FILTER_NAME) {
-    return failDict(`/Filter /${nameEntry.value} is not supported`);
-  }
-  return ok(nameEntry.value);
-}
-
 /**
  * `/DecodeParms` エントリを検証し辞書エントリマップとして取得する（省略時は `undefined`）。
  * 配列形式（複数フィルタ用）は未サポート。
@@ -206,9 +164,9 @@ export const XRefStreamDict = {
       return indexResult;
     }
 
-    const filterResult = readFilter(entries);
+    const filterResult = PdfFilter.parse(entries);
     if (!filterResult.ok) {
-      return filterResult;
+      return err({ ...filterResult.error, code: "XREF_STREAM_INVALID" });
     }
 
     const decodeParmsResult = readDecodeParms(entries);
