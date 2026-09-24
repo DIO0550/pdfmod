@@ -1,15 +1,16 @@
 import type { PdfError } from "../../../../pdf/errors/index";
+import type { PdfInteger } from "../../../../pdf/types/pdf-types/index";
 import { err, ok } from "../../../../utils/result/index";
 import {
   GraphicsState,
   GraphicsStateStack,
   LineCap,
 } from "../../../graphics-state/index";
-import { OperandStack } from "../../../operand-stack/index";
 import type {
   OperatorHandler,
   OperatorHandlerContext,
 } from "../../../operator-registry/index";
+import { OperandExtractor } from "../../operand-extractor/index";
 
 const OPERATOR_NAME = "J";
 
@@ -32,31 +33,17 @@ const OPERATOR_NAME = "J";
 export const lineCapHandler: OperatorHandler = (
   context: OperatorHandlerContext,
 ) => {
-  const popped = OperandStack.pop(context.operandStack);
-  if (!popped.some) {
-    const error: PdfError = {
-      code: "OPERATOR_OPERAND_MISSING",
-      message: `Operator '${OPERATOR_NAME}' requires 1 operand(s), got 0`,
-      operatorName: OPERATOR_NAME,
-      required: 1,
-      actual: 0,
-    };
-    return err(error);
+  const operandResult = OperandExtractor.popOperand(
+    context.operandStack,
+    OPERATOR_NAME,
+    (obj): obj is PdfInteger => obj.type === "integer",
+    "integer",
+  );
+  if (!operandResult.ok) {
+    return err(operandResult.error);
   }
 
-  const operand = popped.value;
-  if (operand.type !== "integer") {
-    const error: PdfError = {
-      code: "OPERATOR_OPERAND_TYPE_MISMATCH",
-      message: `Operator '${OPERATOR_NAME}' expected integer operand, got ${operand.type}`,
-      operatorName: OPERATOR_NAME,
-      expected: "integer",
-      actual: operand.type,
-    };
-    return err(error);
-  }
-
-  const value = operand.value;
+  const value = operandResult.value.value;
   if (!LineCap.isValid(value)) {
     const error: PdfError = {
       code: "OPERATOR_OPERAND_VALUE_OUT_OF_RANGE",
