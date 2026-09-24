@@ -1,4 +1,3 @@
-import type { PdfError } from "../../../../pdf/errors/index";
 import { err, ok } from "../../../../utils/result/index";
 import {
   Color,
@@ -6,15 +5,13 @@ import {
   GraphicsState,
   GraphicsStateStack,
 } from "../../../graphics-state/index";
-import { OperandStack } from "../../../operand-stack/index";
 import type {
   OperatorHandler,
   OperatorHandlerContext,
 } from "../../../operator-registry/index";
-import { NumericPdfObject } from "../../graphics-state/numeric-pdf-object";
+import { OperandExtractor } from "../../operand-extractor/index";
 
 const OPERATOR_NAME = "g";
-const OPERAND_COUNT = 1;
 
 /**
  * PDF §8.6.5.2 `g gray` operator (DeviceGray fill color) のハンドラ。
@@ -36,37 +33,14 @@ const OPERAND_COUNT = 1;
  * @returns 成功なら更新後コンテキスト、失敗なら PdfError
  */
 export const gHandler: OperatorHandler = (context: OperatorHandlerContext) => {
-  const popped: NumericPdfObject[] = [];
-  for (let i = 0; i < OPERAND_COUNT; i++) {
-    const result = OperandStack.pop(context.operandStack);
-    if (!result.some) {
-      const error: PdfError = {
-        code: "OPERATOR_OPERAND_MISSING",
-        message: `Operator '${OPERATOR_NAME}' requires ${OPERAND_COUNT} operand(s), got ${i}`,
-        operatorName: OPERATOR_NAME,
-        required: OPERAND_COUNT,
-        actual: i,
-      };
-      return err(error);
-    }
-    const operand = result.value;
-    if (!NumericPdfObject.is(operand)) {
-      const error: PdfError = {
-        code: "OPERATOR_OPERAND_TYPE_MISMATCH",
-        message: `Operator '${OPERATOR_NAME}' expected number operand, got ${operand.type}`,
-        operatorName: OPERATOR_NAME,
-        expected: "number",
-        actual: operand.type,
-      };
-      return err(error);
-    }
-    popped.push(operand);
+  const operandResult = OperandExtractor.popNumber(
+    context.operandStack,
+    OPERATOR_NAME,
+  );
+  if (!operandResult.ok) {
+    return err(operandResult.error);
   }
-
-  const [g] = popped
-    .slice()
-    .reverse()
-    .map((operand) => operand.value);
+  const g = operandResult.value;
 
   const fillColor = Color.gray(g);
   const fillColorSpace = ColorSpace.deviceGray();

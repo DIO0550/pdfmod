@@ -6,12 +6,11 @@ import {
   TextObject,
   TextState,
 } from "../../../graphics-state/index";
-import { OperandStack } from "../../../operand-stack/index";
 import type {
   OperatorHandler,
   OperatorHandlerContext,
 } from "../../../operator-registry/index";
-import { NumericPdfObject } from "../../graphics-state/numeric-pdf-object/index";
+import { OperandExtractor } from "../../operand-extractor/index";
 
 /** PDF 表記を保持した operator 名（"TD"）。 */
 const OPERATOR_NAME = "TD";
@@ -59,62 +58,22 @@ export const tdLeadingHandler: OperatorHandler = (
     return err(error);
   }
 
-  const poppedTy = OperandStack.pop(context.operandStack);
-  if (!poppedTy.some) {
-    const error: PdfError = {
-      code: "OPERATOR_OPERAND_MISSING",
-      message: `Operator '${OPERATOR_NAME}' requires 2 operand(s), got 0`,
-      operatorName: OPERATOR_NAME,
-      required: 2,
-      actual: 0,
-    };
-    return err(error);
+  const operandsResult = OperandExtractor.popNumbers(
+    context.operandStack,
+    OPERATOR_NAME,
+    2,
+  );
+  if (!operandsResult.ok) {
+    return err(operandsResult.error);
   }
-  const tyOperand = poppedTy.value;
-  if (!NumericPdfObject.is(tyOperand)) {
-    const error: PdfError = {
-      code: "OPERATOR_OPERAND_TYPE_MISMATCH",
-      message: `Operator '${OPERATOR_NAME}' expected number operand, got ${tyOperand.type}`,
-      operatorName: OPERATOR_NAME,
-      expected: "number",
-      actual: tyOperand.type,
-    };
-    return err(error);
-  }
-
-  const poppedTx = OperandStack.pop(context.operandStack);
-  if (!poppedTx.some) {
-    const error: PdfError = {
-      code: "OPERATOR_OPERAND_MISSING",
-      message: `Operator '${OPERATOR_NAME}' requires 2 operand(s), got 1`,
-      operatorName: OPERATOR_NAME,
-      required: 2,
-      actual: 1,
-    };
-    return err(error);
-  }
-  const txOperand = poppedTx.value;
-  if (!NumericPdfObject.is(txOperand)) {
-    const error: PdfError = {
-      code: "OPERATOR_OPERAND_TYPE_MISMATCH",
-      message: `Operator '${OPERATOR_NAME}' expected number operand, got ${txOperand.type}`,
-      operatorName: OPERATOR_NAME,
-      expected: "number",
-      actual: txOperand.type,
-    };
-    return err(error);
-  }
+  const [tx, ty] = operandsResult.value;
 
   // TD 固有: leading=-ty（符号反転は leading のみ）と matrix を 1 回の
   // GraphicsState.update で同時反映する。translateLine には反転前の生 ty を渡す。
   const textState = TextState.update(current.textState, {
-    leading: -tyOperand.value,
+    leading: -ty,
   });
-  const textObject = TextObject.translateLine(
-    current.textObject,
-    txOperand.value,
-    tyOperand.value,
-  );
+  const textObject = TextObject.translateLine(current.textObject, tx, ty);
   const next = GraphicsState.update(current, { textState, textObject });
   const graphicsStateStack = GraphicsStateStack.replaceCurrent(
     context.graphicsStateStack,

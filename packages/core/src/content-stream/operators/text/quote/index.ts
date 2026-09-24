@@ -6,12 +6,11 @@ import {
   TextObject,
   TextState,
 } from "../../../graphics-state/index";
-import { OperandStack } from "../../../operand-stack/index";
 import type {
   OperatorHandler,
   OperatorHandlerContext,
 } from "../../../operator-registry/index";
-import { NumericPdfObject } from "../../graphics-state/numeric-pdf-object/index";
+import { OperandExtractor } from "../../operand-extractor/index";
 
 /** PDF 表記を保持した operator 名（'"'）。 */
 const OPERATOR_NAME = '"';
@@ -72,84 +71,44 @@ export const quoteHandler: OperatorHandler = (
     return err(error);
   }
 
-  const poppedString = OperandStack.pop(context.operandStack);
-  if (!poppedString.some) {
-    const error: PdfError = {
-      code: "OPERATOR_OPERAND_MISSING",
-      message: `Operator '${OPERATOR_NAME}' requires ${OPERAND_COUNT} operand(s), got 0`,
-      operatorName: OPERATOR_NAME,
-      required: OPERAND_COUNT,
-      actual: 0,
-    };
-    return err(error);
+  const stringResult = OperandExtractor.popString(
+    context.operandStack,
+    OPERATOR_NAME,
+    OPERAND_COUNT,
+    0,
+  );
+  if (!stringResult.ok) {
+    return err(stringResult.error);
   }
 
-  const stringOperand = poppedString.value;
-  if (stringOperand.type !== "string") {
-    const error: PdfError = {
-      code: "OPERATOR_OPERAND_TYPE_MISMATCH",
-      message: `Operator '${OPERATOR_NAME}' expected string operand, got ${stringOperand.type}`,
-      operatorName: OPERATOR_NAME,
-      expected: "string",
-      actual: stringOperand.type,
-    };
-    return err(error);
+  const acResult = OperandExtractor.popNumber(
+    context.operandStack,
+    OPERATOR_NAME,
+    OPERAND_COUNT,
+    1,
+  );
+  if (!acResult.ok) {
+    return err(acResult.error);
   }
+  const ac = acResult.value;
 
-  const poppedAc = OperandStack.pop(context.operandStack);
-  if (!poppedAc.some) {
-    const error: PdfError = {
-      code: "OPERATOR_OPERAND_MISSING",
-      message: `Operator '${OPERATOR_NAME}' requires ${OPERAND_COUNT} operand(s), got 1`,
-      operatorName: OPERATOR_NAME,
-      required: OPERAND_COUNT,
-      actual: 1,
-    };
-    return err(error);
+  const awResult = OperandExtractor.popNumber(
+    context.operandStack,
+    OPERATOR_NAME,
+    OPERAND_COUNT,
+    2,
+  );
+  if (!awResult.ok) {
+    return err(awResult.error);
   }
-
-  const acOperand = poppedAc.value;
-  if (!NumericPdfObject.is(acOperand)) {
-    const error: PdfError = {
-      code: "OPERATOR_OPERAND_TYPE_MISMATCH",
-      message: `Operator '${OPERATOR_NAME}' expected number operand, got ${acOperand.type}`,
-      operatorName: OPERATOR_NAME,
-      expected: "number",
-      actual: acOperand.type,
-    };
-    return err(error);
-  }
-
-  const poppedAw = OperandStack.pop(context.operandStack);
-  if (!poppedAw.some) {
-    const error: PdfError = {
-      code: "OPERATOR_OPERAND_MISSING",
-      message: `Operator '${OPERATOR_NAME}' requires ${OPERAND_COUNT} operand(s), got 2`,
-      operatorName: OPERATOR_NAME,
-      required: OPERAND_COUNT,
-      actual: 2,
-    };
-    return err(error);
-  }
-
-  const awOperand = poppedAw.value;
-  if (!NumericPdfObject.is(awOperand)) {
-    const error: PdfError = {
-      code: "OPERATOR_OPERAND_TYPE_MISMATCH",
-      message: `Operator '${OPERATOR_NAME}' expected number operand, got ${awOperand.type}`,
-      operatorName: OPERATOR_NAME,
-      expected: "number",
-      actual: awOperand.type,
-    };
-    return err(error);
-  }
+  const aw = awResult.value;
 
   // state 更新（TD パターン: 1 回の GraphicsState.update で textState と textObject を atomic 反映）
   // leading は TextState.update を呼ぶ前に保持する（Tc/Tw は leading を変えないが規約として徹底）。
   const leading = current.textState.leading;
   const textState = TextState.update(current.textState, {
-    wordSpace: awOperand.value,
-    charSpace: acOperand.value,
+    wordSpace: aw,
+    charSpace: ac,
   });
   const textObject = TextObject.translateLine(current.textObject, 0, -leading);
   const next = GraphicsState.update(current, { textState, textObject });

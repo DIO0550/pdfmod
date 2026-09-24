@@ -1,15 +1,16 @@
 import type { PdfError } from "../../../../pdf/errors/index";
+import type { PdfArray } from "../../../../pdf/types/pdf-types/index";
 import { err, ok } from "../../../../utils/result/index";
 import {
   DashPattern,
   GraphicsState,
   GraphicsStateStack,
 } from "../../../graphics-state/index";
-import { OperandStack } from "../../../operand-stack/index";
 import type {
   OperatorHandler,
   OperatorHandlerContext,
 } from "../../../operator-registry/index";
+import { OperandExtractor } from "../../operand-extractor/index";
 import { NumericPdfObject } from "../numeric-pdf-object/index";
 
 /** PDF 表記を保持した operator 名（"d"）。 */
@@ -39,53 +40,29 @@ const OPERAND_COUNT = 2;
  * @returns 成功なら更新後コンテキスト、失敗なら PdfError
  */
 export const dHandler: OperatorHandler = (context: OperatorHandlerContext) => {
-  const poppedPhase = OperandStack.pop(context.operandStack);
-  if (!poppedPhase.some) {
-    const error: PdfError = {
-      code: "OPERATOR_OPERAND_MISSING",
-      message: `Operator '${OPERATOR_NAME}' requires ${OPERAND_COUNT} operand(s), got 0`,
-      operatorName: OPERATOR_NAME,
-      required: OPERAND_COUNT,
-      actual: 0,
-    };
-    return err(error);
+  const phaseResult = OperandExtractor.popNumber(
+    context.operandStack,
+    OPERATOR_NAME,
+    OPERAND_COUNT,
+    0,
+  );
+  if (!phaseResult.ok) {
+    return err(phaseResult.error);
   }
+  const phase = phaseResult.value;
 
-  const phase = poppedPhase.value;
-  if (!NumericPdfObject.is(phase)) {
-    const error: PdfError = {
-      code: "OPERATOR_OPERAND_TYPE_MISMATCH",
-      message: `Operator '${OPERATOR_NAME}' expected number operand, got ${phase.type}`,
-      operatorName: OPERATOR_NAME,
-      expected: "number",
-      actual: phase.type,
-    };
-    return err(error);
+  const arrayResult = OperandExtractor.popOperand(
+    context.operandStack,
+    OPERATOR_NAME,
+    (obj): obj is PdfArray => obj.type === "array",
+    "array",
+    OPERAND_COUNT,
+    1,
+  );
+  if (!arrayResult.ok) {
+    return err(arrayResult.error);
   }
-
-  const poppedArray = OperandStack.pop(context.operandStack);
-  if (!poppedArray.some) {
-    const error: PdfError = {
-      code: "OPERATOR_OPERAND_MISSING",
-      message: `Operator '${OPERATOR_NAME}' requires ${OPERAND_COUNT} operand(s), got 1`,
-      operatorName: OPERATOR_NAME,
-      required: OPERAND_COUNT,
-      actual: 1,
-    };
-    return err(error);
-  }
-
-  const dashArray = poppedArray.value;
-  if (dashArray.type !== "array") {
-    const error: PdfError = {
-      code: "OPERATOR_OPERAND_TYPE_MISMATCH",
-      message: `Operator '${OPERATOR_NAME}' expected array operand, got ${dashArray.type}`,
-      operatorName: OPERATOR_NAME,
-      expected: "array",
-      actual: dashArray.type,
-    };
-    return err(error);
-  }
+  const dashArray = arrayResult.value;
 
   const numbers: number[] = [];
   for (let i = 0; i < dashArray.elements.length; i++) {
@@ -103,7 +80,7 @@ export const dHandler: OperatorHandler = (context: OperatorHandlerContext) => {
     numbers.push(element.value);
   }
 
-  const dashPattern = DashPattern.create(numbers, phase.value);
+  const dashPattern = DashPattern.create(numbers, phase);
   const current = GraphicsStateStack.current(context.graphicsStateStack);
   const next = GraphicsState.update(current, { dashPattern });
   const graphicsStateStack = GraphicsStateStack.replaceCurrent(

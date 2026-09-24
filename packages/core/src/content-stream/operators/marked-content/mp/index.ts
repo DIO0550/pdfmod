@@ -1,14 +1,11 @@
-import type { PdfError } from "../../../../pdf/errors/index";
-import { PdfName } from "../../../../pdf/types/pdf-types/index";
 import { err, ok } from "../../../../utils/result/index";
-import { OperandStack } from "../../../operand-stack/index";
 import type {
   OperatorHandler,
   OperatorHandlerContext,
 } from "../../../operator-registry/index";
+import { OperandExtractor } from "../../operand-extractor/index";
 
 const OPERATOR_NAME = "MP";
-const OPERAND_COUNT = 1;
 
 /**
  * ISO 32000-2:2020 §14.6 `MP` operator (marked-content point) のハンドラ。
@@ -32,28 +29,12 @@ const OPERAND_COUNT = 1;
  * @returns 成功なら入力と同じ 3 stack を持つコンテキスト、失敗なら PdfError
  */
 export const mpHandler: OperatorHandler = (context: OperatorHandlerContext) => {
-  const popped = OperandStack.pop(context.operandStack);
-  if (!popped.some) {
-    const error: PdfError = {
-      code: "OPERATOR_OPERAND_MISSING",
-      message: `Operator '${OPERATOR_NAME}' requires ${OPERAND_COUNT} operand(s), got 0`,
-      operatorName: OPERATOR_NAME,
-      required: OPERAND_COUNT,
-      actual: 0,
-    };
-    return err(error);
-  }
-
-  const operand = popped.value;
-  if (!PdfName.is(operand)) {
-    const error: PdfError = {
-      code: "OPERATOR_OPERAND_TYPE_MISMATCH",
-      message: `Operator '${OPERATOR_NAME}' expected name operand, got ${operand.type}`,
-      operatorName: OPERATOR_NAME,
-      expected: "name",
-      actual: operand.type,
-    };
-    return err(error);
+  const nameResult = OperandExtractor.popName(
+    context.operandStack,
+    OPERATOR_NAME,
+  );
+  if (!nameResult.ok) {
+    return err(nameResult.error);
   }
 
   return ok({

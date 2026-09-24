@@ -1,17 +1,14 @@
-import type { PdfError } from "../../../../pdf/errors/index";
-import { PdfName } from "../../../../pdf/types/pdf-types/index";
 import { none } from "../../../../utils/option/index";
 import { err, ok } from "../../../../utils/result/index";
 import type { MarkedContentEntry } from "../../../marked-content/stack/index";
 import { MarkedContentStack } from "../../../marked-content/stack/index";
-import { OperandStack } from "../../../operand-stack/index";
 import type {
   OperatorHandler,
   OperatorHandlerContext,
 } from "../../../operator-registry/index";
+import { OperandExtractor } from "../../operand-extractor/index";
 
 const OPERATOR_NAME = "BMC";
-const OPERAND_COUNT = 1;
 
 /**
  * ISO 32000-2:2020 §14.6 `BMC` operator (begin marked-content sequence) のハンドラ。
@@ -36,31 +33,18 @@ const OPERAND_COUNT = 1;
 export const bmcHandler: OperatorHandler = (
   context: OperatorHandlerContext,
 ) => {
-  const popped = OperandStack.pop(context.operandStack);
-  if (!popped.some) {
-    const error: PdfError = {
-      code: "OPERATOR_OPERAND_MISSING",
-      message: `Operator '${OPERATOR_NAME}' requires ${OPERAND_COUNT} operand(s), got 0`,
-      operatorName: OPERATOR_NAME,
-      required: OPERAND_COUNT,
-      actual: 0,
-    };
-    return err(error);
+  const nameResult = OperandExtractor.popName(
+    context.operandStack,
+    OPERATOR_NAME,
+  );
+  if (!nameResult.ok) {
+    return err(nameResult.error);
   }
 
-  const operand = popped.value;
-  if (!PdfName.is(operand)) {
-    const error: PdfError = {
-      code: "OPERATOR_OPERAND_TYPE_MISMATCH",
-      message: `Operator '${OPERATOR_NAME}' expected name operand, got ${operand.type}`,
-      operatorName: OPERATOR_NAME,
-      expected: "name",
-      actual: operand.type,
-    };
-    return err(error);
-  }
-
-  const entry: MarkedContentEntry = { tag: operand, properties: none };
+  const entry: MarkedContentEntry = {
+    tag: { type: "name", value: nameResult.value },
+    properties: none,
+  };
   return ok({
     operandStack: context.operandStack,
     graphicsStateStack: context.graphicsStateStack,
