@@ -1,11 +1,14 @@
-import type { PdfError } from "../../../../pdf/errors/index";
+import type {
+  PdfDictionary,
+  PdfObject,
+} from "../../../../pdf/types/pdf-types/index";
 import { PdfName } from "../../../../pdf/types/pdf-types/index";
 import { err, ok } from "../../../../utils/result/index";
-import { OperandStack } from "../../../operand-stack/index";
 import type {
   OperatorHandler,
   OperatorHandlerContext,
 } from "../../../operator-registry/index";
+import { OperandExtractor } from "../../operand-extractor/index";
 
 const OPERATOR_NAME = "DP";
 const OPERAND_COUNT = 2;
@@ -41,52 +44,29 @@ const OPERAND_COUNT = 2;
  * @returns 成功なら入力と同じ 3 stack を持つコンテキスト、失敗なら PdfError
  */
 export const dpHandler: OperatorHandler = (context: OperatorHandlerContext) => {
-  const poppedProperties = OperandStack.pop(context.operandStack);
-  if (!poppedProperties.some) {
-    const error: PdfError = {
-      code: "OPERATOR_OPERAND_MISSING",
-      message: `Operator '${OPERATOR_NAME}' requires ${OPERAND_COUNT} operand(s), got 0`,
-      operatorName: OPERATOR_NAME,
-      required: OPERAND_COUNT,
-      actual: 0,
-    };
-    return err(error);
-  }
-  const properties = poppedProperties.value;
-
-  if (properties.type !== "dictionary" && !PdfName.is(properties)) {
-    const error: PdfError = {
-      code: "OPERATOR_OPERAND_TYPE_MISMATCH",
-      message: `Operator '${OPERATOR_NAME}' expected name or dictionary operand, got ${properties.type}`,
-      operatorName: OPERATOR_NAME,
-      expected: "name or dictionary",
-      actual: properties.type,
-    };
-    return err(error);
+  const propertiesResult = OperandExtractor.popOperand(
+    context.operandStack,
+    OPERATOR_NAME,
+    (operand: PdfObject): operand is PdfDictionary | PdfName =>
+      operand.type === "dictionary" || PdfName.is(operand),
+    "name or dictionary",
+    OPERAND_COUNT,
+    0,
+  );
+  if (!propertiesResult.ok) {
+    return err(propertiesResult.error);
   }
 
-  const poppedTag = OperandStack.pop(context.operandStack);
-  if (!poppedTag.some) {
-    const error: PdfError = {
-      code: "OPERATOR_OPERAND_MISSING",
-      message: `Operator '${OPERATOR_NAME}' requires ${OPERAND_COUNT} operand(s), got 1`,
-      operatorName: OPERATOR_NAME,
-      required: OPERAND_COUNT,
-      actual: 1,
-    };
-    return err(error);
-  }
-  const tag = poppedTag.value;
-
-  if (!PdfName.is(tag)) {
-    const error: PdfError = {
-      code: "OPERATOR_OPERAND_TYPE_MISMATCH",
-      message: `Operator '${OPERATOR_NAME}' expected name operand, got ${tag.type}`,
-      operatorName: OPERATOR_NAME,
-      expected: "name",
-      actual: tag.type,
-    };
-    return err(error);
+  const tagResult = OperandExtractor.popOperand(
+    context.operandStack,
+    OPERATOR_NAME,
+    PdfName.is,
+    "name",
+    OPERAND_COUNT,
+    1,
+  );
+  if (!tagResult.ok) {
+    return err(tagResult.error);
   }
 
   return ok({
