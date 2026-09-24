@@ -5,12 +5,11 @@ import {
   GraphicsStateStack,
   TextObject,
 } from "../../../graphics-state/index";
-import { OperandStack } from "../../../operand-stack/index";
 import type {
   OperatorHandler,
   OperatorHandlerContext,
 } from "../../../operator-registry/index";
-import { NumericPdfObject } from "../../graphics-state/numeric-pdf-object/index";
+import { OperandExtractor } from "../../operand-extractor/index";
 
 /** PDF 表記を保持した operator 名（"Td"）。 */
 const OPERATOR_NAME = "Td";
@@ -52,58 +51,18 @@ export const tdHandler: OperatorHandler = (context: OperatorHandlerContext) => {
     return err(error);
   }
 
-  const poppedTy = OperandStack.pop(context.operandStack);
-  if (!poppedTy.some) {
-    const error: PdfError = {
-      code: "OPERATOR_OPERAND_MISSING",
-      message: `Operator '${OPERATOR_NAME}' requires 2 operand(s), got 0`,
-      operatorName: OPERATOR_NAME,
-      required: 2,
-      actual: 0,
-    };
-    return err(error);
+  const operandsResult = OperandExtractor.popNumbers(
+    context.operandStack,
+    OPERATOR_NAME,
+    2,
+  );
+  if (!operandsResult.ok) {
+    return err(operandsResult.error);
   }
-  const tyOperand = poppedTy.value;
-  if (!NumericPdfObject.is(tyOperand)) {
-    const error: PdfError = {
-      code: "OPERATOR_OPERAND_TYPE_MISMATCH",
-      message: `Operator '${OPERATOR_NAME}' expected number operand, got ${tyOperand.type}`,
-      operatorName: OPERATOR_NAME,
-      expected: "number",
-      actual: tyOperand.type,
-    };
-    return err(error);
-  }
-
-  const poppedTx = OperandStack.pop(context.operandStack);
-  if (!poppedTx.some) {
-    const error: PdfError = {
-      code: "OPERATOR_OPERAND_MISSING",
-      message: `Operator '${OPERATOR_NAME}' requires 2 operand(s), got 1`,
-      operatorName: OPERATOR_NAME,
-      required: 2,
-      actual: 1,
-    };
-    return err(error);
-  }
-  const txOperand = poppedTx.value;
-  if (!NumericPdfObject.is(txOperand)) {
-    const error: PdfError = {
-      code: "OPERATOR_OPERAND_TYPE_MISMATCH",
-      message: `Operator '${OPERATOR_NAME}' expected number operand, got ${txOperand.type}`,
-      operatorName: OPERATOR_NAME,
-      expected: "number",
-      actual: txOperand.type,
-    };
-    return err(error);
-  }
+  const [tx, ty] = operandsResult.value;
 
   const next = GraphicsState.update(current, {
-    textObject: TextObject.translateLine(
-      current.textObject,
-      txOperand.value,
-      tyOperand.value,
-    ),
+    textObject: TextObject.translateLine(current.textObject, tx, ty),
   });
   const graphicsStateStack = GraphicsStateStack.replaceCurrent(
     context.graphicsStateStack,

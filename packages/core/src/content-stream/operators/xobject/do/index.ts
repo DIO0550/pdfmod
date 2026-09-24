@@ -1,14 +1,11 @@
-import type { PdfError } from "../../../../pdf/errors/index";
-import { PdfName } from "../../../../pdf/types/pdf-types/index";
 import { err, ok } from "../../../../utils/result/index";
-import { OperandStack } from "../../../operand-stack/index";
 import type {
   OperatorHandler,
   OperatorHandlerContext,
 } from "../../../operator-registry/index";
+import { OperandExtractor } from "../../operand-extractor/index";
 
 const OPERATOR_NAME = "Do";
-const OPERAND_COUNT = 1;
 
 /**
  * PDF §8.8 `Do` operator (invoke named XObject) のハンドラ。
@@ -32,28 +29,12 @@ const OPERAND_COUNT = 1;
  * @returns 成功なら更新後コンテキスト、失敗なら PdfError
  */
 export const doHandler: OperatorHandler = (context: OperatorHandlerContext) => {
-  const popped = OperandStack.pop(context.operandStack);
-  if (!popped.some) {
-    const error: PdfError = {
-      code: "OPERATOR_OPERAND_MISSING",
-      message: `Operator '${OPERATOR_NAME}' requires ${OPERAND_COUNT} operand(s), got 0`,
-      operatorName: OPERATOR_NAME,
-      required: OPERAND_COUNT,
-      actual: 0,
-    };
-    return err(error);
-  }
-
-  const operand = popped.value;
-  if (!PdfName.is(operand)) {
-    const error: PdfError = {
-      code: "OPERATOR_OPERAND_TYPE_MISMATCH",
-      message: `Operator '${OPERATOR_NAME}' expected name operand, got ${operand.type}`,
-      operatorName: OPERATOR_NAME,
-      expected: "name",
-      actual: operand.type,
-    };
-    return err(error);
+  const nameResult = OperandExtractor.popName(
+    context.operandStack,
+    OPERATOR_NAME,
+  );
+  if (!nameResult.ok) {
+    return err(nameResult.error);
   }
 
   return ok({

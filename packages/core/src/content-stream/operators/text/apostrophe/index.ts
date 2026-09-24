@@ -5,11 +5,11 @@ import {
   GraphicsStateStack,
   TextObject,
 } from "../../../graphics-state/index";
-import { OperandStack } from "../../../operand-stack/index";
 import type {
   OperatorHandler,
   OperatorHandlerContext,
 } from "../../../operator-registry/index";
+import { OperandExtractor } from "../../operand-extractor/index";
 
 /** PDF 表記を保持した operator 名（"'"）。 */
 const OPERATOR_NAME = "'";
@@ -53,28 +53,12 @@ export const apostropheHandler: OperatorHandler = (
     return err(error);
   }
 
-  const popped = OperandStack.pop(context.operandStack);
-  if (!popped.some) {
-    const error: PdfError = {
-      code: "OPERATOR_OPERAND_MISSING",
-      message: `Operator '${OPERATOR_NAME}' requires 1 operand(s), got 0`,
-      operatorName: OPERATOR_NAME,
-      required: 1,
-      actual: 0,
-    };
-    return err(error);
-  }
-
-  const operand = popped.value;
-  if (operand.type !== "string") {
-    const error: PdfError = {
-      code: "OPERATOR_OPERAND_TYPE_MISMATCH",
-      message: `Operator '${OPERATOR_NAME}' expected string operand, got ${operand.type}`,
-      operatorName: OPERATOR_NAME,
-      expected: "string",
-      actual: operand.type,
-    };
-    return err(error);
+  const operandResult = OperandExtractor.popString(
+    context.operandStack,
+    OPERATOR_NAME,
+  );
+  if (!operandResult.ok) {
+    return err(operandResult.error);
   }
 
   const leading = current.textState.leading;

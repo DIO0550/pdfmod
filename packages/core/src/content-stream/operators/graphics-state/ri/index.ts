@@ -1,16 +1,14 @@
-import type { PdfError } from "../../../../pdf/errors/index";
-import { PdfName } from "../../../../pdf/types/pdf-types/index";
 import { err, ok } from "../../../../utils/result/index";
 import {
   GraphicsState,
   GraphicsStateStack,
   RenderingIntent,
 } from "../../../graphics-state/index";
-import { OperandStack } from "../../../operand-stack/index";
 import type {
   OperatorHandler,
   OperatorHandlerContext,
 } from "../../../operator-registry/index";
+import { OperandExtractor } from "../../operand-extractor/index";
 
 const OPERATOR_NAME = "ri";
 
@@ -26,33 +24,18 @@ const OPERATOR_NAME = "ri";
  * @returns 成功なら更新後コンテキスト、失敗なら PdfError
  */
 export const riHandler: OperatorHandler = (context: OperatorHandlerContext) => {
-  const popped = OperandStack.pop(context.operandStack);
-  if (!popped.some) {
-    const error: PdfError = {
-      code: "OPERATOR_OPERAND_MISSING",
-      message: `Operator '${OPERATOR_NAME}' requires 1 operand(s), got 0`,
-      operatorName: OPERATOR_NAME,
-      required: 1,
-      actual: 0,
-    };
-    return err(error);
+  const nameResult = OperandExtractor.popName(
+    context.operandStack,
+    OPERATOR_NAME,
+  );
+  if (!nameResult.ok) {
+    return err(nameResult.error);
   }
-
-  const operand = popped.value;
-  if (!PdfName.is(operand)) {
-    const error: PdfError = {
-      code: "OPERATOR_OPERAND_TYPE_MISMATCH",
-      message: `Operator '${OPERATOR_NAME}' expected name operand, got ${operand.type}`,
-      operatorName: OPERATOR_NAME,
-      expected: "name",
-      actual: operand.type,
-    };
-    return err(error);
-  }
+  const intentName = nameResult.value;
 
   const current = GraphicsStateStack.current(context.graphicsStateStack);
   const next = GraphicsState.update(current, {
-    renderingIntent: RenderingIntent.create(operand.value),
+    renderingIntent: RenderingIntent.create(intentName),
   });
   const graphicsStateStack = GraphicsStateStack.replaceCurrent(
     context.graphicsStateStack,

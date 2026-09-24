@@ -1,18 +1,19 @@
 import { MathEx } from "../../../../ext/math/index";
 import type { PdfError } from "../../../../pdf/errors/index";
 import { TextSpace } from "../../../../pdf/text-space/index";
+import type { PdfArray } from "../../../../pdf/types/pdf-types/index";
 import { err, ok } from "../../../../utils/result/index";
 import {
   GraphicsState,
   GraphicsStateStack,
   TextObject,
 } from "../../../graphics-state/index";
-import { OperandStack } from "../../../operand-stack/index";
 import type {
   OperatorHandler,
   OperatorHandlerContext,
 } from "../../../operator-registry/index";
 import { NumericPdfObject } from "../../graphics-state/numeric-pdf-object/index";
+import { OperandExtractor } from "../../operand-extractor/index";
 
 /** PDF 表記を保持した operator 名（"TJ"）。 */
 const OPERATOR_NAME = "TJ";
@@ -56,29 +57,16 @@ export const tjArrayHandler: OperatorHandler = (
     return err(error);
   }
 
-  const popped = OperandStack.pop(context.operandStack);
-  if (!popped.some) {
-    const error: PdfError = {
-      code: "OPERATOR_OPERAND_MISSING",
-      message: `Operator '${OPERATOR_NAME}' requires 1 operand(s), got 0`,
-      operatorName: OPERATOR_NAME,
-      required: 1,
-      actual: 0,
-    };
-    return err(error);
+  const operandResult = OperandExtractor.popOperand(
+    context.operandStack,
+    OPERATOR_NAME,
+    (o): o is PdfArray => o.type === "array",
+    "array",
+  );
+  if (!operandResult.ok) {
+    return err(operandResult.error);
   }
-
-  const operand = popped.value;
-  if (operand.type !== "array") {
-    const error: PdfError = {
-      code: "OPERATOR_OPERAND_TYPE_MISMATCH",
-      message: `Operator '${OPERATOR_NAME}' expected array operand, got ${operand.type}`,
-      operatorName: OPERATOR_NAME,
-      expected: "array",
-      actual: operand.type,
-    };
-    return err(error);
-  }
+  const operand = operandResult.value;
 
   const { fontSize, horizontalScaling } = current.textState;
   // ループ不変。PDF §9.2.4 の Tfs × Th に相当する位置調整スケール係数。

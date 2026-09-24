@@ -1,16 +1,14 @@
-import type { PdfError } from "../../../../pdf/errors/index";
 import { err, ok } from "../../../../utils/result/index";
 import {
   GraphicsState,
   GraphicsStateStack,
   Matrix,
 } from "../../../graphics-state/index";
-import { OperandStack } from "../../../operand-stack/index";
 import type {
   OperatorHandler,
   OperatorHandlerContext,
 } from "../../../operator-registry/index";
-import { NumericPdfObject } from "../numeric-pdf-object";
+import { OperandExtractor } from "../../operand-extractor/index";
 
 const OPERATOR_NAME = "cm";
 const OPERAND_COUNT = 6;
@@ -32,38 +30,15 @@ const OPERAND_COUNT = 6;
  * @returns 成功なら更新後コンテキスト、失敗なら PdfError
  */
 export const cmHandler: OperatorHandler = (context: OperatorHandlerContext) => {
-  const popped: NumericPdfObject[] = [];
-  for (let i = 0; i < OPERAND_COUNT; i++) {
-    const result = OperandStack.pop(context.operandStack);
-    if (!result.some) {
-      const error: PdfError = {
-        code: "OPERATOR_OPERAND_MISSING",
-        message: `Operator '${OPERATOR_NAME}' requires ${OPERAND_COUNT} operand(s), got ${i}`,
-        operatorName: OPERATOR_NAME,
-        required: OPERAND_COUNT,
-        actual: i,
-      };
-      return err(error);
-    }
-    const operand = result.value;
-    if (!NumericPdfObject.is(operand)) {
-      const error: PdfError = {
-        code: "OPERATOR_OPERAND_TYPE_MISMATCH",
-        message: `Operator '${OPERATOR_NAME}' expected number operand, got ${operand.type}`,
-        operatorName: OPERATOR_NAME,
-        expected: "number",
-        actual: operand.type,
-      };
-      return err(error);
-    }
-    popped.push(operand);
+  const operandsResult = OperandExtractor.popNumbers(
+    context.operandStack,
+    OPERATOR_NAME,
+    OPERAND_COUNT,
+  );
+  if (!operandsResult.ok) {
+    return err(operandsResult.error);
   }
-
-  // popped は LIFO 順で [f, e, d, c, b, a]。reverse して PDF 順 [a, b, c, d, e, f] に戻す
-  const [a, b, c, d, e, f] = popped
-    .slice()
-    .reverse()
-    .map((operand) => operand.value);
+  const [a, b, c, d, e, f] = operandsResult.value;
 
   const operandMatrix = Matrix.create(a, b, c, d, e, f);
   const current = GraphicsStateStack.current(context.graphicsStateStack);
