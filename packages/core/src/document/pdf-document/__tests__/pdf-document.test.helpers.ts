@@ -937,3 +937,23 @@ export const buildXRefStreamPdfWithoutEncrypt = (): Uint8Array =>
  */
 export const buildXRefStreamPdfWithEncryptAndTextTrailer = (): Uint8Array =>
   buildBrokenXRefStreamPdf({ includeEncrypt: true, includeTextTrailer: true });
+const ASCII_SPACE = 0x20;
+
+/**
+ * PDF バイト列の先頭に指定された前置ゴミ（指定バイト数またはバイト列）を付加する。
+ *
+ * @param junk - 付加するバイト数（スペースで埋める）またはバイト列
+ * @param pdf - PDF のバイト列
+ * @returns 前置ゴミが付加されたバイト列
+ */
+export const withLeadingJunk = (
+  junk: Uint8Array | number,
+  pdf: Uint8Array,
+): Uint8Array => {
+  const junkBytes =
+    typeof junk === "number" ? new Uint8Array(junk).fill(ASCII_SPACE) : junk;
+  const result = new Uint8Array(junkBytes.length + pdf.length);
+  result.set(junkBytes, 0);
+  result.set(pdf, junkBytes.length);
+  return result;
+};
