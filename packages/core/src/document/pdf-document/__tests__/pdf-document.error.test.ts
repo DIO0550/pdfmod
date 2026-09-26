@@ -1,10 +1,12 @@
 import { assert, expect, test } from "vitest";
 import { PdfDocument } from "../../pdf-document";
 import {
+  buildMinimalSinglePagePdf,
   buildPdfHeaderOnly,
   buildPdfWithCorruptXRefAndNoTrailer,
   buildPdfWithoutCatalog,
   buildPdfWithoutMediaBox,
+  withLeadingJunk,
 } from "./pdf-document.test.helpers";
 
 test("空入力は INVALID_HEADER を返す", async () => {
@@ -79,4 +81,25 @@ test("xref 破損かつ fallback で trailer を確定できない PDF は ROOT_
   assert(!result.ok);
   assert(!(result.error instanceof RangeError));
   expect(result.error.code).toBe("ROOT_NOT_FOUND");
+});
+
+test("走査上限（1024バイト）を超える前置ゴミ（1020バイト目）を持つデータで INVALID_HEADER エラーを返すこと", async () => {
+  const pdf = buildMinimalSinglePagePdf();
+  const withJunk = withLeadingJunk(1020, pdf);
+  const result = await PdfDocument.load(withJunk);
+
+  expect(result.ok).toBe(false);
+  assert(!result.ok);
+  assert(!(result.error instanceof RangeError));
+  expect(result.error.code).toBe("INVALID_HEADER");
+});
+
+test("1024バイト以上ゴミデータのみで %PDF- が存在しない入力で INVALID_HEADER エラーを返すこと", async () => {
+  const junkOnly = new Uint8Array(2048).fill(0x78);
+  const result = await PdfDocument.load(junkOnly);
+
+  expect(result.ok).toBe(false);
+  assert(!result.ok);
+  assert(!(result.error instanceof RangeError));
+  expect(result.error.code).toBe("INVALID_HEADER");
 });

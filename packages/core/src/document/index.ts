@@ -19,5 +19,6 @@ export type {
 export { InheritanceResolver, PageTreeWalker } from "./page-tree/index";
 export type { LoadOptions, PdfDocumentLoadError } from "./pdf-document";
 export { PdfDocument } from "./pdf-document";
+export { PdfHeader } from "./pdf-header/index";
 export type { PdfPageRectangle } from "./pdf-page";
 export { PdfPage } from "./pdf-page";
