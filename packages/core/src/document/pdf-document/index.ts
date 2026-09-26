@@ -14,6 +14,7 @@ import {
   type TrailerDict,
   type XRefTable,
 } from "../../pdf/types/index";
+import type { ResolveRef } from "../../pdf/types/resolve-ref/index";
 import { PdfVersion } from "../../pdf/version/index";
 import { none, type Option, some } from "../../utils/option/index";
 import { err, ok, type Result } from "../../utils/result/index";
@@ -23,7 +24,7 @@ import { scanStartXRef } from "../../xref/startxref/index";
 import { parseXRefStream } from "../../xref/stream/index";
 import { parseXRefTable } from "../../xref/table/index";
 import { parseTrailer } from "../../xref/trailer/index";
-import { CatalogParser, type ResolveRef } from "../catalog/catalog-parser";
+import { CatalogParser } from "../catalog/catalog-parser";
 import { DocumentInfoParser } from "../metadata/document-info-parser";
 import type { DocumentMetadata } from "../metadata/document-metadata";
 import { PageTreeWalker } from "../page-tree/page-tree-walker";
