@@ -4,7 +4,6 @@ import type {
   PdfDictionary,
   PdfName,
 } from "../../../pdf/types/pdf-types/index";
-import type { Brand } from "../../../utils/brand/index";
 import type { Option } from "../../../utils/option/index";
 import { none, some } from "../../../utils/option/index";
 
@@ -17,25 +16,13 @@ export type MarkedContentEntry = {
   readonly properties: Option<PdfDictionary | PdfName>;
 };
 
-declare const MarkedContentStackBrand: unique symbol;
-
-type MarkedContentStackFields = {
-  readonly current: ReadonlyArray<MarkedContentEntry>;
-};
-
 /**
  * BMC / BDC / EMC operator で管理される marked content の LIFO スタック。
- * 内部表現 `{ current: ReadonlyArray<MarkedContentEntry> }` を Brand 型で包み、
- * 素のオブジェクトリテラルが代入されることを防ぐ。
- *
- * 注: `current` フィールドは型システム上はモジュール外からも参照可能だが、
- * 規約上 private 扱いとし、外部から直接アクセス・変更してはならない。
- * 状態変更が必要な操作は元 stack を mutate せず、新しい stack を返す。
+ * 状態の遷移は companion object が新しいスタックを返す形で行う。
  */
-export type MarkedContentStack = Brand<
-  MarkedContentStackFields,
-  typeof MarkedContentStackBrand
->;
+export type MarkedContentStack = {
+  readonly current: ReadonlyArray<MarkedContentEntry>;
+};
 
 export const MarkedContentStack = {
   /**
@@ -45,8 +32,8 @@ export const MarkedContentStack = {
    */
   create(): MarkedContentStack {
     return {
-      current: [] as ReadonlyArray<MarkedContentEntry>,
-    } as unknown as MarkedContentStack;
+      current: [],
+    };
   },
 
   /**
@@ -64,7 +51,7 @@ export const MarkedContentStack = {
   ): MarkedContentStack {
     return {
       current: [...stack.current, entry],
-    } as unknown as MarkedContentStack;
+    };
   },
 
   /**
@@ -83,9 +70,9 @@ export const MarkedContentStack = {
     }
     const lastIndex = length - 1;
     const popped = stack.current[lastIndex] as MarkedContentEntry;
-    const next = {
+    const next: MarkedContentStack = {
       current: stack.current.slice(0, lastIndex),
-    } as unknown as MarkedContentStack;
+    };
     return some({ stack: next, popped });
   },
 
