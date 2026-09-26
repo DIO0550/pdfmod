@@ -5,9 +5,9 @@ import type {
   PdfDictionary,
   PdfObject,
 } from "../../../pdf/types/pdf-types/index";
+import type { ResolveRef } from "../../../pdf/types/resolve-ref/index";
 import type { Result } from "../../../utils/result/index";
 import { ok } from "../../../utils/result/index";
-import type { ObjectResolver } from "../index";
 import { ObjectParser } from "../index";
 
 const enc = (s: string): Uint8Array => new TextEncoder().encode(s);
@@ -67,9 +67,8 @@ test("parseIndirectObject stream（/Length 直値、LF）", async () => {
 });
 
 test("parseIndirectObject stream（/Length 間接参照）", async () => {
-  const resolver: ObjectResolver = async (): Promise<
-    Result<PdfObject, PdfError>
-  > => ok({ type: "integer", value: 5 });
+  const resolver: ResolveRef = async (): Promise<Result<PdfObject, PdfError>> =>
+    ok({ type: "integer", value: 5 });
   const result = await ObjectParser.parseIndirectObject(
     enc("1 0 obj\n<</Length 2 0 R>>\nstream\nhello\nendstream\nendobj"),
     ByteOffset.of(0),
@@ -89,7 +88,7 @@ test("parseIndirectObject stream（resolver 未提供で /Length indirect-ref）
 });
 
 test("parseIndirectObject stream（resolver がエラーを返す）", async () => {
-  const resolver: ObjectResolver = async (): Promise<
+  const resolver: ResolveRef = async (): Promise<
     Result<PdfObject, PdfError>
   > => ({
     ok: false as const,
@@ -108,9 +107,8 @@ test("parseIndirectObject stream（resolver がエラーを返す）", async () 
 });
 
 test("parseIndirectObject stream（resolver が integer 以外を返す）", async () => {
-  const resolver: ObjectResolver = async (): Promise<
-    Result<PdfObject, PdfError>
-  > => ok({ type: "name", value: "not-integer" });
+  const resolver: ResolveRef = async (): Promise<Result<PdfObject, PdfError>> =>
+    ok({ type: "name", value: "not-integer" });
   const result = await ObjectParser.parseIndirectObject(
     enc("1 0 obj\n<</Length 2 0 R>>\nstream\nhello\nendstream\nendobj"),
     ByteOffset.of(0),
