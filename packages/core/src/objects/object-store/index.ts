@@ -14,10 +14,10 @@ import type {
 import { GenerationNumber } from "../../pdf/types/generation-number/index";
 import type { ObjectNumber } from "../../pdf/types/object-number/index";
 import type { IndirectRef, PdfObject } from "../../pdf/types/pdf-types/index";
+import type { ResolveRef } from "../../pdf/types/resolve-ref/index";
 import type { Result } from "../../utils/result/index";
 import { err, ok } from "../../utils/result/index";
 import { LRUCache } from "../lru-cache/index";
-import type { ObjectResolver } from "../object-parser/index";
 import { readInlineEntry } from "./entry-readers/inline";
 import { readObjectStreamEntry } from "./entry-readers/object-stream";
 import type { ObjectStoreOptions, ObjectStoreSource } from "./types";
@@ -314,16 +314,8 @@ export class ObjectStore {
           this.cache.set(cacheKey, { type: "null" });
           return ok({ type: "null" });
         }
-        const resolver: ObjectResolver = (
-          objNum: ObjectNumber,
-          genNum: GenerationNumber,
-        ): Promise<Result<PdfObject, PdfError>> => {
-          const lengthRef: IndirectRef = {
-            objectNumber: objNum,
-            generationNumber: genNum,
-          };
-          return this.resolveImpl(lengthRef, ancestors);
-        };
+        const resolver: ResolveRef = (targetRef: IndirectRef) =>
+          this.resolveImpl(targetRef, ancestors);
 
         const inlineResult = await readInlineEntry(
           this.source.data,
