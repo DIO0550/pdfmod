@@ -1,6 +1,6 @@
 import type { ObjectNumber } from "../../pdf/types/object-number/index";
 import type { PdfStream } from "../../pdf/types/pdf-types/index";
-import type { LRUCache } from "../lru-cache/index";
+import type { LRUCache } from "../../utils/lru-cache/index";
 
 /**
  * オブジェクトストリームからの抽出オプション。
