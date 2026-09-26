@@ -15,7 +15,12 @@ import type { PdfError } from "../../../pdf/errors/index";
 import { decompressFlate } from "../../../pdf/filter/index";
 import { ByteOffset } from "../../../pdf/types/byte-offset/index";
 import type { GenerationNumber } from "../../../pdf/types/generation-number/index";
-import type { TrailerDict, XRefTable } from "../../../pdf/types/index";
+import type {
+  IndirectRef,
+  ResolveRef,
+  TrailerDict,
+  XRefTable,
+} from "../../../pdf/types/index";
 import type { ObjectNumber } from "../../../pdf/types/object-number/index";
 import type { PdfObject } from "../../../pdf/types/pdf-types/index";
 import type { Result } from "../../../utils/result/index";
@@ -48,12 +53,11 @@ export async function parseXRefStream(
 ): Promise<
   Result<{ xref: XRefTable; trailer: TrailerDict | undefined }, PdfError>
 > {
-  /** @param objNum - オブジェクト番号 @param genNum - 世代番号 @returns 解決結果 */
-  const resolver = (
-    objNum: ObjectNumber,
-    genNum: GenerationNumber,
+  /** @param ref - 間接参照 @returns 解決結果 */
+  const resolver: ResolveRef = (
+    ref: IndirectRef,
   ): Promise<Result<PdfObject, PdfError>> =>
-    resolveLocalLength(data, objNum, genNum);
+    resolveLocalLength(data, ref.objectNumber, ref.generationNumber);
   const objectResult = await ObjectParser.parseIndirectObject(
     data,
     offset,

@@ -7,22 +7,13 @@ import { PdfType } from "../../../pdf/types/pdf-type/index";
 import type {
   IndirectRef,
   PdfDictionary,
-  PdfObject,
   PdfValue,
   TrailerDict,
 } from "../../../pdf/types/pdf-types/index";
+import type { ResolveRef } from "../../../pdf/types/resolve-ref/index";
 import { PdfVersion } from "../../../pdf/version/index";
 import type { Result } from "../../../utils/result/index";
 import { err, ok } from "../../../utils/result/index";
-
-/**
- * 間接参照を解決する関数型。
- *
- * 契約: この関数は Promise を reject しない。失敗時は必ず `Result.err(PdfError)` を resolve する。
- */
-export type ResolveRef = (
-  ref: IndirectRef,
-) => Promise<Result<PdfObject, PdfError>>;
 
 /**
  * カタログ辞書の解析結果。

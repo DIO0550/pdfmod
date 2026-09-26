@@ -35,7 +35,6 @@ export type {
   PdfRectangle,
   ResolvedPage,
   ResolveInheritedOutcome,
-  ResolveRef,
   WalkPageTreeResult,
 } from "./document/index";
 export {
@@ -51,7 +50,6 @@ export { NumberEx } from "./ext/number/index";
 export { StringArrayEx } from "./ext/string-array/index";
 export { Tokenizer } from "./lexer/index";
 export type {
-  ObjectResolver,
   ObjectStoreOptions,
   ObjectStoreSource,
   ObjectStreamHeaderEntry,
@@ -92,6 +90,7 @@ export type {
   PdfValue,
   PdfWarning,
   PdfWarningCode,
+  ResolveRef,
   Token,
   TrailerDict,
   XRefCompressedEntry,

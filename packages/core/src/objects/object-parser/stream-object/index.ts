@@ -5,13 +5,10 @@ import { ByteOffset } from "../../../pdf/types/byte-offset/index";
 import { GenerationNumber } from "../../../pdf/types/generation-number/index";
 import { ObjectNumber } from "../../../pdf/types/object-number/index";
 import type { PdfDictionary } from "../../../pdf/types/pdf-types/index";
+import type { ResolveRef } from "../../../pdf/types/resolve-ref/index";
 import type { Result } from "../../../utils/result/index";
 import { err, ok } from "../../../utils/result/index";
-import type {
-  ObjectResolver,
-  StreamExtractResult,
-  StreamLength,
-} from "../types";
+import type { StreamExtractResult, StreamLength } from "../types";
 
 const LF = 0x0a;
 const CR = 0x0d;
@@ -72,7 +69,7 @@ export const StreamObject = {
     length: StreamLength,
     baseOffset: ByteOffset,
     relPos: number,
-    resolver?: ObjectResolver,
+    resolver?: ResolveRef,
   ): Promise<Result<number, PdfError>> {
     if (length.kind === "direct") {
       return ok(length.value);
@@ -107,7 +104,10 @@ export const StreamObject = {
       });
     }
 
-    const resolved = await resolver(objectNumber.value, generationNumber.value);
+    const resolved = await resolver({
+      objectNumber: objectNumber.value,
+      generationNumber: generationNumber.value,
+    });
     if (!resolved.ok) {
       return err({
         code: "OBJECT_PARSE_STREAM_LENGTH",

@@ -4,7 +4,7 @@
  * @module
  */
 
-export type { ParsedCatalog, ResolveRef } from "./catalog";
+export type { ParsedCatalog } from "./catalog";
 export { CatalogParser } from "./catalog";
 export type { DocumentMetadata, ParsedDocumentInfo } from "./metadata";
 export { DocumentInfoParser, PdfTrapped } from "./metadata";

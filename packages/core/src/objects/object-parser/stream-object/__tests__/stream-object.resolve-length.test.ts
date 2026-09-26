@@ -1,7 +1,8 @@
 import { assert, expect, test } from "vitest";
 import { ByteOffset } from "../../../../pdf/types/byte-offset/index";
+import type { ResolveRef } from "../../../../pdf/types/resolve-ref/index";
 import { err, ok } from "../../../../utils/result/index";
-import type { ObjectResolver, StreamLength } from "../../types";
+import type { StreamLength } from "../../types";
 import { StreamObject } from "../index";
 
 const indirectLen: StreamLength = {
@@ -11,7 +12,7 @@ const indirectLen: StreamLength = {
 
 test("kind='direct' は resolver を呼ばず値を返す", async () => {
   let called = false;
-  const resolver: ObjectResolver = () => {
+  const resolver: ResolveRef = () => {
     called = true;
     return Promise.resolve(ok({ type: "integer", value: 999 }));
   };
@@ -28,7 +29,7 @@ test("kind='direct' は resolver を呼ばず値を返す", async () => {
 });
 
 test("kind='indirect' で resolver が integer を返すときその値を返す", async () => {
-  const resolver: ObjectResolver = () =>
+  const resolver: ResolveRef = () =>
     Promise.resolve(ok({ type: "integer", value: 77 }));
   const result = await StreamObject.resolveLength(
     indirectLen,
@@ -51,7 +52,7 @@ test("kind='indirect' で resolver 未提供のときエラー", async () => {
 });
 
 test("kind='indirect' で resolver がエラーを返したときエラーに包む", async () => {
-  const resolver: ObjectResolver = () =>
+  const resolver: ResolveRef = () =>
     Promise.resolve(
       err({ code: "NOT_IMPLEMENTED" as const, message: "inner error" }),
     );
@@ -67,7 +68,7 @@ test("kind='indirect' で resolver がエラーを返したときエラーに包
 });
 
 test("kind='indirect' で resolver が integer 以外を返したときエラー", async () => {
-  const resolver: ObjectResolver = () =>
+  const resolver: ResolveRef = () =>
     Promise.resolve(ok({ type: "name", value: "not-integer" }));
   const result = await StreamObject.resolveLength(
     indirectLen,
