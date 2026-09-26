@@ -1,5 +1,4 @@
 import type { PdfError } from "../../pdf/errors/index";
-import type { Brand } from "../../utils/brand/index";
 import type { Option } from "../../utils/option/index";
 import { none, some } from "../../utils/option/index";
 import type { Result } from "../../utils/result/index";
@@ -65,8 +64,6 @@ import { twHandler } from "../operators/text/tw/index";
 import { tzHandler } from "../operators/text/tz/index";
 import { doHandler } from "../operators/xobject/do/index";
 
-declare const OperatorRegistryBrand: unique symbol;
-
 /**
  * Content stream operator handler が受け取り、更新後に返す実行コンテキスト。
  */
@@ -88,20 +85,11 @@ export type OperatorHandler = (
 
 /**
  * operator 名から実行ハンドラを引く registry。
- * 内部表現 `{ handlers: Map<string, OperatorHandler> }` を Brand 型で包むことで
- * 素のオブジェクトリテラルが代入されることを防ぐ。
- *
- * 注: `handlers` フィールドは型システム上はモジュール外からも参照可能だが、
- * 規約上 private 扱いとし、外部から `registry.handlers` に直接アクセス・変更してはならない。
- * 状態変更が必要な操作は元 registry を mutate せず、新しい registry を返す。
- * 公開 API は companion object（`create` / `register` / `lookup` / `has`）のみ。
+ * 登録は companion object の `register` が新しい registry を返す形で行う。
  */
-export type OperatorRegistry = Brand<
-  {
-    handlers: Map<string, OperatorHandler>;
-  },
-  typeof OperatorRegistryBrand
->;
+export type OperatorRegistry = {
+  readonly handlers: ReadonlyMap<string, OperatorHandler>;
+};
 
 const BUILTIN_OPERATORS: ReadonlyArray<readonly [string, OperatorHandler]> = [
   ["G", GHandler],
@@ -173,7 +161,7 @@ export const OperatorRegistry = {
   create(): OperatorRegistry {
     return {
       handlers: new Map<string, OperatorHandler>(),
-    } as unknown as OperatorRegistry;
+    };
   },
 
   /**
@@ -199,7 +187,7 @@ export const OperatorRegistry = {
 
     return ok({
       handlers: new Map(registry.handlers).set(name, handler),
-    } as unknown as OperatorRegistry);
+    });
   },
 
   /**
