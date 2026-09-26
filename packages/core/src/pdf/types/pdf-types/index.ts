@@ -285,7 +285,10 @@ export interface TrailerDict {
 }
 
 /**
- * PDF間接オブジェクトの識別子（{@link IndirectRef} のエイリアス）。
+ * PDF間接オブジェクト実体の識別子（ISO 32000-1 §7.3.10）。
+ * `N G obj ... endobj` で定義される実体本体の身元を表す。
+ * 外部から実体を指し示す参照ポインタ（{@link IndirectRef}）と同一の構造を持つが、
+ * オブジェクト実体の識別・身元の文脈（循環参照エラーなど）で使用される。
  *
  * @example
  * ```ts
