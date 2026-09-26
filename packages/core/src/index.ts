@@ -57,7 +57,6 @@ export type {
   ObjectStreamHeaderEntry,
 } from "./objects/index";
 export {
-  LRUCache,
   ObjectParser,
   ObjectStore,
   ObjectStreamHeader,
@@ -112,6 +111,7 @@ export {
   TokenType,
 } from "./pdf/index";
 export type { Brand } from "./utils/index";
+export { LRUCache } from "./utils/index";
 export * as Interop from "./utils/interop/index";
 export * as Option from "./utils/option/index";
 export * as Result from "./utils/result/index";

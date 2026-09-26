@@ -6,8 +6,8 @@ import type {
   PdfValue,
   XRefCompressedEntry,
 } from "../../../../pdf/types/pdf-types/index";
+import type { LRUCache } from "../../../../utils/lru-cache/index";
 import type { Result } from "../../../../utils/result/index";
-import type { LRUCache } from "../../../lru-cache/index";
 import { ObjectStreamBody } from "../../../object-stream-extractor/index";
 
 /**
