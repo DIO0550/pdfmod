@@ -1,30 +1,16 @@
 import type { PdfWarning } from "../../../pdf/errors/warning/index";
-import type { Brand } from "../../../utils/brand/index";
 import type { GraphicsState } from "../graphics-state";
 import { GraphicsState as GraphicsStateFactory } from "../graphics-state";
-
-declare const GraphicsStateStackBrand: unique symbol;
-
-type GraphicsStateStackFields = {
-  current: GraphicsState;
-  saved: GraphicsState[];
-};
 
 /**
  * PDF content stream の `q` / `Q` operator で使うグラフィックスステートスタック。
  * `current` は現在状態、`saved` は保存済み状態を LIFO 順で保持する。
- * 内部表現 `{ current: GraphicsState; saved: GraphicsState[] }` を Brand 型で包むことで
- * 素のオブジェクトリテラルが代入されることを防ぐ。
- *
- * 注: `current` / `saved` フィールドは型システム上はモジュール外からも参照可能だが、
- * 規約上 private 扱いとし、外部から直接アクセス・変更してはならない。
- * 状態変更が必要な操作は元 stack を mutate せず、新しい stack を返す。
- * 公開 API は companion object（`create` / `current` / `replaceCurrent` / `save` / `restore`）のみ。
+ * 状態の遷移は companion object が新しいスタックを返す形で行う。
  */
-export type GraphicsStateStack = Brand<
-  GraphicsStateStackFields,
-  typeof GraphicsStateStackBrand
->;
+export type GraphicsStateStack = {
+  readonly current: GraphicsState;
+  readonly saved: ReadonlyArray<GraphicsState>;
+};
 
 /**
  * `GraphicsStateStack.restore` の返却型。
@@ -45,8 +31,8 @@ export const GraphicsStateStack = {
   create(): GraphicsStateStack {
     return {
       current: GraphicsStateFactory.create(),
-      saved: [] as GraphicsState[],
-    } as unknown as GraphicsStateStack;
+      saved: [],
+    };
   },
 
   /**
@@ -72,8 +58,8 @@ export const GraphicsStateStack = {
   ): GraphicsStateStack {
     return {
       current: state,
-      saved: [...stack.saved],
-    } as unknown as GraphicsStateStack;
+      saved: stack.saved,
+    };
   },
 
   /**
@@ -86,7 +72,7 @@ export const GraphicsStateStack = {
     return {
       current: stack.current,
       saved: [...stack.saved, stack.current],
-    } as unknown as GraphicsStateStack;
+    };
   },
 
   /**
@@ -105,7 +91,7 @@ export const GraphicsStateStack = {
         stack: {
           current: stack.current,
           saved: [],
-        } as unknown as GraphicsStateStack,
+        },
         warning: {
           code: "UNBALANCED_RESTORE",
           message:
@@ -119,7 +105,7 @@ export const GraphicsStateStack = {
       stack: {
         current: state,
         saved: stack.saved.slice(0, lastIndex),
-      } as unknown as GraphicsStateStack,
+      },
     };
   },
 } as const;
