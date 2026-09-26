@@ -9,6 +9,7 @@ import {
   buildXRefStreamPdfWithEncrypt,
   buildXRefStreamPdfWithEncryptAndTextTrailer,
   buildXRefStreamPdfWithoutEncrypt,
+  withLeadingJunk,
 } from "./pdf-document.test.helpers";
 
 test("xrefストリーム形式のみのPDFはfallback scanを経由せず（XREF_REBUILD warningなしで）loadされる", async () => {
@@ -117,4 +118,45 @@ test("type=2 の streamObject が 0 の xref ストリームPDFはfallback scan�
 
   assert(result.ok);
   expect(seen).toContain("XREF_REBUILD");
+});
+
+test("前置ゴミが付加されたxrefストリーム形式のPDFを読み込み、ページを取得できること", async () => {
+  const pdf = await buildMinimalSinglePagePdfWithXRefStream();
+  const withJunk = withLeadingJunk(100, pdf);
+  const result = await PdfDocument.load(withJunk);
+
+  assert(result.ok);
+  expect(result.value.pageCount).toBe(1);
+  const page = result.value.getPage(0);
+  assert(page.some);
+  expect(page.value.mediaBox).toEqual([0, 0, 612, 792]);
+});
+
+test("前置ゴミ（複数行テキスト）が付加されたxrefストリーム形式のPDFが正常に読み込めること", async () => {
+  const multilineJunk = new TextEncoder().encode(
+    "header junk line 1\nline 2\n",
+  );
+  const pdf = await buildMinimalSinglePagePdfWithXRefStream();
+  const withJunk = withLeadingJunk(multilineJunk, pdf);
+  const result = await PdfDocument.load(withJunk);
+
+  assert(result.ok);
+  expect(result.value.pageCount).toBe(1);
+});
+
+test("前置ゴミが付加されたハイブリッド参照（/XRefStm）PDFが通常パース経路（警告なし）で読み込めること", async () => {
+  const seen: string[] = [];
+  const pdf = await buildPdfWithHybridXRefStm();
+  const withJunk = withLeadingJunk(80, pdf);
+  const result = await PdfDocument.load(withJunk, {
+    onWarning: (w) => seen.push(w.code),
+  });
+
+  assert(result.ok);
+  expect(seen).not.toContain("XREF_REBUILD");
+  expect(result.value.metadata.title).toBe("Hybrid Test");
+  expect(result.value.pageCount).toBe(1);
+  const page = result.value.getPage(0);
+  assert(page.some);
+  expect(page.value.mediaBox).toEqual([0, 0, 612, 792]);
 });
