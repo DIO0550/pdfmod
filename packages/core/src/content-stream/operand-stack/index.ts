@@ -7,7 +7,7 @@ import { none, some } from "../../utils/option/index";
  * interpreter が1回の走査のあいだ使い回す可変スタックで、`items` の書き換えは
  * companion object の `push` / `pop` / `clear` だけが行う。
  */
-type OperandStack = {
+export type OperandStack = {
   readonly items: PdfObject[];
 };
 
@@ -15,7 +15,7 @@ type OperandStack = {
  * `OperandStack` の factory / 操作群を束ねた companion object。
  * 型と value を同一識別子で公開する declaration merging パターン。
  */
-const OperandStack = {
+export const OperandStack = {
   /**
    * 空のスタックを生成する。
    *
@@ -85,5 +85,3 @@ const OperandStack = {
     stack.items.length = 0;
   },
 } as const;
-
-export { OperandStack };
