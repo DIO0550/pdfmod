@@ -43,11 +43,13 @@ export {
   InheritanceResolver,
   PageTreeWalker,
   PdfDocument,
+  PdfHeader,
   PdfPage,
   PdfTrapped,
 } from "./document/index";
 export { NumberEx } from "./ext/number/index";
 export { StringArrayEx } from "./ext/string-array/index";
+export { Uint8ArrayEx } from "./ext/uint8-array/index";
 export { Tokenizer } from "./lexer/index";
 export type {
   ObjectStoreOptions,
