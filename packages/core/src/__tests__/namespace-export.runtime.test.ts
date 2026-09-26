@@ -166,3 +166,14 @@ test("StreamResolver および ObjectStreamBody がルートから export され
   expect("ObjectStreamBody" in rootExports).toBe(false);
   expect("StreamResolver" in rootExports).toBe(false);
 });
+
+test("objects バレルから LRUCache が export されていない（隔離検証）", async () => {
+  const objectsExports = await import("../objects/index");
+  expect("LRUCache" in objectsExports).toBe(false);
+});
+
+test("utils バレルから LRUCache が export されている", async () => {
+  const utilsExports = await import("../utils/index");
+  expect("LRUCache" in utilsExports).toBe(true);
+  expect(typeof utilsExports.LRUCache.create).toBe("function");
+});
