@@ -1,6 +1,6 @@
 /**
  * `Uint8Array` と `ByteOffset` を入力に、`PdfObject` / `PdfIndirectObject` を 1 個構文解析する低レベルパーサ。
- * xref を参照せず、stream の `/Length` が間接参照の場合だけ `ObjectResolver` コールバックで解決する (それ以外の間接参照は `PdfIndirectRef` のまま呼び出し側へ返す)。
+ * xref を参照せず、stream の `/Length` が間接参照の場合だけ `ResolveRef` コールバックで解決する (それ以外の間接参照は `PdfIndirectRef` のまま呼び出し側へ返す)。
  *
  * @module
  */
@@ -14,6 +14,7 @@ import type {
   PdfIndirectObject,
   PdfObject,
 } from "../../pdf/types/pdf-types/index";
+import type { ResolveRef } from "../../pdf/types/resolve-ref/index";
 import type { Option } from "../../utils/option/index";
 import { none, some } from "../../utils/option/index";
 import type { Result } from "../../utils/result/index";
@@ -22,9 +23,6 @@ import { BufferedTokenizer } from "./buffered-tokenizer/index";
 import { DirectObject } from "./direct-object/index";
 import { IndirectObject } from "./indirect-object/index";
 import { StreamObject } from "./stream-object/index";
-import type { ObjectResolver } from "./types";
-
-export type { ObjectResolver } from "./types";
 
 /**
  * offset が非負 safe integer かつ data.length 未満であることを検証する。
@@ -137,7 +135,7 @@ export const ObjectParser = {
   async parseIndirectObject(
     data: Uint8Array,
     offset: ByteOffset,
-    resolver?: ObjectResolver,
+    resolver?: ResolveRef,
   ): Promise<Result<PdfIndirectObject, PdfError>> {
     const offsetError = validateOffset(data, offset);
     if (offsetError.some) {

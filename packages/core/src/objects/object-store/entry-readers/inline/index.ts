@@ -4,9 +4,9 @@ import type {
   PdfObject,
   XRefUsedEntry,
 } from "../../../../pdf/types/pdf-types/index";
+import type { ResolveRef } from "../../../../pdf/types/resolve-ref/index";
 import type { Result } from "../../../../utils/result/index";
 import { err } from "../../../../utils/result/index";
-import type { ObjectResolver } from "../../../object-parser/index";
 import { ObjectParser } from "../../../object-parser/index";
 
 /**
@@ -22,7 +22,7 @@ export async function readInlineEntry(
   data: Uint8Array,
   entry: XRefUsedEntry,
   ref: IndirectRef,
-  resolver: ObjectResolver,
+  resolver: ResolveRef,
 ): Promise<Result<PdfObject, PdfError>> {
   const parseResult = await ObjectParser.parseIndirectObject(
     data,

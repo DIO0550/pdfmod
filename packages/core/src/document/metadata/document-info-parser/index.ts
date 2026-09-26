@@ -4,10 +4,10 @@ import type {
   PdfValue,
   TrailerDict,
 } from "../../../pdf/types/pdf-types/index";
+import type { ResolveRef } from "../../../pdf/types/resolve-ref/index";
 import { stripUndefined } from "../../../utils/object";
 import type { Option } from "../../../utils/option";
 import { none, unwrapOr } from "../../../utils/option";
-import type { ResolveRef } from "../../catalog/catalog-parser";
 import { parsePdfDate } from "../../date/pdf-date";
 import { decodePdfString } from "../../encoding/decode-pdf-string";
 import type { DocumentMetadata } from "../document-metadata";

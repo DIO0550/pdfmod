@@ -34,6 +34,8 @@ test("削除された型はルートからインポートできない", () => {
   const _h: import("../../../index").StreamResolver = {};
   // @ts-expect-error ObjectStreamBody はルートから削除済み
   const _i: import("../../../index").ObjectStreamBody = {};
+  // @ts-expect-error ObjectResolver は削除済み
+  const _j: import("../../../index").ObjectResolver = {};
 
   expect(true).toBe(true);
 });

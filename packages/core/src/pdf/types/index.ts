@@ -11,4 +11,5 @@ export { IndirectRef } from "./indirect-ref/index";
 export { ObjectNumber } from "./object-number/index";
 export { PdfType } from "./pdf-type/index";
 export * from "./pdf-types/index";
+export type { ResolveRef } from "./resolve-ref/index";
 export * from "./token/index";
