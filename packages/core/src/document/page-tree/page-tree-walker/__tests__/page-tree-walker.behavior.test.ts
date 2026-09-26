@@ -5,7 +5,7 @@ import type {
   PdfObject,
   PdfValue,
 } from "../../../../pdf/types/pdf-types/index";
-import type { ResolveRef } from "../../../catalog/catalog-parser";
+import type { ResolveRef } from "../../../../pdf/types/resolve-ref/index";
 import { PageTreeWalker } from "../../page-tree-walker";
 import {
   indirectRefValue,

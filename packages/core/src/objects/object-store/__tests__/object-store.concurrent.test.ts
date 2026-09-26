@@ -7,9 +7,9 @@ import type {
   PdfValue,
   XRefUsedEntry,
 } from "../../../pdf/types/pdf-types/index";
+import type { ResolveRef } from "../../../pdf/types/resolve-ref/index";
 import type { Result } from "../../../utils/result/index";
 import { err, map, ok } from "../../../utils/result/index";
-import type { ObjectResolver } from "../../object-parser/index";
 import { ObjectParser } from "../../object-parser/index";
 import { ObjectStore } from "../index";
 import {
@@ -29,7 +29,7 @@ const READ_FAILURE: PdfError = {
 
 /** 偽の間接オブジェクトパース 1 件分の振る舞い。 */
 type ParseBehavior = (
-  resolver: ObjectResolver | undefined,
+  resolver: ResolveRef | undefined,
 ) => Promise<Result<PdfValue, PdfError>>;
 
 /**
@@ -49,7 +49,10 @@ const refersTo =
     // 同期的に再帰すると 1 本のチェーンに畳まれ、既存の ancestors 検出に捕まってしまう
     await Promise.resolve();
     return map(
-      await resolver(ObjectNumber.of(target), GenerationNumber.of(0)),
+      await resolver({
+        objectNumber: ObjectNumber.of(target),
+        generationNumber: GenerationNumber.of(0),
+      }),
       () => value,
     );
   };
