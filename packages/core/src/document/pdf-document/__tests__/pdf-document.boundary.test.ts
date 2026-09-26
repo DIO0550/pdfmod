@@ -1,6 +1,9 @@
 import { assert, expect, test } from "vitest";
 import { PdfDocument } from "../../pdf-document";
-import { buildMinimalSinglePagePdf } from "./pdf-document.test.helpers";
+import {
+  buildMinimalSinglePagePdf,
+  withLeadingJunk,
+} from "./pdf-document.test.helpers";
 
 test.each([
   { label: "負のインデックス", getIndex: () => -1 },
@@ -44,4 +47,28 @@ test.each([
 
   assert(!result.ok);
   expect(result.error).toBeInstanceOf(RangeError);
+});
+
+test("最小の前置ゴミ（1バイト）が付加されたPDFが正常に読み込めること", async () => {
+  const pdf = buildMinimalSinglePagePdf();
+  const withJunk = withLeadingJunk(1, pdf);
+  const result = await PdfDocument.load(withJunk);
+
+  assert(result.ok);
+  expect(result.value.pageCount).toBe(1);
+  const page = result.value.getPage(0);
+  assert(page.some);
+  expect(page.value.mediaBox).toEqual([0, 0, 612, 792]);
+});
+
+test("走査上限直前（1019バイト: %PDF- が1019バイト目）の前置ゴミが付加されたPDFが正常に読み込めること", async () => {
+  const pdf = buildMinimalSinglePagePdf();
+  const withJunk = withLeadingJunk(1019, pdf);
+  const result = await PdfDocument.load(withJunk);
+
+  assert(result.ok);
+  expect(result.value.pageCount).toBe(1);
+  const page = result.value.getPage(0);
+  assert(page.some);
+  expect(page.value.mediaBox).toEqual([0, 0, 612, 792]);
 });
