@@ -59,6 +59,9 @@ jobs:
       - name: cargo clippy
         run: cargo clippy --workspace --all-targets -- -D warnings
 
+      - name: cargo doctest
+        run: cargo test --doc --workspace
+
       - name: Install cargo-llvm-cov
         run: |
           # cache hit 時は ~/.cargo/bin に既にバイナリがあるため再インストールしない
