@@ -5,3 +5,6 @@
 
 pub mod pdf_error;
 pub mod pdf_error_code;
+
+pub use self::pdf_error::PdfError;
+pub use self::pdf_error_code::PdfErrorCode;
