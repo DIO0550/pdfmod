@@ -6,7 +6,8 @@
 //!
 //! 設計意図:
 //! - `position` / `message` は両方 `Option`（位置不明・メッセージ不要なエラーも表現可能）。
-//! - `message` は所有 `String`（`format!` で動的に値・期待トークン等を埋め込める。std のみで完結）。
+//! - `message` は表示用 `String`。埋め込んだ値は型付き情報として取り出せない。
+//! - TS 版の型別フィールドとの差と R2 以降の方針は `docs/design/rust-pdf-error-context.md` を参照。
 //! - 構築はビルダー風: `new(code)` を基点に `with_position` / `with_message` を任意で重ねる。
 //! - `Copy` は付与しない（`String` を保持するため不可）。`Debug, Clone, PartialEq, Eq` のみ derive。
 //! - `Display` を手実装し、種別部分は `PdfErrorCode` の `Display` に委譲する
@@ -22,7 +23,8 @@ use std::fmt;
 use crate::byte_offset::ByteOffset;
 use crate::error::pdf_error_code::PdfErrorCode;
 
-/// PDF 処理で発生したエラーを種別・位置・メッセージで表す文脈付きエラー値。
+/// PDF 処理の分類・位置・表示用メッセージを保持するエラー値。
+/// 種別固有の値（TS 版の `objectId` / `expected` / `actual`）は現時点では保持しない。
 ///
 /// `code` は必須、`position` と `message` は任意（`Option`）。`Result<T, PdfError>` の
 /// `E` として用いる。`String` を保持するため `Copy` は持たない。

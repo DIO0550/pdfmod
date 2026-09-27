@@ -15,6 +15,7 @@ ISO 32000-1:2008 (PDF 1.7) / ISO 32000-2:2020 (PDF 2.0) 準拠を目標とする
   （`ObjectKind` / `TokenKind`）で表す。網羅 match が書け、実在しないラベルを混入させられない。
 
 具体的な型設計・API・データ表現は実装時に決める。PDF 仕様は `docs/specs/` を参照。
+`PdfError` の型別文脈と TS 版との差は [`docs/design/rust-pdf-error-context.md`](../docs/design/rust-pdf-error-context.md) を参照。
 
 ## 現在の状態
 
