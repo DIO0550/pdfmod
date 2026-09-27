@@ -8,10 +8,10 @@ use std::fmt;
 
 /// `PdfObject` のバリアント種別（データを持たない判別タグ）。
 ///
-/// `#[non_exhaustive]` は付けない。付けないことで `PdfObject` にバリアントを
-/// 追加すると `PdfObject::kind` の `match` が非網羅となり、それを埋めるために
-/// 本 enum へバリアントを足すと今度は [`Self::as_str`] が非網羅となる。
-/// 追従漏れが 2 段のコンパイルエラーとして検出される（`PdfErrorCode` と同方針）。
+/// `#[non_exhaustive]` は付けない。`PdfObject` にバリアントを追加すると、
+/// 同一 crate 内の `PdfObject::kind` の全列挙 `match` が非網羅となる。
+/// 本 enum に対応するバリアントを追加すると [`Self::as_str`] も非網羅となるため、
+/// 追従漏れをコンパイル時に検出できる。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ObjectKind {
     /// [`PdfObject::Null`](crate::object::pdf_object::PdfObject::Null)

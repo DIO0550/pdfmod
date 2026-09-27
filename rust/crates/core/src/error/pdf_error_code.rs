@@ -14,7 +14,35 @@ use std::fmt;
 /// 否かに従う。順序・ハッシュは用途上不要のため derive しない（Issue #259 指定。
 /// 既存 newtype の `Hash`/`PartialOrd`/`Ord` を持たない点が意図的な差異）。
 /// 将来のフェーズ（xref／リゾルバ）でバリアントを追加していく方針。
+/// 外部クレートでは将来のバリアントに備え、`match` にフォールバックが必要。
+///
+/// ```
+/// use pdfmod_core::error::pdf_error_code::PdfErrorCode;
+/// let code = PdfErrorCode::UnexpectedEof;
+/// let label = match code {
+///     PdfErrorCode::UnexpectedEof => "eof",
+///     _ => "other",
+/// };
+/// assert_eq!(label, "eof");
+/// ```
+///
+/// 既知の全バリアントを列挙しても、外部ではフォールバックを省けない。
+/// 新しいバリアントを追加するときは、この例の列挙も更新する。
+///
+/// ```compile_fail,E0004
+/// use pdfmod_core::error::pdf_error_code::PdfErrorCode;
+/// let code = PdfErrorCode::UnexpectedEof;
+/// let _label = match code {
+///     PdfErrorCode::UnexpectedEof => "eof",
+///     PdfErrorCode::UnexpectedToken => "token",
+///     PdfErrorCode::InvalidNumber => "number",
+///     PdfErrorCode::InvalidSyntax => "syntax",
+///     PdfErrorCode::InvalidHeader => "header",
+///     PdfErrorCode::UnsupportedVersion => "version",
+/// };
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum PdfErrorCode {
     /// 入力の途中で予期せず終端（EOF）に達した。
     UnexpectedEof,
@@ -31,8 +59,8 @@ pub enum PdfErrorCode {
 }
 
 /// バリアントごとに人間可読な英語短文を返す。文言は `std::io::ErrorKind` の
-/// 慣習に倣い、小文字始まり・句点なし。`#[non_exhaustive]` を付けないため、
-/// 将来バリアントを追加した際は `match` の非網羅性がコンパイル時エラーとなり、
+/// 慣習に倣い、小文字始まり・句点なし。同一 crate 内の網羅的な `match` により、
+/// 将来バリアントを追加した際は非網羅性がコンパイル時エラーとなり、
 /// Display 文言の追加漏れが自動検出される。Debug は導出のまま（バリアント
 /// 識別子）で、開発者向けダンプ用途との役割分離を保つ。
 impl fmt::Display for PdfErrorCode {

@@ -23,8 +23,40 @@ use crate::object::string::PdfString;
 /// `Copy` も付けない（ヒープ保持バリアントを含むため）。
 /// `PartialOrd` も付けない（PDF オブジェクト間に意味ある全順序はなく、`PdfErrorCode` 同様に用途上不要）。
 /// よって derive は `Debug, Clone, PartialEq` のみ。
+/// 外部クレートでは将来のバリアントに備え、`match` にフォールバックが必要。
+///
+/// ```
+/// use pdfmod_core::object::pdf_object::PdfObject;
+/// let object = PdfObject::Null;
+/// let kind = match object {
+///     PdfObject::Null => "null",
+///     _ => "other",
+/// };
+/// assert_eq!(kind, "null");
+/// ```
+///
+/// 既知の全バリアントを列挙しても、外部ではフォールバックを省けない。
+/// 新しいバリアントを追加するときは、この例の列挙も更新する。
+///
+/// ```compile_fail,E0004
+/// use pdfmod_core::object::pdf_object::PdfObject;
+/// let object = PdfObject::Null;
+/// let _kind = match object {
+///     PdfObject::Null => "null",
+///     PdfObject::Boolean(_) => "boolean",
+///     PdfObject::Integer(_) => "integer",
+///     PdfObject::Real(_) => "real",
+///     PdfObject::String(_) => "string",
+///     PdfObject::Name(_) => "name",
+///     PdfObject::Array(_) => "array",
+///     PdfObject::Dictionary(_) => "dictionary",
+///     PdfObject::Stream(_) => "stream",
+///     PdfObject::Reference(_) => "reference",
+/// };
+/// ```
 #[derive(Debug, Clone, PartialEq)]
 #[must_use]
+#[non_exhaustive]
 pub enum PdfObject {
     /// null オブジェクト（値の不在）。
     Null,
@@ -225,8 +257,9 @@ impl PdfObject {
     ///
     /// 「期待した型と違う値が来た」ことを報告する各層（`ParseError` / `TrailerError` /
     /// `EncryptError`）で共通に使う。バリアント追加時の更新漏れを防ぐため、
-    /// 変換はここに集約する（`ObjectKind` に `#[non_exhaustive]` を付けないため、
-    /// 追加時はこの `match` が非網羅となりコンパイルエラーになる）。
+    /// 変換はここに集約する。`PdfObject` は同一 crate 内では網羅的に `match` できるため、
+    /// 新バリアント追加時は本メソッドが非網羅となりコンパイルエラーになる。
+    /// `ObjectKind` にも対応するバリアントを追加する。
     #[must_use]
     pub fn kind(&self) -> ObjectKind {
         match self {
