@@ -9,13 +9,13 @@ export const REPLACEMENT_CHAR = "�";
 const TABLE_SIZE = 256;
 
 /**
- * 0x00..0x17 と 0x20..0x7F は対応する U+0000..U+0017 / U+0020..U+007F に
+ * 0x00..0x17 と 0x20..0x7E は対応する U+0000..U+0017 / U+0020..U+007E に
  * そのまま素通しでマップする。0x18..0x1F は別領域のダイアクリティカル文字に
- * 割り当てられるため、素通しの対象外。
+ * 割り当てられ、0x7F は未割当（undefined）のため、素通しの対象外。
  */
 const PASSTHROUGH_LOW_END = 0x17;
 const PASSTHROUGH_HIGH_START = 0x20;
-const PASSTHROUGH_HIGH_END = 0x7f;
+const PASSTHROUGH_HIGH_END = 0x7e;
 
 /** 8 文字のダイアクリティカル領域の開始バイト (˘)。 */
 const DIACRITIC_START = 0x18;
