@@ -1,34 +1,28 @@
 import type { PdfObject } from "../../pdf/types/pdf-types/index";
-import type { Brand } from "../../utils/brand/index";
 import type { Option } from "../../utils/option/index";
 import { none, some } from "../../utils/option/index";
 
-/** OperandStack の内部表現を区別するためのブランドタグ。 */
-declare const OperandStackBrand: unique symbol;
-
 /**
- * PDF コンテンツストリーム (RPN) のオペランドスタック型。
- * 内部表現 `{ items: PdfObject[] }` を Brand 型で包むことで
- * 素のオブジェクトリテラルが代入されることを防ぐ。
- *
- * 注: `items` フィールドは型システム上はモジュール外からも参照可能だが、
- * 規約上 private 扱いとし、外部から `stack.items` に直接アクセス・変更してはならない。
- * 公開 API は companion object（`create` / `push` / `pop` / `peek` / `depth` / `clear`）のみ。
+ * PDF コンテンツストリーム (RPN) のオペランドスタック。
+ * interpreter が1回の走査のあいだ使い回す可変スタックで、`items` の書き換えは
+ * companion object の `push` / `pop` / `clear` だけが行う。
  */
-type OperandStack = Brand<{ items: PdfObject[] }, typeof OperandStackBrand>;
+export type OperandStack = {
+  readonly items: PdfObject[];
+};
 
 /**
  * `OperandStack` の factory / 操作群を束ねた companion object。
  * 型と value を同一識別子で公開する declaration merging パターン。
  */
-const OperandStack = {
+export const OperandStack = {
   /**
    * 空のスタックを生成する。
    *
    * @returns 要素 0 件の `OperandStack`
    */
   create(): OperandStack {
-    return { items: [] as PdfObject[] } as unknown as OperandStack;
+    return { items: [] };
   },
 
   /**
@@ -91,5 +85,3 @@ const OperandStack = {
     stack.items.length = 0;
   },
 } as const;
-
-export { OperandStack };
