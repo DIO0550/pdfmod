@@ -1,6 +1,10 @@
 import { expect, test } from "vitest";
 import type { PdfWarning } from "../../../../pdf/errors/warning/index";
-import { decodePdfDocEncoding, REPLACEMENT_CHAR } from "../../pdf-doc-encoding";
+import {
+  decodePdfDocEncoding,
+  PDF_DOC_ENCODING,
+  REPLACEMENT_CHAR,
+} from "../../pdf-doc-encoding";
 
 test("ASCII バイト列をそのままデコードする", () => {
   const warnings: PdfWarning[] = [];
@@ -16,7 +20,7 @@ const PASSTHROUGH_BYTES: ReadonlyArray<readonly [number, string]> = [
     (_, i) => [i, String.fromCharCode(i)] as const,
   ),
   ...Array.from(
-    { length: 0x7f - 0x20 + 1 },
+    { length: 0x7e - 0x20 + 1 },
     (_, i) => [0x20 + i, String.fromCharCode(0x20 + i)] as const,
   ),
 ];
@@ -86,6 +90,23 @@ test.each(
   );
   expect(result).toBe(expected);
   expect(warnings).toHaveLength(0);
+});
+
+test("未割当バイト 0x7F は U+FFFD に置換される", () => {
+  const warnings: PdfWarning[] = [];
+  const result = decodePdfDocEncoding(
+    new Uint8Array([0x7f]),
+    "Title",
+    warnings,
+  );
+  expect(result).toBe(REPLACEMENT_CHAR);
+  expect(warnings).toHaveLength(1);
+  expect(warnings[0].code).toBe("STRING_DECODE_FAILED");
+});
+
+test("PDF_DOC_ENCODING テーブルの 0x7F は undefined であり 0x7E は '~' である", () => {
+  expect(PDF_DOC_ENCODING[0x7f]).toBeUndefined();
+  expect(PDF_DOC_ENCODING[0x7e]).toBe("~");
 });
 
 test("未割当バイト 0x9F は U+FFFD に置換される", () => {
