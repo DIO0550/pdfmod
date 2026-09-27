@@ -40,11 +40,13 @@ const FreeObjectNumber = {
 
   /**
    * 数値を検証なしで FreeObjectNumber にキャストする。
-   * unchecked cast であり、0以上の safe integer（ISO 32000-1 §7.5.4 のリンク値）で
-   * あることの保証は呼び出し側の責務。
-   * 未検証の入力（外部データ由来の値など）には `create` を使うこと。
    *
-   * @param n - キャスト対象の数値
+   * 呼び出し側で 0 以上の safe integer（ISO 32000-1 §7.5.4 のリンク値）であることが
+   * 検証済み・確定しているコンテキストに限って使用する。
+   * 外部入力や未検証の数値には `create` を使うこと。無検証キャストのため、
+   * 不正な値を渡しても実行時エラーにならず不正な状態が型境界をすり抜ける。
+   *
+   * @param n - 呼び出し側で 0 以上の safe integer であることが保証された数値
    * @returns n を FreeObjectNumber としてキャストした値
    */
   of(n: number): FreeObjectNumber {
