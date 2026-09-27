@@ -1,4 +1,4 @@
-// packages/core/src/pdf/types/pdf-types/__tests__/pdf-object.type.test-d.ts
+// packages/core/src/pdf/types/pdf-types/__tests__/pdf-types.pdf-object.test-d.ts
 
 import { expectTypeOf, test } from "vitest";
 import type {
