@@ -39,11 +39,13 @@ const ObjectNumber = {
 
   /**
    * 数値を検証なしで ObjectNumber にキャストする。
-   * unchecked cast であり、正の safe integer（ISO 32000-1 §7.3.10）であることの保証は
-   * 呼び出し側の責務。0 を渡す必要がある場合は `FreeObjectNumber` を使うこと。
-   * 未検証の入力（外部データ由来の値など）には `create` を使うこと。
    *
-   * @param n - キャスト対象の数値
+   * 呼び出し側で正の safe integer（ISO 32000-1 §7.3.10）であることが検証済み・確定している
+   * コンテキスト（xref エントリ走査中のインデックス加算など）に限って使用する。
+   * 外部入力や未検証の数値には `create` を使うこと。0 を渡す必要がある場合は `FreeObjectNumber` を使う。
+   * 無検証キャストのため、不正な値を渡しても実行時エラーにならず不正な状態が型境界をすり抜ける。
+   *
+   * @param n - 呼び出し側で正の safe integer であることが保証された数値
    * @returns n を ObjectNumber としてキャストした値
    */
   of(n: number): ObjectNumber {
