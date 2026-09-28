@@ -43,6 +43,7 @@ const AsciiLowerF = 102; // 'f'
 const EofByte = -1;
 const DecimalRadix = 10;
 const OctalRadix = 8;
+const ByteMask = 0xff;
 const HexRadix = 16;
 const MaxOctalFollowingDigits = 2;
 const HexEscapeWidth = 3;
@@ -392,7 +393,7 @@ export class Tokenizer {
         break;
       }
     }
-    return String.fromCharCode(parseInt(octal, OctalRadix));
+    return String.fromCharCode(parseInt(octal, OctalRadix) & ByteMask);
   }
 
   /**

@@ -101,10 +101,16 @@ test("hex string に不正な文字が含まれる場合エラー", () => {
   expect(error.code).toBe("OBJECT_PARSE_UNEXPECTED_TOKEN");
 });
 
-test("literal string のオクタルエスケープが 0xff を超える場合エラー", () => {
-  const error = unwrapErr(parse("(\\777)"));
-  expect(error.code).toBe("OBJECT_PARSE_UNEXPECTED_TOKEN");
-  expect(error.message).toContain("Invalid literal string byte value");
+test.each([
+  ["(\\777)", [0xff]],
+  ["(a\\400b)", [0x61, 0x00, 0x62]],
+])("8進エスケープのオーバーフローを含む文字列をパースする: %s", (input, bytes) => {
+  const obj = unwrapOk(parse(input));
+  expect(obj.type).toBe("string");
+  if (obj.type !== "string") {
+    return;
+  }
+  expect(obj.value).toEqual(new Uint8Array(bytes));
 });
 
 test("空配列をパースする", () => {
