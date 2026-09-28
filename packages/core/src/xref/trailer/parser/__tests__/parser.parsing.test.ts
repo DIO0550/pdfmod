@@ -100,6 +100,17 @@ test("/IDのLiteralStringが正しくUint8Arrayに変換される", () => {
   expect(result.value.id[1]).toEqual(new Uint8Array([0x64, 0x65, 0x66]));
 });
 
+test("/IDの8進エスケープの上位オーバーフローを無視する", () => {
+  const { data, offset } = trailerAt(
+    "trailer << /Root 1 0 R /Size 10 /ID [(\\400) (\\777)] >>",
+  );
+  const result = parseTrailer(data, offset);
+  assert(result.ok);
+  assert(result.value.id);
+  expect(result.value.id[0]).toEqual(new Uint8Array([0x00]));
+  expect(result.value.id[1]).toEqual(new Uint8Array([0xff]));
+});
+
 test.each([
   { label: "LF", ws: "\n" },
   { label: "CR", ws: "\r" },
