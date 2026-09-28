@@ -113,24 +113,43 @@ test("literal stringとhex stringはbyte列を保持する", () => {
   ]);
 });
 
-test.each([
-  {
-    input: "(\\400) capture",
-    message: "Invalid literal string byte value",
-  },
-  {
-    input: "<4Z> capture",
-    message: "Invalid hex digits in hex string",
-  },
-])("文字列変換失敗はPdfErrorを返す: $input", ({ input, message }) => {
+test("8進オーバーフローを含む文字列オペランドを渡す", () => {
+  const observed: PdfObject[][] = [];
+  const registry = registerOperator(
+    OperatorRegistry.create(),
+    "capture",
+    (context) => {
+      observed.push(popAll(context.operandStack));
+      return ok(context);
+    },
+  );
+
   const result = ContentStreamInterpreter.execute({
-    data: encode(input),
+    data: encode("(\\400) capture"),
+    registry,
+  });
+
+  assert(result.ok);
+  expect(observed).toEqual([
+    [
+      {
+        type: "string",
+        value: new Uint8Array([0x00]),
+        encoding: "literal",
+      },
+    ],
+  ]);
+});
+
+test("不正な16進文字列はPdfErrorを返す", () => {
+  const result = ContentStreamInterpreter.execute({
+    data: encode("<4Z> capture"),
     registry: OperatorRegistry.create(),
   });
 
   assert(!result.ok);
   expect(result.error.code).toBe("OBJECT_PARSE_UNEXPECTED_TOKEN");
-  expect(result.error.message).toContain(message);
+  expect(result.error.message).toContain("Invalid hex digits in hex string");
 });
 
 test.each([

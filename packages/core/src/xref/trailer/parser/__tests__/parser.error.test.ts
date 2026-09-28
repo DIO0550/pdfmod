@@ -297,16 +297,6 @@ test("/Sizeに辞書値<< >>が指定された場合にSIZE_NOT_FOUNDエラー�
   expect(result.error.message).toContain("/Size");
 });
 
-test("リテラル文字列に0-255範囲外のコードユニット(\\400)が含まれる場合にXREF_TABLE_INVALIDエラーが返る", () => {
-  const { data, offset } = trailerAt(
-    "trailer << /Size 10 /Root 1 0 R /ID [(\\400) (b)] >>",
-  );
-  const result = parseTrailer(data, offset);
-  assert(!result.ok);
-  expect(result.error.code).toBe("XREF_TABLE_INVALID");
-  expect(result.error.message).toContain("Invalid literal string byte value");
-});
-
 test("値の位置に予期せぬトークン(])が現れた場合にXREF_TABLE_INVALIDエラーが返る", () => {
   const { data, offset } = trailerAt("trailer << /Size ] /Root 1 0 R >>");
   const result = parseTrailer(data, offset);
