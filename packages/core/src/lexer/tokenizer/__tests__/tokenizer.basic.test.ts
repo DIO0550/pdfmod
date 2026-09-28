@@ -205,11 +205,16 @@ test("オクタルエスケープの上端境界 \\377 (0xFF) を処理する", 
   });
 });
 
-test("現行挙動: オクタルエスケープ境界外 \\400 (0x100 / 256) を 0x100 としてトークン化する (0xFF超は上位で検証)", () => {
-  const tokens = tokenize("(\\400)");
+test.each([
+  ["(\\40x)", " x"],
+  ["(\\400)", "\x00"],
+  ["(\\777)", "\xff"],
+  ["(\\7777x)", "\xff7x"],
+])("8進エスケープの上位オーバーフローを無視する: %s", (input, expected) => {
+  const tokens = tokenize(input);
   expect(tokens[0]).toMatchObject({
     type: TokenType.LiteralString,
-    value: "\u0100",
+    value: expected,
   });
 });
 
