@@ -49,6 +49,31 @@ pub enum CryptFilterSelector {
     Named(PdfName),
 }
 
+impl CryptFilterSelector {
+    /// `/StmF` `/StrF` `/EFF` の指定を取り出す。
+    fn take(
+        dictionary: &mut PdfDictionary,
+        key: EncryptKey,
+        position: ByteOffset,
+    ) -> Result<Option<Self>, EncryptError> {
+        let Some(value) = dictionary.remove(key.as_bytes()) else {
+            return Ok(None);
+        };
+        let actual = value.kind();
+        let PdfObject::Name(name) = value else {
+            return Err(EncryptError::invalid_key_type_at(
+                position,
+                EncryptKeyPath::Root(key),
+                actual,
+            ));
+        };
+        if name.as_bytes() == IDENTITY {
+            return Ok(Some(Self::Identity));
+        }
+        Ok(Some(Self::Named(name)))
+    }
+}
+
 /// `/CF` の各エントリ。
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[must_use]
@@ -72,6 +97,34 @@ pub enum CryptFilterMethod {
 }
 
 impl CryptFilterMethod {
+    /// `/CFM` を取り出す。省略時は `/None`（ISO 32000-1 表 25 の既定値）。
+    ///
+    /// `name` は所属する crypt filter エントリの名前。`/CF` に複数エントリがあるとき、
+    /// どのエントリの `/CFM` が壊れているかをエラーで指すために受け取る。
+    fn take(
+        dictionary: &mut PdfDictionary,
+        name: &PdfName,
+        position: ByteOffset,
+    ) -> Result<Self, EncryptError> {
+        let Some(value) = dictionary.remove(CryptFilterKey::CFM.as_bytes()) else {
+            return Ok(Self::None);
+        };
+        let actual = value.kind();
+        // 引数の name（エントリ名）と区別するため、/CFM の値は method_name とする。
+        let PdfObject::Name(method_name) = value else {
+            return Err(EncryptError::invalid_key_type_at(
+                position,
+                EncryptKeyPath::CryptFilter {
+                    name: name.clone(),
+                    key: CryptFilterKey::CFM,
+                },
+                actual,
+            ));
+        };
+        Self::from_bytes(method_name.as_bytes())
+            .ok_or_else(|| EncryptError::unknown_crypt_filter_method_at(position, method_name))
+    }
+
     /// `/CFM` の値から方式を判定する。既知の集合に無ければ `None`。
     #[must_use]
     pub fn from_bytes(bytes: &[u8]) -> Option<Self> {
@@ -139,13 +192,13 @@ impl CryptFilters {
         dictionary: &mut PdfDictionary,
         position: ByteOffset,
     ) -> Result<Self, EncryptError> {
-        let filters = take_filter_map(dictionary, position)?;
+        let filters = Self::take_filter_map(dictionary, position)?;
 
-        let stream = take_selector(dictionary, EncryptKey::StmF, position)?
+        let stream = CryptFilterSelector::take(dictionary, EncryptKey::StmF, position)?
             .unwrap_or(CryptFilterSelector::Identity);
-        let string = take_selector(dictionary, EncryptKey::StrF, position)?
+        let string = CryptFilterSelector::take(dictionary, EncryptKey::StrF, position)?
             .unwrap_or(CryptFilterSelector::Identity);
-        let embedded_file = take_selector(dictionary, EncryptKey::EFF, position)?;
+        let embedded_file = CryptFilterSelector::take(dictionary, EncryptKey::EFF, position)?;
 
         let filters = Self {
             filters,
@@ -154,6 +207,49 @@ impl CryptFilters {
             embedded_file,
         };
         filters.ensure_selectors_defined(position)?;
+        Ok(filters)
+    }
+
+    /// `/CF` を取り出して各エントリを型に変換する。
+    ///
+    /// エントリの辞書は `remove` でムーブして `CryptFilter::from_dictionary` に渡す
+    /// （`iter()` で参照を回すと値の clone が必要になるため）。
+    /// キーは `BTreeMap` のキーとして所有権が要るので clone する。
+    fn take_filter_map(
+        dictionary: &mut PdfDictionary,
+        position: ByteOffset,
+    ) -> Result<BTreeMap<PdfName, CryptFilter>, EncryptError> {
+        let Some(value) = dictionary.remove(EncryptKey::CF.as_bytes()) else {
+            return Err(EncryptError::missing_crypt_filters_at(position));
+        };
+        let actual = value.kind();
+        let PdfObject::Dictionary(mut entries) = value else {
+            return Err(EncryptError::invalid_key_type_at(
+                position,
+                EncryptKeyPath::Root(EncryptKey::CF),
+                actual,
+            ));
+        };
+
+        let names: Vec<PdfName> = entries.keys().cloned().collect();
+        let mut filters = BTreeMap::new();
+        for name in names {
+            let Some(entry) = entries.remove(name.as_bytes()) else {
+                continue;
+            };
+            let actual = entry.kind();
+            let PdfObject::Dictionary(entry) = entry else {
+                // name はループが所有しており、この分岐で return するため clone は不要。
+                return Err(EncryptError::invalid_key_type_at(
+                    position,
+                    EncryptKeyPath::CryptFilterEntry { name },
+                    actual,
+                ));
+            };
+            // &name の借用を先に終わらせてから、name を BTreeMap のキーとして move する。
+            let filter = CryptFilter::from_dictionary(entry, &name, position)?;
+            filters.insert(name, filter);
+        }
         Ok(filters)
     }
 
@@ -217,72 +313,6 @@ impl CryptFilters {
     }
 }
 
-/// `/CF` を取り出して各エントリを型に変換する。
-///
-/// エントリの辞書は `remove` でムーブして [`CryptFilter::from_dictionary`] に渡す
-/// （`iter()` で参照を回すと値の clone が必要になるため）。
-/// キーは `BTreeMap` のキーとして所有権が要るので clone する。
-fn take_filter_map(
-    dictionary: &mut PdfDictionary,
-    position: ByteOffset,
-) -> Result<BTreeMap<PdfName, CryptFilter>, EncryptError> {
-    let Some(value) = dictionary.remove(EncryptKey::CF.as_bytes()) else {
-        return Err(EncryptError::missing_crypt_filters_at(position));
-    };
-    let actual = value.kind();
-    let PdfObject::Dictionary(mut entries) = value else {
-        return Err(EncryptError::invalid_key_type_at(
-            position,
-            EncryptKeyPath::Root(EncryptKey::CF),
-            actual,
-        ));
-    };
-
-    let names: Vec<PdfName> = entries.keys().cloned().collect();
-    let mut filters = BTreeMap::new();
-    for name in names {
-        let Some(entry) = entries.remove(name.as_bytes()) else {
-            continue;
-        };
-        let actual = entry.kind();
-        let PdfObject::Dictionary(entry) = entry else {
-            // name はループが所有しており、この分岐で return するため clone は不要。
-            return Err(EncryptError::invalid_key_type_at(
-                position,
-                EncryptKeyPath::CryptFilterEntry { name },
-                actual,
-            ));
-        };
-        // &name の借用を先に終わらせてから、name を BTreeMap のキーとして move する。
-        let filter = CryptFilter::from_dictionary(entry, &name, position)?;
-        filters.insert(name, filter);
-    }
-    Ok(filters)
-}
-
-/// `/StmF` `/StrF` `/EFF` の指定を取り出す。
-fn take_selector(
-    dictionary: &mut PdfDictionary,
-    key: EncryptKey,
-    position: ByteOffset,
-) -> Result<Option<CryptFilterSelector>, EncryptError> {
-    let Some(value) = dictionary.remove(key.as_bytes()) else {
-        return Ok(None);
-    };
-    let actual = value.kind();
-    let PdfObject::Name(name) = value else {
-        return Err(EncryptError::invalid_key_type_at(
-            position,
-            EncryptKeyPath::Root(key),
-            actual,
-        ));
-    };
-    if name.as_bytes() == IDENTITY {
-        return Ok(Some(CryptFilterSelector::Identity));
-    }
-    Ok(Some(CryptFilterSelector::Named(name)))
-}
-
 impl CryptFilter {
     /// `/CF` のエントリ辞書を型に変換する。
     ///
@@ -292,7 +322,7 @@ impl CryptFilter {
         name: &PdfName,
         position: ByteOffset,
     ) -> Result<Self, EncryptError> {
-        let method = take_method(&mut dictionary, name, position)?;
+        let method = CryptFilterMethod::take(&mut dictionary, name, position)?;
 
         // /AuthEvent /Length は型不一致でもエラーにせず既定値へフォールバックする（#607 で維持）。
         let auth_event = dictionary
@@ -354,34 +384,6 @@ impl CryptFilter {
     pub fn length(&self) -> Option<KeyLength> {
         self.length
     }
-}
-
-/// `/CFM` を取り出す。省略時は `/None`（ISO 32000-1 表 25 の既定値）。
-///
-/// `name` は所属する crypt filter エントリの名前。`/CF` に複数エントリがあるとき、
-/// どのエントリの `/CFM` が壊れているかをエラーで指すために受け取る。
-fn take_method(
-    dictionary: &mut PdfDictionary,
-    name: &PdfName,
-    position: ByteOffset,
-) -> Result<CryptFilterMethod, EncryptError> {
-    let Some(value) = dictionary.remove(CryptFilterKey::CFM.as_bytes()) else {
-        return Ok(CryptFilterMethod::None);
-    };
-    let actual = value.kind();
-    // 引数の name（エントリ名）と区別するため、/CFM の値は method_name とする。
-    let PdfObject::Name(method_name) = value else {
-        return Err(EncryptError::invalid_key_type_at(
-            position,
-            EncryptKeyPath::CryptFilter {
-                name: name.clone(),
-                key: CryptFilterKey::CFM,
-            },
-            actual,
-        ));
-    };
-    CryptFilterMethod::from_bytes(method_name.as_bytes())
-        .ok_or_else(|| EncryptError::unknown_crypt_filter_method_at(position, method_name))
 }
 
 #[cfg(test)]
