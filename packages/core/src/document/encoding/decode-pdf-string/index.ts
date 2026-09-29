@@ -4,24 +4,56 @@ import type { Option } from "../../../utils/option";
 import { none, some } from "../../../utils/option";
 import { decodePdfDocEncoding } from "../pdf-doc-encoding";
 
-/** UTF-16BE BOM (Byte Order Mark) の 1 バイト目。 */
+const UTF8_BOM_BYTE_0 = 0xef;
+const UTF8_BOM_BYTE_1 = 0xbb;
+const UTF8_BOM_BYTE_2 = 0xbf;
 const UTF16_BE_BOM_BYTE_0 = 0xfe;
-/** UTF-16BE BOM の 2 バイト目。 */
 const UTF16_BE_BOM_BYTE_1 = 0xff;
-/** UTF-16BE BOM のバイト数。 */
-const BOM_LENGTH = 2;
+
+const Boms = {
+  Utf8: [UTF8_BOM_BYTE_0, UTF8_BOM_BYTE_1, UTF8_BOM_BYTE_2],
+  Utf16Be: [UTF16_BE_BOM_BYTE_0, UTF16_BE_BOM_BYTE_1],
+  hasPrefix(bytes: Uint8Array, bom: readonly number[]): boolean {
+    if (bytes.length < bom.length) {
+      return false;
+    }
+    return bom.every((value, index) => bytes[index] === value);
+  },
+} as const;
+
+type DecodeContext = {
+  readonly fieldName: string;
+  readonly warnings: PdfWarning[];
+};
 
 /**
- * 入力バイト列が UTF-16BE BOM (0xFE 0xFF) で始まるかを判定する。
+ * BOM 付き Unicode テキスト文字列を厳密復号する。
  *
- * @param bytes - 入力バイト列
- * @returns BOM で始まる場合 true
+ * @param bytes - BOM を含む PDF テキスト文字列
+ * @param encoding - BOM で確定した文字エンコーディング
+ * @param context - 警告対象のフィールドと警告蓄積先
+ * @returns 復号結果。不正な符号化や復号器の失敗時は none
  */
-const isUtf16BeBom = (bytes: Uint8Array): boolean => {
-  if (bytes.length < BOM_LENGTH) {
-    return false;
+const decodeUnicodeString = (
+  bytes: Uint8Array,
+  encoding: "utf-8" | "utf-16be",
+  { fieldName, warnings }: DecodeContext,
+): Option<string> => {
+  const utf8 = encoding === "utf-8";
+  const bomLength = utf8 ? Boms.Utf8.length : Boms.Utf16Be.length;
+  if (bytes.length === bomLength) {
+    return some("");
   }
-  return bytes[0] === UTF16_BE_BOM_BYTE_0 && bytes[1] === UTF16_BE_BOM_BYTE_1;
+  try {
+    const decoder = new TextDecoder(encoding, { fatal: true, ignoreBOM: utf8 });
+    return some(decoder.decode(bytes.subarray(bomLength)));
+  } catch {
+    warnings.push({
+      code: "STRING_DECODE_FAILED",
+      message: `${encoding.toUpperCase()} decode failed for /${fieldName}`,
+    });
+    return none;
+  }
 };
 
 /**
@@ -29,16 +61,14 @@ const isUtf16BeBom = (bytes: Uint8Array): boolean => {
  *
  * 分岐:
  *  - 空バイト列 → `some("")`（警告なし、正常扱い）
- *  - BOM 単独 (0xFE 0xFF のみ) → `some("")`（警告なし、正常扱い）
- *  - 先頭 0xFE 0xFF + payload → UTF-16BE 厳密復号 (`fatal:true`)。
- *    `TextDecoder` のコンストラクタ呼び出しも try 内に置くことで、未対応環境
- *    （`utf-16be` ラベル拒否等）でも例外を `STRING_DECODE_FAILED` 警告に正規化する。
- *  - BOM なし → {@link decodePdfDocEncoding} に委譲（PDFDocEncoding 経路は常に string）
+ *  - 先頭 EF BB BF → UTF-8、先頭 FE FF → UTF-16BE で厳密復号
+ *  - いずれかの BOM 単独 → `some("")`（警告なし）
+ *  - BOM なし → {@link decodePdfDocEncoding} に委譲
  *
  * @param pdfString - 入力 PdfString
  * @param fieldName - 警告メッセージに含めるフィールド名（例: `"Title"`）
  * @param warnings - 警告蓄積先（mutable）
- * @returns 復号成功時は Option.some(string)。UTF-16BE が fatal に失敗した場合のみ Option.none
+ * @returns 復号結果。BOM 付き Unicode 文字列の復号失敗時は none
  */
 export const decodePdfString = (
   pdfString: PdfString,
@@ -49,20 +79,11 @@ export const decodePdfString = (
   if (bytes.length === 0) {
     return some("");
   }
-  if (!isUtf16BeBom(bytes)) {
-    return some(decodePdfDocEncoding(bytes, fieldName, warnings));
+  if (Boms.hasPrefix(bytes, Boms.Utf8)) {
+    return decodeUnicodeString(bytes, "utf-8", { fieldName, warnings });
   }
-  if (bytes.length === BOM_LENGTH) {
-    return some("");
+  if (Boms.hasPrefix(bytes, Boms.Utf16Be)) {
+    return decodeUnicodeString(bytes, "utf-16be", { fieldName, warnings });
   }
-  try {
-    const decoder = new TextDecoder("utf-16be", { fatal: true });
-    return some(decoder.decode(bytes.subarray(BOM_LENGTH)));
-  } catch {
-    warnings.push({
-      code: "STRING_DECODE_FAILED",
-      message: `UTF-16BE decode failed for /${fieldName}`,
-    });
-    return none;
-  }
+  return some(decodePdfDocEncoding(bytes, fieldName, warnings));
 };
