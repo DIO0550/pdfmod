@@ -22,6 +22,73 @@ test("空バイト列は空文字列を返し警告を出さない", () => {
   expect(warnings).toHaveLength(0);
 });
 
+test("UTF-8 BOM 単独は空文字列を返し警告を出さない", () => {
+  const warnings: PdfWarning[] = [];
+  const bytes = new Uint8Array([0xef, 0xbb, 0xbf]);
+  const result = decodePdfString(pdfString(bytes), "Title", warnings);
+  expect(result).toEqual(some(""));
+  expect(warnings).toHaveLength(0);
+});
+
+test("UTF-8 BOM 付きの日本語と補助平面文字を復号する", () => {
+  const warnings: PdfWarning[] = [];
+  const bytes = new Uint8Array([
+    0xef, 0xbb, 0xbf, 0xe6, 0x97, 0xa5, 0xf0, 0x9f, 0x9a, 0x80,
+  ]);
+  const result = decodePdfString(pdfString(bytes), "Title", warnings);
+  expect(result).toEqual(some("日🚀"));
+  expect(warnings).toHaveLength(0);
+});
+
+test("UTF-8 BOM の直後の U+FEFF は本文に残る", () => {
+  const warnings: PdfWarning[] = [];
+  const bytes = new Uint8Array([0xef, 0xbb, 0xbf, 0xef, 0xbb, 0xbf, 0x41]);
+  const result = decodePdfString(pdfString(bytes), "Title", warnings);
+  expect(result).toEqual(some("\uFEFFA"));
+  expect(warnings).toHaveLength(0);
+});
+
+test("UTF-8 BOM の後が不正な符号化なら値を採用しない", () => {
+  const warnings: PdfWarning[] = [];
+  const bytes = new Uint8Array([0xef, 0xbb, 0xbf, 0xc3, 0x28]);
+  const result = decodePdfString(pdfString(bytes), "Title", warnings);
+  expect(result).toEqual(none);
+  expect(warnings).toEqual([
+    { code: "STRING_DECODE_FAILED", message: "UTF-8 decode failed for /Title" },
+  ]);
+});
+
+test("UTF-8 BOM の後でマルチバイト列が途切れた場合は警告する", () => {
+  const warnings: PdfWarning[] = [];
+  const bytes = new Uint8Array([0xef, 0xbb, 0xbf, 0xe3, 0x81]);
+  const result = decodePdfString(pdfString(bytes), "Title", warnings);
+  expect(result).toEqual(none);
+  expect(warnings).toEqual([
+    { code: "STRING_DECODE_FAILED", message: "UTF-8 decode failed for /Title" },
+  ]);
+});
+
+test("不完全な UTF-8 BOM 接頭辞は PDFDocEncoding で復号する", () => {
+  const warnings: PdfWarning[] = [];
+  const bytes = new Uint8Array([0xef, 0xbb]);
+  const result = decodePdfString(pdfString(bytes), "Title", warnings);
+  expect(result).toEqual(some("ï»"));
+  expect(warnings).toHaveLength(0);
+});
+
+test("長い UTF-8 BOM 付き文字列を最後まで復号する", () => {
+  const warnings: PdfWarning[] = [];
+  const encodedDay = new Uint8Array([0xe6, 0x97, 0xa5]);
+  const bytes = new Uint8Array(3 + encodedDay.length * 4096);
+  bytes.set([0xef, 0xbb, 0xbf]);
+  for (let index = 0; index < 4096; index++) {
+    bytes.set(encodedDay, 3 + index * encodedDay.length);
+  }
+  const result = decodePdfString(pdfString(bytes), "Title", warnings);
+  expect(result).toEqual(some("日".repeat(4096)));
+  expect(warnings).toHaveLength(0);
+});
+
 test("BOM 単独 (0xFE 0xFF のみ) は空文字列を返し警告を出さない", () => {
   const warnings: PdfWarning[] = [];
   const result = decodePdfString(
