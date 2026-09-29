@@ -1,3 +1,4 @@
+import { Uint8ArrayEx } from "../../../ext/uint8-array/index";
 import type { PdfWarning } from "../../../pdf/errors/warning/index";
 import type { PdfString } from "../../../pdf/types/pdf-types/index";
 import type { Option } from "../../../utils/option";
@@ -13,12 +14,6 @@ const UTF16_BE_BOM_BYTE_1 = 0xff;
 const Boms = {
   Utf8: [UTF8_BOM_BYTE_0, UTF8_BOM_BYTE_1, UTF8_BOM_BYTE_2],
   Utf16Be: [UTF16_BE_BOM_BYTE_0, UTF16_BE_BOM_BYTE_1],
-  hasPrefix(bytes: Uint8Array, bom: readonly number[]): boolean {
-    if (bytes.length < bom.length) {
-      return false;
-    }
-    return bom.every((value, index) => bytes[index] === value);
-  },
 } as const;
 
 type DecodeContext = {
@@ -79,10 +74,10 @@ export const decodePdfString = (
   if (bytes.length === 0) {
     return some("");
   }
-  if (Boms.hasPrefix(bytes, Boms.Utf8)) {
+  if (Uint8ArrayEx.matchesAt(bytes, 0, Boms.Utf8)) {
     return decodeUnicodeString(bytes, "utf-8", { fieldName, warnings });
   }
-  if (Boms.hasPrefix(bytes, Boms.Utf16Be)) {
+  if (Uint8ArrayEx.matchesAt(bytes, 0, Boms.Utf16Be)) {
     return decodeUnicodeString(bytes, "utf-16be", { fieldName, warnings });
   }
   return some(decodePdfDocEncoding(bytes, fieldName, warnings));
