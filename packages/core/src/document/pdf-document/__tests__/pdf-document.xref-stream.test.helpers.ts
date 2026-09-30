@@ -279,16 +279,15 @@ export const buildPdfWithXRefStreamAndObjStm = (): Uint8Array => {
   const objStmData = encoder.encode(headerStr + bodyStr);
   const first = byteLen(headerStr);
 
-  let cursor = byteLen(HEADER);
-  const objStmObjOffset = cursor;
-  const objStmObj =
-    "2 0 obj\n" +
-    `<< /Type /ObjStm /N ${objStmEntries.length} /First ${first} /Length ${objStmData.length} >>\n` +
-    "stream\n";
-  cursor +=
-    byteLen(objStmObj) + objStmData.length + byteLen("\nendstream\nendobj\n");
+  const objStmObjOffset = byteLen(HEADER);
+  const objStmObj = buildObjStmObject({
+    objectNumber: 2,
+    n: objStmEntries.length,
+    first,
+    data: objStmData,
+  });
 
-  const xrefOffset = cursor;
+  const xrefOffset = objStmObjOffset + objStmObj.length;
   const rawEntries = new Uint8Array([
     ...FREE_ENTRY_BYTES,
     ...usedEntryBytes(xrefOffset),
@@ -306,13 +305,92 @@ export const buildPdfWithXRefStreamAndObjStm = (): Uint8Array => {
 
   return concatBytes([
     encoder.encode(HEADER),
-    encoder.encode(objStmObj),
-    objStmData,
-    encoder.encode("\nendstream\nendobj\n"),
+    objStmObj,
     encoder.encode(xrefObj),
     rawEntries,
     encoder.encode("\nendstream\nendobj\n"),
     encoder.encode(footer),
+  ]);
+};
+
+/**
+ * ObjStm の辞書と本文をインダイレクトオブジェクトとして組み立てる。
+ *
+ * @param options - オブジェクト番号、本文と辞書の抽出情報、任意の親
+ * @returns ObjStm オブジェクト全体のバイト列
+ */
+const buildObjStmObject = (options: {
+  readonly objectNumber: number;
+  readonly n: number;
+  readonly first: number;
+  readonly data: Uint8Array;
+  readonly extendsNumber?: number;
+}): Uint8Array => {
+  const extendsEntry =
+    options.extendsNumber === undefined
+      ? ""
+      : `/Extends ${options.extendsNumber} 0 R `;
+  const prefix = `${options.objectNumber} 0 obj\n<< /Type /ObjStm /N ${options.n} /First ${options.first} ${extendsEntry}/Length ${options.data.length} >>\nstream\n`;
+  return concatBytes([
+    encoder.encode(prefix),
+    options.data,
+    encoder.encode("\nendstream\nendobj\n"),
+  ]);
+};
+
+/**
+ * Catalog を親、Pages/Page を子に格納した Extends コレクションの PDF を生成する。
+ * 各 xref type=2 は実際の格納先と正しい index を指す。
+ *
+ * @returns /Extends 付き ObjStm を含む適合 PDF のバイト列
+ */
+export const buildPdfWithXRefStreamAndExtendsObjStm = (): Uint8Array => {
+  const parentObjectNumber = 6;
+  const parentHeader = "3 0 ";
+  const parentData = encoder.encode(
+    parentHeader + CATALOG_BODY.replace("2 0 R", "4 0 R"),
+  );
+  const parent = buildObjStmObject({
+    objectNumber: parentObjectNumber,
+    n: 1,
+    first: byteLen(parentHeader),
+    data: parentData,
+  });
+  const pagesBody = PAGES_BODY.replace("3 0 R", "5 0 R");
+  const pageBody = PAGE_BODY.replace("2 0 R", "4 0 R").replace(
+    "612 792",
+    "300 400",
+  );
+  const childHeader = `4 0 5 ${byteLen(pagesBody) + 1} `;
+  const childData = encoder.encode(`${childHeader}${pagesBody} ${pageBody}`);
+  const child = buildObjStmObject({
+    objectNumber: 2,
+    n: 2,
+    first: byteLen(childHeader),
+    data: childData,
+    extendsNumber: parentObjectNumber,
+  });
+  const parentOffset = byteLen(HEADER);
+  const childOffset = parentOffset + parent.length;
+  const xrefOffset = childOffset + child.length;
+  const entries = [
+    FREE_ENTRY_BYTES,
+    usedEntryBytes(xrefOffset),
+    usedEntryBytes(childOffset),
+    compressedEntryBytes(parentObjectNumber, 0),
+    compressedEntryBytes(2, 0),
+    compressedEntryBytes(2, 1),
+    usedEntryBytes(parentOffset),
+  ];
+  const rawEntries = new Uint8Array(entries.flat());
+  const xref = `1 0 obj\n<< /Type /XRef /W [1 2 1] /Size 7 /Root 3 0 R /Length ${rawEntries.length} >>\nstream\n`;
+  return concatBytes([
+    encoder.encode(HEADER),
+    parent,
+    child,
+    encoder.encode(xref),
+    rawEntries,
+    encoder.encode(`\nendstream\nendobj\nstartxref\n${xrefOffset}\n%%EOF\n`),
   ]);
 };
 

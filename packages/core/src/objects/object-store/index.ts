@@ -13,17 +13,34 @@ import type {
 } from "../../pdf/errors/index";
 import { GenerationNumber } from "../../pdf/types/generation-number/index";
 import type { ObjectNumber } from "../../pdf/types/object-number/index";
-import type { IndirectRef, PdfObject } from "../../pdf/types/pdf-types/index";
+import type {
+  IndirectRef,
+  PdfObject,
+  PdfStream,
+  PdfValue,
+} from "../../pdf/types/pdf-types/index";
 import type { ResolveRef } from "../../pdf/types/resolve-ref/index";
 import { LRUCache } from "../../utils/lru-cache/index";
+import { none, type Option } from "../../utils/option/index";
 import type { Result } from "../../utils/result/index";
 import { err, ok } from "../../utils/result/index";
+import {
+  ObjectStreamBody,
+  ObjectStreamDict,
+} from "../object-stream-extractor/index";
 import { readInlineEntry } from "./entry-readers/inline";
 import { readObjectStreamEntry } from "./entry-readers/object-stream";
 import type { ObjectStoreOptions, ObjectStoreSource } from "./types";
 
 const DEFAULT_CACHE_CAPACITY = 1024;
 const DEFAULT_STREAM_CACHE_CAPACITY = 64;
+const MaxObjectStreamChain = 64;
+
+/** 解決済み ObjStm と、そのオブジェクト番号・世代番号。 */
+interface ResolvedObjectStream {
+  readonly ref: IndirectRef;
+  readonly stream: PdfStream;
+}
 
 /**
  * 解決中（in-flight）のオブジェクト 1 件分の状態。
@@ -272,6 +289,106 @@ export class ObjectStore {
   }
 
   /**
+   * Extends コレクションを子から親へ辿り、最初の対象値を保持して全リンクを検証する。
+   *
+   * @param start - xref が指す解決済み ObjStm と参照
+   * @param target - 解決対象の間接参照
+   * @param ancestors - 呼び出しチェーンの祖先キー
+   * @returns 最も子に近い対象値、または欠損・循環・上限・不正親のエラー
+   */
+  private async resolveObjectStreamCollection(
+    start: ResolvedObjectStream,
+    target: IndirectRef,
+    ancestors: Set<string>,
+  ): Promise<Result<PdfValue, PdfError>> {
+    const visited = new Set<string>();
+    const limitError: PdfError = {
+      code: "OBJECT_STREAM_INVALID",
+      message: `ObjStm /Extends exceeds ${MaxObjectStreamChain} streams`,
+    };
+    let current = start;
+    let found: Option<PdfValue> = none;
+
+    for (let depth = 0; depth < MaxObjectStreamChain; depth++) {
+      const key = `${current.ref.objectNumber}-${current.ref.generationNumber}`;
+      if (visited.has(key)) {
+        return err({
+          code: "OBJECT_STREAM_INVALID",
+          message: `ObjStm /Extends cycle at ${key}`,
+        });
+      }
+      visited.add(key);
+      const dictResult = ObjectStreamDict.parse(
+        current.stream.dictionary.entries,
+      );
+      if (!dictResult.ok) {
+        return dictResult;
+      }
+
+      if (!found.some) {
+        const candidate = await ObjectStreamBody.find({
+          stream: current.stream,
+          streamObjNum: current.ref.objectNumber,
+          targetObjNum: target.objectNumber,
+          cache: this.streamCache,
+        });
+        if (!candidate.ok) {
+          return candidate;
+        }
+        found = candidate.value;
+      }
+
+      const extendsRef = dictResult.value.extendsRef;
+      if (!extendsRef.some) {
+        if (found.some) {
+          return ok(found.value);
+        }
+        return err({
+          code: "OBJECT_STREAM_INVALID",
+          message: `ObjStm /Extends collection does not contain object ${target.objectNumber}`,
+        });
+      }
+      if (depth + 1 === MaxObjectStreamChain) {
+        return err(limitError);
+      }
+
+      const parentRef = extendsRef.value;
+      const parentEntry = this.source.xref.entries.get(parentRef.objectNumber);
+      const invalidParentEntry =
+        parentEntry === undefined || parentEntry.type !== 1;
+      if (invalidParentEntry) {
+        return err({
+          code: "OBJECT_STREAM_INVALID",
+          message: `ObjStm /Extends target ${parentRef.objectNumber} is missing or not an uncompressed stream reference`,
+        });
+      }
+      if (parentEntry.generationNumber !== parentRef.generationNumber) {
+        return err({
+          code: "OBJECT_STREAM_INVALID",
+          message: `ObjStm /Extends target ${parentRef.objectNumber}: generation mismatch (expected ${parentEntry.generationNumber}, got ${parentRef.generationNumber})`,
+        });
+      }
+
+      const parentResult = await this.resolveImpl(parentRef, ancestors);
+      if (!parentResult.ok) {
+        return err({
+          ...parentResult.error,
+          code: "OBJECT_STREAM_INVALID",
+          message: `ObjStm /Extends target ${parentRef.objectNumber} could not be resolved: ${parentResult.error.code}: ${parentResult.error.message}`,
+        });
+      }
+      if (parentResult.value.type !== "stream") {
+        return err({
+          code: "OBJECT_STREAM_INVALID",
+          message: `ObjStm /Extends target ${parentRef.objectNumber} is not a stream`,
+        });
+      }
+      current = { ref: parentRef, stream: parentResult.value };
+    }
+    return err(limitError);
+  }
+
+  /**
    * xref エントリの type 別分岐を行う。
    *
    * ISO 32000-1 §7.3.10 により、未定義オブジェクト・フリーエントリ・世代番号不一致の
@@ -366,12 +483,22 @@ export class ObjectStore {
           });
         }
 
-        const extractResult = await readObjectStreamEntry({
-          stream: streamObj,
-          ref,
-          entry,
-          cache: this.streamCache,
-        });
+        const dictResult = ObjectStreamDict.parse(streamObj.dictionary.entries);
+        if (!dictResult.ok) {
+          return dictResult;
+        }
+        const extractResult = dictResult.value.extendsRef.some
+          ? await this.resolveObjectStreamCollection(
+              { ref: streamRef, stream: streamObj },
+              ref,
+              ancestors,
+            )
+          : await readObjectStreamEntry({
+              stream: streamObj,
+              ref,
+              entry,
+              cache: this.streamCache,
+            });
 
         if (extractResult.ok) {
           this.cache.set(cacheKey, extractResult.value);

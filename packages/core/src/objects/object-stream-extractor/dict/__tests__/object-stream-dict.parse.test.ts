@@ -1,11 +1,17 @@
 import { assert, expect, test } from "vitest";
+import { none, some } from "../../../../utils/option/index";
 import { makeDict } from "../../body/__tests__/object-stream-body.test.helpers";
 import { ObjectStreamDict } from "../index";
 
 test("parseは正しい辞書から/First,/N,needsDecompressを取得できる", () => {
   const result = ObjectStreamDict.parse(makeDict());
   assert(result.ok);
-  expect(result.value).toEqual({ first: 24, n: 3, needsDecompress: true });
+  expect(result.value).toEqual({
+    first: 24,
+    n: 3,
+    needsDecompress: true,
+    extendsRef: none,
+  });
 });
 
 test("parseは/Filter不在の辞書で未圧縮として成功する", () => {
@@ -13,7 +19,12 @@ test("parseは/Filter不在の辞書で未圧縮として成功する", () => {
   dict.delete("Filter");
   const result = ObjectStreamDict.parse(dict);
   assert(result.ok);
-  expect(result.value).toEqual({ first: 24, n: 3, needsDecompress: false });
+  expect(result.value).toEqual({
+    first: 24,
+    n: 3,
+    needsDecompress: false,
+    extendsRef: none,
+  });
 });
 
 test("parseは/Firstが存在しない辞書でエラーを返す", () => {
@@ -111,15 +122,49 @@ test("parseは/DecodeParmsが存在する場合にエラーを返す", () => {
   expect(result.error.message).toContain("DecodeParms");
 });
 
-test("parseは/Extendsが存在する場合にエラーを返す", () => {
+test.each([
+  0, 7,
+])("/Extendsは有効な世代番号%sの間接参照を保持する", (generationNumber) => {
   const result = ObjectStreamDict.parse(
     makeDict({
-      Extends: { type: "indirect-ref", objectNumber: 5, generationNumber: 0 },
+      Extends: { type: "indirect-ref", objectNumber: 5, generationNumber },
     }),
+  );
+  assert(result.ok);
+  expect(result.value.extendsRef).toEqual(
+    some({ objectNumber: 5, generationNumber }),
+  );
+});
+
+test("/Extendsは間接参照以外の値を拒否する", () => {
+  const result = ObjectStreamDict.parse(
+    makeDict({ Extends: { type: "integer", value: 5 } }),
   );
   assert(!result.ok);
   expect(result.error.code).toBe("OBJECT_STREAM_INVALID");
-  expect(result.error.message).toContain("Extends");
+  expect(result.error.message).toContain(
+    "/Extends must be an indirect reference",
+  );
+});
+
+test.each([
+  { objectNumber: 0, generationNumber: 0 },
+  { objectNumber: -1, generationNumber: 0 },
+  { objectNumber: 1.5, generationNumber: 0 },
+  { objectNumber: Number.MAX_SAFE_INTEGER + 1, generationNumber: 0 },
+  { objectNumber: 5, generationNumber: -1 },
+  { objectNumber: 5, generationNumber: 0.5 },
+  { objectNumber: 5, generationNumber: 65_536 },
+  { objectNumber: 5, generationNumber: Number.MAX_SAFE_INTEGER + 1 },
+])("/Extendsは不正な番号の参照 $objectNumber $generationNumber R を拒否する", (ref) => {
+  const result = ObjectStreamDict.parse(
+    makeDict({ Extends: { type: "indirect-ref", ...ref } }),
+  );
+  assert(!result.ok);
+  expect(result.error.code).toBe("OBJECT_STREAM_INVALID");
+  expect(result.error.message).toContain(
+    "/Extends contains an invalid indirect reference",
+  );
 });
 
 test("parseは/Firstが整数でない場合にエラーを返す", () => {
