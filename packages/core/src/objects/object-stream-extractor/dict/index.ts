@@ -1,8 +1,10 @@
 import { NumberEx } from "../../../ext/number/index";
 import type { PdfParseError } from "../../../pdf/errors/index";
 import { PdfFilter } from "../../../pdf/filter/index";
+import { IndirectRef } from "../../../pdf/types/indirect-ref/index";
 import { PdfType } from "../../../pdf/types/pdf-type/index";
 import type { PdfValue } from "../../../pdf/types/pdf-types/index";
+import { none, type Option } from "../../../utils/option/index";
 import type { Result } from "../../../utils/result/index";
 import { err, ok } from "../../../utils/result/index";
 
@@ -11,6 +13,7 @@ export interface ObjectStreamDictInfo {
   readonly first: number;
   readonly n: number;
   readonly needsDecompress: boolean;
+  readonly extendsRef: Option<IndirectRef>;
 }
 
 /**
@@ -18,8 +21,8 @@ export interface ObjectStreamDictInfo {
  */
 export const ObjectStreamDict = {
   /**
-   * ObjStm ストリーム辞書をパースし、/First, /N, needsDecompress を取得する。
-   * /Type, /N, /First, /Filter, /DecodeParms を検証する。
+   * ObjStm ストリーム辞書をパースし、抽出情報と検証済みの /Extends 参照を取得する。
+   * /Type, /N, /First, /Filter, /DecodeParms, /Extends を検証する。
    *
    * 内部で呼び出す `PdfType.validate` / `PdfFilter.parse` 由来のエラーは
    * `OBJECT_STREAM_INVALID` に再ラップする（元の `message` / `offset` は保持）。
@@ -93,10 +96,23 @@ export const ObjectStreamDict = {
     }
 
     const extendsEntry = entries.get("Extends");
-    if (extendsEntry !== undefined) {
+    const invalidExtendsType =
+      extendsEntry !== undefined && extendsEntry.type !== "indirect-ref";
+    if (invalidExtendsType) {
       return err({
         code: "OBJECT_STREAM_INVALID",
-        message: "ObjStm with /Extends is not supported in current scope",
+        message: "ObjStm /Extends must be an indirect reference",
+      });
+    }
+    const extendsRef =
+      extendsEntry?.type === "indirect-ref"
+        ? IndirectRef.from(extendsEntry)
+        : none;
+    const invalidExtendsRef = extendsEntry !== undefined && !extendsRef.some;
+    if (invalidExtendsRef) {
+      return err({
+        code: "OBJECT_STREAM_INVALID",
+        message: "ObjStm /Extends contains an invalid indirect reference",
       });
     }
 
@@ -117,6 +133,7 @@ export const ObjectStreamDict = {
       first: firstEntry.value,
       n: nEntry.value,
       needsDecompress: filterResult.value !== undefined,
+      extendsRef,
     });
   },
 } as const;
