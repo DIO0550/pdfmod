@@ -27,6 +27,7 @@ import { err, ok } from "../../utils/result/index";
 import {
   ObjectStreamBody,
   ObjectStreamDict,
+  type ObjectStreamDictInfo,
 } from "../object-stream-extractor/index";
 import { readInlineEntry } from "./entry-readers/inline";
 import { readObjectStreamEntry } from "./entry-readers/object-stream";
@@ -34,12 +35,13 @@ import type { ObjectStoreOptions, ObjectStoreSource } from "./types";
 
 const DEFAULT_CACHE_CAPACITY = 1024;
 const DEFAULT_STREAM_CACHE_CAPACITY = 64;
-const MaxObjectStreamChain = 64;
+const MAX_OBJECT_STREAM_CHAIN = 64;
 
-/** 解決済み ObjStm と、そのオブジェクト番号・世代番号。 */
+/** 解決済み ObjStm と、その参照およびパース済み辞書情報。 */
 interface ResolvedObjectStream {
   readonly ref: IndirectRef;
   readonly stream: PdfStream;
+  readonly dictionary: ObjectStreamDictInfo;
 }
 
 /**
@@ -291,7 +293,7 @@ export class ObjectStore {
   /**
    * Extends コレクションを子から親へ辿り、最初の対象値を保持して全リンクを検証する。
    *
-   * @param start - xref が指す解決済み ObjStm と参照
+   * @param start - xref が指す解決済み ObjStm、参照とパース済み辞書情報
    * @param target - 解決対象の間接参照
    * @param ancestors - 呼び出しチェーンの祖先キー
    * @returns 最も子に近い対象値、または欠損・循環・上限・不正親のエラー
@@ -304,12 +306,12 @@ export class ObjectStore {
     const visited = new Set<string>();
     const limitError: PdfError = {
       code: "OBJECT_STREAM_INVALID",
-      message: `ObjStm /Extends exceeds ${MaxObjectStreamChain} streams`,
+      message: `ObjStm /Extends exceeds ${MAX_OBJECT_STREAM_CHAIN} streams`,
     };
     let current = start;
     let found: Option<PdfValue> = none;
 
-    for (let depth = 0; depth < MaxObjectStreamChain; depth++) {
+    for (let depth = 0; depth < MAX_OBJECT_STREAM_CHAIN; depth++) {
       const key = `${current.ref.objectNumber}-${current.ref.generationNumber}`;
       if (visited.has(key)) {
         return err({
@@ -318,16 +320,10 @@ export class ObjectStore {
         });
       }
       visited.add(key);
-      const dictResult = ObjectStreamDict.parse(
-        current.stream.dictionary.entries,
-      );
-      if (!dictResult.ok) {
-        return dictResult;
-      }
-
       if (!found.some) {
         const candidate = await ObjectStreamBody.find({
           stream: current.stream,
+          dictionary: current.dictionary,
           streamObjNum: current.ref.objectNumber,
           targetObjNum: target.objectNumber,
           cache: this.streamCache,
@@ -338,7 +334,7 @@ export class ObjectStore {
         found = candidate.value;
       }
 
-      const extendsRef = dictResult.value.extendsRef;
+      const extendsRef = current.dictionary.extendsRef;
       if (!extendsRef.some) {
         if (found.some) {
           return ok(found.value);
@@ -348,7 +344,7 @@ export class ObjectStore {
           message: `ObjStm /Extends collection does not contain object ${target.objectNumber}`,
         });
       }
-      if (depth + 1 === MaxObjectStreamChain) {
+      if (depth + 1 === MAX_OBJECT_STREAM_CHAIN) {
         return err(limitError);
       }
 
@@ -383,7 +379,17 @@ export class ObjectStore {
           message: `ObjStm /Extends target ${parentRef.objectNumber} is not a stream`,
         });
       }
-      current = { ref: parentRef, stream: parentResult.value };
+      const parentDictResult = ObjectStreamDict.parse(
+        parentResult.value.dictionary.entries,
+      );
+      if (!parentDictResult.ok) {
+        return parentDictResult;
+      }
+      current = {
+        ref: parentRef,
+        stream: parentResult.value,
+        dictionary: parentDictResult.value,
+      };
     }
     return err(limitError);
   }
@@ -489,12 +495,17 @@ export class ObjectStore {
         }
         const extractResult = dictResult.value.extendsRef.some
           ? await this.resolveObjectStreamCollection(
-              { ref: streamRef, stream: streamObj },
+              {
+                ref: streamRef,
+                stream: streamObj,
+                dictionary: dictResult.value,
+              },
               ref,
               ancestors,
             )
           : await readObjectStreamEntry({
               stream: streamObj,
+              dictionary: dictResult.value,
               ref,
               entry,
               cache: this.streamCache,

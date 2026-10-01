@@ -26,9 +26,9 @@ interface PreparedObjectStream {
 
 const PreparedObjectStream = {
   /**
-   * 辞書を検証し、必要に応じて本文を展開する。
+   * パース済みの辞書情報を再利用し、必要に応じて本文を展開する。
    *
-   * @param options - 対象ストリームと展開キャッシュ
+   * @param options - 対象ストリーム、任意のパース済み辞書情報と展開キャッシュ
    * @param index - インデックス抽出時の対象位置。番号検索時は None
    * @returns 展開済み ObjStm、または辞書・インデックス・展開・範囲のエラー
    */
@@ -36,9 +36,10 @@ const PreparedObjectStream = {
     options: ObjectStreamFindOptions,
     index: Option<number> = none,
   ): Promise<Result<PreparedObjectStream, PdfError>> {
-    const dictResult = ObjectStreamDict.parse(
-      options.stream.dictionary.entries,
-    );
+    const dictResult =
+      options.dictionary === undefined
+        ? ObjectStreamDict.parse(options.stream.dictionary.entries)
+        : ok(options.dictionary);
     if (!dictResult.ok) {
       return dictResult;
     }
@@ -162,7 +163,7 @@ export const ObjectStreamBody = {
   /**
    * xref インデックスと対象番号の一致を検証してオブジェクトを抽出する。
    *
-   * @param options - ストリーム、対象番号、インデックス、展開キャッシュ
+   * @param options - ストリーム、任意のパース済み辞書情報、対象番号、インデックス、展開キャッシュ
    * @returns 対象の PDF 値、または辞書・展開・ヘッダ・本文のエラー
    */
   async extract(
@@ -207,7 +208,7 @@ export const ObjectStreamBody = {
   /**
    * 全ヘッダを読み、オブジェクト番号で対象を検索する。
    *
-   * @param options - ストリーム、対象番号、展開キャッシュ
+   * @param options - ストリーム、任意のパース済み辞書情報、対象番号、展開キャッシュ
    * @returns 対象の PDF 値、対象不在時は None、破損時はエラー
    */
   async find(

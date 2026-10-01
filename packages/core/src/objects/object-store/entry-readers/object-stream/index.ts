@@ -8,7 +8,10 @@ import type {
 } from "../../../../pdf/types/pdf-types/index";
 import type { LRUCache } from "../../../../utils/lru-cache/index";
 import type { Result } from "../../../../utils/result/index";
-import { ObjectStreamBody } from "../../../object-stream-extractor/index";
+import {
+  ObjectStreamBody,
+  type ObjectStreamDictInfo,
+} from "../../../object-stream-extractor/index";
 
 /**
  * readObjectStreamEntry の実行オプション。
@@ -16,6 +19,8 @@ import { ObjectStreamBody } from "../../../object-stream-extractor/index";
 export interface ReadObjectStreamEntryOptions {
   /** 解決済みのオブジェクトストリーム。 */
   readonly stream: PdfStream;
+  /** 解決済みストリームからパース済みの辞書情報。 */
+  readonly dictionary?: ObjectStreamDictInfo;
   /** 解決対象の間接参照（targetObjNum を提供）。 */
   readonly ref: IndirectRef;
   /** type=2 の XRefEntry（streamObject, indexInStream）。 */
@@ -33,11 +38,12 @@ export interface ReadObjectStreamEntryOptions {
 export async function readObjectStreamEntry(
   options: ReadObjectStreamEntryOptions,
 ): Promise<Result<PdfValue, PdfError>> {
+  const { ref, entry, ...streamOptions } = options;
   return ObjectStreamBody.extract({
-    stream: options.stream,
-    targetObjNum: options.ref.objectNumber,
-    streamObjNum: options.entry.streamObject,
-    indexInStream: options.entry.indexInStream,
+    ...streamOptions,
+    targetObjNum: ref.objectNumber,
+    streamObjNum: entry.streamObject,
+    indexInStream: entry.indexInStream,
     cache: options.cache,
   });
 }
