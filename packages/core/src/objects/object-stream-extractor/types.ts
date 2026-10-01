@@ -1,6 +1,7 @@
 import type { ObjectNumber } from "../../pdf/types/object-number/index";
 import type { PdfStream } from "../../pdf/types/pdf-types/index";
 import type { LRUCache } from "../../utils/lru-cache/index";
+import type { ObjectStreamDictInfo } from "./dict/index";
 
 /**
  * オブジェクトストリーム内の番号検索オプション。
@@ -8,6 +9,8 @@ import type { LRUCache } from "../../utils/lru-cache/index";
 export interface ObjectStreamFindOptions {
   /** 対象のオブジェクトストリーム。 */
   readonly stream: PdfStream;
+  /** 対象ストリームからパース済みの辞書情報（省略時は辞書をパースする）。 */
+  readonly dictionary?: ObjectStreamDictInfo;
   /** 抽出対象のオブジェクト番号。 */
   readonly targetObjNum: ObjectNumber;
   /** オブジェクトストリーム自体のオブジェクト番号（キャッシュキー用）。 */

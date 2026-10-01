@@ -6,6 +6,7 @@
  */
 
 export { ObjectStreamBody } from "./body/index";
+export type { ObjectStreamDictInfo } from "./dict/index";
 export { ObjectStreamDict } from "./dict/index";
 export type { ObjectStreamHeaderEntry } from "./header/index";
 export { ObjectStreamHeader } from "./header/index";
