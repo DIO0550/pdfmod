@@ -1,21 +1,28 @@
 import type { ObjectNumber } from "../../pdf/types/object-number/index";
 import type { PdfStream } from "../../pdf/types/pdf-types/index";
 import type { LRUCache } from "../../utils/lru-cache/index";
+import type { ObjectStreamDictInfo } from "./dict/index";
 
 /**
- * オブジェクトストリームからの抽出オプション。
+ * オブジェクトストリーム内の番号検索オプション。
  */
-export interface ObjectStreamExtractOptions {
+export interface ObjectStreamFindOptions {
   /** 対象のオブジェクトストリーム。 */
   readonly stream: PdfStream;
+  /** 対象ストリームからパース済みの辞書情報（省略時は辞書をパースする）。 */
+  readonly dictionary?: ObjectStreamDictInfo;
   /** 抽出対象のオブジェクト番号。 */
   readonly targetObjNum: ObjectNumber;
   /** オブジェクトストリーム自体のオブジェクト番号（キャッシュキー用）。 */
   readonly streamObjNum: ObjectNumber;
-  /** オブジェクトストリーム内でのインデックス（0始まり）。 */
-  readonly indexInStream: number;
   /** 展開済みストリームのキャッシュ（省略時はキャッシュ無効）。 */
   readonly cache?: LRUCache<ObjectNumber, Uint8Array>;
+}
+
+/** オブジェクトストリームからのインデックス指定による抽出オプション。 */
+export interface ObjectStreamExtractOptions extends ObjectStreamFindOptions {
+  /** オブジェクトストリーム内でのインデックス（0始まり）。 */
+  readonly indexInStream: number;
 }
 
 /**
