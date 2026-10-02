@@ -168,13 +168,18 @@ impl<'a> Parser<'a> {
         &mut self,
         mut resolve_length: impl FnMut(IndirectRef, ByteOffset) -> Result<usize, E>,
     ) -> Result<IndirectObject, E> {
-        let object_number = self.take_object_number()?;
-        let generation = self.take_generation_number()?;
-        self.expect_token(&Token::ObjBegin)?;
+        let id = self.parse_indirect_header()?;
         let object = self.parse_object_or_stream(&mut resolve_length)?;
         self.expect_token(&Token::ObjEnd)?;
-        let id = ObjectId::new(object_number, generation);
         Ok(IndirectObject::new(id, object))
+    }
+
+    /// `N G obj` ヘッダを消費する。番号・世代・キーワード不正は解析エラー。
+    pub fn parse_indirect_header(&mut self) -> Result<ObjectId, ParseError> {
+        let number = self.take_object_number()?;
+        let generation = self.take_generation_number()?;
+        self.expect_token(&Token::ObjBegin)?;
+        Ok(ObjectId::new(number, generation))
     }
 
     /// `parse_object` の結果が [`PdfObject::Dictionary`] の場合のみ、直後に stream が
