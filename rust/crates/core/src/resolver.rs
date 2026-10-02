@@ -59,9 +59,9 @@ impl<'a> ObjectResolver<'a> {
         self.trailer.as_ref()
     }
 
-    /// 参照先を1段読み込む。未登録・freeはnull、番号・世代・構文不正はエラー。
+    /// 参照チェーンを辿る。循環・深さ100超過、番号・世代・構文不正はエラー。
     pub fn resolve(&mut self, reference: IndirectRef) -> Result<Rc<PdfObject>, ResolveError> {
-        self.load(reference.target()).map(Rc::new)
+        self.resolve_in(reference.target(), &mut Vec::new())
     }
 
     /// 直値をそのまま返し、間接参照なら解決する。
@@ -72,7 +72,41 @@ impl<'a> ObjectResolver<'a> {
         }
     }
 
-    fn load(&mut self, id: ObjectId) -> Result<PdfObject, ResolveError> {
+    fn enter(id: ObjectId, active: &mut Vec<ObjectId>) -> Result<(), ResolveError> {
+        if let Some(start) = active.iter().position(|seen| *seen == id) {
+            let mut cycle = active.get(start..).unwrap_or(&[]).to_vec();
+            cycle.push(id);
+            return Err(ResolveError::Cycle(cycle));
+        }
+        if active.len() >= 100 {
+            return Err(ResolveError::TooDeep {
+                limit: 100,
+                object: id,
+            });
+        }
+        active.push(id);
+        Ok(())
+    }
+
+    fn resolve_in(
+        &mut self,
+        id: ObjectId,
+        active: &mut Vec<ObjectId>,
+    ) -> Result<Rc<PdfObject>, ResolveError> {
+        Self::enter(id, active)?;
+        let result = self.load(id, active).and_then(|value| match value {
+            PdfObject::Reference(next) => self.resolve_in(next.target(), active),
+            direct => Ok(Rc::new(direct)),
+        });
+        active.pop();
+        result
+    }
+
+    fn load(
+        &mut self,
+        id: ObjectId,
+        active: &mut Vec<ObjectId>,
+    ) -> Result<PdfObject, ResolveError> {
         let Some(entry) = self.table.get(id.object_number()).copied() else {
             return Ok(PdfObject::Null);
         };
@@ -80,7 +114,7 @@ impl<'a> ObjectResolver<'a> {
             XRefEntry::Free { .. } => Ok(PdfObject::Null),
             XRefEntry::InUse { offset, generation } => {
                 Self::check_generation(id, generation)?;
-                self.read_indirect(id, offset)
+                self.read_indirect(id, offset, active)
             }
             XRefEntry::InObjectStream {
                 stream_object,
@@ -93,7 +127,10 @@ impl<'a> ObjectResolver<'a> {
                     return Err(ResolveError::InvalidObjectStream(id));
                 };
                 let parent = ObjectId::new(stream_object, generation);
-                let body = self.read_indirect(parent, offset)?;
+                Self::enter(parent, active)?;
+                let result = self.read_indirect(parent, offset, active);
+                active.pop();
+                let body = result?;
                 let PdfObject::Stream(stream) = body else {
                     return Err(ResolveError::InvalidObjectStream(parent));
                 };
@@ -142,14 +179,28 @@ impl<'a> ObjectResolver<'a> {
         &mut self,
         id: ObjectId,
         recorded: ByteOffset,
+        active: &mut Vec<ObjectId>,
     ) -> Result<PdfObject, ResolveError> {
         let offset = self.actual_offset(recorded)?;
         let index =
             usize::try_from(offset.value()).map_err(|_| ResolveError::InvalidOffset(recorded))?;
         let mut parser = Parser::new_at(self.input, index);
         let (actual, body) = parser
-            .parse_indirect_object()
-            .map_err(ResolveError::Parse)?
+            .parse_indirect_object_with_length(|reference, position| {
+                let value = self.resolve_in(reference.target(), active)?;
+                match value.as_ref() {
+                    PdfObject::Integer(length) => {
+                        usize::try_from(length.value()).map_err(|_| ResolveError::InvalidLength {
+                            object: reference.target(),
+                            position,
+                        })
+                    }
+                    _ => Err(ResolveError::InvalidLength {
+                        object: reference.target(),
+                        position,
+                    }),
+                }
+            })?
             .into_parts();
         if actual != id {
             return Err(ResolveError::ObjectMismatch {

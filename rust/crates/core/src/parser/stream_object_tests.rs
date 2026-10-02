@@ -36,7 +36,9 @@ fn parse_stream(input: &[u8]) -> PdfStream {
         panic!("expected dictionary at head of input, got {obj:?}");
     };
     let result = parser
-        .parse_stream_object(dictionary, dict_start)
+        .parse_stream_object(dictionary, dict_start, &mut |_, position| {
+            Err(ParseError::indirect_length_not_supported_at(position))
+        })
         .expect("stream must parse");
     match result {
         PdfObject::Stream(stream) => stream,
@@ -53,7 +55,9 @@ fn parse_stream_err(input: &[u8]) -> ParseError {
         panic!("expected dictionary at head of input, got {obj:?}");
     };
     parser
-        .parse_stream_object(dictionary, dict_start)
+        .parse_stream_object(dictionary, dict_start, &mut |_, position| {
+            Err(ParseError::indirect_length_not_supported_at(position))
+        })
         .expect_err("stream parse must fail for this input")
 }
 

@@ -11,6 +11,22 @@ use crate::{
 /// 世代・ヘッダ不一致と下位解析の失敗を区別する。
 #[derive(Debug, PartialEq)]
 pub enum ResolveError {
+    /// 再入したオブジェクトを末尾にも含む循環経路。
+    Cycle(Vec<ObjectId>),
+    /// 循環ではないが参照深さが上限を超えた。
+    TooDeep {
+        /// 許容する深さ。
+        limit: usize,
+        /// 上限を超えたID。
+        object: ObjectId,
+    },
+    /// 間接Lengthが非負のメモリサイズにならない。
+    InvalidLength {
+        /// Lengthの参照先。
+        object: ObjectId,
+        /// ストリーム辞書の位置。
+        position: ByteOffset,
+    },
     /// ヘッダが不正。
     File(FileError),
     /// xrefチェーンが不正。
@@ -39,4 +55,10 @@ pub enum ResolveError {
     InvalidObjectStream(ObjectId),
     /// 復号に対応していないため暗号化ファイルは開けない。
     EncryptedDocument,
+}
+
+impl From<ParseError> for ResolveError {
+    fn from(error: ParseError) -> Self {
+        Self::Parse(error)
+    }
 }

@@ -157,10 +157,21 @@ impl<'a> Parser<'a> {
     /// になる（#334）。参照先の存在・世代の照合など、xref を要する検証は
     /// 引き続き上位レイヤの責務。
     pub fn parse_indirect_object(&mut self) -> Result<IndirectObject, ParseError> {
+        self.parse_indirect_object_with_length(|_, position| {
+            Err(ParseError::indirect_length_not_supported_at(position))
+        })
+    }
+
+    /// 間接 `/Length` をコールバックで解決してオブジェクトを読む。
+    /// コールバックには参照と辞書位置を渡す。構文エラーと解決エラーを `E` で返す。
+    pub fn parse_indirect_object_with_length<E: From<ParseError>>(
+        &mut self,
+        mut resolve_length: impl FnMut(IndirectRef, ByteOffset) -> Result<usize, E>,
+    ) -> Result<IndirectObject, E> {
         let object_number = self.take_object_number()?;
         let generation = self.take_generation_number()?;
         self.expect_token(&Token::ObjBegin)?;
-        let object = self.parse_object_or_stream()?;
+        let object = self.parse_object_or_stream(&mut resolve_length)?;
         self.expect_token(&Token::ObjEnd)?;
         let id = ObjectId::new(object_number, generation);
         Ok(IndirectObject::new(id, object))
@@ -173,7 +184,10 @@ impl<'a> Parser<'a> {
     /// `peek_token_with_pos` で次トークンをバッファへ載せてから `position()` を取ることで、
     /// content 直前の whitespace / comment を飛ばしたあとの実トークン開始位置（辞書なら `<<` の pos）
     /// を `dict_start` として `parse_stream_object` に渡す（DC-5）。
-    fn parse_object_or_stream(&mut self) -> Result<PdfObject, ParseError> {
+    fn parse_object_or_stream<E: From<ParseError>>(
+        &mut self,
+        resolve_length: &mut impl FnMut(IndirectRef, ByteOffset) -> Result<usize, E>,
+    ) -> Result<PdfObject, E> {
         let dict_start = match self.lexer.peek_token_with_pos() {
             LexOutcome::Lexed((_, pos)) => ByteOffset::new(pos as u64),
             // EOF / malformed のどちらでも直後の parse_object() が正しいエラーを返すため、
@@ -185,7 +199,9 @@ impl<'a> Parser<'a> {
         };
         let obj = self.parse_object()?;
         match obj {
-            PdfObject::Dictionary(dict) => self.parse_stream_object(dict, dict_start),
+            PdfObject::Dictionary(dict) => {
+                self.parse_stream_object(dict, dict_start, resolve_length)
+            }
             other => Ok(other),
         }
     }
