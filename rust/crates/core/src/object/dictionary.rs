@@ -20,7 +20,7 @@
 //! 本モジュールは Issue #264（Phase R0）で追加された PDF オブジェクト層の基盤型。
 
 use std::borrow::Borrow;
-use std::collections::BTreeMap;
+use std::collections::{btree_map, BTreeMap};
 
 use crate::object::{name::PdfName, pdf_object::PdfObject};
 
@@ -95,13 +95,42 @@ impl PdfDictionary {
     }
 
     /// 全キーをキーのソート順（`BTreeMap` の昇順）で走査するイテレータを返す。
-    pub fn keys(&self) -> impl Iterator<Item = &PdfName> {
+    pub fn keys(&self) -> btree_map::Keys<'_, PdfName, PdfObject> {
         self.0.keys()
     }
 
     /// 全 `(キー, 値)` ペアをキーのソート順（`BTreeMap` の昇順）で走査するイテレータを返す。
-    pub fn iter(&self) -> impl Iterator<Item = (&PdfName, &PdfObject)> {
+    pub fn iter(&self) -> btree_map::Iter<'_, PdfName, PdfObject> {
         self.0.iter()
+    }
+
+    /// 全値をキーのソート順（`BTreeMap` の昇順）で走査するイテレータを返す。
+    pub fn values(&self) -> btree_map::Values<'_, PdfName, PdfObject> {
+        self.0.values()
+    }
+}
+
+impl<'a> IntoIterator for &'a PdfDictionary {
+    type Item = (&'a PdfName, &'a PdfObject);
+    type IntoIter = btree_map::Iter<'a, PdfName, PdfObject>;
+
+    /// 辞書を借用し、全ペアをキーの昇順で走査する。
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
+    }
+}
+
+impl FromIterator<(PdfName, PdfObject)> for PdfDictionary {
+    /// ペア列から辞書を構築する。重複キーの値は最後の値で上書きする。
+    fn from_iter<T: IntoIterator<Item = (PdfName, PdfObject)>>(iter: T) -> Self {
+        Self(BTreeMap::from_iter(iter))
+    }
+}
+
+impl Extend<(PdfName, PdfObject)> for PdfDictionary {
+    /// ペア列を追加する。既存・重複キーの値は最後の値で上書きする。
+    fn extend<T: IntoIterator<Item = (PdfName, PdfObject)>>(&mut self, iter: T) {
+        self.0.extend(iter);
     }
 }
 
