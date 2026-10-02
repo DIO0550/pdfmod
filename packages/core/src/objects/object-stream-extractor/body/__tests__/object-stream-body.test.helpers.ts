@@ -52,6 +52,25 @@ export function makeStreamObj(
 }
 
 /**
+ * ヘッダと本文から未圧縮 ObjStm を組み立てる。
+ *
+ * @param options - ヘッダ文字列、本文文字列、ヘッダのペア数
+ * @returns 実バイトの本文を持つ ObjStm
+ */
+export function makeRawObjStm(options: {
+  readonly header: string;
+  readonly body: string;
+  readonly n: number;
+}): PdfStream {
+  const dict = makeObjStmDict({
+    First: { type: "integer", value: enc(options.header).length },
+    N: { type: "integer", value: options.n },
+  });
+  dict.entries.delete("Filter");
+  return makeStreamObj(enc(`${options.header}${options.body}`), dict);
+}
+
+/**
  * ObjStm 辞書エントリの Map を生成するテスト用ビルダー。
  *
  * @param overrides - デフォルト値を上書きするエントリ

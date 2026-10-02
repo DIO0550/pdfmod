@@ -3,6 +3,7 @@ import { PdfDocument } from "../../pdf-document";
 import {
   buildHybridReferencePdfWithXRefStm,
   buildPdfWithIncrementalUpdateViaXRefStream,
+  buildPdfWithXRefStreamAndExtendsObjStm,
   buildPdfWithXRefStreamAndObjStm,
   buildSinglePagePdfWithXRefStream,
 } from "./pdf-document.xref-stream.test.helpers";
@@ -37,6 +38,17 @@ test("xrefストリームのtype=2エントリ経由でObjStm内のCatalog/Pages
   const page = result.value.getPage(0);
   assert(page.some);
   expect(page.value.mediaBox).toEqual([0, 0, 612, 792]);
+});
+
+test("Extends付きObjStmを実際の格納先とindexで参照するPDFを読み込める", async () => {
+  const result = await PdfDocument.load(
+    buildPdfWithXRefStreamAndExtendsObjStm(),
+  );
+  assert(result.ok);
+  expect(result.value.pageCount).toBe(1);
+  const page = result.value.getPage(0);
+  assert(page.some);
+  expect(page.value.mediaBox).toEqual([0, 0, 300, 400]);
 });
 
 test("ハイブリッド参照ファイル(/XRefStm)経由でObjStm内のみに存在するPageが解決される", async () => {
