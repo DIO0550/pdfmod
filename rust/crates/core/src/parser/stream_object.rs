@@ -6,7 +6,7 @@
 //! 本モジュールは間接オブジェクト経由でのみ発火する（トップレベル
 //! [`Parser::parse_object`](super::Parser::parse_object) は従来通り `UnexpectedToken`）。
 //!
-//! `/Filter` によるデコードや間接参照 `/Length` の解決はスコープ外。仕様違反は
+//! `/Filter` 復号は上位層が担い、間接 `/Length` は解決コールバックに委譲する。仕様違反は
 //! 寛容フォールバックせず、専用の `ParseErrorKind` バリアントで即座に失敗する。
 //! `endstream` 直前の空白 / コメントは `skip_whitespace` 経由での寛容化を行わず、
 //! LF / CRLF のみ許容する（[`expect_endstream`] を参照）。
@@ -16,6 +16,7 @@ use crate::lexer::eol::EolKind;
 use crate::lexer::token::Token;
 use crate::lexer::LexOutcome;
 use crate::object::dictionary::PdfDictionary;
+use crate::object::indirect_ref::IndirectRef;
 use crate::object::pdf_object::PdfObject;
 use crate::object::stream::PdfStream;
 use crate::parser::error::ParseError;
@@ -37,11 +38,12 @@ impl<'a> Parser<'a> {
     /// # 引数
     /// - `dictionary`: 直前で `parse_object` が返した [`PdfDictionary`]（ムーブ）
     /// - `dict_start`: 辞書 `<<` の開始位置。stream 系エラーの `position` として使う
-    pub(super) fn parse_stream_object(
+    pub(super) fn parse_stream_object<E: From<ParseError>>(
         &mut self,
         dictionary: PdfDictionary,
         dict_start: ByteOffset,
-    ) -> Result<PdfObject, ParseError> {
+        resolve_length: &mut impl FnMut(IndirectRef, ByteOffset) -> Result<usize, E>,
+    ) -> Result<PdfObject, E> {
         // Eof / Malformed はいずれも「stream が続かない」として辞書のまま返す（従来どおり）。
         // malformed であれば後続の処理が改めて LexerError を発火する。
         if !matches!(
@@ -53,7 +55,10 @@ impl<'a> Parser<'a> {
         let _ = self.lexer.take_token();
         let after_stream_pos = ByteOffset::new(self.lexer.cursor_position() as u64);
 
-        let length = Self::resolve_stream_length(&dictionary, dict_start)?;
+        let length = match dictionary.get(b"Length".as_slice()) {
+            Some(PdfObject::Reference(reference)) => resolve_length(*reference, dict_start)?,
+            _ => Self::resolve_stream_length(&dictionary, dict_start)?,
+        };
         self.consume_stream_eol(after_stream_pos)?;
         let data_start = ByteOffset::new(self.lexer.cursor_position() as u64);
         let data = self.take_stream_data(length, data_start)?;
