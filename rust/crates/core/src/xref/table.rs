@@ -63,6 +63,13 @@ impl XRefTable {
         }
     }
 
+    /// 古いセクションを取り込み、既存（新しい）エントリを優先する。
+    pub fn merge_older(&mut self, older: Self) {
+        for (number, entry) in older.entries {
+            self.insert(number, entry);
+        }
+    }
+
     /// 登録済みエントリの件数を返す。
     #[must_use]
     pub fn len(&self) -> usize {
