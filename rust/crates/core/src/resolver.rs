@@ -2,6 +2,7 @@
 
 mod cache;
 pub mod error;
+pub mod recovery;
 use cache::ObjectCache;
 
 use crate::byte_offset::ByteOffset;
@@ -25,6 +26,7 @@ pub struct ObjectResolver<'a> {
     table: XRefTable,
     trailer: Option<Trailer>,
     cache: ObjectCache,
+    recovery: Option<recovery::RecoveryState>,
 }
 
 impl<'a> ObjectResolver<'a> {
@@ -44,6 +46,7 @@ impl<'a> ObjectResolver<'a> {
             table,
             trailer: Some(trailer),
             cache: ObjectCache::new(1024),
+            recovery: None,
         })
     }
 
@@ -56,6 +59,7 @@ impl<'a> ObjectResolver<'a> {
             table,
             trailer: None,
             cache: ObjectCache::new(1024),
+            recovery: None,
         }
     }
 
@@ -161,7 +165,7 @@ impl<'a> ObjectResolver<'a> {
                 let PdfObject::Stream(stream) = body else {
                     return Err(ResolveError::InvalidObjectStream(parent));
                 };
-                let stream = ObjectStream::from_stream(stream, self.actual_offset(offset)?)
+                let stream = ObjectStream::from_stream(stream, self.locate(parent, offset)?)
                     .map_err(ResolveError::ObjectStream)?;
                 let index = usize::try_from(index_in_stream)
                     .map_err(|_| ResolveError::InvalidObjectStream(id))?;
@@ -208,7 +212,7 @@ impl<'a> ObjectResolver<'a> {
         recorded: ByteOffset,
         active: &mut Vec<ObjectId>,
     ) -> Result<PdfObject, ResolveError> {
-        let offset = self.actual_offset(recorded)?;
+        let offset = self.locate(id, recorded)?;
         let index =
             usize::try_from(offset.value()).map_err(|_| ResolveError::InvalidOffset(recorded))?;
         let mut parser = Parser::new_at(self.input, index);
