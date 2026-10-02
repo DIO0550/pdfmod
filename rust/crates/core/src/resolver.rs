@@ -1,6 +1,8 @@
 //! xref を利用した間接オブジェクトの遅延読み込み（ISO 32000-1 §7.3.10, §7.5）。
 
+mod cache;
 pub mod error;
+use cache::ObjectCache;
 
 use crate::byte_offset::ByteOffset;
 use crate::file::header::PdfHeader;
@@ -22,6 +24,7 @@ pub struct ObjectResolver<'a> {
     header: PdfHeader,
     table: XRefTable,
     trailer: Option<Trailer>,
+    cache: ObjectCache,
 }
 
 impl<'a> ObjectResolver<'a> {
@@ -40,6 +43,7 @@ impl<'a> ObjectResolver<'a> {
             header,
             table,
             trailer: Some(trailer),
+            cache: ObjectCache::new(1024),
         })
     }
 
@@ -51,7 +55,14 @@ impl<'a> ObjectResolver<'a> {
             header,
             table,
             trailer: None,
+            cache: ObjectCache::new(1024),
         }
+    }
+
+    /// キャッシュ上限を変更し、既存キャッシュを破棄する。既定1024件、0で無効。
+    /// 件数の上限であり、バイト数や呼び出し側が保持する `Rc` は制限しない。
+    pub fn set_cache_capacity(&mut self, capacity: usize) {
+        self.cache = ObjectCache::new(capacity);
     }
 
     /// ファイルを開いた際のトレイラ。`new` で構築した場合は `None`。
@@ -94,12 +105,28 @@ impl<'a> ObjectResolver<'a> {
         active: &mut Vec<ObjectId>,
     ) -> Result<Rc<PdfObject>, ResolveError> {
         Self::enter(id, active)?;
-        let result = self.load(id, active).and_then(|value| match value {
-            PdfObject::Reference(next) => self.resolve_in(next.target(), active),
-            direct => Ok(Rc::new(direct)),
-        });
+        let result = self
+            .load_cached(id, active)
+            .and_then(|value| match value.as_ref() {
+                PdfObject::Reference(next) => self.resolve_in(next.target(), active),
+                _ => Ok(value),
+            });
         active.pop();
         result
+    }
+
+    fn load_cached(
+        &mut self,
+        id: ObjectId,
+        active: &mut Vec<ObjectId>,
+    ) -> Result<Rc<PdfObject>, ResolveError> {
+        if let Some(value) = self.cache.get(id) {
+            return Ok(value);
+        }
+        let value = Rc::new(self.load(id, active)?);
+        // Alias nodes are retained so a warm cache cannot shorten reference-depth checks.
+        self.cache.insert(id, Rc::clone(&value));
+        Ok(value)
     }
 
     fn load(
