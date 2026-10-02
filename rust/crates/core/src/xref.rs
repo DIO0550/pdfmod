@@ -7,8 +7,9 @@
 //! xref エントリの表現（`entry`）・テーブルの表現（`table`）・従来型 xref テーブルの
 //! 解析（`table::parse`）・相互参照ストリームの解析（`stream`）・トレイラの解析（`trailer`）・
 //! xref 解析専用のエラー型（`error`）を提供する。
-//! `/Prev` を辿るチェーン走査は後続の Issue で追加する。
+//! `chain` は `/Prev` とハイブリッド参照を統合する。
 
+pub mod chain;
 pub mod entry;
 pub mod error;
 pub mod stream;
