@@ -24,7 +24,7 @@ impl XRefChain {
     /// `startxref` から最大100セクションを読み、原点補正して統合する。
     /// 不正なセクション、範囲外、循環、深さ超過はエラーを返す。
     pub fn parse(input: &[u8], header: &PdfHeader) -> Result<Self, XRefChainError> {
-        let start = StartXref::parse(input).map_err(XRefChainError::File)?;
+        let start = StartXref::parse(input).map_err(XRefChainError::from)?;
         Self::parse_at(input, header, start.offset(), 100)
     }
 
@@ -44,36 +44,33 @@ impl XRefChain {
         while let Some(recorded) = next {
             let offset = Self::visit(input, header, recorded, &mut visited)?;
             if count >= max_sections {
-                return Err(XRefChainError::TooDeep {
-                    limit: max_sections,
-                    offset,
-                });
+                return Err(XRefChainError::too_deep_at(offset, max_sections));
             }
             count = count.saturating_add(1);
             let index = usize::try_from(offset.value())
-                .map_err(|_| XRefChainError::InvalidOffset(recorded))?;
+                .map_err(|_| XRefChainError::invalid_offset_at(offset, recorded))?;
             let begin = skip_whitespace_and_comments(input, index, input.len());
             let (section, trailer) = if keyword_end_at(input, begin, Keyword::Xref.as_bytes())
                 .is_some()
             {
-                let parsed = ParsedXRefTable::parse(input, offset).map_err(XRefChainError::XRef)?;
+                let parsed = ParsedXRefTable::parse(input, offset).map_err(XRefChainError::from)?;
                 let trailer = ParsedTrailer::parse(input, parsed.end())
-                    .map_err(XRefChainError::Trailer)?
+                    .map_err(XRefChainError::from)?
                     .into_trailer();
                 if let Some(supplement) = trailer.xref_stm() {
                     let supplement = Self::visit(input, header, supplement, &mut visited)?;
                     let stream =
-                        ParsedXRefStream::parse(input, supplement).map_err(XRefChainError::XRef)?;
+                        ParsedXRefStream::parse(input, supplement).map_err(XRefChainError::from)?;
                     table.merge_older(stream.into_table());
                 }
                 (parsed.into_table(), trailer)
             } else {
                 let (section, trailer, _) = ParsedXRefStream::parse(input, offset)
-                    .map_err(XRefChainError::XRef)?
+                    .map_err(XRefChainError::from)?
                     .into_parts();
                 (
                     section,
-                    trailer.ok_or(XRefChainError::MissingTrailer(offset))?,
+                    trailer.ok_or(XRefChainError::missing_trailer_at(offset))?,
                 )
             };
             table.merge_older(section);
@@ -84,7 +81,7 @@ impl XRefChain {
         }
         Ok(Self {
             table,
-            trailer: latest.ok_or(XRefChainError::MissingTrailer(start))?,
+            trailer: latest.ok_or(XRefChainError::missing_trailer_at(start))?,
         })
     }
 
@@ -96,14 +93,14 @@ impl XRefChain {
     ) -> Result<ByteOffset, XRefChainError> {
         let offset = header
             .resolve_offset(recorded)
-            .ok_or(XRefChainError::InvalidOffset(recorded))?;
-        let index =
-            usize::try_from(offset.value()).map_err(|_| XRefChainError::InvalidOffset(recorded))?;
+            .ok_or(XRefChainError::invalid_offset_at(recorded, recorded))?;
+        let index = usize::try_from(offset.value())
+            .map_err(|_| XRefChainError::invalid_offset_at(offset, recorded))?;
         if index >= input.len() {
-            return Err(XRefChainError::InvalidOffset(recorded));
+            return Err(XRefChainError::invalid_offset_at(offset, recorded));
         }
         if !visited.insert(offset) {
-            return Err(XRefChainError::Cycle(offset));
+            return Err(XRefChainError::cycle_at(offset));
         }
         Ok(offset)
     }
