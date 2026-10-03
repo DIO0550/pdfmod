@@ -40,11 +40,14 @@ use std::fmt;
 ///     PdfErrorCode::InvalidSyntax => "syntax",
 ///     PdfErrorCode::InvalidHeader => "header",
 ///     PdfErrorCode::UnsupportedVersion => "version",
+///     PdfErrorCode::ObjectResolutionFailed => "resolution",
 /// };
 /// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum PdfErrorCode {
+    /// 間接オブジェクトの解決または回復に失敗した。
+    ObjectResolutionFailed,
     /// 入力の途中で予期せず終端（EOF）に達した。
     UnexpectedEof,
     /// 文法上その位置に現れてはならないトークンを検出した。
@@ -67,6 +70,7 @@ pub enum PdfErrorCode {
 impl fmt::Display for PdfErrorCode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let text = match self {
+            Self::ObjectResolutionFailed => "object resolution failed",
             Self::UnexpectedEof => "unexpected end of file",
             Self::UnexpectedToken => "unexpected token",
             Self::InvalidNumber => "invalid number",
@@ -96,7 +100,7 @@ mod tests {
 
     #[test]
     fn all_distinct_variants_are_mutually_not_equal() {
-        // 6 バリアントを総当たりで比較し、同一インデックスのみ等価・他は非等価であることを確認する
+        // 全バリアントを総当たりで比較し、同一インデックスのみ等価・他は非等価であることを確認する
         let variants = [
             PdfErrorCode::UnexpectedEof,
             PdfErrorCode::UnexpectedToken,
@@ -104,6 +108,7 @@ mod tests {
             PdfErrorCode::InvalidSyntax,
             PdfErrorCode::InvalidHeader,
             PdfErrorCode::UnsupportedVersion,
+            PdfErrorCode::ObjectResolutionFailed,
         ];
         for (i, a) in variants.iter().enumerate() {
             for (j, b) in variants.iter().enumerate() {
