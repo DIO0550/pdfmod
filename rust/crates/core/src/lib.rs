@@ -31,3 +31,6 @@ pub mod object;
 pub mod object_stream;
 pub mod parser;
 pub mod xref;
+
+/// 間接オブジェクトの遅延解決。
+pub mod resolver;
