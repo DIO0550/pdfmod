@@ -124,7 +124,7 @@ impl<'a> ObjectResolver<'a> {
             return Ok(value);
         }
         let value = Rc::new(self.load(id, active)?);
-        // Alias nodes are retained so a warm cache cannot shorten reference-depth checks.
+        // キャッシュヒット時にも参照の深さを検証できるよう、参照は解決前のまま保持する。
         self.cache.insert(id, Rc::clone(&value));
         Ok(value)
     }
