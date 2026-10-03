@@ -47,3 +47,5 @@ impl PdfFixture {
 }
 
 mod cycles;
+
+mod caching;
