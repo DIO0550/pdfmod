@@ -13,6 +13,9 @@ use crate::xref::{
 use error::XRefChainError;
 use std::collections::HashSet;
 
+/// 過度に長い `/Prev` チェーンの走査を制限する既定のセクション数上限。
+const DEFAULT_MAX_SECTIONS: usize = 100;
+
 /// マージ済み xref と最新セクションのトレイラ。入力バイト列は保持しない。
 #[derive(Debug)]
 pub struct XRefChain {
@@ -25,7 +28,7 @@ impl XRefChain {
     /// 不正なセクション、範囲外、循環、深さ超過はエラーを返す。
     pub fn parse(input: &[u8], header: &PdfHeader) -> Result<Self, XRefChainError> {
         let start = StartXref::parse(input).map_err(XRefChainError::from)?;
-        Self::parse_at(input, header, start.offset(), 100)
+        Self::parse_at(input, header, start.offset(), DEFAULT_MAX_SECTIONS)
     }
 
     /// 記録オフセットから指定上限まで走査する。上限0ではエラーになる。
