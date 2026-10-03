@@ -47,32 +47,7 @@ impl XRefChain {
                 return Err(XRefChainError::too_deep_at(offset, max_sections));
             }
             count = count.saturating_add(1);
-            let index = usize::try_from(offset.value())
-                .map_err(|_| XRefChainError::invalid_offset_at(offset, recorded))?;
-            let begin = skip_whitespace_and_comments(input, index, input.len());
-            let (section, trailer) = if keyword_end_at(input, begin, Keyword::Xref.as_bytes())
-                .is_some()
-            {
-                let parsed = ParsedXRefTable::parse(input, offset).map_err(XRefChainError::from)?;
-                let trailer = ParsedTrailer::parse(input, parsed.end())
-                    .map_err(XRefChainError::from)?
-                    .into_trailer();
-                if let Some(supplement) = trailer.xref_stm() {
-                    let supplement = Self::visit(input, header, supplement, &mut visited)?;
-                    let stream =
-                        ParsedXRefStream::parse(input, supplement).map_err(XRefChainError::from)?;
-                    table.merge_older(stream.into_table());
-                }
-                (parsed.into_table(), trailer)
-            } else {
-                let (section, trailer, _) = ParsedXRefStream::parse(input, offset)
-                    .map_err(XRefChainError::from)?
-                    .into_parts();
-                (
-                    section,
-                    trailer.ok_or(XRefChainError::missing_trailer_at(offset))?,
-                )
-            };
+            let (section, trailer) = Self::parse_section(input, header, offset, &mut visited)?;
             table.merge_older(section);
             next = trailer.prev();
             if latest.is_none() {
@@ -83,6 +58,40 @@ impl XRefChain {
             table,
             trailer: latest.ok_or(XRefChainError::missing_trailer_at(start))?,
         })
+    }
+
+    fn parse_section(
+        input: &[u8],
+        header: &PdfHeader,
+        offset: ByteOffset,
+        visited: &mut HashSet<ByteOffset>,
+    ) -> Result<(XRefTable, Trailer), XRefChainError> {
+        let index = usize::try_from(offset.value())
+            .map_err(|_| XRefChainError::invalid_offset_at(offset, offset))?;
+        let begin = skip_whitespace_and_comments(input, index, input.len());
+        if keyword_end_at(input, begin, Keyword::Xref.as_bytes()).is_none() {
+            let (table, trailer, _) = ParsedXRefStream::parse(input, offset)
+                .map_err(XRefChainError::from)?
+                .into_parts();
+            let trailer = trailer.ok_or(XRefChainError::missing_trailer_at(offset))?;
+            return Ok((table, trailer));
+        }
+
+        let parsed = ParsedXRefTable::parse(input, offset).map_err(XRefChainError::from)?;
+        let trailer = ParsedTrailer::parse(input, parsed.end())
+            .map_err(XRefChainError::from)?
+            .into_trailer();
+        let Some(supplement) = trailer.xref_stm() else {
+            return Ok((parsed.into_table(), trailer));
+        };
+
+        let supplement = Self::visit(input, header, supplement, visited)?;
+        let mut table = ParsedXRefStream::parse(input, supplement)
+            .map_err(XRefChainError::from)?
+            .into_table();
+        // 同じ更新内では補助ストリームを優先し、その /Prev は辿らない。
+        table.merge_older(parsed.into_table());
+        Ok((table, trailer))
     }
 
     fn visit(
