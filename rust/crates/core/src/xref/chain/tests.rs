@@ -1,3 +1,4 @@
+use super::error::XRefChainErrorKind;
 use super::*;
 use crate::object::object_number::ObjectNumber;
 use crate::xref::entry::XRefEntry;
@@ -96,16 +97,16 @@ fn detects_self_mutual_and_hybrid_cycles() {
     finish(&mut data, second);
     assert_eq!(
         parse(&data).unwrap_err(),
-        XRefChainError::Cycle(ByteOffset::new(second as u64))
+        XRefChainError::cycle_at(ByteOffset::new(second as u64))
     );
     let own = data.len();
     let last = text(&mut data, "", &format!("/Prev {own}"));
     finish(&mut data, last);
-    assert!(matches!(parse(&data), Err(XRefChainError::Cycle(_))));
+    assert_eq!(parse(&data).unwrap_err().kind(), &XRefChainErrorKind::Cycle);
     let own = data.len();
     let last = text(&mut data, "", &format!("/XRefStm {own}"));
     finish(&mut data, last);
-    assert!(matches!(parse(&data), Err(XRefChainError::Cycle(_))));
+    assert_eq!(parse(&data).unwrap_err().kind(), &XRefChainErrorKind::Cycle);
 }
 
 #[test]
@@ -116,8 +117,10 @@ fn depth_boundaries_invalid_offsets_and_missing_root() {
     let header = PdfHeader::parse(&data).unwrap();
     for limit in [0, 1] {
         assert!(matches!(
-            XRefChain::parse_at(&data, &header, ByteOffset::new(last as u64), limit),
-            Err(XRefChainError::TooDeep { .. })
+            XRefChain::parse_at(&data, &header, ByteOffset::new(last as u64), limit)
+                .unwrap_err()
+                .into_kind(),
+            XRefChainErrorKind::TooDeep { .. }
         ));
     }
     assert!(XRefChain::parse_at(&data, &header, ByteOffset::new(last as u64), 2).is_ok());
@@ -128,17 +131,21 @@ fn depth_boundaries_invalid_offsets_and_missing_root() {
     let last = text(&mut data, "", "/Prev 999999");
     finish(&mut data, last);
     assert!(matches!(
-        parse(&data),
-        Err(XRefChainError::InvalidOffset(_))
+        parse(&data).unwrap_err().into_kind(),
+        XRefChainErrorKind::InvalidOffset { .. }
     ));
     let last = stream(&mut data, "");
     finish(&mut data, last);
     assert!(matches!(
-        parse(&data),
-        Err(XRefChainError::MissingTrailer(_))
+        parse(&data).unwrap_err().into_kind(),
+        XRefChainErrorKind::MissingTrailer
     ));
     assert!(matches!(
-        XRefChain::parse_at(&data, &header, ByteOffset::new(u64::MAX), 10),
-        Err(XRefChainError::InvalidOffset(_))
+        XRefChain::parse_at(&data, &header, ByteOffset::new(u64::MAX), 10)
+            .unwrap_err()
+            .into_kind(),
+        XRefChainErrorKind::InvalidOffset { .. }
     ));
 }
+
+mod error_position;
