@@ -76,11 +76,11 @@ test("parseは/Typeが/ObjStmでない場合にエラーを返す", () => {
 
 test("parseは/Filterが/FlateDecodeでない場合にエラーを返す", () => {
   const result = ObjectStreamDict.parse(
-    makeDict({ Filter: { type: "name", value: "LZWDecode" } }),
+    makeDict({ Filter: { type: "name", value: "DCTDecode" } }),
   );
   assert(!result.ok);
   expect(result.error.code).toBe("OBJECT_STREAM_INVALID");
-  expect(result.error.message).toContain("LZWDecode");
+  expect(result.error.message).toContain("DCTDecode");
 });
 
 test("parseは/Filterが単一要素配列[/FlateDecode]の場合に成功する", () => {
@@ -210,9 +210,9 @@ test("parseは/Type不一致時にPdfType由来のmessageをOBJECT_STREAM_INVALI
 
 test("parseは/Filter未サポート時にPdfFilter由来のmessageをOBJECT_STREAM_INVALIDに保持して返す", () => {
   const result = ObjectStreamDict.parse(
-    makeDict({ Filter: { type: "name", value: "LZWDecode" } }),
+    makeDict({ Filter: { type: "name", value: "DCTDecode" } }),
   );
   assert(!result.ok);
   expect(result.error.code).toBe("OBJECT_STREAM_INVALID");
-  expect(result.error.message).toBe("/Filter /LZWDecode is not supported");
+  expect(result.error.message).toBe("/Filter /DCTDecode is not supported");
 });

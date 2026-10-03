@@ -22,10 +22,10 @@ test("PdfFilter.decode decodes FlateDecode compressed data", async () => {
 
 test("PdfFilter.decode returns error for unsupported filter", async () => {
   const input = new Uint8Array([1, 2, 3]);
-  const result = await PdfFilter.decode(input, "LZWDecode");
+  const result = await PdfFilter.decode(input, "DCTDecode");
   assert(!result.ok);
   expect(result.error.code).toBe("PDF_FILTER_UNSUPPORTED");
-  expect(result.error.message).toContain("LZWDecode");
+  expect(result.error.message).toContain("DCTDecode");
 });
 
 test("PdfFilter.decode passes maxDecompressedSize to decompressFlate and fails if exceeded", async () => {

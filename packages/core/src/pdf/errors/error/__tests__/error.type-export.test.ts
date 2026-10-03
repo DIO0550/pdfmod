@@ -36,6 +36,7 @@ const allPdfParseErrorCodes = [
   "MEDIABOX_NOT_FOUND",
   "NESTING_TOO_DEEP",
   "FLATEDECODE_FAILED",
+  "LZWDECODE_FAILED",
   "PDF_TYPE_INVALID",
   "PDF_FILTER_UNSUPPORTED",
   "ENCRYPTED_PDF_UNSUPPORTED",
@@ -63,7 +64,7 @@ const _exhaustive: Exact<
 
 test("PdfParseErrorCodeは網羅的に列挙されている", () => {
   expect(_exhaustive).toBe(true);
-  expect(allPdfParseErrorCodes).toHaveLength(28);
+  expect(allPdfParseErrorCodes).toHaveLength(29);
 });
 
 test("型エクスポートが利用可能", () => {

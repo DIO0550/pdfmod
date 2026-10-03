@@ -3,7 +3,7 @@
  * オフセットからパースし、`XRefTable` と `TrailerDict` を組み立てるオーケストレーション関数。
  *
  * `ObjectParser.parseIndirectObject` → `XRefStreamDict.parse` →
- * （`/Filter` があれば）`decompressFlate` → `Predictor.apply` →
+ * （`/Filter` があれば）`PdfFilter.decode` → `Predictor.apply` →
  * `decodeXRefStreamEntries` → `buildXRefStreamTrailerDict` の順に処理を結線する。
  *
  * @module
@@ -12,7 +12,7 @@
 import { isPdfTokenBoundary } from "../../../lexer/bytes/index";
 import { ObjectParser } from "../../../objects/object-parser/index";
 import type { PdfError } from "../../../pdf/errors/index";
-import { decompressFlate } from "../../../pdf/filter/index";
+import { PdfFilter } from "../../../pdf/filter/index";
 import { ByteOffset } from "../../../pdf/types/byte-offset/index";
 import type { GenerationNumber } from "../../../pdf/types/generation-number/index";
 import type {
@@ -29,8 +29,6 @@ import { XRefStreamDict } from "../dict/index";
 import { decodeXRefStreamEntries } from "../parser/index";
 import { Predictor } from "../predictor/index";
 import { buildXRefStreamTrailerDict } from "../trailer/index";
-
-const FLATE_DECODE_FILTER_NAME = "FlateDecode";
 
 /**
  * 指定オフセットの間接オブジェクトを xref ストリームとしてパースする。
@@ -82,13 +80,15 @@ export async function parseXRefStream(
   }
   const dictInfo = dictInfoResult.value;
 
-  let streamData = body.data;
-  if (dictInfo.filterName === FLATE_DECODE_FILTER_NAME) {
-    const decompressResult = await decompressFlate(streamData);
-    if (!decompressResult.ok) {
-      return decompressResult;
-    }
-    streamData = decompressResult.value;
+  const decompressResult = await PdfFilter.decode(
+    body.data,
+    dictInfo.filterName,
+    {
+      decodeParms: dictInfo.decodeParms,
+    },
+  );
+  if (!decompressResult.ok) {
+    return decompressResult;
   }
 
   const predictorParamsResult = Predictor.parseParams(dictInfo.decodeParms);
@@ -97,7 +97,7 @@ export async function parseXRefStream(
   }
 
   const predictedResult = Predictor.apply(
-    streamData,
+    decompressResult.value,
     predictorParamsResult.value,
   );
   if (!predictedResult.ok) {

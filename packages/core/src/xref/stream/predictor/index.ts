@@ -1,6 +1,6 @@
 /**
  * `/DecodeParms` の `/Predictor` (ISO 32000-1 §7.4.4.4) を扱うモジュール。
- * FlateDecode 展開後のバイト列に対し、PNG 予測子 (10-15) / TIFF 予測子 (2) の逆変換を行う。
+ * FlateDecode / LZWDecode 展開後のバイト列に対し、PNG 予測子 (10-15) / TIFF 予測子 (2) の逆変換を行う。
  *
  * @module
  */
@@ -147,7 +147,7 @@ function decodePngByte(
  * PNG 予測子 (Predictor 10-15) の逆変換を行う。
  * 各行の先頭1バイトがタグ、残り `rowBytes` バイトが符号化済みサンプルという構造を前提とする。
  *
- * @param data - FlateDecode 展開済みのバイト列
+ * @param data - FlateDecode / LZWDecode 展開済みのバイト列
  * @param bpp - 1サンプルあたりのバイト数（`ceil(colors * bitsPerComponent / 8)`、最小1）
  * @param rowBytes - 1行あたりのサンプルバイト数（タグを除く）
  * @returns 復元したバイト列、またはエラー
@@ -197,7 +197,7 @@ function applyPngPredictor(
  * TIFF 予測子 (Predictor 2) の逆変換を行う。バイト境界を前提とするため
  * `bitsPerComponent` が 8 以外の場合はエラーを返す。
  *
- * @param data - FlateDecode 展開済みのバイト列
+ * @param data - FlateDecode / LZWDecode 展開済みのバイト列
  * @param colors - 1サンプルあたりのカラーコンポーネント数
  * @param bitsPerComponent - 1コンポーネントあたりのビット数
  * @param columns - 1行あたりのサンプル数
@@ -313,10 +313,10 @@ export const Predictor = {
   },
 
   /**
-   * FlateDecode 展開済みのバイト列に Predictor 逆変換を適用する。
+   * FlateDecode / LZWDecode 展開済みのバイト列に Predictor 逆変換を適用する。
    * `predictor === 1` の場合は入力をそのまま返す。
    *
-   * @param data - FlateDecode 展開済みのバイト列
+   * @param data - FlateDecode / LZWDecode 展開済みのバイト列
    * @param params - `parseParams` で得た Predictor パラメータ
    * @returns 逆変換後のバイト列、またはエラー
    */
