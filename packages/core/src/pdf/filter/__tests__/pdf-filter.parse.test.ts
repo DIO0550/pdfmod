@@ -87,26 +87,26 @@ test("/Filter 配列の要素が name 以外の場合 err(PDF_FILTER_UNSUPPORTED
 
 test("/Filter が未サポートの名前の場合 err(PDF_FILTER_UNSUPPORTED) を返す", () => {
   const entries = new Map<string, PdfValue>([
-    ["Filter", { type: "name", value: "LZWDecode" }],
+    ["Filter", { type: "name", value: "DCTDecode" }],
   ]);
   const result = PdfFilter.parse(entries);
   assert(!result.ok);
   expect(result.error.code).toBe("PDF_FILTER_UNSUPPORTED");
-  expect(result.error.message).toContain("LZWDecode");
+  expect(result.error.message).toContain("DCTDecode");
 });
 
-test("/Filter が単一要素配列で未サポートの名前([/LZWDecode])の場合 err(PDF_FILTER_UNSUPPORTED) を返す", () => {
+test("/Filter が単一要素配列で未サポートの名前([/DCTDecode])の場合 err(PDF_FILTER_UNSUPPORTED) を返す", () => {
   const entries = new Map<string, PdfValue>([
     [
       "Filter",
       {
         type: "array",
-        elements: [{ type: "name", value: "LZWDecode" }],
+        elements: [{ type: "name", value: "DCTDecode" }],
       },
     ],
   ]);
   const result = PdfFilter.parse(entries);
   assert(!result.ok);
   expect(result.error.code).toBe("PDF_FILTER_UNSUPPORTED");
-  expect(result.error.message).toContain("LZWDecode");
+  expect(result.error.message).toContain("DCTDecode");
 });

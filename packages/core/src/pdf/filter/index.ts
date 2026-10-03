@@ -3,16 +3,20 @@ import { err, ok } from "../../utils/result/index";
 import type { PdfParseError } from "../errors/index";
 import type { PdfValue } from "../types/pdf-types/index";
 import { decompressFlate } from "./flatedecode/index";
+import { LzwDecode } from "./lzwdecode/index";
 
 export { decompressFlate } from "./flatedecode/index";
+export { LzwDecode } from "./lzwdecode/index";
 
 /** フィルタデコードのオプション。 */
 export interface FilterDecodeOptions {
   /** 展開後の最大バイト数（未指定時は各デコーダのデフォルト）。 */
   readonly maxDecompressedSize?: number;
+  /** フィルタ固有の /DecodeParms。Predictor は呼び出し側で適用する。 */
+  readonly decodeParms?: ReadonlyMap<string, PdfValue>;
 }
 
-const SUPPORTED_FILTER_NAME = "FlateDecode";
+const SUPPORTED_FILTER_NAMES = new Set(["FlateDecode", "LZWDecode"]);
 
 /** PDF ストリーム辞書の /Filter エントリのパースおよび展開パイプラインを提供するコンパニオンオブジェクト。 */
 export const PdfFilter = {
@@ -57,7 +61,7 @@ export const PdfFilter = {
       });
     }
 
-    if (target.value !== SUPPORTED_FILTER_NAME) {
+    if (!SUPPORTED_FILTER_NAMES.has(target.value)) {
       return err({
         code: "PDF_FILTER_UNSUPPORTED",
         message: `/Filter /${target.value} is not supported`,
@@ -85,8 +89,12 @@ export const PdfFilter = {
       return ok(data);
     }
 
-    if (filter === SUPPORTED_FILTER_NAME) {
+    if (filter === "FlateDecode") {
       return decompressFlate(data, options?.maxDecompressedSize);
+    }
+
+    if (filter === "LZWDecode") {
+      return LzwDecode.decode(data, options);
     }
 
     return err({
