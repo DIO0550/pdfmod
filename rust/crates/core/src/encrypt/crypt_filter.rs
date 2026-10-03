@@ -212,7 +212,7 @@ impl CryptFilters {
 
     /// `/CF` を取り出して各エントリを型に変換する。
     ///
-    /// エントリの辞書は `remove` でムーブして `CryptFilter::from_dictionary` に渡す
+    /// エントリの辞書は `remove` でムーブして `CryptFilter::take` に渡す
     /// （`iter()` で参照を回すと値の clone が必要になるため）。
     /// キーは `BTreeMap` のキーとして所有権が要るので clone する。
     fn take_filter_map(
@@ -238,7 +238,7 @@ impl CryptFilters {
                 continue;
             };
             let actual = entry.kind();
-            let PdfObject::Dictionary(entry) = entry else {
+            let PdfObject::Dictionary(mut entry) = entry else {
                 // name はループが所有しており、この分岐で return するため clone は不要。
                 return Err(EncryptError::invalid_key_type_at(
                     position,
@@ -247,7 +247,7 @@ impl CryptFilters {
                 ));
             };
             // &name の借用を先に終わらせてから、name を BTreeMap のキーとして move する。
-            let filter = CryptFilter::from_dictionary(entry, &name, position)?;
+            let filter = CryptFilter::take(&mut entry, &name, position)?;
             filters.insert(name, filter);
         }
         Ok(filters)
@@ -314,26 +314,29 @@ impl CryptFilters {
 }
 
 impl CryptFilter {
-    /// `/CF` のエントリ辞書を型に変換する。
+    /// `/CF` のエントリ辞書から既知のキーを消費して型に変換する。
+    /// `/AuthEvent` `/Length` は値が不正でも消費し、未知のキーは辞書に残す。
     ///
     /// `name` は自身の crypt filter 名。エラーにどのエントリかを載せるためだけに受け取る。
-    fn from_dictionary(
-        mut dictionary: PdfDictionary,
+    fn take(
+        dictionary: &mut PdfDictionary,
         name: &PdfName,
         position: ByteOffset,
     ) -> Result<Self, EncryptError> {
-        let method = CryptFilterMethod::take(&mut dictionary, name, position)?;
+        let method = CryptFilterMethod::take(dictionary, name, position)?;
 
         // /AuthEvent /Length は型不一致でもエラーにせず既定値へフォールバックする（#607 で維持）。
         let auth_event = dictionary
-            .get(CryptFilterKey::AuthEvent.as_bytes())
+            .remove(CryptFilterKey::AuthEvent.as_bytes())
+            .as_ref()
             .and_then(PdfObject::as_name)
             .map_or(AuthEvent::DocOpen, |name| {
                 AuthEvent::from_bytes(name.as_bytes())
             });
 
         let length = dictionary
-            .get(CryptFilterKey::Length.as_bytes())
+            .remove(CryptFilterKey::Length.as_bytes())
+            .as_ref()
             .and_then(PdfObject::as_integer)
             .and_then(Self::parse_length);
 
@@ -390,6 +393,56 @@ impl CryptFilter {
 mod tests {
     use super::{AuthEvent, CryptFilter, CryptFilterMethod};
     use crate::encrypt::algorithm::KeyLength;
+    use crate::encrypt::tests::{dictionary, position};
+    use crate::object::name::PdfName;
+
+    #[test]
+    fn take_consumes_known_keys_and_preserves_unknown_keys() {
+        let mut entry =
+            dictionary(b"<< /CFM /AESV2 /AuthEvent /EFOpen /Length 16 /Custom (keep) >>");
+
+        let filter = CryptFilter::take(&mut entry, &PdfName::from("StdCF"), position())
+            .expect("valid crypt filter should be parsed");
+
+        assert_eq!(filter.method(), CryptFilterMethod::AesV2);
+        assert_eq!(filter.auth_event(), AuthEvent::EFOpen);
+        assert_eq!(filter.length(), KeyLength::from_bits(128));
+        assert_eq!(entry, dictionary(b"<< /Custom (keep) >>"));
+    }
+
+    #[test]
+    fn take_consumes_invalid_optional_values_and_keeps_defaults() {
+        let cases: [&[u8]; 4] = [
+            b"<< /CFM /V2 /AuthEvent 1 /Length /Foo /Custom (keep) >>",
+            b"<< /CFM /V2 /AuthEvent (EFOpen) /Length (16) /Custom (keep) >>",
+            b"<< /CFM /V2 /AuthEvent null /Length null /Custom (keep) >>",
+            b"<< /CFM /V2 /AuthEvent /Unknown /Length 17 /Custom (keep) >>",
+        ];
+        for source in cases {
+            let mut entry = dictionary(source);
+
+            let filter = CryptFilter::take(&mut entry, &PdfName::from("StdCF"), position())
+                .expect("invalid optional values should fall back to defaults");
+
+            assert_eq!(filter.method(), CryptFilterMethod::V2);
+            assert_eq!(filter.auth_event(), AuthEvent::DocOpen);
+            assert_eq!(filter.length(), None);
+            assert_eq!(entry, dictionary(b"<< /Custom (keep) >>"));
+        }
+    }
+
+    #[test]
+    fn take_uses_defaults_for_missing_keys_and_preserves_unknown_keys() {
+        let mut entry = dictionary(b"<< /Custom (keep) >>");
+
+        let filter = CryptFilter::take(&mut entry, &PdfName::from("StdCF"), position())
+            .expect("missing keys should fall back to defaults");
+
+        assert_eq!(filter.method(), CryptFilterMethod::None);
+        assert_eq!(filter.auth_event(), AuthEvent::DocOpen);
+        assert_eq!(filter.length(), None);
+        assert_eq!(entry, dictionary(b"<< /Custom (keep) >>"));
+    }
 
     // ISO 32000-1 表 25 が定める 4 種の /CFM が対応するバリアントになることを確認する
     #[test]
