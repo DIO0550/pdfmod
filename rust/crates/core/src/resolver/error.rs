@@ -11,6 +11,8 @@ use crate::{
 /// 世代・ヘッダ不一致と下位解析の失敗を区別する。
 #[derive(Debug, PartialEq)]
 pub enum ResolveError {
+    /// 境界が安全に確定できない、または一致するオブジェクトがない。
+    RecoveryFailed,
     /// 再入したオブジェクトを末尾にも含む循環経路。
     Cycle(Vec<ObjectId>),
     /// 循環ではないが参照深さが上限を超えた。
