@@ -143,12 +143,12 @@ test("parseは/Indexの要素が整数でない場合にXREF_STREAM_INVALIDを�
 
 test("parseは/Filterが未サポートの場合にXREF_STREAM_INVALIDを返す", () => {
   const result = XRefStreamDict.parse(
-    makeXRefStreamDict({ Filter: { type: "name", value: "LZWDecode" } }),
+    makeXRefStreamDict({ Filter: { type: "name", value: "DCTDecode" } }),
   );
 
   assert(!result.ok);
   expect(result.error.code).toBe("XREF_STREAM_INVALID");
-  expect(result.error.message).toContain("LZWDecode");
+  expect(result.error.message).toContain("DCTDecode");
 });
 
 test("parseは/Filterが単一要素配列[/FlateDecode]の場合bareネームと同義にfilterNameを返す（ISO 32000-1 §7.4）", () => {
@@ -170,14 +170,14 @@ test("parseは/Filterが単一要素配列で未サポートフィルタの場�
     makeXRefStreamDict({
       Filter: {
         type: "array",
-        elements: [{ type: "name", value: "LZWDecode" }],
+        elements: [{ type: "name", value: "DCTDecode" }],
       },
     }),
   );
 
   assert(!result.ok);
   expect(result.error.code).toBe("XREF_STREAM_INVALID");
-  expect(result.error.message).toContain("LZWDecode");
+  expect(result.error.message).toContain("DCTDecode");
 });
 
 test("parseは/Filterが複数要素配列（カスケードフィルタ）の場合にXREF_STREAM_INVALIDを返す", () => {

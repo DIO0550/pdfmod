@@ -1,5 +1,6 @@
 import { NumberEx } from "../../../ext/number/index";
 import type { PdfError } from "../../../pdf/errors/index";
+import { PdfFilter } from "../../../pdf/filter/index";
 import { ByteOffset } from "../../../pdf/types/byte-offset/index";
 import type { PdfValue } from "../../../pdf/types/pdf-types/index";
 import { none, type Option, some } from "../../../utils/option/index";
@@ -7,7 +8,10 @@ import type { Result } from "../../../utils/result/index";
 import { err, ok } from "../../../utils/result/index";
 import { ObjectParser } from "../../object-parser/index";
 import { ObjectStreamDict } from "../dict/index";
-import { createFlateDecompressor } from "../flate-decompressor/index";
+import {
+  createFlateDecompressor,
+  DEFAULT_OBJECT_STREAM_MAX_DECOMPRESSED_SIZE,
+} from "../flate-decompressor/index";
 import {
   ObjectStreamHeader,
   type ObjectStreamHeaderEntry,
@@ -73,7 +77,7 @@ const PreparedObjectStream = {
    * 未圧縮本文またはキャッシュを優先して展開済みデータを取得する。
    *
    * @param options - 対象ストリームと展開キャッシュ
-   * @param needsDecompress - FlateDecode の展開が必要か
+   * @param needsDecompress - フィルタ展開が必要か
    * @returns 本文のバイト列、または展開エラー
    */
   async readData(
@@ -88,7 +92,16 @@ const PreparedObjectStream = {
     if (cached !== undefined) {
       return ok(cached);
     }
-    const result = await createFlateDecompressor().decompress(stream.data);
+    const filter = PdfFilter.parse(stream.dictionary.entries);
+    if (!filter.ok) {
+      return filter;
+    }
+    const result =
+      filter.value === "FlateDecode"
+        ? await createFlateDecompressor().decompress(stream.data)
+        : await PdfFilter.decode(stream.data, filter.value, {
+            maxDecompressedSize: DEFAULT_OBJECT_STREAM_MAX_DECOMPRESSED_SIZE,
+          });
     if (result.ok) {
       cache?.set(streamObjNum, result.value);
     }
