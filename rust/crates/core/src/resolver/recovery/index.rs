@@ -48,66 +48,105 @@ impl RecoveryIndex {
                 ByteOffset::new(u64::try_from(position).map_err(|_| ResolveError::RecoveryFailed)?);
             match token {
                 Token::Primitive(Primitive::Integer(_)) => {
-                    let mut parser = Parser::new_at(input, position);
-                    if let Ok(object) = parser.parse_indirect_object_with_length(|reference, _| {
-                        Self::resolve_length(input, reference, source)
-                    }) {
-                        let next = usize::try_from(parser.position().value())
-                            .map_err(|_| ResolveError::RecoveryFailed)?;
-                        if let PdfObject::Stream(stream) = object.object() {
-                            if matches!(stream.dictionary().get(b"Type".as_slice()), Some(PdfObject::Name(name)) if name.as_bytes() == b"XRef")
-                            {
-                                let (mut entries, trailer, _) =
-                                    ParsedXRefStream::parse(input, offset)
-                                        .map_err(|_| ResolveError::RecoveryFailed)?
-                                        .into_parts();
-                                entries.merge_older(std::mem::take(&mut result.sections));
-                                result.sections = entries;
-                                if let Some(trailer) = trailer {
-                                    result.trailer = Some(trailer);
-                                    result.last_xref = Some(offset);
-                                }
-                            }
-                        }
-                        result
-                            .objects
-                            .insert(object.id().object_number(), (object.id(), offset));
-                        cursor = next;
-                    }
+                    cursor = result.scan_object(input, offset, source)?.unwrap_or(cursor);
                 }
-                Token::Keyword(Keyword::Xref) => {
-                    result.last_xref = Some(offset);
-                    if let Ok(section) = ParsedXRefTable::parse(input, offset) {
-                        let mut entries = section.into_table();
-                        entries.merge_older(std::mem::take(&mut result.sections));
-                        result.sections = entries;
-                    }
-                }
-                Token::Keyword(Keyword::Trailer) => {
-                    let trailer = ParsedTrailer::parse(input, offset)
-                        .map_err(|_| ResolveError::RecoveryFailed)?;
-                    cursor = usize::try_from(trailer.end().value())
-                        .map_err(|_| ResolveError::RecoveryFailed)?;
-                    let trailer = trailer.into_trailer();
-                    if let Some(supplement) = trailer.xref_stm() {
-                        let header = PdfHeader::parse(input).map_err(ResolveError::File)?;
-                        let actual = header
-                            .resolve_offset(supplement)
-                            .ok_or(ResolveError::RecoveryFailed)?;
-                        let mut entries = ParsedXRefStream::parse(input, actual)
-                            .map_err(|_| ResolveError::RecoveryFailed)?
-                            .into_table();
-                        entries.merge_older(std::mem::take(&mut result.sections));
-                        result.sections = entries;
-                    }
-                    result.trailer = Some(trailer);
-                }
-                // Without a validated Length the payload cannot safely be searched for obj.
+                Token::Keyword(Keyword::Xref) => result.scan_xref_table(input, offset),
+                Token::Keyword(Keyword::Trailer) => cursor = result.scan_trailer(input, offset)?,
+                // Length が未検証のストリーム内部では obj を安全に探索できない。
                 Token::StreamBegin => return Err(ResolveError::RecoveryFailed),
                 _ => {}
             }
         }
         Ok(result)
+    }
+
+    // 間接オブジェクトとして読めない整数トークンなら、通常の字句走査を継続する。
+    fn scan_object(
+        &mut self,
+        input: &[u8],
+        offset: ByteOffset,
+        source: Option<(&PdfHeader, &XRefTable)>,
+    ) -> Result<Option<usize>, ResolveError> {
+        let position = usize::try_from(offset.value()).map_err(|_| ResolveError::RecoveryFailed)?;
+        let mut parser = Parser::new_at(input, position);
+        let Ok(object) = parser.parse_indirect_object_with_length(|reference, _| {
+            Self::resolve_length(input, reference, source)
+        }) else {
+            return Ok(None);
+        };
+        let next =
+            usize::try_from(parser.position().value()).map_err(|_| ResolveError::RecoveryFailed)?;
+        self.scan_xref_stream(input, offset, object.object())?;
+        self.objects
+            .insert(object.id().object_number(), (object.id(), offset));
+        Ok(Some(next))
+    }
+
+    fn scan_xref_stream(
+        &mut self,
+        input: &[u8],
+        offset: ByteOffset,
+        object: &PdfObject,
+    ) -> Result<(), ResolveError> {
+        let PdfObject::Stream(stream) = object else {
+            return Ok(());
+        };
+        let Some(PdfObject::Name(name)) = stream.dictionary().get(b"Type".as_slice()) else {
+            return Ok(());
+        };
+        if name.as_bytes() != b"XRef" {
+            return Ok(());
+        }
+
+        let (entries, trailer, _) = ParsedXRefStream::parse(input, offset)
+            .map_err(|_| ResolveError::RecoveryFailed)?
+            .into_parts();
+        self.merge_section(entries);
+        let Some(trailer) = trailer else {
+            return Ok(());
+        };
+        self.trailer = Some(trailer);
+        self.last_xref = Some(offset);
+        Ok(())
+    }
+
+    fn scan_xref_table(&mut self, input: &[u8], offset: ByteOffset) {
+        self.last_xref = Some(offset);
+        let Ok(section) = ParsedXRefTable::parse(input, offset) else {
+            return;
+        };
+        self.merge_section(section.into_table());
+    }
+
+    fn scan_trailer(&mut self, input: &[u8], offset: ByteOffset) -> Result<usize, ResolveError> {
+        let parsed =
+            ParsedTrailer::parse(input, offset).map_err(|_| ResolveError::RecoveryFailed)?;
+        let next =
+            usize::try_from(parsed.end().value()).map_err(|_| ResolveError::RecoveryFailed)?;
+        let trailer = parsed.into_trailer();
+        if let Some(supplement) = trailer.xref_stm() {
+            self.scan_supplement(input, supplement)?;
+        }
+        self.trailer = Some(trailer);
+        Ok(next)
+    }
+
+    fn scan_supplement(&mut self, input: &[u8], recorded: ByteOffset) -> Result<(), ResolveError> {
+        let header = PdfHeader::parse(input).map_err(ResolveError::File)?;
+        let actual = header
+            .resolve_offset(recorded)
+            .ok_or(ResolveError::RecoveryFailed)?;
+        let entries = ParsedXRefStream::parse(input, actual)
+            .map_err(|_| ResolveError::RecoveryFailed)?
+            .into_table();
+        self.merge_section(entries);
+        Ok(())
+    }
+
+    // 前方から走査するため、後で読んだセクションを既存エントリより優先する。
+    fn merge_section(&mut self, mut entries: XRefTable) {
+        entries.merge_older(std::mem::take(&mut self.sections));
+        self.sections = entries;
     }
 
     fn resolve_length(
