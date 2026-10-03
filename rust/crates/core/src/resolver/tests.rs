@@ -51,3 +51,5 @@ mod cycles;
 mod caching;
 
 mod recovery;
+
+mod catalog;
