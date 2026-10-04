@@ -1,0 +1,4 @@
+interface:
+  display_name: "PDF仕様のHTML解説"
+  short_description: "実装したPDF仕様を図解・具体例付きのHTMLとして継続的に蓄積する"
+  default_prompt: "$pdf-spec-guide を使って、今回実装したPDF仕様のHTML解説を作成・更新してください。"

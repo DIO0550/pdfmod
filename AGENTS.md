@@ -30,6 +30,11 @@ pnpm モノレポで `@pdfmod/core`（PDF処理エンジン）と `@pdfmod/react
 - テキスト抽出には `/ToUnicode` CMAPが必須
 - 圧縮: `/FlateDecode`（zlib）が最も一般的。フィルタは配列でカスケード可能
 
+## PDF仕様のHTML解説
+
+PDF機能の実装・仕様に関わる振る舞いの変更時は、[pdf-spec-guide](.agents/skills/pdf-spec-guide/SKILL.md) スキルを読み、同じPRで `docs/guides/` の解説を追加・更新する。
+手順とHTMLテンプレートはスキル内で管理する。PDF仕様・解説に影響しない変更では実行不要。
+
 ## 開発スキル
 
 TypeScript を変更する作業では、以下を **Skill ツールで実行**する（memory があっても省略せず最新版を読み込む）。
