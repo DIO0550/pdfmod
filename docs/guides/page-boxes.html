@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ページ矩形と境界ボックス | pdfmod</title>
+  <style>
+    :root {
+      --ink: #182f3c;
+      --muted: #526b76;
+      --paper: #f5f7f5;
+      --line: #d7e2e1;
+      --teal: #067666;
+      --mint: #e6f4ef;
+      --blue: #265bb3;
+      --sky: #eaf1ff;
+      --amber: #956000;
+      --sand: #fff4db;
+      --red: #ae3b42;
+      --rose: #fff0ee;
+      --nav-width: 250px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; scroll-padding-top: 24px; }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font: 18px/1.85 -apple-system, BlinkMacSystemFont,
+        "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
+    }
+    a { color: var(--blue); overflow-wrap: anywhere; }
+    button { font: inherit; cursor: pointer; touch-action: manipulation; }
+    a:focus-visible, button:focus-visible, summary:focus-visible {
+      outline: 3px solid #dd8c1f;
+      outline-offset: 4px;
+    }
+    aside {
+      position: fixed;
+      inset: 0 auto 0 0;
+      width: var(--nav-width);
+      overflow: auto;
+      background: #102e39;
+      color: white;
+      padding: 30px 23px;
+    }
+    .brand { font-size: 13px; font-weight: 750; letter-spacing: .14em; color: #8dddd0; }
+    .nav-title { font-size: 23px; line-height: 1.6; margin: 25px 0; overflow-wrap: anywhere; }
+    nav a {
+      display: block;
+      color: #d1e0e3;
+      padding: 10px;
+      margin: 5px 0;
+      border-radius: 7px;
+      font-size: 14px;
+      line-height: 1.6;
+      text-decoration: none;
+    }
+    nav a:hover, nav a[aria-current] { background: #204952; color: white; }
+    nav span { color: #8dddd0; font-size: 11px; margin-right: 9px; }
+    main { margin-left: var(--nav-width); padding: 55px 48px 60px; }
+    .wrap { max-width: 980px; margin: auto; }
+    .hero { border-bottom: 1px solid var(--line); padding: 12px 0 35px; }
+    .eyebrow { font-size: 13px; color: var(--teal); letter-spacing: .12em; font-weight: 800; }
+    h1 { font-size: clamp(32px, 4vw, 50px); line-height: 1.4; margin: 15px 0 22px; }
+    h2 { font-size: 28px; line-height: 1.5; margin: 0; }
+    h3 { font-size: 21px; margin: 20px 0 12px; }
+    p { margin: 14px 0; }
+    .lead { font-size: 20px; color: var(--muted); }
+    .meta { font-size: 13px; color: var(--muted); }
+    .section { padding: 48px 0 8px; scroll-margin-top: 24px; }
+    .section-heading { display: flex; align-items: flex-start; gap: 17px; margin-bottom: 21px; }
+    .number { border-top: 3px solid var(--teal); color: var(--teal); font-weight: 800; font-size: 15px; min-width: 33px; line-height: 2.6; }
+    code { font: .88em/1.8 ui-monospace, SFMono-Regular, Consolas, monospace; background: #e9eeee; padding: 2px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+    pre { background: #142f3b; color: #eaf5f6; padding: 24px; border-radius: 12px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 15px; line-height: 1.85; }
+    pre code { font-size: inherit; background: none; padding: 0; color: inherit; }
+    .key { color: #89e0ce; }
+    .value { color: #ffd688; }
+    .comment { color: #a3bdc5; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .grid > * { min-width: 0; }
+    .card { border: 1px solid var(--line); background: white; border-radius: 13px; padding: 24px; margin: 22px 0; }
+    .card-label { font-size: 13px; color: var(--muted); font-weight: 750; letter-spacing: .07em; margin-bottom: 16px; }
+    .note { border-left: 4px solid var(--teal); border-radius: 0 9px 9px 0; padding: 17px 21px; background: var(--mint); font-size: 16px; margin: 22px 0; }
+    .note strong { display: block; color: var(--teal); }
+    .note.warning { border-color: #c28c27; background: var(--sand); }
+    .note.warning strong { color: var(--amber); }
+    .note.error { border-color: var(--red); background: var(--rose); }
+    .note.error strong { color: var(--red); }
+    .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; margin: 22px 0; }
+    table { border-collapse: collapse; width: 100%; background: white; font-size: 15px; line-height: 1.7; }
+    th, td { text-align: left; vertical-align: top; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+    th { background: #eaf0ef; font-size: 13px; }
+    tr:last-child td { border-bottom: 0; }
+    .flow { max-width: 700px; margin: 0 auto; }
+    .flow-box { padding: 18px; text-align: center; border: 1px solid var(--line); border-radius: 10px; background: #f7f9f8; overflow-wrap: anywhere; }
+    .flow-box strong { display: block; }
+    .flow-box.primary { border-color: var(--teal); background: var(--mint); }
+    .flow-box.secondary { border-color: #adc3ea; background: var(--sky); }
+    .flow-arrow { text-align: center; font-size: 14px; color: var(--muted); padding: 12px 0; }
+    .branches { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    .branches > div { min-width: 0; }
+    .flow-caption { font-size: 14px; color: var(--muted); margin-top: 17px; }
+    .steps { padding-left: 25px; }
+    .steps li { margin: 14px 0; padding-left: 7px; }
+    .steps p { font-size: 16px; color: var(--muted); margin: 5px 0; }
+    .example-controls { display: flex; gap: 9px; flex-wrap: wrap; }
+    .example-controls button { font-size: 14px; padding: 8px 15px; background: white; color: var(--ink); border: 1px solid var(--line); border-radius: 7px; }
+    .example-controls button[aria-pressed="true"] { background: var(--teal); color: white; border-color: var(--teal); }
+    [hidden] { display: none !important; }
+    details { background: white; border: 1px solid var(--line); border-radius: 9px; padding: 15px 20px; margin: 18px 0; }
+    summary { cursor: pointer; font-weight: 700; }
+    footer { border-top: 1px solid var(--line); margin-top: 45px; padding-top: 24px; font-size: 14px; color: var(--muted); }
+    footer li { margin: 9px 0; }
+    @media (max-width: 1000px) {
+      :root { --nav-width: 210px; }
+      main { padding: 38px 28px; }
+      aside { padding: 27px 17px; }
+    }
+    @media (max-width: 760px) {
+      body { font-size: 17px; }
+      aside { position: static; width: auto; padding: 17px 20px; }
+      .nav-title { display: none; }
+      nav { display: flex; gap: 6px; overflow-x: auto; padding: 8px 0 3px; }
+      nav a { white-space: nowrap; font-size: 12px; margin: 0; padding: 6px 9px; }
+      main { margin: 0; padding: 25px 20px 45px; }
+      h1 { font-size: 34px; }
+      h2 { font-size: 25px; }
+      .lead { font-size: 18px; }
+      .grid, .branches { grid-template-columns: 1fr; }
+      .card { padding: 18px; }
+      pre { font-size: 13px; padding: 18px; }
+      th, td { padding: 11px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+    }
+    @media print {
+      aside, .example-controls { display: none !important; }
+      main { margin: 0; padding: 0; }
+      body { background: white; font-size: 11pt; }
+      h1 { font-size: 28pt; }
+      h2 { font-size: 20pt; }
+      .section { padding-top: 24px; }
+      .card, pre, .note, .flow-box { break-inside: avoid; }
+      pre { background: #eef2f4; color: #182f3c; }
+      .key { color: var(--teal); }
+      .value { color: var(--amber); }
+      .comment { color: var(--muted); }
+      .table-wrap { overflow: visible; }
+      [data-example-panel][hidden] { display: block !important; }
+      a { color: inherit; }
+    }
+    svg { display:block; width:100%; height:auto; }
+    figure { margin-inline:0; }
+  </style></head><body>
+<aside aria-label="目次"><div class="brand">PDFMOD / FIELD NOTES</div><div class="nav-title">ページ矩形と<br>境界ボックス</div><nav><a href="#overview"><span>01</span>ページの「どこまで」を扱うのか</a><a href="#syntax"><span>02</span>4つの数値から矩形を読む</a><a href="#defaults"><span>03</span>5種類のボックスと既定値</a><a href="#intersection"><span>04</span>はみ出した部分は交差で絞る</a><a href="#examples"><span>05</span>正常・境界・エラーを比べる</a><a href="#implementation"><span>06</span>型の保証と呼び出し側の責務</a></nav></aside>
+<main id="top"><div class="wrap"><header class="hero"><div class="eyebrow">PDF INTERNALS / PAGE BOUNDARIES</div><h1>逆順でも、はみ出しても。<br>ページの矩形を正しく読む</h1><p class="lead">4つの数値から用紙と表示範囲を読み解きます。座標の正規化、5種類のボックスの既定値、交差の計算を具体例で確かめましょう。</p><p class="meta">対象：Rust pdfmod-core / Issue #636 実装版（本変更）</p></header>
+<section class="section" id="overview"><div class="section-heading"><span class="number">01</span><h2>ページの「どこまで」を扱うのか</h2></div>
+<p>ページ境界ボックス（page boundary box）は、用紙・表示・印刷仕上げの範囲を表す矩形です。矩形（rectangle）は、軸に平行な四角形を<strong>対角の2点</strong>で指定します。</p>
+<div class="grid"><div class="card"><h3>MediaBox：用紙の範囲</h3><p>物理メディアの境界です。ページ自身、または親の Pages ノードから取得する必須の属性です。</p></div><div class="card"><h3>CropBox：見せる範囲</h3><p>表示・印刷する領域です。省略時は MediaBox が使われます。範囲外の描画内容を削除する操作ではありません。</p></div></div>
+<div class="note"><strong>座標の順序と、実際の領域を分けて考える</strong>2点の順序が逆でも同じ矩形です。読み取り時に各軸の最小値・最大値を求め、以後は正規化済みの型で扱います。</div></section><section class="section" id="syntax"><div class="section-heading"><span class="number">02</span><h2>4つの数値から矩形を読む</h2></div>
+<p>次はページ辞書の抜粋です。完全なPDFではなく、参照先・描画内容などは省略しています。</p>
+<div class="grid"><pre><code>&lt;&lt;
+  <span class="key">/Type</span> /Page
+  <span class="key">/MediaBox</span> <span class="value">[612 792 0 0]</span>
+  <span class="key">/CropBox</span> <span class="value">[-10 20 620 780]</span>
+&gt;&gt;</code></pre><div><h3>[x₁ y₁ x₂ y₂]</h3><p><code>/</code> から始まる名前が辞書キー、角括弧が配列です。最初の2数が一方の点、後半の2数がその対角の点です。整数と実数を混在させられます。</p><p>標準のユーザー空間ではXは右、Yは上へ増加します。UserUnit が既定値1なら1単位は1/72インチです。本APIは拡大や回転を適用しません。</p></div></div>
+<figure class="card"><div class="card-label">NORMALIZE / 両軸の最小・最大を取り出す</div>
+<svg viewBox="0 0 620 320" role="img" aria-labelledby="normalize-title"><title id="normalize-title">逆順の2点を左下と右上に正規化した矩形</title>
+<rect x="140" y="65" width="270" height="190" fill="#e6f4ef" stroke="#067666" stroke-width="3"/>
+<circle cx="140" cy="255" r="6" fill="#265bb3"/><circle cx="410" cy="65" r="6" fill="#ae3b42"/>
+<text x="425" y="60" font-size="19" fill="#ae3b42">点1 (612, 792)</text><text x="35" y="290" font-size="19" fill="#265bb3">点2 (0, 0)</text>
+<text x="275" y="145" text-anchor="middle" font-size="22" fill="#067666">幅 = 612 − 0</text><text x="275" y="183" text-anchor="middle" font-size="22" fill="#067666">高さ = 792 − 0</text>
+<text x="140" y="30" font-size="18" fill="#526b76">[612 792 0 0] → [0 0 612 792]</text></svg>
+<figcaption class="flow-caption">図は概念図で、縦横比は実寸ではありません。Xだけ、Yだけを逆に指定しても、各軸で独立に正規化します。</figcaption></figure>
+<pre><code>min_x = min(x₁, x₂)     max_x = max(x₁, x₂)
+min_y = min(y₁, y₂)     max_y = max(y₁, y₂)
+幅 = max_x − min_x      高さ = max_y − min_y</code></pre></section><section class="section" id="defaults"><div class="section-heading"><span class="number">03</span><h2>5種類のボックスと既定値</h2></div>
+<div class="table-wrap"><table><thead><tr><th>キー</th><th>意味</th><th>省略時</th></tr></thead><tbody>
+<tr><td>MediaBox</td><td>物理メディア</td><td>継承先にもなければエラー</td></tr>
+<tr><td>CropBox</td><td>表示・印刷する範囲</td><td>MediaBox</td></tr>
+<tr><td>BleedBox</td><td>制作時の裁ち落とし領域</td><td>CropBox</td></tr>
+<tr><td>TrimBox</td><td>裁断後の仕上がり領域</td><td>CropBox</td></tr>
+<tr><td>ArtBox</td><td>意味のあるコンテンツの領域</td><td>CropBox</td></tr>
+</tbody></table></div>
+<p>辞書内の <code>null</code> はキーの不在と同様に扱います。一方、型や配列の内容が不正な場合は、今回の検証APIではエラーを返します。</p>
+<div class="note warning"><strong>既定値は、ボックスの入れ子順序ではない</strong>BleedBox → TrimBox → ArtBox の順に既定値を引き継ぐわけではありません。3つとも直接 CropBox を参照します。明示された値は、それぞれ独立に MediaBox と交差させます。</div></section><section class="section" id="intersection"><div class="section-heading"><span class="number">04</span><h2>はみ出した部分は交差で絞る</h2></div>
+<p>交差（intersection）は、2つの矩形の共通部分です。CropBox・BleedBox・TrimBox・ArtBox が MediaBox を超える場合、有効な領域を MediaBox との交差に縮めます。</p>
+<figure class="card"><div class="card-label">CLIP / CropBox と MediaBox の共通部分</div>
+<svg viewBox="0 0 620 330" role="img" aria-labelledby="clip-title"><title id="clip-title">左右にはみ出したCropBoxをMediaBoxの内側へ制限する</title>
+<rect x="145" y="65" width="320" height="215" fill="#eaf1ff" stroke="#265bb3" stroke-width="3"/>
+<rect x="85" y="105" width="440" height="135" fill="none" stroke="#ae3b42" stroke-width="3" stroke-dasharray="8 6"/>
+<rect x="145" y="105" width="320" height="135" fill="#e6f4ef" stroke="#067666" stroke-width="3"/>
+<text x="145" y="38" font-size="19" fill="#265bb3">MediaBox [0 0 100 200]</text>
+<text x="305" y="163" text-anchor="middle" font-size="23" fill="#067666">有効な CropBox</text>
+<text x="305" y="200" text-anchor="middle" font-size="21" fill="#067666">[0 20 100 180]</text>
+<text x="85" y="315" font-size="19" fill="#ae3b42">指定値 [-10 20 120 180]（赤の点線）</text></svg>
+<figcaption class="flow-caption">座標は説明用で、図は縮尺どおりではありません。左端は max、右端は min を取ります。上下方向も同じ計算です。</figcaption></figure>
+<ol class="steps"><li><strong>それぞれの矩形を正規化する。</strong></li><li><strong>左下は大きい方、右上は小さい方を採用する。</strong></li><li><strong>左下が右上を超えたら、共通部分なし。</strong><p>この状態を再び正規化すると、存在しない領域を作ってしまいます。APIでは None を返します。</p></li></ol>
+<div class="note"><strong>辺や点で触れる場合</strong>等しい座標は許容し、幅・高さが0の矩形として保持します。離れている場合の None と区別します。これは本APIの表現方針です。</div></section><section class="section" id="examples"><div class="section-heading"><span class="number">05</span><h2>正常・境界・エラーを比べる</h2></div>
+<div class="grid"><article class="card"><h3>整数と実数の混在</h3><pre><code>[100.5 200 -10 0.25]</code></pre><p>正規化後は <code>[-10 0.25 100.5 200]</code>。幅110.5、高さ199.75です。</p></article>
+<article class="card"><h3>面積0も保持</h3><pre><code>[5 10 5 20]</code></pre><p>幅0、高さ10の矩形です。負の幅を作らず、そのまま扱えます。</p></article></div>
+<div class="table-wrap"><table><thead><tr><th>入力・条件</th><th>本APIの結果</th></tr></thead><tbody>
+<tr><td><code>[0 0 10]</code> / <code>[0 0 10 20 30]</code></td><td>InvalidLength（要素数は正確に4）</td></tr>
+<tr><td><code>[0 0 (10) 20]</code></td><td>InvalidElement（index 2、String）</td></tr>
+<tr><td><code>[0 0 10 0 R 20]</code></td><td>InvalidElement（index 2、Reference）</td></tr>
+<tr><td>MediaBox <code>[0 0 100 200]</code><br>CropBox <code>[110 10 120 20]</code></td><td>crop_box() は None。省略した3ボックスも None</td></tr>
+<tr><td>同じ MediaBox、CropBox <code>[100 20 110 30]</code></td><td>幅0、高さ10の交差矩形</td></tr>
+</tbody></table></div>
+<div class="note warning"><strong>間接参照はPDF自体の禁止事項ではない</strong><code>10 0 R</code> はオブジェクト番号10・世代番号0への参照です。配列やその要素の参照は、呼び出し側で解決してから渡します。今回の型が未解決参照を拒否することと、PDF仕様の妥当性は別です。</div>
+<p class="meta">すべて静的な説明例です。ブラウザ上でRustパーサを実行しているわけではありません。</p></section><section class="section" id="implementation"><div class="section-heading"><span class="number">06</span><h2>型の保証と呼び出し側の責務</h2></div>
+<div class="table-wrap"><table><thead><tr><th>API</th><th>保証・責務</th></tr></thead><tbody>
+<tr><td><code>Rectangle::try_from(&amp;PdfArray)</code></td><td>4つの直接数値を検証し正規化。私有フィールドにより、外部から不変条件を破れない</td></tr>
+<tr><td><code>width() / height()</code></td><td>有限かつ非負の f64</td></tr>
+<tr><td><code>intersection(&amp;Rectangle)</code></td><td>交差矩形、または共通部分なしの None</td></tr>
+<tr><td><code>PageBoxes::from_dictionary(...)</code></td><td>継承・参照解決済みの辞書を検証。既定値・MediaBoxとの交差を適用する準備</td></tr>
+<tr><td><code>media_box()</code></td><td>正規化済み MediaBox の借用</td></tr>
+<tr><td><code>crop_box() / bleed_box() / trim_box() / art_box()</code></td><td>既定値を適用した有効領域の Option&lt;Rectangle&gt;</td></tr>
+</tbody></table></div>
+<div class="grid"><div class="card"><h3>この実装で検証すること</h3><p>配列長・要素型・座標の有限性・幅と高さの有限性。不正な任意ボックスも黙って既定値には戻しません。</p><p>PageBoxError は対象キー、理由、呼び出し側が渡した位置を保持します。要素の index は0始まりで、ファイル中の位置そのものではありません。</p></div><div class="card"><h3>後続の処理が担当すること</h3><p>ページツリーの走査、MediaBox・CropBoxの継承、間接参照の解決、描画のクリッピング、Rotate・UserUnit の適用です。この変更ではまだ統合しません。</p></div></div>
+<div class="note warning"><strong>数値表現の実装上の制限</strong>座標は f64 です。大きな整数は f64 の精度で丸めます。NaN・無限大を含む手動構築オブジェクトと、差分が無限大になる極端な座標はエラーです。これらはライブラリの型保証のための制約です。</div></section><footer><strong>出典・対象バージョン</strong><p>対象：Issue #636 実装版（本変更） / 更新日：2026-10-04</p><ul>
+<li><a href="../specs/03_document_architecture.md">文書構造仕様 §3.4・§4.1</a></li>
+<li><a href="https://opensource.adobe.com/dc-acrobat-sdk-docs/pdfstandards/PDF32000_2008.pdf">ISO 32000-1:2008</a> §7.9.5、§7.7.3.3 表30、§14.11.2</li>
+<li><a href="../../rust/crates/core/src/geometry/rectangle.rs">Rectangle の実装</a> / <a href="../../rust/crates/core/src/page_boxes.rs">PageBoxes の実装</a></li>
+<li><a href="https://github.com/DIO0550/pdfmod/issues/636">Issue #636</a></li></ul><a href="#top">↑ 先頭に戻る</a></footer></div></main>
+<script>'use strict';
+    const sections = [...document.querySelectorAll('.section')];
+    const links = [...document.querySelectorAll('nav a[href^="#"]')];
+    let pending = false;
+    function updateNavigation() {
+      pending = false;
+      if (sections.length === 0) return;
+      let current = sections[0];
+      for (const section of sections) {
+        if (section.getBoundingClientRect().top <= window.innerHeight * .3) current = section;
+      }
+      links.forEach(link => {
+        if (link.hash === '#' + current.id) {
+          link.setAttribute('aria-current', 'location');
+          return;
+        }
+        link.removeAttribute('aria-current');
+      });
+    }
+    window.addEventListener('scroll', () => {
+      if (pending) return;
+      pending = true;
+      requestAnimationFrame(updateNavigation);
+    }, { passive: true });
+    window.addEventListener('resize', updateNavigation);
+    updateNavigation();
+</script></body></html>

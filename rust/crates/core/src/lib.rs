@@ -27,9 +27,11 @@ pub mod encrypt;
 pub mod error;
 pub mod file;
 pub mod filter;
+pub mod geometry;
 pub mod lexer;
 pub mod object;
 pub mod object_stream;
+pub mod page_boxes;
 pub mod parser;
 pub mod xref;
 
