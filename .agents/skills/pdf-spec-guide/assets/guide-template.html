@@ -7,7 +7,7 @@
   <!--
     使い方は pdf-spec-guide スキルの SKILL.md を参照。
     1. このファイルをテーマ名のHTMLへコピーする。
-    2. {{...}} を検索し、本文・図・具体例・出典を対象の仕様と実装に置き換える。
+    2. {{...}} を検索し、本文・図・具体例を対象の仕様と実装に置き換える。
     3. 不要な節や操作例は削除し、目次のhrefと節のidを一致させる。
     4. テンプレート案内を削除し、PC・小画面・操作・印刷を確認する。
     PDF記述やコード中の < と > は &lt; と &gt; にエスケープする。
@@ -187,7 +187,6 @@
       <div class="eyebrow">PDF INTERNALS / {{TOPIC_EN}}</div>
       <h1>{{TITLE}}</h1>
       <p class="lead">{{この機能が何のためにあり、この記事で何が分かるかを2〜3文で説明する。}}</p>
-      <p class="meta">対象：{{実装言語・モジュール}} / {{対象のコミットまたは版}}</p>
     </header>
 
     <section class="section" id="overview">
@@ -294,18 +293,7 @@
       <div class="note"><strong>覚えておくこと</strong>{{このテーマを読み終えて押さえたい要点を2〜3点に絞る。}}</div>
     </section>
 
-    <footer>
-      <strong>出典・対象バージョン</strong>
-      <p>対象：{{コミットSHAまたはバージョン}} / 更新日：{{YYYY-MM-DD}}</p>
-      <!-- 出典は実在する相対パスまたはURLのリンクへ置換。推測したURLを書かない。 -->
-      <ul>
-        <li>仕様：{{docs/specs内のファイルと節へのリンク}}</li>
-        <li>実装：{{対象コミットのソースへのリンク}}</li>
-        <li>関連作業：{{IssueまたはPRへのリンク}}</li>
-      </ul>
-      <p>外部アセット不要の単体HTML。出典リンクの閲覧にはネット接続が必要です。</p>
-      <a href="#top">↑ 先頭に戻る</a>
-    </footer>
+    <footer><a href="#top">↑ 先頭に戻る</a></footer>
   </div></main>
   <script>
     'use strict';
