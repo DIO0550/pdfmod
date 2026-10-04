@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{TITLE}} — PDF仕様解説</title>
+  <!--
+    使い方は pdf-spec-guide スキルの SKILL.md を参照。
+    1. このファイルをテーマ名のHTMLへコピーする。
+    2. {{...}} を検索し、本文・図・具体例・出典を対象の仕様と実装に置き換える。
+    3. 不要な節や操作例は削除し、目次のhrefと節のidを一致させる。
+    4. テンプレート案内を削除し、PC・小画面・操作・印刷を確認する。
+    PDF記述やコード中の < と > は &lt; と &gt; にエスケープする。
+    このひな形の図・判定例は説明用の枠であり、PDF共通の処理を定義しない。
+  -->
+  <style>
+    :root {
+      --ink: #182f3c;
+      --muted: #526b76;
+      --paper: #f5f7f5;
+      --line: #d7e2e1;
+      --teal: #067666;
+      --mint: #e6f4ef;
+      --blue: #265bb3;
+      --sky: #eaf1ff;
+      --amber: #956000;
+      --sand: #fff4db;
+      --red: #ae3b42;
+      --rose: #fff0ee;
+      --nav-width: 250px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; scroll-padding-top: 24px; }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font: 18px/1.85 -apple-system, BlinkMacSystemFont,
+        "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
+    }
+    a { color: var(--blue); overflow-wrap: anywhere; }
+    button { font: inherit; cursor: pointer; touch-action: manipulation; }
+    a:focus-visible, button:focus-visible, summary:focus-visible {
+      outline: 3px solid #dd8c1f;
+      outline-offset: 4px;
+    }
+    aside {
+      position: fixed;
+      inset: 0 auto 0 0;
+      width: var(--nav-width);
+      overflow: auto;
+      background: #102e39;
+      color: white;
+      padding: 30px 23px;
+    }
+    .brand { font-size: 13px; font-weight: 750; letter-spacing: .14em; color: #8dddd0; }
+    .nav-title { font-size: 23px; line-height: 1.6; margin: 25px 0; overflow-wrap: anywhere; }
+    nav a {
+      display: block;
+      color: #d1e0e3;
+      padding: 10px;
+      margin: 5px 0;
+      border-radius: 7px;
+      font-size: 14px;
+      line-height: 1.6;
+      text-decoration: none;
+    }
+    nav a:hover, nav a[aria-current] { background: #204952; color: white; }
+    nav span { color: #8dddd0; font-size: 11px; margin-right: 9px; }
+    main { margin-left: var(--nav-width); padding: 55px 48px 60px; }
+    .wrap { max-width: 980px; margin: auto; }
+    .hero { border-bottom: 1px solid var(--line); padding: 12px 0 35px; }
+    .eyebrow { font-size: 13px; color: var(--teal); letter-spacing: .12em; font-weight: 800; }
+    h1 { font-size: clamp(32px, 4vw, 50px); line-height: 1.4; margin: 15px 0 22px; }
+    h2 { font-size: 28px; line-height: 1.5; margin: 0; }
+    h3 { font-size: 21px; margin: 20px 0 12px; }
+    p { margin: 14px 0; }
+    .lead { font-size: 20px; color: var(--muted); }
+    .meta { font-size: 13px; color: var(--muted); }
+    .section { padding: 48px 0 8px; scroll-margin-top: 24px; }
+    .section-heading { display: flex; align-items: flex-start; gap: 17px; margin-bottom: 21px; }
+    .number { border-top: 3px solid var(--teal); color: var(--teal); font-weight: 800; font-size: 15px; min-width: 33px; line-height: 2.6; }
+    code { font: .88em/1.8 ui-monospace, SFMono-Regular, Consolas, monospace; background: #e9eeee; padding: 2px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+    pre { background: #142f3b; color: #eaf5f6; padding: 24px; border-radius: 12px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 15px; line-height: 1.85; }
+    pre code { font-size: inherit; background: none; padding: 0; color: inherit; }
+    .key { color: #89e0ce; }
+    .value { color: #ffd688; }
+    .comment { color: #a3bdc5; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .grid > * { min-width: 0; }
+    .card { border: 1px solid var(--line); background: white; border-radius: 13px; padding: 24px; margin: 22px 0; }
+    .card-label { font-size: 13px; color: var(--muted); font-weight: 750; letter-spacing: .07em; margin-bottom: 16px; }
+    .note { border-left: 4px solid var(--teal); border-radius: 0 9px 9px 0; padding: 17px 21px; background: var(--mint); font-size: 16px; margin: 22px 0; }
+    .note strong { display: block; color: var(--teal); }
+    .note.warning { border-color: #c28c27; background: var(--sand); }
+    .note.warning strong { color: var(--amber); }
+    .note.error { border-color: var(--red); background: var(--rose); }
+    .note.error strong { color: var(--red); }
+    .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; margin: 22px 0; }
+    table { border-collapse: collapse; width: 100%; background: white; font-size: 15px; line-height: 1.7; }
+    th, td { text-align: left; vertical-align: top; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+    th { background: #eaf0ef; font-size: 13px; }
+    tr:last-child td { border-bottom: 0; }
+    .flow { max-width: 700px; margin: 0 auto; }
+    .flow-box { padding: 18px; text-align: center; border: 1px solid var(--line); border-radius: 10px; background: #f7f9f8; overflow-wrap: anywhere; }
+    .flow-box strong { display: block; }
+    .flow-box.primary { border-color: var(--teal); background: var(--mint); }
+    .flow-box.secondary { border-color: #adc3ea; background: var(--sky); }
+    .flow-arrow { text-align: center; font-size: 14px; color: var(--muted); padding: 12px 0; }
+    .branches { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    .branches > div { min-width: 0; }
+    .flow-caption { font-size: 14px; color: var(--muted); margin-top: 17px; }
+    .steps { padding-left: 25px; }
+    .steps li { margin: 14px 0; padding-left: 7px; }
+    .steps p { font-size: 16px; color: var(--muted); margin: 5px 0; }
+    .example-controls { display: flex; gap: 9px; flex-wrap: wrap; }
+    .example-controls button { font-size: 14px; padding: 8px 15px; background: white; color: var(--ink); border: 1px solid var(--line); border-radius: 7px; }
+    .example-controls button[aria-pressed="true"] { background: var(--teal); color: white; border-color: var(--teal); }
+    [hidden] { display: none !important; }
+    details { background: white; border: 1px solid var(--line); border-radius: 9px; padding: 15px 20px; margin: 18px 0; }
+    summary { cursor: pointer; font-weight: 700; }
+    footer { border-top: 1px solid var(--line); margin-top: 45px; padding-top: 24px; font-size: 14px; color: var(--muted); }
+    footer li { margin: 9px 0; }
+    @media (max-width: 1000px) {
+      :root { --nav-width: 210px; }
+      main { padding: 38px 28px; }
+      aside { padding: 27px 17px; }
+    }
+    @media (max-width: 760px) {
+      body { font-size: 17px; }
+      aside { position: static; width: auto; padding: 17px 20px; }
+      .nav-title { display: none; }
+      nav { display: flex; gap: 6px; overflow-x: auto; padding: 8px 0 3px; }
+      nav a { white-space: nowrap; font-size: 12px; margin: 0; padding: 6px 9px; }
+      main { margin: 0; padding: 25px 20px 45px; }
+      h1 { font-size: 34px; }
+      h2 { font-size: 25px; }
+      .lead { font-size: 18px; }
+      .grid, .branches { grid-template-columns: 1fr; }
+      .card { padding: 18px; }
+      pre { font-size: 13px; padding: 18px; }
+      th, td { padding: 11px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+    }
+    @media print {
+      aside, .example-controls { display: none !important; }
+      main { margin: 0; padding: 0; }
+      body { background: white; font-size: 11pt; }
+      h1 { font-size: 28pt; }
+      h2 { font-size: 20pt; }
+      .section { padding-top: 24px; }
+      .card, pre, .note, .flow-box { break-inside: avoid; }
+      pre { background: #eef2f4; color: #182f3c; }
+      .key { color: var(--teal); }
+      .value { color: var(--amber); }
+      .comment { color: var(--muted); }
+      .table-wrap { overflow: visible; }
+      [data-example-panel][hidden] { display: block !important; }
+      a { color: inherit; }
+    }
+  </style>
+</head>
+<body>
+  <aside aria-label="目次">
+    <div class="brand">PDFMOD / FIELD NOTES</div>
+    <div class="nav-title">{{TITLE}}</div>
+    <!-- 節を追加・削除したら、目次も更新する。 -->
+    <nav>
+      <a href="#overview" aria-current="location"><span>01</span>役割と全体像</a>
+      <a href="#syntax"><span>02</span>PDF記述の読み方</a>
+      <a href="#rules"><span>03</span>仕様と取り扱い</a>
+      <a href="#flow"><span>04</span>処理の流れ</a>
+      <a href="#examples"><span>05</span>具体例で確かめる</a>
+      <a href="#implementation"><span>06</span>実装と対応範囲</a>
+    </nav>
+  </aside>
+  <main id="top"><div class="wrap">
+    <!-- コピー後、このテンプレート案内を削除する。 -->
+    <div class="note warning" data-template-notice>
+      <strong>HTML解説のテンプレート</strong>
+      {{...}} は差し替え欄です。図と操作例も対象テーマに合わせて編集し、不要な節は削除してください。
+      作成手順は pdf-spec-guide スキルの SKILL.md を参照してください。
+    </div>
+    <header class="hero">
+      <div class="eyebrow">PDF INTERNALS / {{TOPIC_EN}}</div>
+      <h1>{{TITLE}}</h1>
+      <p class="lead">{{この機能が何のためにあり、この記事で何が分かるかを2〜3文で説明する。}}</p>
+      <p class="meta">対象：{{実装言語・モジュール}} / {{対象のコミットまたは版}}</p>
+    </header>
+
+    <section class="section" id="overview">
+      <div class="section-heading"><span class="number">01</span><h2>役割と全体像</h2></div>
+      <p>{{PDF全体のどこに位置する機能か、何を入力として何を得るのかを説明する。}}</p>
+      <div class="grid">
+        <div class="card"><h3>{{中心となる概念}}</h3><p>{{用語の意味と役割。初出では英語名も併記する。}}</p></div>
+        <div class="card"><h3>{{関連する概念}}</h3><p>{{混同しやすい概念との違い、または前後の処理との関係。}}</p></div>
+      </div>
+      <div class="note"><strong>{{ここで押さえる要点}}</strong>{{この節で最も伝えたいことを短く説明する。}}</div>
+    </section>
+
+    <section class="section" id="syntax">
+      <div class="section-heading"><span class="number">02</span><h2>PDF記述を読む</h2></div>
+      <p>{{記述例が完全なPDFか、説明用の抜粋かを明示する。}}</p>
+      <div class="grid">
+        <pre><code><span class="comment">% {{記述例の説明}}</span>
+{{PDFの具体的な記述例}}</code></pre>
+        <div><h3>記号と値の意味</h3><p>{{記述例を行や要素ごとに説明する。型、値、参照先などを具体的に示す。}}</p></div>
+      </div>
+      <div class="note warning"><strong>{{間違えやすいポイント}}</strong>{{見た目の似た型や記号、単位などを例とともに説明する。}}</div>
+    </section>
+
+    <section class="section" id="rules">
+      <div class="section-heading"><span class="number">03</span><h2>仕様と取り扱い</h2></div>
+      <p>{{このテーマの中心となる規則を、表に先立って説明する。}}</p>
+      <!-- 辞書キー以外のテーマでは、列を条件・入力・出力などへ変更する。 -->
+      <div class="table-wrap"><table>
+        <thead><tr><th>項目</th><th>PDF仕様上の意味</th><th>実装の取り扱い</th></tr></thead>
+        <tbody>
+          <tr><td><code>{{項目1}}</code></td><td>{{型・制約・必須条件}}</td><td>{{検証・保持・変換の内容}}</td></tr>
+          <tr><td><code>{{項目2}}</code></td><td>{{省略時の規則など}}</td><td>{{既定値・未対応時の扱いなど}}</td></tr>
+        </tbody>
+      </table></div>
+      <div class="note warning"><strong>仕様と実装方針を区別する</strong>{{仕様が定める規則と、ライブラリが選択した制限・回復・エラー方針の境界を説明する。}}</div>
+    </section>
+
+    <section class="section" id="flow">
+      <div class="section-heading"><span class="number">04</span><h2>処理の流れを辿る</h2></div>
+      <p>{{図で示す関係が、参照構造・処理順・判定分岐のどれかを説明する。}}</p>
+      <!-- 図はテーマに合わせて組み替える。単純な順序だけなら下の手順リストのみでもよい。 -->
+      <figure class="card">
+        <div class="card-label">{{図のタイトル}}</div>
+        <div class="flow">
+          <div class="flow-box secondary"><strong>{{入力または参照元}}</strong>{{受け取る値}}</div>
+          <div class="flow-arrow">↓ {{読み取り・解決などの操作}}</div>
+          <div class="flow-box primary"><strong>{{今回実装する処理・判定}}</strong>{{条件や責務}}</div>
+          <div class="branches">
+            <div><div class="flow-arrow">↓ {{条件A}}</div><div class="flow-box"><strong>{{結果A}}</strong>{{返す値や次の処理}}</div></div>
+            <div><div class="flow-arrow">↓ {{条件B}}</div><div class="flow-box"><strong>{{結果B}}</strong>{{返す値やエラー}}</div></div>
+          </div>
+        </div>
+        <figcaption class="flow-caption">{{図の読み方。省略した経路、物理配置との違いなどがあれば補足する。}}</figcaption>
+      </figure>
+      <ol class="steps">
+        <li><strong>{{手順1}}</strong><p>{{入力・処理・結果を具体的に説明する。}}</p></li>
+        <li><strong>{{手順2}}</strong><p>{{分岐条件や参照を辿るタイミングを説明する。}}</p></li>
+        <li><strong>{{手順3}}</strong><p>{{どこまで処理して、どの状態で返すかを説明する。}}</p></li>
+      </ol>
+    </section>
+
+    <section class="section" id="examples">
+      <div class="section-heading"><span class="number">05</span><h2>具体例で確かめる</h2></div>
+      <p>{{例同士でどの入力・条件が異なるかを説明する。}}</p>
+      <!-- 操作例が不要なら、この領域を静的な例に置き換える。JSは操作領域が無くても動作する。 -->
+      <div class="card" data-examples>
+        <div class="card-label">TRY IT — 入力例を切り替える</div>
+        <div class="example-controls" hidden aria-label="入力例の選択">
+          <button type="button" data-example="normal" aria-controls="example-normal" aria-pressed="true">正常な入力</button>
+          <button type="button" data-example="default" aria-controls="example-default" aria-pressed="false">省略・境界条件</button>
+          <button type="button" data-example="error" aria-controls="example-error" aria-pressed="false">不正な入力</button>
+        </div>
+        <!-- JS無効時は全例を表示。印刷時も選択状態にかかわらず全例を載せる。 -->
+        <div aria-live="polite">
+          <article id="example-normal" data-example-panel="normal">
+            <h3>正常な入力</h3><pre><code>{{NORMAL_INPUT}}</code></pre>
+            <div class="note"><strong>{{正常例の結果}}</strong>{{なぜその結果になるか。対応する仕様と結び付ける。}}</div>
+          </article>
+          <article id="example-default" data-example-panel="default">
+            <h3>省略・境界条件</h3><pre><code>{{BOUNDARY_INPUT}}</code></pre>
+            <div class="note warning"><strong>{{境界例の結果}}</strong>{{省略・未知値・上下限など、対象機能に適した例と理由を記載する。}}</div>
+          </article>
+          <article id="example-error" data-example-panel="error">
+            <h3>不正な入力</h3><pre><code>{{INVALID_INPUT}}</code></pre>
+            <div class="note error"><strong>{{エラー例の結果}}</strong>{{失敗した条件、エラー種別、位置や文脈の意味を説明する。}}</div>
+          </article>
+        </div>
+        <p class="meta">説明用の例です。ブラウザ上でPDFパーサを実行するものではありません。</p>
+      </div>
+    </section>
+
+    <section class="section" id="implementation">
+      <div class="section-heading"><span class="number">06</span><h2>実装と対応範囲</h2></div>
+      <p>{{仕様からAPIへどうつながるかを説明する。コードが理解に役立たない場合は、API表のみでもよい。}}</p>
+      <pre><code>{{検証済みのRustまたはTypeScript利用例}}</code></pre>
+      <div class="table-wrap"><table>
+        <thead><tr><th>API・型</th><th>役割・結果</th></tr></thead>
+        <tbody><tr><td><code>{{API_OR_TYPE}}</code></td><td>{{返す値、不在やエラーの条件など}}</td></tr></tbody>
+      </table></div>
+      <div class="grid">
+        <div class="card"><h3>今回対応する範囲</h3><p>{{検証・変換・保持・参照解決など、実装済みの責務。}}</p></div>
+        <div class="card"><h3>後続処理・未対応の範囲</h3><p>{{実装済みと誤解されやすい範囲を具体的に示す。}}</p></div>
+      </div>
+      <div class="note"><strong>覚えておくこと</strong>{{このテーマを読み終えて押さえたい要点を2〜3点に絞る。}}</div>
+    </section>
+
+    <footer>
+      <strong>出典・対象バージョン</strong>
+      <p>対象：{{コミットSHAまたはバージョン}} / 更新日：{{YYYY-MM-DD}}</p>
+      <!-- 出典は実在する相対パスまたはURLのリンクへ置換。推測したURLを書かない。 -->
+      <ul>
+        <li>仕様：{{docs/specs内のファイルと節へのリンク}}</li>
+        <li>実装：{{対象コミットのソースへのリンク}}</li>
+        <li>関連作業：{{IssueまたはPRへのリンク}}</li>
+      </ul>
+      <p>外部アセット不要の単体HTML。出典リンクの閲覧にはネット接続が必要です。</p>
+      <a href="#top">↑ 先頭に戻る</a>
+    </footer>
+  </div></main>
+  <script>
+    'use strict';
+
+    // 操作例を節ごと複製する場合は、aria-controlsとパネルidを一意にする。
+    document.querySelectorAll('[data-examples]').forEach(group => {
+      const controls = group.querySelector('.example-controls');
+      const buttons = [...group.querySelectorAll('[data-example]')];
+      const panels = [...group.querySelectorAll('[data-example-panel]')];
+      if (!controls || buttons.length === 0 || panels.length === 0) return;
+
+      function showExample(key) {
+        buttons.forEach(button => {
+          button.setAttribute('aria-pressed', String(button.dataset.example === key));
+        });
+        panels.forEach(panel => {
+          panel.hidden = panel.dataset.examplePanel !== key;
+        });
+      }
+
+      controls.hidden = false;
+      showExample(buttons[0].dataset.example);
+      buttons.forEach(button => {
+        button.addEventListener('click', () => showExample(button.dataset.example));
+      });
+    });
+
+    // 節を増減しても.sectionと目次のhrefが一致していれば追従する。
+    const sections = [...document.querySelectorAll('.section')];
+    const links = [...document.querySelectorAll('nav a[href^="#"]')];
+    let pending = false;
+    function updateNavigation() {
+      pending = false;
+      if (sections.length === 0) return;
+      let current = sections[0];
+      for (const section of sections) {
+        if (section.getBoundingClientRect().top <= window.innerHeight * .3) current = section;
+      }
+      links.forEach(link => {
+        if (link.hash === '#' + current.id) {
+          link.setAttribute('aria-current', 'location');
+          return;
+        }
+        link.removeAttribute('aria-current');
+      });
+    }
+    window.addEventListener('scroll', () => {
+      if (pending) return;
+      pending = true;
+      requestAnimationFrame(updateNavigation);
+    }, { passive: true });
+    window.addEventListener('resize', updateNavigation);
+    updateNavigation();
+  </script>
+</body>
+</html>
