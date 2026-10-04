@@ -8,6 +8,7 @@ PDF機能の実装に合わせて、仕様の読み方と実装の振る舞い�
 | テーマ | 解説する内容 | 関連する実装 |
 | --- | --- | --- |
 | [ドキュメントカタログ](document-catalog.html) | Root・Catalog・Pagesの関係、必須キー、バージョンの優先関係、表示設定、未解釈エントリの保持、位置付きエラー | [Issue #635](https://github.com/DIO0550/pdfmod/issues/635) / [PR #736](https://github.com/DIO0550/pdfmod/pull/736) の作成時点（`6c654ce`） |
+| [ページ矩形と境界ボックス](page-boxes.html) | 対角の正規化、5種のボックスの既定値、MediaBoxとの交差、不正入力と未解決参照の扱い | [Issue #636](https://github.com/DIO0550/pdfmod/issues/636) 実装版 |
 
 ## 読み方
 

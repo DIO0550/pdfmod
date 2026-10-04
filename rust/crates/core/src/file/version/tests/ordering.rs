@@ -35,5 +35,5 @@ fn ordering_all_versions_matches_declaration_order() {
 fn ordering_same_version_is_equal_and_not_less() {
     // 同一版同士は等価で一方が小さくならないことを確認する
     assert_eq!(PdfVersion::V1_7, PdfVersion::V1_7);
-    assert!(!(PdfVersion::V1_7 < PdfVersion::V1_7));
+    assert!(PdfVersion::V1_7 >= PdfVersion::V1_7);
 }
