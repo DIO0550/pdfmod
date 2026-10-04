@@ -35,6 +35,7 @@ pnpm モノレポで `@pdfmod/core`（PDF処理エンジン）と `@pdfmod/react
 PDF機能を実装したり、仕様に関わる振る舞いを変更したら、**同じPRで学習用のHTML解説を `docs/guides/` に追加・更新する**。その変更で扱った範囲から少しずつ蓄積する。
 
 - まず [解説一覧](docs/guides/README.md) を確認する。同じテーマの解説があれば更新し、新しいテーマは内容を表す kebab-case のファイル名（例: `document-catalog.html`）で追加する。Issueごとの重複ファイルは作らない
+- 新規作成は [HTMLテンプレート](docs/guides/_template.html) をコピーして始める。`{{...}}` の差し替え欄とテンプレート案内を残さず、図・例・節構成をテーマに合わせて編集する。手順は [README](docs/guides/README.md#新しい解説の作り方) を参照
 - PDF上の役割・用語、具体的なPDF記述例、処理や参照関係の図解を中心に説明する。必要に応じて既定値・正常例・エラー例・Rust/TypeScript APIとの対応を加える
 - `docs/specs/` と対象の実装を根拠に、PDF仕様と実装上の方針、対応済みの範囲と未対応の範囲を区別する。参照した仕様・コード・Issue/PRを記載し、変更時は関連する説明・例・対象バージョンも更新する
 - HTMLは単体で開ける形式にし、CSS・JavaScript・図を内包する。外部フォントやCDNへの依存は追加しない
