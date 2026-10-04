@@ -8,7 +8,7 @@ use std::fmt;
 /// PDF のバージョン。ISO が規定する 9 種のみを表現できる。
 ///
 /// バリアントの宣言順が版の昇順と一致するため、導出した順序比較がそのまま版の
-/// 新旧比較になる。カタログの `/Version` による上書き判定は後続フェーズで実装する。
+/// 新旧比較になる。カタログの `/Version` による上書き判定にも使う。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[must_use]
 pub enum PdfVersion {

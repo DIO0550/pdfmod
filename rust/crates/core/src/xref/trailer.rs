@@ -72,6 +72,7 @@ pub enum EncryptValue {
 #[derive(Debug, Clone, PartialEq)]
 #[must_use]
 pub struct Trailer {
+    position: ByteOffset,
     size: u64,
     root: IndirectRef,
     prev: Option<ByteOffset>,
@@ -109,6 +110,7 @@ impl Trailer {
         let encrypt = take_optional_encrypt(&mut dictionary, position)?;
 
         Ok(Self {
+            position,
             size,
             root,
             prev,
@@ -128,6 +130,11 @@ impl Trailer {
     /// `/Root`（ドキュメントカタログへの間接参照）を返す。
     pub fn root(&self) -> IndirectRef {
         self.root
+    }
+
+    /// 構築時に渡された辞書の位置。`/Root` などの参照元をエラーで示すために保持する。
+    pub fn position(&self) -> ByteOffset {
+        self.position
     }
 
     /// `/Prev`（直前の xref セクションのオフセット）を返す。

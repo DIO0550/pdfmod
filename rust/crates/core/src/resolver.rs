@@ -1,6 +1,7 @@
 //! xref を利用した間接オブジェクトの遅延読み込み（ISO 32000-1 §7.3.10, §7.5）。
 
 mod cache;
+mod catalog;
 pub mod error;
 pub mod recovery;
 use cache::ObjectCache;
