@@ -151,7 +151,7 @@
     figure { margin-inline:0; }
   </style></head><body>
 <aside aria-label="目次"><div class="brand">PDFMOD / FIELD NOTES</div><div class="nav-title">ページ矩形と<br>境界ボックス</div><nav><a href="#overview"><span>01</span>ページの「どこまで」を扱うのか</a><a href="#syntax"><span>02</span>4つの数値から矩形を読む</a><a href="#defaults"><span>03</span>5種類のボックスと既定値</a><a href="#intersection"><span>04</span>はみ出した部分は交差で絞る</a><a href="#examples"><span>05</span>正常・境界・エラーを比べる</a><a href="#implementation"><span>06</span>型の保証と呼び出し側の責務</a></nav></aside>
-<main id="top"><div class="wrap"><header class="hero"><div class="eyebrow">PDF INTERNALS / PAGE BOUNDARIES</div><h1>逆順でも、はみ出しても。<br>ページの矩形を正しく読む</h1><p class="lead">4つの数値から用紙と表示範囲を読み解きます。座標の正規化、5種類のボックスの既定値、交差の計算を具体例で確かめましょう。</p><p class="meta">対象：Rust pdfmod-core / Issue #636 実装版（本変更）</p></header>
+<main id="top"><div class="wrap"><header class="hero"><div class="eyebrow">PDF INTERNALS / PAGE BOUNDARIES</div><h1>逆順でも、はみ出しても。<br>ページの矩形を正しく読む</h1><p class="lead">4つの数値から用紙と表示範囲を読み解きます。座標の正規化、5種類のボックスの既定値、交差の計算を具体例で確かめましょう。</p></header>
 <section class="section" id="overview"><div class="section-heading"><span class="number">01</span><h2>ページの「どこまで」を扱うのか</h2></div>
 <p>ページ境界ボックス（page boundary box）は、用紙・表示・印刷仕上げの範囲を表す矩形です。矩形（rectangle）は、軸に平行な四角形を<strong>対角の2点</strong>で指定します。</p>
 <div class="grid"><div class="card"><h3>MediaBox：用紙の範囲</h3><p>物理メディアの境界です。ページ自身、または親の Pages ノードから取得する必須の属性です。</p></div><div class="card"><h3>CropBox：見せる範囲</h3><p>表示・印刷する領域です。省略時は MediaBox が使われます。範囲外の描画内容を削除する操作ではありません。</p></div></div>
@@ -215,11 +215,7 @@ min_y = min(y₁, y₂)     max_y = max(y₁, y₂)
 <tr><td><code>crop_box() / bleed_box() / trim_box() / art_box()</code></td><td>既定値を適用した有効領域の Option&lt;Rectangle&gt;</td></tr>
 </tbody></table></div>
 <div class="grid"><div class="card"><h3>この実装で検証すること</h3><p>配列長・要素型・座標の有限性・幅と高さの有限性。不正な任意ボックスも黙って既定値には戻しません。</p><p>PageBoxError は対象キー、理由、呼び出し側が渡した位置を保持します。要素の index は0始まりで、ファイル中の位置そのものではありません。</p></div><div class="card"><h3>後続の処理が担当すること</h3><p>ページツリーの走査、MediaBox・CropBoxの継承、間接参照の解決、描画のクリッピング、Rotate・UserUnit の適用です。この変更ではまだ統合しません。</p></div></div>
-<div class="note warning"><strong>数値表現の実装上の制限</strong>座標は f64 です。大きな整数は f64 の精度で丸めます。NaN・無限大を含む手動構築オブジェクトと、差分が無限大になる極端な座標はエラーです。これらはライブラリの型保証のための制約です。</div></section><footer><strong>出典・対象バージョン</strong><p>対象：Issue #636 実装版（本変更） / 更新日：2026-10-04</p><ul>
-<li><a href="../specs/03_document_architecture.md">文書構造仕様 §3.4・§4.1</a></li>
-<li><a href="https://opensource.adobe.com/dc-acrobat-sdk-docs/pdfstandards/PDF32000_2008.pdf">ISO 32000-1:2008</a> §7.9.5、§7.7.3.3 表30、§14.11.2</li>
-<li><a href="../../rust/crates/core/src/geometry/rectangle.rs">Rectangle の実装</a> / <a href="../../rust/crates/core/src/page_boxes.rs">PageBoxes の実装</a></li>
-<li><a href="https://github.com/DIO0550/pdfmod/issues/636">Issue #636</a></li></ul><a href="#top">↑ 先頭に戻る</a></footer></div></main>
+<div class="note warning"><strong>数値表現の実装上の制限</strong>座標は f64 です。大きな整数は f64 の精度で丸めます。NaN・無限大を含む手動構築オブジェクトと、差分が無限大になる極端な座標はエラーです。これらはライブラリの型保証のための制約です。</div></section><footer><a href="#top">↑ 先頭に戻る</a></footer></div></main>
 <script>'use strict';
     const sections = [...document.querySelectorAll('.section')];
     const links = [...document.querySelectorAll('nav a[href^="#"]')];
