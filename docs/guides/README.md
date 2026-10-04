@@ -19,7 +19,7 @@ PDF機能の実装に合わせて、仕様の読み方と実装の振る舞い�
 
 ## 解説の作成・更新
 
-[pdf-spec-guide スキル](../../.agents/skills/pdf-spec-guide/SKILL.md) に、作成手順・Web調査の委譲・HTML/JavaScriptの安全確認・HTMLテンプレートをまとめています。
+[pdf-spec-guide スキル](../../.agents/skills/pdf-spec-guide/SKILL.md) に、作成手順・Web調査の制限（ユーザーの明示指示時のみ）・HTML/JavaScriptの安全確認・HTMLテンプレートをまとめています。
 完成した解説はこのディレクトリへ置きます。同じテーマは既存解説を更新し、新しいテーマを追加したら上の一覧にも追記してください。
 
 実行タイミングは [AGENTS.md](../../AGENTS.md#pdf仕様のhtml解説) を参照してください。
