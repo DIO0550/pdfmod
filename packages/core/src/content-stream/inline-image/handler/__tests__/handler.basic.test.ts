@@ -1,6 +1,6 @@
 import { assert, expect, test } from "vitest";
 import type {
-  Token,
+  LexicalToken,
   TokenInlineImage,
   TokenInlineImageDictEntry,
 } from "../../../../pdf/index";
@@ -15,19 +15,19 @@ import { inlineImageHandler } from "../index";
 
 const buildEntry = (
   key: string,
-  valueToken: Token,
+  valueToken: LexicalToken,
 ): TokenInlineImageDictEntry => ({
   key: { type: TokenType.Name, value: key, offset: ByteOffset.of(0) },
   value: [valueToken],
 });
 
-const integerToken = (value: number): Token => ({
+const integerToken = (value: number): LexicalToken => ({
   type: TokenType.Integer,
   value,
   offset: ByteOffset.of(0),
 });
 
-const nameToken = (value: string): Token => ({
+const nameToken = (value: string): LexicalToken => ({
   type: TokenType.Name,
   value,
   offset: ByteOffset.of(0),

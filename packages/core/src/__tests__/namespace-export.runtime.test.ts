@@ -111,7 +111,7 @@ test("TokenType enumがルートからexportされている", () => {
 test("Operatorコンパニオンがルートからexportされている", () => {
   const op = Operator.of("m", ByteOffset.of(42));
   expect(op.type).toBe(TokenType.Operator);
-  expect(op.name).toBe("m");
+  expect(op.value).toBe("m");
   expect(op.offset).toBe(42);
 });
 

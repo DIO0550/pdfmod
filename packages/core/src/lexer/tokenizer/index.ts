@@ -1,7 +1,7 @@
 import { NumberEx } from "../../ext/number/index";
 import type { PdfError } from "../../pdf/errors/index";
 import { ByteOffset } from "../../pdf/types/byte-offset/index";
-import { type Token, TokenType } from "../../pdf/types/index";
+import { type LexicalToken, TokenType } from "../../pdf/types/index";
 import type { Option } from "../../utils/option/index";
 import { none, some } from "../../utils/option/index";
 import {
@@ -199,7 +199,7 @@ export class Tokenizer {
    * // token = { type: TokenType.Boolean, value: true, offset: 0 }
    * ```
    */
-  nextToken(): Token {
+  nextToken(): LexicalToken {
     this.skipWhitespaceAndComments();
 
     if (this.pos >= this.data.length) {
@@ -269,7 +269,7 @@ export class Tokenizer {
    * @param offset - トークン開始位置のバイトオフセット
    * @returns 16進文字列トークン
    */
-  private readHexString(offset: number): Token {
+  private readHexString(offset: number): LexicalToken {
     let hex = "";
 
     while (this.pos < this.data.length) {
@@ -300,7 +300,7 @@ export class Tokenizer {
    * @param offset - トークン開始位置のバイトオフセット
    * @returns リテラル文字列トークン
    */
-  private readLiteralString(offset: number): Token {
+  private readLiteralString(offset: number): LexicalToken {
     let result = "";
     let depth = 1;
 
@@ -405,7 +405,7 @@ export class Tokenizer {
    * @param offset - トークン開始位置のバイトオフセット
    * @returns 名前トークン
    */
-  private readName(offset: number): Token {
+  private readName(offset: number): LexicalToken {
     let name = "";
 
     while (this.pos < this.data.length) {
@@ -471,7 +471,7 @@ export class Tokenizer {
    * @param firstByte - 最初に読み取ったバイト
    * @returns 数値トークンまたはキーワードトークン
    */
-  private readNumber(offset: number, firstByte: number): Token {
+  private readNumber(offset: number, firstByte: number): LexicalToken {
     let str = String.fromCharCode(firstByte);
     let hasDecimal = firstByte === AsciiDot;
 
@@ -517,7 +517,7 @@ export class Tokenizer {
    * @param firstByte - 最初に読み取ったバイト
    * @returns キーワード、Boolean、またはNullトークン
    */
-  private readKeyword(offset: number, firstByte: number): Token {
+  private readKeyword(offset: number, firstByte: number): LexicalToken {
     let str = String.fromCharCode(firstByte);
 
     while (this.pos < this.data.length) {
@@ -556,9 +556,9 @@ export class Tokenizer {
    * // tokens.length === 3 (Integer, Integer, EOF)
    * ```
    */
-  tokenize(): Token[] {
-    const tokens: Token[] = [];
-    let token: Token;
+  tokenize(): LexicalToken[] {
+    const tokens: LexicalToken[] = [];
+    let token: LexicalToken;
 
     do {
       token = this.nextToken();
