@@ -33,6 +33,7 @@ pub mod object;
 pub mod object_stream;
 pub mod page_boxes;
 pub mod parser;
+pub mod text_string;
 pub mod xref;
 
 /// 間接オブジェクトの遅延解決。
