@@ -1,0 +1,400 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PDFのテキスト文字列 — PDF仕様解説</title>
+  <style>
+    :root {
+      --ink: #182f3c;
+      --muted: #526b76;
+      --paper: #f5f7f5;
+      --line: #d7e2e1;
+      --teal: #067666;
+      --mint: #e6f4ef;
+      --blue: #265bb3;
+      --sky: #eaf1ff;
+      --amber: #956000;
+      --sand: #fff4db;
+      --red: #ae3b42;
+      --rose: #fff0ee;
+      --nav-width: 250px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; scroll-padding-top: 24px; }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font: 18px/1.85 -apple-system, BlinkMacSystemFont,
+        "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
+    }
+    a { color: var(--blue); overflow-wrap: anywhere; }
+    button { font: inherit; cursor: pointer; touch-action: manipulation; }
+    a:focus-visible, button:focus-visible, summary:focus-visible {
+      outline: 3px solid #dd8c1f;
+      outline-offset: 4px;
+    }
+    aside {
+      position: fixed;
+      inset: 0 auto 0 0;
+      width: var(--nav-width);
+      overflow: auto;
+      background: #102e39;
+      color: white;
+      padding: 30px 23px;
+    }
+    .brand { font-size: 13px; font-weight: 750; letter-spacing: .14em; color: #8dddd0; }
+    .nav-title { font-size: 23px; line-height: 1.6; margin: 25px 0; overflow-wrap: anywhere; }
+    nav a {
+      display: block;
+      color: #d1e0e3;
+      padding: 10px;
+      margin: 5px 0;
+      border-radius: 7px;
+      font-size: 14px;
+      line-height: 1.6;
+      text-decoration: none;
+    }
+    nav a:hover, nav a[aria-current] { background: #204952; color: white; }
+    nav span { color: #8dddd0; font-size: 11px; margin-right: 9px; }
+    main { margin-left: var(--nav-width); padding: 55px 48px 60px; }
+    .wrap { max-width: 980px; margin: auto; }
+    .hero { border-bottom: 1px solid var(--line); padding: 12px 0 35px; }
+    .eyebrow { font-size: 13px; color: var(--teal); letter-spacing: .12em; font-weight: 800; }
+    h1 { font-size: clamp(32px, 4vw, 50px); line-height: 1.4; margin: 15px 0 22px; }
+    h2 { font-size: 28px; line-height: 1.5; margin: 0; }
+    h3 { font-size: 21px; margin: 20px 0 12px; }
+    p { margin: 14px 0; }
+    .lead { font-size: 20px; color: var(--muted); }
+    .meta { font-size: 13px; color: var(--muted); }
+    .section { padding: 48px 0 8px; scroll-margin-top: 24px; }
+    .section-heading { display: flex; align-items: flex-start; gap: 17px; margin-bottom: 21px; }
+    .number { border-top: 3px solid var(--teal); color: var(--teal); font-weight: 800; font-size: 15px; min-width: 33px; line-height: 2.6; }
+    code { font: .88em/1.8 ui-monospace, SFMono-Regular, Consolas, monospace; background: #e9eeee; padding: 2px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+    pre { background: #142f3b; color: #eaf5f6; padding: 24px; border-radius: 12px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 15px; line-height: 1.85; }
+    pre code { font-size: inherit; background: none; padding: 0; color: inherit; }
+    .key { color: #89e0ce; }
+    .value { color: #ffd688; }
+    .comment { color: #a3bdc5; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .grid > * { min-width: 0; }
+    .card { border: 1px solid var(--line); background: white; border-radius: 13px; padding: 24px; margin: 22px 0; }
+    .card-label { font-size: 13px; color: var(--muted); font-weight: 750; letter-spacing: .07em; margin-bottom: 16px; }
+    .note { border-left: 4px solid var(--teal); border-radius: 0 9px 9px 0; padding: 17px 21px; background: var(--mint); font-size: 16px; margin: 22px 0; }
+    .note strong { display: block; color: var(--teal); }
+    .note.warning { border-color: #c28c27; background: var(--sand); }
+    .note.warning strong { color: var(--amber); }
+    .note.error { border-color: var(--red); background: var(--rose); }
+    .note.error strong { color: var(--red); }
+    .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; margin: 22px 0; }
+    table { border-collapse: collapse; width: 100%; background: white; font-size: 15px; line-height: 1.7; }
+    th, td { text-align: left; vertical-align: top; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+    th { background: #eaf0ef; font-size: 13px; }
+    tr:last-child td { border-bottom: 0; }
+    .flow { max-width: 700px; margin: 0 auto; }
+    .flow-box { padding: 18px; text-align: center; border: 1px solid var(--line); border-radius: 10px; background: #f7f9f8; overflow-wrap: anywhere; }
+    .flow-box strong { display: block; }
+    .flow-box.primary { border-color: var(--teal); background: var(--mint); }
+    .flow-box.secondary { border-color: #adc3ea; background: var(--sky); }
+    .flow-arrow { text-align: center; font-size: 14px; color: var(--muted); padding: 12px 0; }
+    .branches { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    .branches > div { min-width: 0; }
+    .flow-caption { font-size: 14px; color: var(--muted); margin-top: 17px; }
+    .steps { padding-left: 25px; }
+    .steps li { margin: 14px 0; padding-left: 7px; }
+    .steps p { font-size: 16px; color: var(--muted); margin: 5px 0; }
+    .example-controls { display: flex; gap: 9px; flex-wrap: wrap; }
+    .example-controls button { font-size: 14px; padding: 8px 15px; background: white; color: var(--ink); border: 1px solid var(--line); border-radius: 7px; }
+    .example-controls button[aria-pressed="true"] { background: var(--teal); color: white; border-color: var(--teal); }
+    [hidden] { display: none !important; }
+    details { background: white; border: 1px solid var(--line); border-radius: 9px; padding: 15px 20px; margin: 18px 0; }
+    summary { cursor: pointer; font-weight: 700; }
+    footer { border-top: 1px solid var(--line); margin-top: 45px; padding-top: 24px; font-size: 14px; color: var(--muted); }
+    footer li { margin: 9px 0; }
+    @media (max-width: 1000px) {
+      :root { --nav-width: 210px; }
+      main { padding: 38px 28px; }
+      aside { padding: 27px 17px; }
+    }
+    @media (max-width: 760px) {
+      body { font-size: 17px; }
+      aside { position: static; width: auto; padding: 17px 20px; }
+      .nav-title { display: none; }
+      nav { display: flex; gap: 6px; overflow-x: auto; padding: 8px 0 3px; }
+      nav a { white-space: nowrap; font-size: 12px; margin: 0; padding: 6px 9px; }
+      main { margin: 0; padding: 25px 20px 45px; }
+      h1 { font-size: 34px; }
+      h2 { font-size: 25px; }
+      .lead { font-size: 18px; }
+      .grid, .branches { grid-template-columns: 1fr; }
+      .card { padding: 18px; }
+      pre { font-size: 13px; padding: 18px; }
+      th, td { padding: 11px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+    }
+    @media print {
+      aside, .example-controls { display: none !important; }
+      main { margin: 0; padding: 0; }
+      body { background: white; font-size: 11pt; }
+      h1 { font-size: 28pt; }
+      h2 { font-size: 20pt; }
+      .section { padding-top: 24px; }
+      .card, pre, .note, .flow-box { break-inside: avoid; }
+      pre { background: #eef2f4; color: #182f3c; }
+      .key { color: var(--teal); }
+      .value { color: var(--amber); }
+      .comment { color: var(--muted); }
+      .table-wrap { overflow: visible; }
+      [data-example-panel][hidden] { display: block !important; }
+      a { color: inherit; }
+    }
+    .byte-row { display: flex; flex-wrap: wrap; gap: 9px; align-items: center; margin: 15px 0; }
+    .byte { border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; font: 600 16px/1.6 ui-monospace, monospace; background: var(--sky); }
+    .byte.bom { background: var(--mint); border-color: var(--teal); }
+    .byte.bad { background: var(--rose); border-color: var(--red); }
+    .byte-label { font-size: 14px; color: var(--muted); }
+    figure { margin-left: 0; margin-right: 0; }
+    @media print { .grid, .branches { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <aside aria-label="目次">
+    <div class="brand">PDFMOD / FIELD NOTES</div>
+    <div class="nav-title">PDFの<br>テキスト文字列</div>
+    <nav>
+      <a href="#overview" aria-current="location"><span>01</span>バイトから文字へ</a>
+      <a href="#syntax"><span>02</span>表記と符号化</a>
+      <a href="#rules"><span>03</span>3つの符号化</a>
+      <a href="#flow"><span>04</span>BOM判定の流れ</a>
+      <a href="#examples"><span>05</span>正常・境界・不正</a>
+      <a href="#implementation"><span>06</span>型とAPIの境界</a>
+    </nav>
+  </aside>
+  <main id="top"><div class="wrap">
+    <header class="hero">
+      <div class="eyebrow">PDF INTERNALS / TEXT STRINGS</div>
+      <h1>同じ「文字列」でも、<br>まだ文字とは限らない。</h1>
+      <p class="lead">PDFのタイトルやしおり名は、まずバイト列として読み取られます。そこから先頭の目印を確認し、文字への対応規則を選ぶと、人が読めるテキストに戻せます。</p>
+    </header>
+
+    <section class="section" id="overview">
+      <div class="section-heading"><span class="number">01</span><h2>バイトから文字へ</h2></div>
+      <p><strong>テキスト文字列（text string）</strong>は、文書情報辞書 <code>/Info</code> の <code>/Title</code> やアウトラインの名前などに使う、人が読むための文字列です。PDFの文字列オブジェクトはバイナリデータにも使われるため、文字列を見つけたという理由だけで文字に変換してはいけません。</p>
+      <div class="grid">
+        <div class="card"><div class="card-label">RAW BYTES</div><h3>PdfString</h3><p>リテラル・16進表記を読み解いたあとのバイト列。<code>00</code> や任意の高位バイトも保持します。文字として妥当かは、まだ問いません。</p></div>
+        <div class="card"><div class="card-label">DECODED TEXT</div><h3>PdfTextString</h3><p>テキスト用途と分かった値を、選んだエラー方針で復元した文字列。Rustの <code>String</code> として使えるUnicodeテキストです。</p></div>
+      </div>
+      <div class="note warning"><strong>ページに描く文字とは、復元経路が違う</strong><code>Tj</code>・<code>TJ</code> の文字列は、フォントのEncodingやCMapに基づく文字コード列です。ここで扱うBOMデコーダーを一律に適用しません。<code>/ActualText</code> のようにテキスト文字列と定義された属性は別です。</div>
+    </section>
+
+    <section class="section" id="syntax">
+      <div class="section-heading"><span class="number">02</span><h2>「書き方」と「符号化」を分ける</h2></div>
+      <p>次は <code>/Info</code> の辞書に書く値の<strong>説明用抜粋</strong>です。完全なPDFではありません。タイトル「日本」を、2通りの表記で書いています。</p>
+      <pre><code><span class="comment">% 16進表記。2桁で1バイト。</span>
+<span class="key">/Title</span> <span class="value">&lt;FEFF65E5672C&gt;</span>
+
+<span class="comment">% リテラル表記。バックスラッシュの後は8進数。</span>
+<span class="key">/Title</span> <span class="value">(\376\377\145\345\147\054)</span></code></pre>
+      <figure class="card">
+        <div class="card-label">表記が違っても、得られるバイト列は同じ</div>
+        <div class="byte-row"><span class="byte bom">FE FF</span><span class="byte">65 E5</span><span class="byte">67 2C</span></div>
+        <div class="byte-row"><span class="byte-label">先頭の目印：UTF-16BE</span><span class="byte-label">65E5 → 日</span><span class="byte-label">672C → 本</span></div>
+        <figcaption class="flow-caption">字句解析は「書かれたバイト」を復元します。テキストデコードは、そのバイトに「文字としての意味」を与えます。</figcaption>
+      </figure>
+      <div class="note"><strong>StringEncoding と文字コードは別物</strong><code>StringEncoding::Literal / Hex</code> は元の表記形式です。UTF-8などの符号化方式は、この値ではなく実際の先頭バイトで判定します。</div>
+    </section>
+
+    <section class="section" id="rules">
+      <div class="section-heading"><span class="number">03</span><h2>3つの符号化を読む</h2></div>
+      <p><strong>BOM（Byte Order Mark）</strong>は、文字列の先頭に置く符号化の目印です。PDFのテキスト文字列では、指定のBOMがなければPDFDocEncodingとして読みます。</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>先頭バイト</th><th>選ぶ符号化</th><th>読み方</th></tr></thead>
+        <tbody>
+          <tr><td><code>EF BB BF</code></td><td>UTF-8</td><td>先頭3バイトを除き、UTF-8として復元。PDF 2.0で追加。</td></tr>
+          <tr><td><code>FE FF</code></td><td>UTF-16BE</td><td>先頭2バイトを除き、上位バイトが先の16ビット単位で読む。</td></tr>
+          <tr><td>どちらでもない</td><td>PDFDocEncoding</td><td>先頭から各バイトを専用の対応表で文字に変換。</td></tr>
+        </tbody>
+      </table></div>
+      <h3>PDFDocEncodingはLatin-1ではない</h3>
+      <p>1バイトずつ対応表を引きます。英数字の多くは見慣れた並びですが、特殊記号や未割当の場所があります。例えば <code>A0</code> は空白ではなく <strong>€（U+20AC）</strong>です。</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>バイト範囲</th><th>対応・扱い</th></tr></thead>
+        <tbody>
+          <tr><td><code>09 / 0A / 0D</code></td><td>TAB・LF・CR。定義済みの制御文字。</td></tr>
+          <tr><td><code>00–08 / 0B–0C / 0E–17</code></td><td>仕様表のNotesがU（未割当）。数値をそのままUnicodeへ渡さない。</td></tr>
+          <tr><td><code>18–1F</code></td><td>˘ ˇ ˆ ˙ ˝ ˛ ˚ ˜ の8文字。</td></tr>
+          <tr><td><code>20–7E</code></td><td>ASCIIと一致。英数字・記号・空白。</td></tr>
+          <tr><td><code>80–9E</code></td><td>•、†、…、ﬁ、Œ などの記号・合字。</td></tr>
+          <tr><td><code>A0</code></td><td>€（EURO SIGN）。</td></tr>
+          <tr><td><code>A1–FF</code> のうち <code>AD</code> 以外</td><td>同じ数値のUnicode文字に対応。</td></tr>
+          <tr><td><code>7F / 9F / AD</code></td><td>未割当。Strictならエラー、Replaceなら �。</td></tr>
+        </tbody>
+      </table></div>
+      <h3>UTF-16BEでは、2つの単位で1文字になることがある</h3>
+      <p>基本多言語面の文字は通常1つの16ビット単位です。補助平面の文字は<strong>サロゲートペア（surrogate pair）</strong>として、上位 <code>D800–DBFF</code> と下位 <code>DC00–DFFF</code> の組で表します。</p>
+      <figure class="card">
+        <div class="card-label">例：U+1F600 GRINNING FACE</div>
+        <div class="flow">
+          <div class="flow-box secondary"><strong>FE FF ｜ D8 3D ｜ DE 00</strong>BOMを外すと、16ビット単位が2つ</div>
+          <div class="flow-arrow">↓ 上位サロゲートと下位サロゲートを結合</div>
+          <div class="flow-box primary"><strong>D83D ＋ DE00 → U+1F600 → 😀</strong>4バイトを消費して、1つのUnicode文字へ</div>
+        </div>
+        <figcaption class="flow-caption">上位だけ・下位だけなら不正です。上位の次に通常の文字が来た場合、置換モードでもその通常文字は残します。</figcaption>
+      </figure>
+      <div class="note warning"><strong>仕様と回復方針を区別する</strong>BOMや文字対応はPDF仕様、不正なUnicode列の判定はUnicodeの規則に基づきます。不正時に <code>Err</code> を返すか、U+FFFD（�）に置換して続けるかは、このライブラリで選べる方針です。</div>
+    </section>
+
+    <section class="section" id="flow">
+      <div class="section-heading"><span class="number">04</span><h2>BOM判定の流れを辿る</h2></div>
+      <p>判断するのは<strong>先頭</strong>だけです。UTF-8らしく見えるかどうかを推測したり、デコード失敗後に別の符号化へ切り替えたりはしません。</p>
+      <figure class="card">
+        <div class="flow">
+          <div class="flow-box secondary"><strong>テキスト用途と確認したバイト列</strong>例：/Title の値</div>
+          <div class="flow-arrow">↓ 先頭3バイトを確認</div>
+          <div class="flow-box primary"><strong>EF BB BF か？</strong>はい → BOMを外してUTF-8をデコードし、終了</div>
+          <div class="flow-arrow">↓ いいえ：先頭2バイトを確認</div>
+          <div class="flow-box primary"><strong>FE FF か？</strong>はい → BOMを外してUTF-16BEをデコードし、終了</div>
+          <div class="flow-arrow">↓ いいえ</div>
+          <div class="flow-box"><strong>PDFDocEncoding</strong>BOMとして捨てるバイトはない。全体を対応表で読む。</div>
+        </div>
+        <figcaption class="flow-caption">BOMだけの入力は空文字列。途中や2つ目のBOMは先頭識別子として削除しません。</figcaption>
+      </figure>
+      <div class="grid">
+        <div class="card"><h3>BOMなしUTF-8は推測しない</h3><p><code>C3 A9</code> はUTF-8なら「é」ですが、このAPIではBOMなしなので「Ã©」。<code>EF BB BF C3 A9</code> なら「é」です。</p></div>
+        <div class="card"><h3>UTF-16LEも推測しない</h3><p><code>FF FE</code> はUTF-16BEのBOMではありません。指定のBOMに一致しないので、この2バイトはPDFDocEncodingの「ÿþ」になります。</p></div>
+      </div>
+    </section>
+
+    <section class="section" id="examples">
+      <div class="section-heading"><span class="number">05</span><h2>正常・境界・不正を比べる</h2></div>
+      <p>入力は、字句解析後のバイト列を16進数で表しています。位置は<strong>BOMを含む入力内のゼロ起点バイト位置</strong>です。ファイル上の位置や、出力文字数ではありません。</p>
+      <div class="card" data-examples>
+        <div class="card-label">TRY IT — 例を切り替える</div>
+        <div class="example-controls" hidden aria-label="入力例の選択">
+          <button type="button" data-example="normal" aria-controls="example-normal" aria-pressed="true">正常な入力</button>
+          <button type="button" data-example="boundary" aria-controls="example-boundary" aria-pressed="false">空・境界</button>
+          <button type="button" data-example="error" aria-controls="example-error" aria-pressed="false">不正な入力</button>
+        </div>
+        <div aria-live="polite">
+          <article id="example-normal" data-example-panel="normal">
+            <h3>3つの表現から同じ「€」へ</h3>
+            <pre><code>A0                 → PDFDocEncoding → €
+FE FF 20 AC        → UTF-16BE        → €
+EF BB BF E2 82 AC   → UTF-8           → €</code></pre>
+            <div class="note"><strong>バイト列の長さと文字数は一致しない</strong>同じ1文字でも1・4・6バイトになります。先頭に付くBOM自体は、出力文字には含めません。</div>
+          </article>
+          <article id="example-boundary" data-example-panel="boundary">
+            <h3>空文字列とBOMだけの入力</h3>
+            <pre><code>空のバイト列 → ""
+FE FF        → ""
+EF BB BF     → ""
+EF BB        → "ï»"（完全なBOMではない）</code></pre>
+            <div class="note warning"><strong>16進数の桁数と、UTF-16のバイト数は別</strong><code>&lt;FEFF004&gt;</code> は16進数の末尾に0を補い、<code>FE FF 00 40</code> →「@」。<code>&lt;FEFF00&gt;</code> は桁数が偶数でも、BOMの後に1バイトしかなくUTF-16BEとして不正です。</div>
+          </article>
+          <article id="example-error" data-example-panel="error">
+            <h3>同じ不正入力に2つの方針</h3>
+            <div class="table-wrap"><table>
+              <thead><tr><th>入力バイト列</th><th>Strict</th><th>Replace</th></tr></thead>
+              <tbody>
+                <tr><td><code>41 7F 42</code></td><td>未割当：位置1</td><td>A�B</td></tr>
+                <tr><td><code>FE FF D8 00 00 41</code></td><td>孤立サロゲート：位置2</td><td>�A</td></tr>
+                <tr><td><code>FE FF 00 41 42</code></td><td>奇数長：位置4</td><td>A�</td></tr>
+                <tr><td><code>EF BB BF 41 FF 42</code></td><td>不正UTF-8：位置4</td><td>A�B</td></tr>
+              </tbody>
+            </table></div>
+            <div class="note error"><strong>不正な部分を、正常な文字に見せかけない</strong>Strictは最初のエラーで停止し、途中までの文字列を返しません。Replaceは不正部分を置換して続け、後続の正常な文字は残します。</div>
+          </article>
+        </div>
+        <p class="meta">実装テストと照合した説明用の例です。ブラウザ上でRustのデコーダーを実行するものではありません。</p>
+      </div>
+      <p>置換の単位は、PDFDocEncodingでは未割当バイトごと、UTF-16BEでは孤立コード単位ごとと末尾の余剰1バイトです。UTF-8はRust標準ライブラリの <code>String::from_utf8_lossy</code> に従うため、不正バイト数と置換文字数が常に一致するわけではありません。</p>
+    </section>
+
+    <section class="section" id="implementation">
+      <div class="section-heading"><span class="number">06</span><h2>型とAPIの境界</h2></div>
+      <p>テキスト用途であることを判断した呼び出し側が、<code>PdfString::as_bytes()</code> を渡して変換を要求します。バイト列からテキストへの暗黙変換はありません。</p>
+      <pre><code>use pdfmod_core::{
+    object::PdfString,
+    text_string::{DecodePolicy, PdfTextString},
+};
+
+let raw = PdfString::hex(b"\xFE\xFF\x65\xE5\x67\x2C");
+let text = PdfTextString::decode(
+    raw.as_bytes(), DecodePolicy::Strict,
+)?;
+assert_eq!(text.as_str(), "日本");
+let value: String = text.into();</code></pre>
+      <div class="table-wrap"><table>
+        <thead><tr><th>API・型</th><th>役割</th></tr></thead>
+        <tbody>
+          <tr><td><code>PdfTextString::decode</code></td><td>借用したバイト列を、指定方針で復元。</td></tr>
+          <tr><td><code>DecodePolicy::Strict / Replace</code></td><td>不正入力を拒否するか、U+FFFDへ置換。</td></tr>
+          <tr><td><code>as_str() / Into&lt;String&gt;</code></td><td>復元結果の借用／所有権を移す取り出し。</td></tr>
+          <tr><td><code>TextDecodeError::kind()</code></td><td>未割当バイト、UTF-8不正、孤立サロゲート、奇数長を分類。</td></tr>
+          <tr><td><code>offset().value()</code></td><td>BOMを含む入力内のバイト位置。ファイルのByteOffsetとは別の型。</td></tr>
+        </tbody>
+      </table></div>
+      <div class="grid">
+        <div class="card"><h3>このモジュールの責務</h3><p>3種類の符号化の復元と、不正入力への対応です。元の <code>PdfString</code> とリテラル／16進の表記情報は変更しません。</p></div>
+        <div class="card"><h3>呼び出し側・後続の責務</h3><p>暗号化の復号、/Infoなどの辞書の読取り、PDFバージョンとUTF-8使用の整合性、フォント経由の文字復元は含みません。</p></div>
+      </div>
+      <div class="note warning"><strong>Unicodeの復元と、表示用の加工は別</strong>Unicode文字列内の言語指定エスケープは文字として保持します。言語区間の解釈・除去、Unicode正規化、表示向けの制御文字処理は行いません。既存TypeScript版とは独立しており、低位制御バイトの取り扱いも一致するとは限りません。</div>
+    </section>
+    <footer><a href="#top">↑ 先頭に戻る</a></footer>
+  </div></main>
+  <script>
+    'use strict';
+
+    document.querySelectorAll('[data-examples]').forEach(group => {
+      const controls = group.querySelector('.example-controls');
+      const buttons = [...group.querySelectorAll('[data-example]')];
+      const panels = [...group.querySelectorAll('[data-example-panel]')];
+      if (!controls || buttons.length === 0 || panels.length === 0) return;
+
+      function showExample(key) {
+        buttons.forEach(button => {
+          button.setAttribute('aria-pressed', String(button.dataset.example === key));
+        });
+        panels.forEach(panel => {
+          panel.hidden = panel.dataset.examplePanel !== key;
+        });
+      }
+
+      controls.hidden = false;
+      showExample(buttons[0].dataset.example);
+      buttons.forEach(button => {
+        button.addEventListener('click', () => showExample(button.dataset.example));
+      });
+    });
+
+    const sections = [...document.querySelectorAll('.section')];
+    const links = [...document.querySelectorAll('nav a[href^="#"]')];
+    let pending = false;
+    function updateNavigation() {
+      pending = false;
+      if (sections.length === 0) return;
+      let current = sections[0];
+      for (const section of sections) {
+        if (section.getBoundingClientRect().top <= window.innerHeight * .3) current = section;
+      }
+      links.forEach(link => {
+        if (link.hash === '#' + current.id) {
+          link.setAttribute('aria-current', 'location');
+          return;
+        }
+        link.removeAttribute('aria-current');
+      });
+    }
+    window.addEventListener('scroll', () => {
+      if (pending) return;
+      pending = true;
+      requestAnimationFrame(updateNavigation);
+    }, { passive: true });
+    window.addEventListener('resize', updateNavigation);
+    updateNavigation();
+  </script>
+</body>
+</html>
