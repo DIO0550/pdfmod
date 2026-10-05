@@ -1,5 +1,5 @@
 import { Tokenizer } from "../../lexer/tokenizer/index";
-import type { PdfError, Token } from "../../pdf/index";
+import type { ContentStreamToken, PdfError } from "../../pdf/index";
 import { Operator, TokenType } from "../../pdf/index";
 import type { Result } from "../../utils/result/index";
 import { err, ok } from "../../utils/result/index";
@@ -43,7 +43,7 @@ export class ContentStreamTokenizer {
    *
    * @returns 読み取った token
    */
-  nextToken(): Result<Token, PdfError> {
+  nextToken(): Result<ContentStreamToken, PdfError> {
     const token = this.tokenizer.nextToken();
 
     if (token.type !== TokenType.Keyword) {
@@ -77,8 +77,8 @@ export class ContentStreamTokenizer {
    *
    * @returns EOF を含む token 配列
    */
-  tokenize(): Result<Token[], PdfError> {
-    const tokens: Token[] = [];
+  tokenize(): Result<ContentStreamToken[], PdfError> {
+    const tokens: ContentStreamToken[] = [];
 
     while (true) {
       const result = this.nextToken();

@@ -1,5 +1,9 @@
 import { assert, expect, test } from "vitest";
-import type { PdfValue, Token, TokenDictBegin } from "../../../../pdf/index";
+import type {
+  ContentStreamToken,
+  PdfValue,
+  TokenDictBegin,
+} from "../../../../pdf/index";
 import { TokenType } from "../../../../pdf/index";
 import { ContentStreamTokenizer } from "../../../tokenizer/index";
 import { readDictOperand } from "../index";
@@ -18,7 +22,7 @@ function setupAfterDictBegin(stream: string): {
   const tokenizer = new ContentStreamTokenizer(encode(stream));
   const result = tokenizer.nextToken();
   assert(result.ok);
-  const token: Token = result.value;
+  const token: ContentStreamToken = result.value;
   assert(token.type === TokenType.DictBegin);
   return { tokenizer, openToken: token };
 }

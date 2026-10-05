@@ -1,17 +1,19 @@
 import { assert, expect, test } from "vitest";
-import type { Token } from "../../../pdf/index";
+import type { ContentStreamToken } from "../../../pdf/index";
 import { ByteOffset, Operator, TokenType } from "../../../pdf/index";
 import { ContentStreamTokenizer } from "../index";
 
 const encode = (input: string): Uint8Array => new TextEncoder().encode(input);
 
 /**
- * Token 配列から EOF を除いた type を返す。
+ * ContentStreamToken 配列から EOF を除いた type を返す。
  *
- * @param tokens - 検証対象の Token 配列
+ * @param tokens - 検証対象の ContentStreamToken 配列
  * @returns EOF を除いた TokenType 配列
  */
-const tokenTypesWithoutEof = (tokens: readonly Token[]): TokenType[] =>
+const tokenTypesWithoutEof = (
+  tokens: readonly ContentStreamToken[],
+): TokenType[] =>
   tokens
     .filter((token) => token.type !== TokenType.EOF)
     .map((token) => token.type);

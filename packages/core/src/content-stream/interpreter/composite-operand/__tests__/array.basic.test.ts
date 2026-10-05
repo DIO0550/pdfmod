@@ -1,5 +1,8 @@
 import { assert, expect, test } from "vitest";
-import type { Token, TokenArrayBegin } from "../../../../pdf/index";
+import type {
+  ContentStreamToken,
+  TokenArrayBegin,
+} from "../../../../pdf/index";
 import { TokenType } from "../../../../pdf/index";
 import { ContentStreamTokenizer } from "../../../tokenizer/index";
 import { readArrayOperand } from "../index";
@@ -18,7 +21,7 @@ function setupAfterArrayBegin(stream: string): {
   const tokenizer = new ContentStreamTokenizer(encode(stream));
   const result = tokenizer.nextToken();
   assert(result.ok);
-  const token: Token = result.value;
+  const token: ContentStreamToken = result.value;
   assert(token.type === TokenType.ArrayBegin);
   return { tokenizer, openToken: token };
 }

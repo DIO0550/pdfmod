@@ -1,9 +1,9 @@
 import { expect, test } from "vitest";
-import type { Token } from "../../../pdf/types/index";
+import type { LexicalToken } from "../../../pdf/types/index";
 import { ByteOffset, TokenType } from "../../../pdf/types/index";
 import { Tokenizer } from "../index";
 
-function tokenize(input: string): Token[] {
+function tokenize(input: string): LexicalToken[] {
   const encoder = new TextEncoder();
   const tokenizer = new Tokenizer(encoder.encode(input));
   return tokenizer.tokenize();
