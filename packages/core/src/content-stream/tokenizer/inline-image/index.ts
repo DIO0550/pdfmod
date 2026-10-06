@@ -5,8 +5,8 @@ import {
 } from "../../../lexer/bytes/index";
 import { Tokenizer } from "../../../lexer/tokenizer/index";
 import type {
+  LexicalToken,
   PdfError,
-  Token,
   TokenInlineImage,
   TokenInlineImageDictEntry,
 } from "../../../pdf/index";
@@ -141,7 +141,7 @@ function readInlineImageDictionary(params: {
  */
 function readInlineImageDictionaryValue(
   tokenizer: Tokenizer,
-): Result<ReadonlyArray<Token>, PdfError> {
+): Result<ReadonlyArray<LexicalToken>, PdfError> {
   const first = tokenizer.nextToken();
   if (first.type === TokenType.EOF || isKeyword(first, "ID")) {
     return invalidInlineImage(
@@ -162,7 +162,7 @@ function readInlineImageDictionaryValue(
     );
   }
 
-  const tokens: Token[] = [first];
+  const tokens: LexicalToken[] = [first];
   const expectedClosers = expectedCompositeClosers(first);
   if (expectedClosers.length === 0) {
     return ok(tokens);
@@ -213,7 +213,9 @@ function readInlineImageDictionaryValue(
  * @param token - 判定対象 token
  * @returns 期待する終了 token stack
  */
-function expectedCompositeClosers(token: Token): CompositeCloseTokenType[] {
+function expectedCompositeClosers(
+  token: LexicalToken,
+): CompositeCloseTokenType[] {
   const closer = expectedCompositeCloser(token);
   return closer.some ? [closer.value] : [];
 }
@@ -225,7 +227,7 @@ function expectedCompositeClosers(token: Token): CompositeCloseTokenType[] {
  * @returns 対応する終了 token
  */
 function expectedCompositeCloser(
-  token: Token,
+  token: LexicalToken,
 ):
   | { readonly some: true; readonly value: CompositeCloseTokenType }
   | { readonly some: false } {
@@ -345,7 +347,7 @@ function isInlineImageEndAt(data: Uint8Array, offset: number): boolean {
  * @param value - 期待 keyword
  * @returns 一致すれば true
  */
-function isKeyword(token: Token, value: string): boolean {
+function isKeyword(token: LexicalToken, value: string): boolean {
   return token.type === TokenType.Keyword && token.value === value;
 }
 
@@ -355,7 +357,7 @@ function isKeyword(token: Token, value: string): boolean {
  * @param token - 判定対象 token
  * @returns ID marker 直後に data が続く keyword であれば true
  */
-function isInlineImageDataBegin(token: Token): boolean {
+function isInlineImageDataBegin(token: LexicalToken): boolean {
   return token.type === TokenType.Keyword && token.value.startsWith("ID");
 }
 

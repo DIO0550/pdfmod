@@ -1,12 +1,12 @@
 import type { Tokenizer } from "../../../lexer/tokenizer/index";
-import type { Token } from "../../../pdf/types/index";
+import type { LexicalToken } from "../../../pdf/types/index";
 
 /**
  * Tokenizer をラップし pushBack によるトークンの巻き戻しを提供する。
  */
 export class BufferedTokenizer {
   private readonly tokenizer: Tokenizer;
-  private readonly buffer: Token[] = [];
+  private readonly buffer: LexicalToken[] = [];
 
   /**
    * @param tokenizer - ラップ対象の Tokenizer
@@ -20,7 +20,7 @@ export class BufferedTokenizer {
    *
    * @returns 次のトークン
    */
-  next(): Token {
+  next(): LexicalToken {
     const buffered = this.buffer.pop();
     if (buffered !== undefined) {
       return buffered;
@@ -33,7 +33,7 @@ export class BufferedTokenizer {
    *
    * @param token - 戻すトークン
    */
-  pushBack(token: Token): void {
+  pushBack(token: LexicalToken): void {
     this.buffer.push(token);
   }
 

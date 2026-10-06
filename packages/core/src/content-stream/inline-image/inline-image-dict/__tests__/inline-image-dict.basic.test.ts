@@ -1,7 +1,7 @@
 import { expect, test } from "vitest";
 import {
   ByteOffset,
-  type Token,
+  type LexicalToken,
   type TokenInlineImageDictEntry,
   TokenType,
 } from "../../../../pdf/index";
@@ -10,7 +10,7 @@ import { InlineImageDict } from "../index";
 const makeEntry = (
   abbrev: string,
   offset = 0,
-  value: ReadonlyArray<Token> = [],
+  value: ReadonlyArray<LexicalToken> = [],
 ): TokenInlineImageDictEntry => ({
   key: {
     type: TokenType.Name,
@@ -47,7 +47,7 @@ test("展開後の TokenName.offset は略号 entry の元 offset を保持す�
 });
 
 test("展開後の entry.value は元 entry の value 参照と同一", () => {
-  const value: ReadonlyArray<Token> = [
+  const value: ReadonlyArray<LexicalToken> = [
     { type: TokenType.Integer, value: 1, offset: ByteOffset.of(2) },
   ];
   const entry = makeEntry("W", 0, value);
@@ -66,7 +66,7 @@ test("展開後の key.type は Name のまま", () => {
 });
 
 test("スコープ境界: normalize は /CS key のみ ColorSpace に展開し value は加工しない（値側展開は expandValueAbbrevs の責務）", () => {
-  const value: ReadonlyArray<Token> = [
+  const value: ReadonlyArray<LexicalToken> = [
     { type: TokenType.Name, value: "RGB", offset: ByteOffset.of(3) },
   ];
   const entry = makeEntry("CS", 0, value);
@@ -83,7 +83,7 @@ test("スコープ境界: normalize は /CS key のみ ColorSpace に展開し v
 });
 
 test("スコープ境界: normalize は /F key のみ Filter に展開し value は加工しない（値側展開は expandValueAbbrevs の責務）", () => {
-  const value: ReadonlyArray<Token> = [
+  const value: ReadonlyArray<LexicalToken> = [
     { type: TokenType.Name, value: "Fl", offset: ByteOffset.of(4) },
   ];
   const entry = makeEntry("F", 0, value);

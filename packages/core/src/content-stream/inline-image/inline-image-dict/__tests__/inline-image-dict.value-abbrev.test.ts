@@ -1,49 +1,49 @@
 import { expect, test } from "vitest";
 import {
   ByteOffset,
-  type Token,
+  type LexicalToken,
   type TokenInlineImageDictEntry,
   TokenType,
 } from "../../../../pdf/index";
 import { InlineImageDict } from "../index";
 
-const nameToken = (value: string, offset = 0): Token => ({
+const nameToken = (value: string, offset = 0): LexicalToken => ({
   type: TokenType.Name,
   value,
   offset: ByteOffset.of(offset),
 });
 
-const integerToken = (value: number): Token => ({
+const integerToken = (value: number): LexicalToken => ({
   type: TokenType.Integer,
   value,
   offset: ByteOffset.of(0),
 });
 
-const booleanToken = (value: boolean): Token => ({
+const booleanToken = (value: boolean): LexicalToken => ({
   type: TokenType.Boolean,
   value,
   offset: ByteOffset.of(0),
 });
 
-const arrayBeginToken = (): Token => ({
+const arrayBeginToken = (): LexicalToken => ({
   type: TokenType.ArrayBegin,
   value: "[",
   offset: ByteOffset.of(0),
 });
 
-const arrayEndToken = (): Token => ({
+const arrayEndToken = (): LexicalToken => ({
   type: TokenType.ArrayEnd,
   value: "]",
   offset: ByteOffset.of(0),
 });
 
-const dictBeginToken = (): Token => ({
+const dictBeginToken = (): LexicalToken => ({
   type: TokenType.DictBegin,
   value: "<<",
   offset: ByteOffset.of(0),
 });
 
-const dictEndToken = (): Token => ({
+const dictEndToken = (): LexicalToken => ({
   type: TokenType.DictEnd,
   value: ">>",
   offset: ByteOffset.of(0),
@@ -51,7 +51,7 @@ const dictEndToken = (): Token => ({
 
 const makeEntry = (
   key: string,
-  value: ReadonlyArray<Token>,
+  value: ReadonlyArray<LexicalToken>,
 ): TokenInlineImageDictEntry => ({
   key: { type: TokenType.Name, value: key, offset: ByteOffset.of(0) },
   value,
@@ -98,7 +98,7 @@ test.each<[string, string]>([
 
 test("ColorSpace entry に完全名 Name token を渡しても素通しする（同一参照）", () => {
   // 既に完全名なら参照同一性を保ったまま素通し（最適化境界）
-  const value: ReadonlyArray<Token> = [nameToken("DeviceRGB")];
+  const value: ReadonlyArray<LexicalToken> = [nameToken("DeviceRGB")];
   const dict = [makeEntry("ColorSpace", value)];
 
   const result = InlineImageDict.expandValueAbbrevs(dict);
@@ -109,7 +109,7 @@ test("ColorSpace entry に完全名 Name token を渡しても素通しする（
 
 test("ColorSpace entry に未知の Name token を渡しても素通しする（同一参照）", () => {
   // テーブル未登録の名前は加工せず通す（hasOwn ガード）
-  const value: ReadonlyArray<Token> = [nameToken("Unknown")];
+  const value: ReadonlyArray<LexicalToken> = [nameToken("Unknown")];
   const dict = [makeEntry("ColorSpace", value)];
 
   const result = InlineImageDict.expandValueAbbrevs(dict);
@@ -119,7 +119,7 @@ test("ColorSpace entry に未知の Name token を渡しても素通しする（
 
 test("ColorSpace entry の value 配列が空のとき同一参照で素通しする", () => {
   // 配列内置換ゼロ → value 同一参照 → entry 同一参照（4 階層ルール）
-  const value: ReadonlyArray<Token> = [];
+  const value: ReadonlyArray<LexicalToken> = [];
   const dict = [makeEntry("ColorSpace", value)];
 
   const result = InlineImageDict.expandValueAbbrevs(dict);
@@ -234,7 +234,10 @@ test("Filter entry value idx=2 で置換された Name の offset が元 token �
 
 test('key scoped: /Width entry の value 配列に Name("RGB") があっても展開せず entry 同一参照で素通しする', () => {
   // ColorSpace / Filter 以外の key は value を一切走査しない（同一参照）
-  const value: ReadonlyArray<Token> = [nameToken("RGB"), nameToken("AHx")];
+  const value: ReadonlyArray<LexicalToken> = [
+    nameToken("RGB"),
+    nameToken("AHx"),
+  ];
   const entry = makeEntry("Width", value);
   const dict = [entry];
 
@@ -246,7 +249,7 @@ test('key scoped: /Width entry の value 配列に Name("RGB") があっても�
 
 test('key scoped: /Interpolate entry の value に Name("I") があっても展開しない', () => {
   // CS テーブルに I→Indexed が定義されているが、key が /Interpolate の場合は対象外
-  const value: ReadonlyArray<Token> = [nameToken("I")];
+  const value: ReadonlyArray<LexicalToken> = [nameToken("I")];
   const entry = makeEntry("Interpolate", value);
   const dict = [entry];
 
@@ -258,7 +261,7 @@ test('key scoped: /Interpolate entry の value に Name("I") があっても展�
 
 test("入力 dict / entry / value 配列を破壊しない（非破壊保証）", () => {
   // normalize と同じ pin down 観点: 入力は不変
-  const value: ReadonlyArray<Token> = [nameToken("RGB")];
+  const value: ReadonlyArray<LexicalToken> = [nameToken("RGB")];
   const entry = makeEntry("ColorSpace", value);
   const dict = [entry];
   const snapshotDict = [...dict];
@@ -282,7 +285,7 @@ test("トップレベル dict は常に新配列（参照同一性の境界）",
 
 test("4 階層ルール 0 置換: ColorSpace 全 token が未知/完全名のみで entry 同一参照", () => {
   // 配列内置換ゼロ → value 同一参照 → entry 同一参照
-  const value: ReadonlyArray<Token> = [
+  const value: ReadonlyArray<LexicalToken> = [
     nameToken("DeviceRGB"),
     nameToken("Unknown"),
   ];

@@ -102,9 +102,9 @@ export interface TokenEOF {
  * Tokenizer は生成しない。`Operator.of()` から生成される。
  */
 export interface Operator {
-  type: TokenType.Operator;
-  name: string;
-  offset: ByteOffset;
+  readonly type: TokenType.Operator;
+  readonly value: string;
+  readonly offset: ByteOffset;
 }
 
 /**
@@ -113,7 +113,7 @@ export interface Operator {
  */
 export interface TokenInlineImageDictEntry {
   readonly key: TokenName;
-  readonly value: ReadonlyArray<Token>;
+  readonly value: ReadonlyArray<LexicalToken>;
 }
 
 /**
@@ -127,10 +127,10 @@ export interface TokenInlineImage {
 }
 
 /**
- * PDF字句解析器および ContentStream 解釈器が扱う全トークンの discriminated union。
+ * PDF字句解析器が生成するトークンの discriminated union。
  * `type` フィールドで variant を識別する。
  */
-export type Token =
+export type LexicalToken =
   | TokenBoolean
   | TokenInteger
   | TokenReal
@@ -143,9 +143,16 @@ export type Token =
   | TokenDictEnd
   | TokenNull
   | TokenKeyword
-  | Operator
-  | TokenInlineImage
   | TokenEOF;
+
+/** ContentStream の演算子とインライン画像を含むトークン。 */
+export type ContentStreamToken = LexicalToken | Operator | TokenInlineImage;
+
+/**
+ * 既存の全トークン型。
+ * @deprecated 字句解析には LexicalToken、ContentStream には ContentStreamToken を使用する。
+ */
+export type Token = ContentStreamToken;
 
 /**
  * `Operator` の factory utility を束ねた companion object。
@@ -155,12 +162,12 @@ export const Operator = {
   /**
    * Operator バリアントを生成する。検証は行わず、生 string をそのまま受け取る。
    *
-   * @param name - 演算子名 (例: `BT`, `m`)
+   * @param value - 演算子の綴り (例: `BT`, `m`)
    * @param offset - バイトオフセット
    * @returns Operator バリアント
    */
-  of(name: string, offset: ByteOffset): Operator {
-    return { type: TokenType.Operator, name, offset };
+  of(value: string, offset: ByteOffset): Operator {
+    return { type: TokenType.Operator, value, offset };
   },
 } as const;
 
@@ -181,7 +188,9 @@ export const Token = {
    * @param token - 変換対象 token
    * @returns 変換した PdfValue、対象外 token の None、または変換エラー
    */
-  toPrimitivePdfValue(token: Token): Result<Option<PdfValue>, PdfError> {
+  toPrimitivePdfValue(
+    token: ContentStreamToken,
+  ): Result<Option<PdfValue>, PdfError> {
     switch (token.type) {
       case TokenType.Boolean:
         return TokenBoolean.toPdfValue(token);
@@ -204,18 +213,13 @@ export const Token = {
 } as const;
 
 /**
- * Token をエラーメッセージなどに埋め込むための文字列表現。
- * Operator は name、InlineImage は固定文字列 `"BI ... ID ... EI"`
- * （`data: Uint8Array` を文字列化しても意味がないため）、
- * Null/EOF は `"null"`、それ以外は value を文字列化する。
+ * トークンをエラーメッセージなどに埋め込むための文字列表現。
+ * InlineImage は省略表現、それ以外は value を文字列化する。
  *
  * @param token - 表示対象のトークン
  * @returns 表示用文字列
  */
-export function tokenDisplayString(token: Token): string {
-  if (token.type === TokenType.Operator) {
-    return token.name;
-  }
+export function tokenDisplayString(token: ContentStreamToken): string {
   if (token.type === TokenType.InlineImage) {
     return "BI ... ID ... EI";
   }

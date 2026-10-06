@@ -1,7 +1,7 @@
 import type { PdfParseError } from "../../../pdf/errors/index";
 import { ByteOffset } from "../../../pdf/types/byte-offset/index";
 import { GenerationNumber } from "../../../pdf/types/generation-number/index";
-import type { Token } from "../../../pdf/types/index";
+import type { LexicalToken } from "../../../pdf/types/index";
 import { TokenType, tokenDisplayString } from "../../../pdf/types/index";
 import { ObjectNumber } from "../../../pdf/types/object-number/index";
 import type {
@@ -290,7 +290,7 @@ function readArrayElements(
   bt: BufferedTokenizer,
   baseOffset: ByteOffset,
   depth: number,
-  openToken: Token,
+  openToken: LexicalToken,
   foldFreeListRef: boolean,
 ): Result<PdfValue, PdfParseError> {
   if (depth > MAX_NESTING_DEPTH) {
@@ -337,7 +337,7 @@ function readDictEntries(
   bt: BufferedTokenizer,
   baseOffset: ByteOffset,
   depth: number,
-  openToken: Token,
+  openToken: LexicalToken,
   foldFreeListRef: boolean,
 ): Result<PdfDictionary, PdfParseError> {
   if (depth > MAX_NESTING_DEPTH) {
