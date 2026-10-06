@@ -1,8 +1,11 @@
 import type { PdfWarning } from "../../pdf/errors/warning/index";
 import type {
+  ContentStreamToken,
+  Operator,
   PdfError,
   TokenArrayBegin,
   TokenDictBegin,
+  TokenInlineImage,
 } from "../../pdf/index";
 import { Token, TokenType } from "../../pdf/index";
 import type { Result } from "../../utils/result/index";
@@ -118,7 +121,7 @@ export const ContentStreamInterpreter = {
  * @returns 次 step、または処理エラー
  */
 function executeToken(options: {
-  readonly token: Token;
+  readonly token: ContentStreamToken;
   readonly tokenizer: ContentStreamTokenizer;
   readonly registry: OperatorRegistry;
   readonly context: OperatorHandlerContext;
@@ -196,16 +199,19 @@ function executeToken(options: {
  * @returns 次step、またはhandlerエラー
  */
 function dispatchOperator(options: {
-  readonly token: Extract<Token, { readonly type: TokenType.Operator }>;
+  readonly token: Operator;
   readonly registry: OperatorRegistry;
   readonly context: OperatorHandlerContext;
   readonly warnings: PdfWarning[];
 }): Result<InterpreterStep, PdfError> {
-  const handler = OperatorRegistry.lookup(options.registry, options.token.name);
+  const handler = OperatorRegistry.lookup(
+    options.registry,
+    options.token.value,
+  );
   if (!handler.some) {
     options.warnings.push({
       code: "UNKNOWN_OPERATOR",
-      message: `Unknown operator: ${options.token.name}`,
+      message: `Unknown operator: ${options.token.value}`,
       offset: options.token.offset,
     });
     OperandStack.clear(options.context.operandStack);
@@ -229,7 +235,7 @@ function dispatchOperator(options: {
  * @returns 次step、または検査エラー
  */
 function dispatchInlineImage(options: {
-  readonly token: Extract<Token, { readonly type: TokenType.InlineImage }>;
+  readonly token: TokenInlineImage;
   readonly context: OperatorHandlerContext;
 }): Result<InterpreterStep, PdfError> {
   const handled = inlineImageHandler(options.context, options.token);
@@ -285,7 +291,7 @@ function dispatchDictOperand(options: {
  * @returns 次step、または変換エラー
  */
 function pushPrimitiveOperand(
-  token: Token,
+  token: ContentStreamToken,
   context: OperatorHandlerContext,
 ): Result<InterpreterStep, PdfError> {
   const objectResult = Token.toPrimitivePdfValue(token);

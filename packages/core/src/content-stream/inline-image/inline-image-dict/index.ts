@@ -1,6 +1,6 @@
 import { StringArrayEx } from "../../../ext/string-array/index";
 import type {
-  Token,
+  LexicalToken,
   TokenInlineImageDictEntry,
   TokenName,
 } from "../../../pdf/index";
@@ -115,9 +115,9 @@ const INLINE_IMAGE_DICT_VALUE_FILTER_ABBREVIATIONS: Partial<
  *   後続フェーズのエラー位置情報として活用できるようにする。
  */
 const expandIfAbbrevName = (
-  token: Token,
+  token: LexicalToken,
   table: Partial<Record<string, string>>,
-): Token => {
+): LexicalToken => {
   if (token.type !== TokenType.Name) {
     return token;
   }
@@ -136,19 +136,19 @@ const expandIfAbbrevName = (
 };
 
 /**
- * 値配列 (`ReadonlyArray<Token>`) 内の Name token を指定テーブルで展開する。
+ * 値配列 (`ReadonlyArray<LexicalToken>`) 内の Name token を指定テーブルで展開する。
  *
  * 4 階層参照同一性ルールの value 階層を担う。
  * - 配列内置換ゼロ → 入力配列を同一参照で返す（呼び出し側で entry も同一参照に倒せる）
  * - 配列内置換あり → 新配列を生成し、非対象 token は同一参照、置換対象は新 token
  */
 const expandValueArray = (
-  value: ReadonlyArray<Token>,
+  value: ReadonlyArray<LexicalToken>,
   table: Partial<Record<string, string>>,
-): ReadonlyArray<Token> => {
-  let next: Token[] | undefined;
+): ReadonlyArray<LexicalToken> => {
+  let next: LexicalToken[] | undefined;
   for (let i = 0; i < value.length; i++) {
-    const original = value[i] as Token;
+    const original = value[i];
     const replaced = expandIfAbbrevName(original, table);
     if (replaced === original) {
       if (next !== undefined) {
@@ -185,7 +185,7 @@ export const InlineImageDict = {
    *   新 `TokenName.offset` は略号 entry の元 offset を保持する
    *   （後続 handler のエラー位置情報として活用）。
    * - 略号テーブルに miss したキー（完全名・未知キー・空文字）は元エントリをそのまま通す。
-   * - 値配列 `value: ReadonlyArray<Token>` は加工しない。
+   * - 値配列 `value: ReadonlyArray<LexicalToken>` は加工しない。
    *   ColorSpace / Filter の値側略号（`/CS /RGB` → `/DeviceRGB` 等）は本 normalize のスコープ外で、
    *   コンパニオンの `expandValueAbbrevs` の責務。
    * - 入力配列・入力エントリは破壊しない（新配列を返す）。

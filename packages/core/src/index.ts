@@ -62,6 +62,8 @@ export {
   ObjectStreamHeader,
 } from "./objects/index";
 export type {
+  ContentStreamToken,
+  LexicalToken,
   ObjectId,
   PdfArray,
   PdfBoolean,

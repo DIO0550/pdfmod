@@ -10,6 +10,7 @@ PDF機能の実装に合わせて、仕様の読み方と実装の振る舞い�
 | [ドキュメントカタログ](document-catalog.html) | Root・Catalog・Pagesの関係、必須キー、バージョンの優先関係、表示設定、未解釈エントリの保持、位置付きエラー | [Issue #635](https://github.com/DIO0550/pdfmod/issues/635) / [PR #736](https://github.com/DIO0550/pdfmod/pull/736) の作成時点（`6c654ce`） |
 | [ページ矩形と境界ボックス](page-boxes.html) | 対角の正規化、5種のボックスの既定値、MediaBoxとの交差、不正入力と未解決参照の扱い | [Issue #636](https://github.com/DIO0550/pdfmod/issues/636) 実装版 |
 | [テキスト文字列](text-strings.html) | PDFDocEncoding・UTF-16BE・UTF-8、BOM判定、未割当バイト、サロゲート、不正入力の拒否／置換、バイト列との型境界 | [Issue #637](https://github.com/DIO0550/pdfmod/issues/637) / `rust/crates/core/src/text_string.rs` |
+| [字句トークンと描画命令の境界](token-layers.html) | 字句解析と演算子の再分類、LexicalTokenとContentStreamToken、巻き戻しと画像辞書の型境界、Operator.value、正常例・未知の命令・壊れた画像 | [Issue #308](https://github.com/DIO0550/pdfmod/issues/308) / `packages/core/src/pdf/types/token/index.ts` |
 
 ## 読み方
 

@@ -4,18 +4,18 @@ import { Operator, TokenType, tokenDisplayString } from "../index";
 
 test("Operator.of は TokenType.Operator variant を返す", () => {
   const op = Operator.of("m", ByteOffset.of(0));
-  expect(op).toEqual({ type: TokenType.Operator, name: "m", offset: 0 });
+  expect(op).toEqual({ type: TokenType.Operator, value: "m", offset: 0 });
 });
 
-test("Operator.of は与えた name/offset をそのまま保持する", () => {
+test("Operator.of は与えた value/offset をそのまま保持する", () => {
   const op = Operator.of("BT", ByteOffset.of(128));
-  expect(op.name).toBe("BT");
+  expect(op.value).toBe("BT");
   expect(op.offset).toBe(128);
 });
 
-test("Operator.of は空文字 name でも variant を返す", () => {
+test("Operator.of は空文字 value でも variant を返す", () => {
   const op = Operator.of("", ByteOffset.of(0));
-  expect(op.name).toBe("");
+  expect(op.value).toBe("");
   expect(op.type).toBe(TokenType.Operator);
 });
 
@@ -27,7 +27,7 @@ test("TokenType.InlineImage メンバが定義されている", () => {
   expect(TokenType.InlineImage).toBe("InlineImage");
 });
 
-test("tokenDisplayString は Operator に対して name を返す", () => {
+test("tokenDisplayString は Operator に対して value を返す", () => {
   const op = Operator.of("BT", ByteOffset.of(0));
   expect(tokenDisplayString(op)).toBe("BT");
 });

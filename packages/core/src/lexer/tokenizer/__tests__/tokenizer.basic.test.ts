@@ -1,9 +1,27 @@
 import { expect, test } from "vitest";
-import type { Token } from "../../../pdf/types/index";
+import type { LexicalToken } from "../../../pdf/types/index";
 import { TokenType } from "../../../pdf/types/index";
 import { Tokenizer } from "../index";
 
-function tokenize(input: string): Token[] {
+test("演算子の綴りとインライン画像の区切りは字句解析ではキーワードになる", () => {
+  const tokenizer = new Tokenizer(new TextEncoder().encode("BT BI ID EI"));
+  const keywords = tokenizer.tokenize().slice(0, -1);
+
+  expect(keywords.map((token) => token.type)).toEqual([
+    TokenType.Keyword,
+    TokenType.Keyword,
+    TokenType.Keyword,
+    TokenType.Keyword,
+  ]);
+  expect(keywords.map((token) => token.value)).toEqual([
+    "BT",
+    "BI",
+    "ID",
+    "EI",
+  ]);
+});
+
+function tokenize(input: string): LexicalToken[] {
   const encoder = new TextEncoder();
   const tokenizer = new Tokenizer(encoder.encode(input));
   return tokenizer.tokenize();
