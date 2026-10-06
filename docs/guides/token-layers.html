@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>字句トークンと描画命令の境界 — PDF仕様解説</title>
+  <style>
+    :root {
+      --ink: #182f3c;
+      --muted: #526b76;
+      --paper: #f5f7f5;
+      --line: #d7e2e1;
+      --teal: #067666;
+      --mint: #e6f4ef;
+      --blue: #265bb3;
+      --sky: #eaf1ff;
+      --amber: #956000;
+      --sand: #fff4db;
+      --red: #ae3b42;
+      --rose: #fff0ee;
+      --nav-width: 250px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; scroll-padding-top: 24px; }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font: 18px/1.85 -apple-system, BlinkMacSystemFont,
+        "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
+    }
+    a { color: var(--blue); overflow-wrap: anywhere; }
+    button { font: inherit; cursor: pointer; touch-action: manipulation; }
+    a:focus-visible, button:focus-visible, summary:focus-visible {
+      outline: 3px solid #dd8c1f;
+      outline-offset: 4px;
+    }
+    aside {
+      position: fixed;
+      inset: 0 auto 0 0;
+      width: var(--nav-width);
+      overflow: auto;
+      background: #102e39;
+      color: white;
+      padding: 30px 23px;
+    }
+    .brand { font-size: 13px; font-weight: 750; letter-spacing: .14em; color: #8dddd0; }
+    .nav-title { font-size: 23px; line-height: 1.6; margin: 25px 0; overflow-wrap: anywhere; }
+    nav a {
+      display: block;
+      color: #d1e0e3;
+      padding: 10px;
+      margin: 5px 0;
+      border-radius: 7px;
+      font-size: 14px;
+      line-height: 1.6;
+      text-decoration: none;
+    }
+    nav a:hover, nav a[aria-current] { background: #204952; color: white; }
+    nav span { color: #8dddd0; font-size: 11px; margin-right: 9px; }
+    main { margin-left: var(--nav-width); padding: 55px 48px 60px; }
+    .wrap { max-width: 980px; margin: auto; }
+    .hero { border-bottom: 1px solid var(--line); padding: 12px 0 35px; }
+    .eyebrow { font-size: 13px; color: var(--teal); letter-spacing: .12em; font-weight: 800; }
+    h1 { font-size: clamp(32px, 4vw, 50px); line-height: 1.4; margin: 15px 0 22px; }
+    h2 { font-size: 28px; line-height: 1.5; margin: 0; }
+    h3 { font-size: 21px; margin: 20px 0 12px; }
+    p { margin: 14px 0; }
+    .lead { font-size: 20px; color: var(--muted); }
+    .meta { font-size: 13px; color: var(--muted); }
+    .section { padding: 48px 0 8px; scroll-margin-top: 24px; }
+    .section-heading { display: flex; align-items: flex-start; gap: 17px; margin-bottom: 21px; }
+    .number { border-top: 3px solid var(--teal); color: var(--teal); font-weight: 800; font-size: 15px; min-width: 33px; line-height: 2.6; }
+    code { font: .88em/1.8 ui-monospace, SFMono-Regular, Consolas, monospace; background: #e9eeee; padding: 2px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+    pre { background: #142f3b; color: #eaf5f6; padding: 24px; border-radius: 12px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 15px; line-height: 1.85; }
+    pre code { font-size: inherit; background: none; padding: 0; color: inherit; }
+    .key { color: #89e0ce; }
+    .value { color: #ffd688; }
+    .comment { color: #a3bdc5; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .grid > * { min-width: 0; }
+    .card { border: 1px solid var(--line); background: white; border-radius: 13px; padding: 24px; margin: 22px 0; }
+    .card-label { font-size: 13px; color: var(--muted); font-weight: 750; letter-spacing: .07em; margin-bottom: 16px; }
+    .note { border-left: 4px solid var(--teal); border-radius: 0 9px 9px 0; padding: 17px 21px; background: var(--mint); font-size: 16px; margin: 22px 0; }
+    .note strong { display: block; color: var(--teal); }
+    .note.warning { border-color: #c28c27; background: var(--sand); }
+    .note.warning strong { color: var(--amber); }
+    .note.error { border-color: var(--red); background: var(--rose); }
+    .note.error strong { color: var(--red); }
+    .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; margin: 22px 0; }
+    table { border-collapse: collapse; width: 100%; background: white; font-size: 15px; line-height: 1.7; }
+    th, td { text-align: left; vertical-align: top; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+    th { background: #eaf0ef; font-size: 13px; }
+    tr:last-child td { border-bottom: 0; }
+    .flow { max-width: 700px; margin: 0 auto; }
+    .flow-box { padding: 18px; text-align: center; border: 1px solid var(--line); border-radius: 10px; background: #f7f9f8; overflow-wrap: anywhere; }
+    .flow-box strong { display: block; }
+    .flow-box.primary { border-color: var(--teal); background: var(--mint); }
+    .flow-box.secondary { border-color: #adc3ea; background: var(--sky); }
+    .flow-arrow { text-align: center; font-size: 14px; color: var(--muted); padding: 12px 0; }
+    .branches { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    .branches > div { min-width: 0; }
+    .flow-caption { font-size: 14px; color: var(--muted); margin-top: 17px; }
+    .steps { padding-left: 25px; }
+    .steps li { margin: 14px 0; padding-left: 7px; }
+    .steps p { font-size: 16px; color: var(--muted); margin: 5px 0; }
+    .example-controls { display: flex; gap: 9px; flex-wrap: wrap; }
+    .example-controls button { font-size: 14px; padding: 8px 15px; background: white; color: var(--ink); border: 1px solid var(--line); border-radius: 7px; }
+    .example-controls button[aria-pressed="true"] { background: var(--teal); color: white; border-color: var(--teal); }
+    [hidden] { display: none !important; }
+    details { background: white; border: 1px solid var(--line); border-radius: 9px; padding: 15px 20px; margin: 18px 0; }
+    summary { cursor: pointer; font-weight: 700; }
+    footer { border-top: 1px solid var(--line); margin-top: 45px; padding-top: 24px; font-size: 14px; color: var(--muted); }
+    footer li { margin: 9px 0; }
+    @media (max-width: 1000px) {
+      :root { --nav-width: 210px; }
+      main { padding: 38px 28px; }
+      aside { padding: 27px 17px; }
+    }
+    @media (max-width: 760px) {
+      body { font-size: 17px; }
+      aside { position: static; width: auto; padding: 17px 20px; }
+      .nav-title { display: none; }
+      nav { display: flex; gap: 6px; overflow-x: auto; padding: 8px 0 3px; }
+      nav a { white-space: nowrap; font-size: 12px; margin: 0; padding: 6px 9px; }
+      main { margin: 0; padding: 25px 20px 45px; }
+      h1 { font-size: 34px; }
+      h2 { font-size: 25px; }
+      .lead { font-size: 18px; }
+      .grid, .branches { grid-template-columns: 1fr; }
+      .card { padding: 18px; }
+      pre { font-size: 13px; padding: 18px; }
+      th, td { padding: 11px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+    }
+    @media print {
+      aside, .example-controls { display: none !important; }
+      main { margin: 0; padding: 0; }
+      body { background: white; font-size: 11pt; }
+      h1 { font-size: 28pt; }
+      h2 { font-size: 20pt; }
+      .section { padding-top: 24px; }
+      .card, pre, .note, .flow-box { break-inside: avoid; }
+      pre { background: #eef2f4; color: #182f3c; }
+      .key { color: var(--teal); }
+      .value { color: var(--amber); }
+      .comment { color: var(--muted); }
+      .table-wrap { overflow: visible; }
+      [data-example-panel][hidden] { display: block !important; }
+      a { color: inherit; }
+    }
+  
+    :root { --paper: #f3f8fc; --teal: #087c80; --mint: #e5f6f4; --nav-width: 260px; }
+    body { font-size: 19px; }
+    nav a { font-size: 16px; }
+    table { font-size: 17px; table-layout: fixed; }
+    th { font-size: 15px; }
+    td, th, h1, h2, h3 { overflow-wrap: anywhere; }
+    pre { font-size: 16px; }
+    .card-label, .flow-caption, .flow-arrow { font-size: 16px; }
+    .flow-box { font-size: 17px; }
+    .union { border: 2px solid #aac9e5; border-radius: 16px; padding: 25px; background: #edf5ff; }
+    .union-inner { background: white; border: 2px solid var(--teal); border-radius: 12px; padding: 22px; }
+    .union h3 { margin-top: 0; }
+    .pills { display: flex; flex-wrap: wrap; gap: 9px; margin: 12px 0; }
+    .pill { display: inline-block; border-radius: 7px; padding: 5px 11px; font-size: 16px; background: var(--mint); color: #075b58; border: 1px solid #b8e4dc; }
+    .pill.operator { background: #fff0cc; border-color: #e8c985; color: #715000; }
+    .pill.image { background: #f0e9ff; border-color: #cebbea; color: #64329a; }
+    .muted { color: var(--muted); font-size: 17px; }
+    @media (max-width: 760px) {
+      body { font-size: 18px; }
+      nav a { font-size: 14px; }
+      .union, .union-inner { padding: 16px; }
+      .table-wrap table { min-width: 570px; }
+      pre { font-size: 14px; }
+      main { padding-left: 18px; padding-right: 18px; }
+    }
+    @media print {
+      body { font-size: 11pt; }
+      pre, .flow-box, table, .pill { font-size: 10pt; }
+      .union { break-inside: avoid; }
+      .table-wrap table { min-width: 0; }
+      h2, h3, .section-heading { break-after: avoid; }
+    }
+
+  </style>
+</head>
+<body>
+
+  <aside aria-label="目次">
+    <div class="brand">PDFMOD / FIELD NOTES</div>
+    <div class="nav-title">字句トークンと<br>描画命令の境界</div>
+    <nav aria-label="解説のセクション">
+      <a href="#overview"><span>01</span>何を分けるのか</a>
+      <a href="#syntax"><span>02</span>同じ文字、違う意味</a>
+      <a href="#types"><span>03</span>型の包含関係</a>
+      <a href="#flow"><span>04</span>読み取りの流れ</a>
+      <a href="#value"><span>05</span>value に揃える理由</a>
+      <a href="#examples"><span>06</span>具体例と境界</a>
+    </nav>
+  </aside>
+  <main id="top"><div class="wrap">
+    <header class="hero">
+      <div class="eyebrow">PDF INTERNALS / TOKEN LAYERS</div>
+      <h1>字句トークンと<br>描画命令の境界</h1>
+      <p class="lead">同じ <code>m</code> でも、字句解析では「キーワード」、ページの描画命令では「演算子」です。文字を読み取る処理と、その意味を判断する処理を分けると、型も自然に分かれます。</p>
+      <div class="pills"><span class="pill">字句解析 / LexicalToken</span><span class="pill operator">命令の分類 / ContentStreamToken</span></div>
+    </header>
+
+    <section class="section" id="overview">
+      <div class="section-heading"><span class="number">01</span><h2>「読めたもの」と「命令」を分ける</h2></div>
+      <p><strong>字句解析（lexical analysis）</strong>は、PDFのバイト列を数値・名前・文字列・区切りなどの小さな単位へ分ける処理です。この単位を<strong>トークン（token）</strong>と呼びます。</p>
+      <div class="grid">
+        <div class="card"><div class="card-label">文字の形を読む</div><h3>Tokenizer</h3><p><code>10</code> を整数、<code>/F1</code> を名前、<code>(Hello)</code> を文字列として読みます。<code>m</code> のような一般の綴りは <code>Keyword</code> になります。</p><p><strong>結果：</strong><code>LexicalToken</code></p></div>
+        <div class="card"><div class="card-label">描画命令の文脈で読む</div><h3>ContentStreamTokenizer</h3><p>ページの<strong>コンテンツストリーム（content stream）</strong>は描画命令の列です。字句解析の結果を使い、キーワードを演算子へ分類し直します。</p><p><strong>結果：</strong><code>ContentStreamToken</code></p></div>
+      </div>
+      <div class="note"><strong>トークンは、まだ完全なPDFオブジェクトではない</strong><code>[10 20]</code> は、字句解析では配列開始・整数・整数・配列終了の列です。配列という1つの値へまとめるのは、その後のオブジェクト解析です。</div>
+    </section>
+
+    <section class="section" id="syntax">
+      <div class="section-heading"><span class="number">02</span><h2>同じ入力を、2つの層で読む</h2></div>
+      <p>次はコンテンツストリームの<strong>抜粋</strong>です。完全なPDFファイルではありません。</p>
+      <pre><code><span class="value">10 20</span> <span class="key">m</span></code></pre>
+      <p><strong>オペランド（operand）</strong>は命令の引数、<strong>演算子（operator）</strong>は実行する命令です。PDFは引数を先に書く後置記法を使うので、この例は「座標 <code>(10, 20)</code> へ移動して新しいサブパスを始める」という命令になります。</p>
+      <div class="grid">
+        <div class="card"><h3>字句解析の結果</h3><pre><code>Integer  value: 10  offset: 0
+Integer  value: 20  offset: 3
+<span class="value">Keyword  value: "m" offset: 6</span>
+EOF      value: null offset: 7</code></pre><p class="muted">数値と綴りを読んだだけです。<code>m</code> を命令として実行しません。</p></div>
+        <div class="card"><h3>コンテンツストリームの結果</h3><pre><code>Integer  value: 10  offset: 0
+Integer  value: 20  offset: 3
+<span class="key">Operator value: "m" offset: 6</span>
+EOF      value: null offset: 7</code></pre><p class="muted"><code>m</code> の種類だけが変わります。綴りと元の位置は引き継ぎます。</p></div>
+      </div>
+      <p><code>offset</code> は入力の先頭から数えた<strong>バイト位置</strong>です。実装では <code>ByteOffset</code> 型を使います。上の結果は読みやすさのために数値で表記しています。</p>
+      <div class="note warning"><strong>分類と実行は別の処理</strong><code>Operator</code> にできても、引数の数や種類が正しいとは限りません。引数を検証して命令を実行するのはインタプリタと演算子ハンドラです。</div>
+    </section>
+
+    <section class="section" id="types">
+      <div class="section-heading"><span class="number">03</span><h2>型には、その層が扱うものだけを入れる</h2></div>
+      <p><strong>union型（直和型）</strong>は、列挙した型のどれか1つを表します。<code>LexicalToken</code> は字句解析が生成する13種類、<code>ContentStreamToken</code> はそれに2種類を加えた型です。</p>
+      <figure class="card">
+        <div class="card-label">内側の集合を、外側の集合が含む</div>
+        <div class="union"><h3>ContentStreamToken</h3>
+          <div class="union-inner"><h3>LexicalToken</h3>
+            <p class="muted">基本の値</p><div class="pills"><span class="pill">Boolean</span><span class="pill">Integer</span><span class="pill">Real</span><span class="pill">LiteralString</span><span class="pill">HexString</span><span class="pill">Name</span><span class="pill">Null</span></div>
+            <p class="muted">構造の区切り</p><div class="pills"><span class="pill">ArrayBegin / ArrayEnd</span><span class="pill">DictBegin / DictEnd</span></div>
+            <p class="muted">一般の綴りと終端</p><div class="pills"><span class="pill">Keyword</span><span class="pill">EOF</span></div>
+          </div>
+          <p>コンテンツストリーム用に追加するもの</p><div class="pills"><span class="pill operator">Operator</span><span class="pill image">TokenInlineImage</span></div>
+        </div>
+        <figcaption class="flow-caption">演算子とインライン画像は、字句解析器の戻り値には含めません。型の名前と包含関係はpdfmodの設計であり、PDF仕様がTypeScriptの型名を定めているわけではありません。</figcaption>
+      </figure>
+      <pre><code>type ContentStreamToken =
+  | LexicalToken
+  | Operator
+  | TokenInlineImage;</code></pre>
+      <div class="note"><strong>「起こらない可能性」を利用側に背負わせない</strong>以前の全体型 <code>Token</code> を字句解析の戻り値にすると、演算子や画像が返る可能性まで表します。<code>LexicalToken</code> に狭めれば、オブジェクト解析がその可能性を考える必要がなくなります。</div>
+      <p class="muted"><code>ContentStreamToken</code> は型として <code>LexicalToken</code> 全体を含みます。ただし、このトークナイザが実際に読む <code>Keyword</code> は演算子へ再分類され、<code>BI</code> はインライン画像の読み取りへ進みます。</p>
+    </section>
+
+    <section class="section" id="flow">
+      <div class="section-heading"><span class="number">04</span><h2>同じ字句解析を、用途ごとに使う</h2></div>
+      <p>次の図は、字句トークンを使う<strong>2つの処理経路</strong>です。</p>
+      <figure class="card"><div class="flow">
+        <div class="flow-box secondary"><strong>入力バイト列</strong>一般のPDFオブジェクト、または展開済みのコンテンツストリーム</div>
+        <div class="flow-arrow" aria-hidden="true">↓</div>
+        <div class="flow-box primary"><strong>Tokenizer</strong>字句を分けて LexicalToken を返す</div>
+        <div class="branches">
+          <div><div class="flow-arrow">↓ 一般のオブジェクト解析</div><div class="flow-box"><strong>BufferedTokenizer</strong>LexicalToken だけを読み取り・巻き戻し</div><div class="flow-arrow" aria-hidden="true">↓</div><div class="flow-box"><strong>Object parser</strong>配列・辞書などの値を組み立てる</div></div>
+          <div><div class="flow-arrow">↓ 描画命令の解析</div><div class="flow-box secondary"><strong>ContentStreamTokenizer</strong>キーワードを演算子へ再分類<br>BI から画像をまとめて読み取る</div><div class="flow-arrow" aria-hidden="true">↓</div><div class="flow-box secondary"><strong>ContentStreamInterpreter</strong>引数を積み、演算子・画像・複合値を処理</div></div>
+        </div>
+      </div><figcaption class="flow-caption">画像の経路では、字句解析器のカーソル位置を使いながら、元のバイト列から辞書と画像データを読み取ります。</figcaption></figure>
+      <h3>戻す入口も、字句トークンに限定する</h3>
+      <p><code>BufferedTokenizer</code> は先読みしたトークンを戻せる機構です。戻り値だけを狭めても、戻す入口が広いままでは演算子を混ぜられるため、<code>pushBack</code> の引数も狭めます。</p>
+      <pre><code>next(): LexicalToken
+pushBack(token: LexicalToken): void</code></pre>
+      <div class="note error"><strong>このコードはコンパイルエラーになる</strong>コンテンツストリームの演算子を、一般の字句トークンのバッファへ戻すことはできません。</div>
+      <pre><code>const operator = Operator.of("m", ByteOffset.of(6));
+
+buffered.pushBack(operator);
+<span class="comment">// エラー：Operator は LexicalToken に代入できない</span></code></pre>
+    </section>
+
+    <section class="section" id="value">
+      <div class="section-heading"><span class="number">05</span><h2>演算子の綴りも value へ揃える</h2></div>
+      <p>キーワードが演算子に変わっても、綴りそのものは変わりません。どちらも <code>value</code> に保存すれば、分類だけを変えたことが構造にも表れます。</p>
+      <div class="grid">
+        <div class="card"><h3>分類する前</h3><pre><code>{
+  type: TokenType.Keyword,
+  <span class="value">value: "m",</span>
+  offset: ByteOffset.of(6)
+}</code></pre></div>
+        <div class="card"><h3>分類した後</h3><pre><code>{
+  type: TokenType.Operator,
+  <span class="key">value: "m",</span>
+  offset: ByteOffset.of(6)
+}</code></pre></div>
+      </div>
+      <div class="table-wrap"><table><thead><tr><th>参照する場所</th><th>変更前</th><th>変更後</th></tr></thead><tbody>
+        <tr><td>演算子の綴り</td><td><code>operator.name</code></td><td><code>operator.value</code></td></tr>
+        <tr><td>表示用の文字列</td><td>演算子だけ <code>name</code> を読む専用分岐</td><td>他の値トークンと同じく <code>value</code> を文字列化</td></tr>
+        <tr><td>インライン画像</td><td><code>dict</code> と <code>data</code> を保持</td><td>同じ構造を維持。表示は <code>BI ... ID ... EI</code></td></tr>
+      </tbody></table></div>
+      <p><code>Operator.of(value, offset)</code> が演算子を生成します。インタプリタは <code>token.value</code> でハンドラを検索し、未知の命令の警告にも同じ値を使います。</p>
+      <div class="note warning"><strong>画像まで1つの value に揃えるわけではない</strong>画像は「辞書」と「バイト列」という複合情報を持つため、<code>dict</code> と <code>data</code> に分けます。画像の辞書値は <code>ReadonlyArray&lt;LexicalToken&gt;</code> とし、演算子や画像トークンを混ぜません。</div>
+    </section>
+
+    <section class="section" id="examples">
+      <div class="section-heading"><span class="number">06</span><h2>具体例で境界を確認する</h2></div>
+      <p>以下は説明用の<strong>PDF記述の抜粋</strong>です。結果は実装・テストに基づく例で、HTML内でパーサーを実行しているものではありません。</p>
+      <h3>① スラッシュと括弧で種類が変わる</h3>
+      <pre><code>/m (m) m</code></pre>
+      <div class="table-wrap"><table><thead><tr><th>入力</th><th>字句解析</th><th>コンテンツストリームの分類</th></tr></thead><tbody>
+        <tr><td><code>/m</code></td><td><code>Name</code></td><td><code>Name</code> を維持。演算子にしない</td></tr>
+        <tr><td><code>(m)</code></td><td><code>LiteralString</code></td><td><code>LiteralString</code> を維持</td></tr>
+        <tr><td><code>m</code></td><td><code>Keyword</code></td><td><code>Operator</code></td></tr>
+        <tr><td><code>true false null</code></td><td><code>Boolean / Boolean / Null</code></td><td>字句解析の時点で値に分類されるため、種類を維持</td></tr>
+      </tbody></table></div>
+      <p class="muted"><code>/m (m) m</code> は分類を比較する例です。移動命令の引数が数値ではないため、そのまま正常に描画できる命令列ではありません。</p>
+      <h3>② インライン画像は1トークンにまとめる</h3>
+      <pre><code><span class="key">BI</span> /W 1 /H 1 /BPC 8 /CS /G
+<span class="key">ID</span> <span class="value">A</span> <span class="key">EI</span></code></pre>
+      <p><code>BI</code> は画像の開始、<code>ID</code> は辞書と画像データの境界、<code>EI</code> は終了です。<code>/W</code>・<code>/H</code> は幅・高さ、<code>/BPC</code> は成分あたりのビット数、<code>/CS /G</code> はグレースケールの指定です。1バイトの <code>A</code> を説明用の画素データにしています。</p>
+      <div class="grid">
+        <div class="card"><h3>字句解析器だけの場合</h3><p><code>BI</code> や <code>ID</code> は一般のキーワードです。画像領域の開始を理解しないため、生の画像バイト列を安全に区切る役割は持ちません。</p></div>
+        <div class="card"><h3>コンテンツストリームの場合</h3><p><code>BI</code> から専用の読み取りへ進み、辞書と生バイト列を1つの <code>TokenInlineImage</code> にまとめます。画像内部のバイト列は描画命令として再分類しません。</p></div>
+      </div>
+      <h3>③ 空入力・未知の命令・壊れた画像</h3>
+      <div class="table-wrap"><table><thead><tr><th>入力</th><th>読み取り結果</th><th>意味の判定</th></tr></thead><tbody>
+        <tr><td>空のバイト列</td><td>どちらも <code>EOF</code> のみ。コンテンツ側は <code>Result.ok</code> で返す</td><td>終端は <code>value: null</code>。PDFの <code>Null</code> とは <code>type</code> で区別</td></tr>
+        <tr><td><code>1 2 xyz</code></td><td><code>xyz</code> は字句解析ではキーワード、コンテンツ側では演算子</td><td>未登録ならインタプリタが <code>UNKNOWN_OPERATOR</code> を記録し、引数スタックを空にして継続する実装方針</td></tr>
+        <tr><td><code>BI /W 1</code></td><td>コンテンツ側で <code>Result.err</code></td><td><code>ID</code> がないため <code>CONTENT_STREAM_INLINE_IMAGE_INVALID</code>。失敗の位置もエラーに含む</td></tr>
+      </tbody></table></div>
+      <div class="note warning"><strong>分類できたことは、命令の妥当性を保証しない</strong><code>Operator.of</code> は未知の綴りや空文字も受け取れます。既知の命令か、引数が妥当か、実行できるかは後続処理の責務です。</div>
+      <h3>戻り値の読み方</h3>
+      <pre><code>Tokenizer.nextToken(): LexicalToken
+Tokenizer.tokenize(): LexicalToken[]
+
+ContentStreamTokenizer.nextToken():
+  Result&lt;ContentStreamToken, PdfError&gt;
+
+ContentStreamTokenizer.tokenize():
+  Result&lt;ContentStreamToken[], PdfError&gt;</code></pre>
+      <p>一括読み取りの成功結果は、末尾のEOFも含みます。既存の <code>Token</code> 型は <code>ContentStreamToken</code> の非推奨エイリアスとして残しています。新しい利用箇所では層に合う型を使います。</p>
+      <div class="note"><strong>この変更で学ぶ3つのこと</strong>① 字句を読むことと命令の意味を決めることを分ける。<br>② 本当に扱う値を、引数・戻り値の型に表す。<br>③ 分類を変えても、綴りと元の位置は保持する。</div>
+      <p class="muted">型の分離は、PDFの字句規則や描画命令の動作を変更するものではありません。コンテンツストリームを渡す前の圧縮解除、画像データのデコード、画面への描画はそれぞれ別の処理です。</p>
+    </section>
+    <footer><a href="#top">↑ 先頭に戻る</a></footer>
+  </div></main>
+</body>
+</html>
