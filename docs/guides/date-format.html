@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PDFの日付文字列 — PDF仕様解説</title>
+  <style>
+    :root {
+      --ink: #182f3c;
+      --muted: #526b76;
+      --paper: #f5f7f5;
+      --line: #d7e2e1;
+      --teal: #067666;
+      --mint: #e6f4ef;
+      --blue: #265bb3;
+      --sky: #eaf1ff;
+      --amber: #956000;
+      --sand: #fff4db;
+      --red: #ae3b42;
+      --rose: #fff0ee;
+      --nav-width: 250px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; scroll-padding-top: 24px; }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font: 18px/1.85 -apple-system, BlinkMacSystemFont,
+        "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
+    }
+    a { color: var(--blue); overflow-wrap: anywhere; }
+    button { font: inherit; cursor: pointer; touch-action: manipulation; }
+    a:focus-visible, button:focus-visible, summary:focus-visible {
+      outline: 3px solid #dd8c1f;
+      outline-offset: 4px;
+    }
+    aside {
+      position: fixed;
+      inset: 0 auto 0 0;
+      width: var(--nav-width);
+      overflow: auto;
+      background: #102e39;
+      color: white;
+      padding: 30px 23px;
+    }
+    .brand { font-size: 13px; font-weight: 750; letter-spacing: .14em; color: #8dddd0; }
+    .nav-title { font-size: 23px; line-height: 1.6; margin: 25px 0; overflow-wrap: anywhere; }
+    nav a {
+      display: block;
+      color: #d1e0e3;
+      padding: 10px;
+      margin: 5px 0;
+      border-radius: 7px;
+      font-size: 14px;
+      line-height: 1.6;
+      text-decoration: none;
+    }
+    nav a:hover, nav a[aria-current] { background: #204952; color: white; }
+    nav span { color: #8dddd0; font-size: 11px; margin-right: 9px; }
+    main { margin-left: var(--nav-width); padding: 55px 48px 60px; }
+    .wrap { max-width: 980px; margin: auto; }
+    .hero { border-bottom: 1px solid var(--line); padding: 12px 0 35px; }
+    .eyebrow { font-size: 13px; color: var(--teal); letter-spacing: .12em; font-weight: 800; }
+    h1 { font-size: clamp(32px, 4vw, 50px); line-height: 1.4; margin: 15px 0 22px; }
+    h2 { font-size: 28px; line-height: 1.5; margin: 0; }
+    h3 { font-size: 21px; margin: 20px 0 12px; }
+    p { margin: 14px 0; }
+    .lead { font-size: 20px; color: var(--muted); }
+    .meta { font-size: 13px; color: var(--muted); }
+    .section { padding: 48px 0 8px; scroll-margin-top: 24px; }
+    .section-heading { display: flex; align-items: flex-start; gap: 17px; margin-bottom: 21px; }
+    .number { border-top: 3px solid var(--teal); color: var(--teal); font-weight: 800; font-size: 15px; min-width: 33px; line-height: 2.6; }
+    code { font: .88em/1.8 ui-monospace, SFMono-Regular, Consolas, monospace; background: #e9eeee; padding: 2px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+    pre { background: #142f3b; color: #eaf5f6; padding: 24px; border-radius: 12px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 15px; line-height: 1.85; }
+    pre code { font-size: inherit; background: none; padding: 0; color: inherit; }
+    .key { color: #89e0ce; }
+    .value { color: #ffd688; }
+    .comment { color: #a3bdc5; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .grid > * { min-width: 0; }
+    .card { border: 1px solid var(--line); background: white; border-radius: 13px; padding: 24px; margin: 22px 0; }
+    .card-label { font-size: 13px; color: var(--muted); font-weight: 750; letter-spacing: .07em; margin-bottom: 16px; }
+    .note { border-left: 4px solid var(--teal); border-radius: 0 9px 9px 0; padding: 17px 21px; background: var(--mint); font-size: 16px; margin: 22px 0; }
+    .note strong { display: block; color: var(--teal); }
+    .note.warning { border-color: #c28c27; background: var(--sand); }
+    .note.warning strong { color: var(--amber); }
+    .note.error { border-color: var(--red); background: var(--rose); }
+    .note.error strong { color: var(--red); }
+    .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; margin: 22px 0; }
+    table { border-collapse: collapse; width: 100%; background: white; font-size: 15px; line-height: 1.7; }
+    th, td { text-align: left; vertical-align: top; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+    th { background: #eaf0ef; font-size: 13px; }
+    tr:last-child td { border-bottom: 0; }
+    .flow { max-width: 700px; margin: 0 auto; }
+    .flow-box { padding: 18px; text-align: center; border: 1px solid var(--line); border-radius: 10px; background: #f7f9f8; overflow-wrap: anywhere; }
+    .flow-box strong { display: block; }
+    .flow-box.primary { border-color: var(--teal); background: var(--mint); }
+    .flow-box.secondary { border-color: #adc3ea; background: var(--sky); }
+    .flow-arrow { text-align: center; font-size: 14px; color: var(--muted); padding: 12px 0; }
+    .branches { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    .branches > div { min-width: 0; }
+    .flow-caption { font-size: 14px; color: var(--muted); margin-top: 17px; }
+    .steps { padding-left: 25px; }
+    .steps li { margin: 14px 0; padding-left: 7px; }
+    .steps p { font-size: 16px; color: var(--muted); margin: 5px 0; }
+    .example-controls { display: flex; gap: 9px; flex-wrap: wrap; }
+    .example-controls button { font-size: 14px; padding: 8px 15px; background: white; color: var(--ink); border: 1px solid var(--line); border-radius: 7px; }
+    .example-controls button[aria-pressed="true"] { background: var(--teal); color: white; border-color: var(--teal); }
+    [hidden] { display: none !important; }
+    details { background: white; border: 1px solid var(--line); border-radius: 9px; padding: 15px 20px; margin: 18px 0; }
+    summary { cursor: pointer; font-weight: 700; }
+    footer { border-top: 1px solid var(--line); margin-top: 45px; padding-top: 24px; font-size: 14px; color: var(--muted); }
+    footer li { margin: 9px 0; }
+    @media (max-width: 1000px) {
+      :root { --nav-width: 210px; }
+      main { padding: 38px 28px; }
+      aside { padding: 27px 17px; }
+    }
+    @media (max-width: 760px) {
+      body { font-size: 17px; }
+      aside { position: static; width: auto; padding: 17px 20px; }
+      .nav-title { display: none; }
+      nav { display: flex; gap: 6px; overflow-x: auto; padding: 8px 0 3px; }
+      nav a { white-space: nowrap; font-size: 12px; margin: 0; padding: 6px 9px; }
+      main { margin: 0; padding: 25px 20px 45px; }
+      h1 { font-size: 34px; }
+      h2 { font-size: 25px; }
+      .lead { font-size: 18px; }
+      .grid, .branches { grid-template-columns: 1fr; }
+      .card { padding: 18px; }
+      pre { font-size: 13px; padding: 18px; }
+      th, td { padding: 11px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+    }
+    @media print {
+      aside, .example-controls { display: none !important; }
+      main { margin: 0; padding: 0; }
+      body { background: white; font-size: 11pt; }
+      h1 { font-size: 28pt; }
+      h2 { font-size: 20pt; }
+      .section { padding-top: 24px; }
+      .card, pre, .note, .flow-box { break-inside: avoid; }
+      pre { background: #eef2f4; color: #182f3c; }
+      .key { color: var(--teal); }
+      .value { color: var(--amber); }
+      .comment { color: var(--muted); }
+      .table-wrap { overflow: visible; }
+      [data-example-panel][hidden] { display: block !important; }
+      a { color: inherit; }
+    }
+  </style>
+</head>
+<body>
+  <aside aria-label="目次">
+    <div class="brand">PDFMOD / FIELD NOTES</div>
+    <div class="nav-title">PDFの日付文字列</div>
+    <nav>
+      <a href="#overview" aria-current="location"><span>01</span>役割と全体像</a>
+      <a href="#syntax"><span>02</span>PDF記述の読み方</a>
+      <a href="#rules"><span>03</span>仕様と取り扱い</a>
+      <a href="#flow"><span>04</span>処理の流れ</a>
+      <a href="#examples"><span>05</span>具体例で確かめる</a>
+      <a href="#implementation"><span>06</span>実装と対応範囲</a>
+    </nav>
+  </aside>
+  <main id="top"><div class="wrap">
+    <header class="hero">
+      <div class="eyebrow">PDF INTERNALS / DATES</div>
+      <h1>PDFの日付文字列</h1>
+      <p class="lead">PDF文書の情報辞書や注釈に記録される日時は、独自の日付文字列構文で表現されます。ISO 32000-1 / ISO 32000-2 の仕様規則、段階的省略、タイムゾーン形式、そして厳格なカレンダー検証の仕組みを解説します。</p>
+    </header>
+
+    <section class="section" id="overview">
+      <div class="section-heading"><span class="number">01</span><h2>役割と全体像</h2></div>
+      <p>PDFの日付は、<code>(D:20261009143000+09'00')</code> のようなリテラル文字列または16進文字列として、ドキュメントのメタデータ辞書（<code>/CreationDate</code>、<code>/ModDate</code>）や注釈・署名などに記録されます。</p>
+      <div class="grid">
+        <div class="card"><h3>日付文字列 (Date String)</h3><p>接頭辞 <code>D:</code> で始まり、年（4桁）を必須として月・日・時・分・秒・タイムゾーンが続く固定長ブロック形式の文字列表現です。</p></div>
+        <div class="card"><h3>タイムゾーンオフセット (Offset)</h3><p>UTCからの時差を表し、符号（<code>+</code> / <code>-</code>）と時・分、またはUTCを表す <code>Z</code> で示されます。バージョンによってアポストロフィの区切り規則が異なります。</p></div>
+      </div>
+      <div class="note"><strong>階層的省略と厳格検証</strong>年は必須であり、月以降は上位フィールドが存在する場合のみ順に省略できます。任意の位置でパースを打ち切るのではなく、グレゴリオ暦に準拠したうるう年や日・時・分・秒の有効範囲を厳格に検証します。</div>
+    </section>
+
+    <section class="section" id="syntax">
+      <div class="section-heading"><span class="number">02</span><h2>PDF記述を読む</h2></div>
+      <p>次は文書情報辞書（Document Information Dictionary）における日付記述の抜粋です。</p>
+      <div class="grid">
+        <pre><code><span class="comment">% 文書情報辞書の抜粋</span>
+&lt;&lt;
+  <span class="key">/Title</span>        (PDF Date Specification)
+  <span class="key">/CreationDate</span> (<span class="val">D:20261009143000+09'00'</span>)
+  <span class="key">/ModDate</span>      (<span class="val">D:20261009143500Z</span>)
+&gt;&gt;</code></pre>
+        <div><h3>構文要素の意味</h3>
+          <p><code>D:</code><br>日付文字列であることを示す接頭辞（推奨ですが、接頭辞なしの文字列もパース対象として扱われます）。</p>
+          <p><code>YYYYMMDDHHmmSS</code><br>年（4桁）、月・日・時・分・秒（各2桁）。</p>
+          <p><code>+09'00'</code> または <code>Z</code><br>UTCからの時差。ISO 32000-1 形式では <code>+HH'mm'</code>、ISO 32000-2 形式では <code>+HH'mm</code> と末尾アポストロフィが省略されます。</p>
+        </div>
+      </div>
+      <div class="note warning"><strong>アポストロフィ区切りの注意点</strong>PDFの日付構文では、時差の区切りとして <code>+09'00'</code> や <code>+09'00</code> のようにアポストロフィ（<code>'</code>）が使用されます。一般的なISO 8601のコロン（<code>+09:00</code>）やアポストロフィなしの4桁（<code>+0900</code>）は構文エラーとなります。</div>
+    </section>
+
+    <section class="section" id="rules">
+      <div class="section-heading"><span class="number">03</span><h2>仕様と取り扱い</h2></div>
+      <p>PDF仕様（ISO 32000-1 / ISO 32000-2）における各構成要素の制約とパース規則です。</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>項目</th><th>PDF仕様上の意味・範囲</th><th>実装の取り扱い</th></tr></thead>
+        <tbody>
+          <tr><td><code>D:</code> 接頭辞</td><td>日付を示す接頭辞</td><td>存在すればスキップ。無くても年4桁から始まっていれば受理</td></tr>
+          <tr><td><code>YYYY</code>（年）</td><td>4桁の西暦（0000〜9999）</td><td>必須項目。4桁の数字として数値化（<code>i32</code>）</td></tr>
+          <tr><td><code>MM</code>（月）</td><td>2桁の月（01〜12）</td><td>省略可能。存在時は1〜12の範囲を検証</td></tr>
+          <tr><td><code>DD</code>（日）</td><td>2桁の日（01〜31）</td><td>省略可能。うるう年判定を含む月の日数上限を検証</td></tr>
+          <tr><td><code>HH</code>（時）</td><td>2桁の時（00〜23）</td><td>省略可能。0〜23の範囲を検証</td></tr>
+          <tr><td><code>mm</code>（分）</td><td>2桁の分（00〜59）</td><td>省略可能。0〜59の範囲を検証</td></tr>
+          <tr><td><code>SS</code>（秒）</td><td>2桁の秒（00〜59）</td><td>省略可能。0〜59の範囲を検証</td></tr>
+          <tr><td>タイムゾーン（TZ）</td><td><code>+HH'mm'</code> / <code>-HH'mm'</code> / <code>+HH'mm</code> / <code>+HH'</code> / <code>+HH</code> / <code>Z</code></td><td>秒までパース後、または月・日・時・分の各省略位置の直後に出現可能。不正形式は拒否</td></tr>
+        </tbody>
+      </div></table></div>
+      <div class="note warning"><strong>仕様と実装方針を区別する</strong>PDF仕様には不正な文字が含まれる場合の緩やかな回復規則の言及もありますが、本ライブラリではセキュリティと一貫性を重視し、余剰バイト（trailing garbage）や範囲外の日時は <code>None</code> として拒否する厳格パース方針を採用しています。</div>
+    </section>
+
+    <section class="section" id="flow">
+      <div class="section-heading"><span class="number">04</span><h2>処理の流れを辿る</h2></div>
+      <p>日付文字列バイト列のパース処理と状態遷移の流れです。</p>
+      <figure class="card">
+        <div class="card-label">日付文字列パースの状態遷移</div>
+        <div class="flow">
+          <div class="flow-box secondary"><strong>入力バイト列</strong><code>&amp;[u8]</code> または <code>&amp;str</code></div>
+          <div class="flow-arrow">↓ <code>D:</code> 接頭辞の除去（任意）</div>
+          <div class="flow-box primary"><strong>年（4桁）の解析</strong>数字4桁をパース。失敗時は即座に <code>None</code></div>
+          <div class="branches">
+            <div><div class="flow-arrow">↓ TZ開始文字 (<code>+</code>, <code>-</code>, <code>Z</code>) または終端</div><div class="flow-box"><strong>日付構築へ</strong>未指定フィールドは <code>None</code></div></div>
+            <div><div class="flow-arrow">↓ 続く数字2桁</div><div class="flow-box"><strong>月 → 日 → 時 → 分 → 秒</strong>各段階で範囲検証・うるう年判定</div></div>
+          </div>
+        </div>
+        <figcaption class="flow-caption">月・日・時・分・秒の各ステップの間で終端またはTZに遭遇した場合はパースを完了し、余剰な文字が残っていれば拒否します。</figcaption>
+      </figure>
+      <ol class="steps">
+        <li><strong>接頭辞と年の解析</strong><p>先頭の <code>D:</code> をスキップし、続く4バイトから年を数値化します。4桁未満や非数字の場合は無効と判定します。</p></li>
+        <li><strong>段階的フィールドパース</strong><p>2桁ずつ読み進め、月（1〜12）、日（月ごとの日数・うるう年判定）、時（0〜23）、分（0〜59）、秒（0〜59）を順次決定します。途中でTZ開始文字に到達すればその時点で日付部のパースを打ち切ります。</p></li>
+        <li><strong>タイムゾーンの解析と構築</strong><p><code>Z</code>（UTC）または <code>+</code>/<code>-</code> に続く時間・分のオフセット形式を解析し、余計な未消費バイトがないことを確認して <code>PdfDate</code> 構造体を生成します。</p></li>
+      </ol>
+    </section>
+
+    <section class="section" id="examples">
+      <div class="section-heading"><span class="number">05</span><h2>具体例で確かめる</h2></div>
+      <p>仕様で認められる代表的な日付文字列と、エラーとなる入力例です。</p>
+      <div class="card" data-examples>
+        <div class="card-label">TRY IT — 入力例を切り替える</div>
+        <div class="example-controls" hidden aria-label="入力例の選択">
+          <button type="button" data-example="normal" aria-controls="example-normal" aria-pressed="true">完全な日付 (ISO 32000-1/2)</button>
+          <button type="button" data-example="default" aria-controls="example-default" aria-pressed="false">省略とタイムゾーン</button>
+          <button type="button" data-example="error" aria-controls="example-error" aria-pressed="false">不正な入力</button>
+        </div>
+        <div aria-live="polite">
+          <article id="example-normal" data-example-panel="normal">
+            <h3>完全な日付 (ISO 32000-1 / ISO 32000-2)</h3><pre><code>D:20261009143000+09'00'   % ISO 32000-1 (末尾アポストロフィあり)
+D:20261009143000+09'00    % ISO 32000-2 (末尾アポストロフィなし)
+D:20261009143000Z         % UTC 指定</code></pre>
+            <div class="note"><strong>すべての要素がパース成功</strong>年・月・日・時・分・秒およびタイムゾーンがそれぞれ <code>Some(...)</code> として格納されます。</div>
+          </article>
+          <article id="example-default" data-example-panel="default">
+            <h3>省略とタイムゾーン</h3><pre><code>D:2026                    % 年のみ指定
+D:202610+09'00'           % 月まで指定、以降省略してTZ
+D:20261009143000+09'      % 分を省略（アポストロフィあり: +09'）
+D:20261009143000+09       % 分を省略（アポストロフィなし: +09）</code></pre>
+            <div class="note warning"><strong>階層的な省略の受理</strong>上位のフィールドが存在していれば、下位のフィールド（秒や分、あるいは日以降すべて）が省略されても有効です。省略された項目は <code>None</code> となります。</div>
+          </article>
+          <article id="example-error" data-example-panel="error">
+            <h3>不正な入力</h3><pre><code>D:20260229                % 平年の2月29日（うるう年不正）
+D:20261301                % 13月（月の範囲外）
+D:20261009143000+09:00    % コロン区切り（ISO 8601形式はPDF仕様外）
+D:20261009143000+0900     % アポストロフィなし4桁TZ
+D:20261009extra           % 末尾の余剰文字 (trailing garbage)</code></pre>
+            <div class="note error"><strong>パース拒否 (None)</strong>カレンダーの不整合、非対応の区切り記号、余剰な未消費文字がある場合は安全のために <code>None</code> を返します。</div>
+          </article>
+        </div>
+        <p class="meta">説明用の例です。ブラウザ上でPDFパーサを実行するものではありません。</p>
+      </div>
+    </section>
+
+    <section class="section" id="implementation">
+      <div class="section-heading"><span class="number">06</span><h2>実装と対応範囲</h2></div>
+      <p>Rustクレート <code>pdfmod-core</code> における <code>PdfDate</code> の利用例です。</p>
+      <pre><code>use pdfmod_core::date::{PdfDate, OffsetSign};
+
+let raw = "D:20261009143000+09'00'";
+let date = PdfDate::parse(raw).expect("valid PDF date");
+
+assert_eq!(date.year(), 2026);
+assert_eq!(date.month(), Some(10));
+assert_eq!(date.day(), Some(9));
+assert_eq!(date.hour(), Some(14));
+assert_eq!(date.minute(), Some(30));
+assert_eq!(date.second(), Some(0));
+
+let offset = date.offset().expect("tz offset present");
+assert_eq!(offset.sign(), OffsetSign::Plus);
+assert_eq!(offset.hours(), 9);
+assert_eq!(offset.minutes(), 0);
+assert_eq!(offset.total_minutes(), 540);</code></pre>
+      <div class="table-wrap"><table>
+        <thead><tr><th>API・型</th><th>役割・結果</th></tr></thead>
+        <tbody>
+          <tr><td><code>PdfDate::parse(&amp;str)</code></td><td>UTF-8文字列からのパース。無効時は <code>None</code></td></tr>
+          <tr><td><code>PdfDate::from_bytes(&amp;[u8])</code></td><td>PDFバイト列からのパース。無効時は <code>None</code></td></tr>
+          <tr><td><code>PdfDateOffset::utc()</code></td><td>UTC（<code>+00'00'</code> または <code>Z</code>）を生成</td></tr>
+          <tr><td><code>PdfDateOffset::total_minutes()</code></td><td>符号を考慮した総オフセット分（-1439〜1439）を算出</td></tr>
+        </tbody>
+      </table></div>
+      <div class="grid">
+        <div class="card"><h3>今回対応する範囲</h3><p>ISO 32000-1 / ISO 32000-2 日付構文のパース、段階的省略の受け入れ、カレンダー・うるう年検証、タイムゾーン形式の正規化。</p></div>
+        <div class="card"><h3>後続処理・未対応の範囲</h3><p>ローカルタイムへの日時計算、フォーマット出力・文字列化、情報辞書や注釈辞書からの自動取得。</p></div>
+      </div>
+      <div class="note"><strong>覚えておくこと</strong>① 年は必須で、月以降は階層的に省略可能。② タイムゾーンは <code>'</code> 区切りまたは <code>Z</code>。③ 平年の2月29日や余剰文字は厳格に拒否する。</div>
+    </section>
+
+    <footer><a href="#top">↑ 先頭に戻る</a></footer>
+  </div></main>
+  <script>
+    'use strict';
+
+    document.querySelectorAll('[data-examples]').forEach(group => {
+      const controls = group.querySelector('.example-controls');
+      const buttons = [...group.querySelectorAll('[data-example]')];
+      const panels = [...group.querySelectorAll('[data-example-panel]')];
+      if (!controls || buttons.length === 0 || panels.length === 0) return;
+
+      function showExample(key) {
+        buttons.forEach(button => {
+          button.setAttribute('aria-pressed', String(button.dataset.example === key));
+        });
+        panels.forEach(panel => {
+          panel.hidden = panel.dataset.examplePanel !== key;
+        });
+      }
+
+      controls.hidden = false;
+      showExample(buttons[0].dataset.example);
+      buttons.forEach(button => {
+        button.addEventListener('click', () => showExample(button.dataset.example));
+      });
+    });
+
+    const sections = [...document.querySelectorAll('.section')];
+    const links = [...document.querySelectorAll('nav a[href^="#"]')];
+    let pending = false;
+    function updateNavigation() {
+      pending = false;
+      if (sections.length === 0) return;
+      let current = sections[0];
+      for (const section of sections) {
+        if (section.getBoundingClientRect().top <= window.innerHeight * .3) current = section;
+      }
+      links.forEach(link => {
+        if (link.hash === '#' + current.id) {
+          link.setAttribute('aria-current', 'location');
+          return;
+        }
+        link.removeAttribute('aria-current');
+      });
+    }
+    window.addEventListener('scroll', () => {
+      if (pending) return;
+      pending = true;
+      requestAnimationFrame(updateNavigation);
+    }, { passive: true });
+    window.addEventListener('resize', updateNavigation);
+    updateNavigation();
+  </script>
+</body>
+</html>
