@@ -104,17 +104,9 @@ impl PdfDate {
     /// バイト列から PDF 日付をパースする。
     #[must_use]
     pub fn from_bytes(bytes: &[u8]) -> Option<Self> {
-        let rest = if bytes.starts_with(b"D:") {
-            &bytes[2..]
-        } else {
-            bytes
-        };
+        let rest = bytes.strip_prefix(b"D:").unwrap_or(bytes);
 
-        if rest.len() < 4 {
-            return None;
-        }
-        let year = parse_4_digits(&rest[0..4])?;
-        let mut rest = &rest[4..];
+        let (year, mut rest) = take_4_digits(rest)?;
 
         let mut month = None;
         let mut day = None;
@@ -123,208 +115,93 @@ impl PdfDate {
         let mut second = None;
         let mut offset = None;
 
-        if rest.is_empty() {
-            return Some(Self {
-                year,
-                month,
-                day,
-                hour,
-                minute,
-                second,
-                offset,
-            });
+        // 各フィールドのパースを順次進行。TZ 開始文字または終端に達したらループを抜ける。
+        enum Step {
+            Month,
+            Day(u8),
+            Hour,
+            Minute,
+            Second,
+            Done,
         }
 
-        if is_tz_start(rest[0]) {
-            offset = Some(parse_tz(rest)?);
-            return Some(Self {
-                year,
-                month,
-                day,
-                hour,
-                minute,
-                second,
-                offset,
-            });
+        let mut step = Step::Month;
+
+        while !rest.is_empty() {
+            if is_tz_start(rest) {
+                offset = Some(parse_tz(rest)?);
+                rest = &[];
+                break;
+            }
+
+            match step {
+                Step::Month => {
+                    let (m, remaining) = take_2_digits(rest)?;
+                    if !(1..=12).contains(&m) {
+                        return None;
+                    }
+                    month = Some(m);
+                    rest = remaining;
+                    step = Step::Day(m);
+                }
+                Step::Day(m) => {
+                    let (d, remaining) = take_2_digits(rest)?;
+                    let max_days = days_in_month(year, m);
+                    if d < 1 || d > max_days {
+                        return None;
+                    }
+                    day = Some(d);
+                    rest = remaining;
+                    step = Step::Hour;
+                }
+                Step::Hour => {
+                    let (h, remaining) = take_2_digits(rest)?;
+                    if h > 23 {
+                        return None;
+                    }
+                    hour = Some(h);
+                    rest = remaining;
+                    step = Step::Minute;
+                }
+                Step::Minute => {
+                    let (min, remaining) = take_2_digits(rest)?;
+                    if min > 59 {
+                        return None;
+                    }
+                    minute = Some(min);
+                    rest = remaining;
+                    step = Step::Second;
+                }
+                Step::Second => {
+                    let (s, remaining) = take_2_digits(rest)?;
+                    if s > 59 {
+                        return None;
+                    }
+                    second = Some(s);
+                    rest = remaining;
+                    step = Step::Done;
+                }
+                Step::Done => {
+                    // 秒以降で TZ 開始文字でもない未消費文字がある場合は拒否
+                    return None;
+                }
+            }
         }
 
-        if rest.len() < 2 {
+        // 未消費文字が残っていれば拒否 (trailing garbage)
+        if !rest.is_empty() {
             return None;
         }
-        let m = parse_2_digits(&rest[0..2])?;
-        if !(1..=12).contains(&m) {
-            return None;
-        }
-        month = Some(m);
-        rest = &rest[2..];
 
-        if rest.is_empty() {
-            return Some(Self {
-                year,
-                month,
-                day,
-                hour,
-                minute,
-                second,
-                offset,
-            });
-        }
-        if is_tz_start(rest[0]) {
-            offset = Some(parse_tz(rest)?);
-            return Some(Self {
-                year,
-                month,
-                day,
-                hour,
-                minute,
-                second,
-                offset,
-            });
-        }
-
-        // 日
-        if rest.len() < 2 {
-            return None;
-        }
-        let d = parse_2_digits(&rest[0..2])?;
-        let max_days = days_in_month(year, m);
-        if d < 1 || d > max_days {
-            return None;
-        }
-        day = Some(d);
-        rest = &rest[2..];
-
-        if rest.is_empty() {
-            return Some(Self {
-                year,
-                month,
-                day,
-                hour,
-                minute,
-                second,
-                offset,
-            });
-        }
-        if is_tz_start(rest[0]) {
-            offset = Some(parse_tz(rest)?);
-            return Some(Self {
-                year,
-                month,
-                day,
-                hour,
-                minute,
-                second,
-                offset,
-            });
-        }
-
-        // 時
-        if rest.len() < 2 {
-            return None;
-        }
-        let h = parse_2_digits(&rest[0..2])?;
-        if h > 23 {
-            return None;
-        }
-        hour = Some(h);
-        rest = &rest[2..];
-
-        if rest.is_empty() {
-            return Some(Self {
-                year,
-                month,
-                day,
-                hour,
-                minute,
-                second,
-                offset,
-            });
-        }
-        if is_tz_start(rest[0]) {
-            offset = Some(parse_tz(rest)?);
-            return Some(Self {
-                year,
-                month,
-                day,
-                hour,
-                minute,
-                second,
-                offset,
-            });
-        }
-
-        // 分
-        if rest.len() < 2 {
-            return None;
-        }
-        let min = parse_2_digits(&rest[0..2])?;
-        if min > 59 {
-            return None;
-        }
-        minute = Some(min);
-        rest = &rest[2..];
-
-        if rest.is_empty() {
-            return Some(Self {
-                year,
-                month,
-                day,
-                hour,
-                minute,
-                second,
-                offset,
-            });
-        }
-        if is_tz_start(rest[0]) {
-            offset = Some(parse_tz(rest)?);
-            return Some(Self {
-                year,
-                month,
-                day,
-                hour,
-                minute,
-                second,
-                offset,
-            });
-        }
-
-        // 秒
-        if rest.len() < 2 {
-            return None;
-        }
-        let s = parse_2_digits(&rest[0..2])?;
-        if s > 59 {
-            return None;
-        }
-        second = Some(s);
-        rest = &rest[2..];
-
-        if rest.is_empty() {
-            return Some(Self {
-                year,
-                month,
-                day,
-                hour,
-                minute,
-                second,
-                offset,
-            });
-        }
-        if is_tz_start(rest[0]) {
-            offset = Some(parse_tz(rest)?);
-            return Some(Self {
-                year,
-                month,
-                day,
-                hour,
-                minute,
-                second,
-                offset,
-            });
-        }
-
-        // 余分な未消費文字がある場合は拒否
-        None
+        Some(Self {
+            year,
+            month,
+            day,
+            hour,
+            minute,
+            second,
+            offset,
+        })
     }
 
     /// 年（4桁）を返す。
@@ -370,28 +247,31 @@ impl PdfDate {
     }
 }
 
-fn is_tz_start(b: u8) -> bool {
-    matches!(b, b'+' | b'-' | b'Z')
+fn is_tz_start(bytes: &[u8]) -> bool {
+    matches!(bytes.first(), Some(b'+' | b'-' | b'Z'))
 }
 
-fn parse_4_digits(bytes: &[u8]) -> Option<i32> {
-    if bytes.len() != 4 || !bytes.iter().all(u8::is_ascii_digit) {
+fn take_4_digits(bytes: &[u8]) -> Option<(i32, &[u8])> {
+    let (&[b0, b1, b2, b3], rest) = bytes.split_first_chunk::<4>()?;
+    if !b0.is_ascii_digit() || !b1.is_ascii_digit() || !b2.is_ascii_digit() || !b3.is_ascii_digit()
+    {
         return None;
     }
-    let d0 = i32::from(bytes[0] - b'0');
-    let d1 = i32::from(bytes[1] - b'0');
-    let d2 = i32::from(bytes[2] - b'0');
-    let d3 = i32::from(bytes[3] - b'0');
-    Some(d0 * 1000 + d1 * 100 + d2 * 10 + d3)
+    let d0 = i32::from(b0 - b'0');
+    let d1 = i32::from(b1 - b'0');
+    let d2 = i32::from(b2 - b'0');
+    let d3 = i32::from(b3 - b'0');
+    Some((d0 * 1000 + d1 * 100 + d2 * 10 + d3, rest))
 }
 
-fn parse_2_digits(bytes: &[u8]) -> Option<u8> {
-    if bytes.len() != 2 || !bytes.iter().all(u8::is_ascii_digit) {
+fn take_2_digits(bytes: &[u8]) -> Option<(u8, &[u8])> {
+    let (&[b0, b1], rest) = bytes.split_first_chunk::<2>()?;
+    if !b0.is_ascii_digit() || !b1.is_ascii_digit() {
         return None;
     }
-    let d0 = bytes[0] - b'0';
-    let d1 = bytes[1] - b'0';
-    Some(d0 * 10 + d1)
+    let d0 = b0 - b'0';
+    let d1 = b1 - b'0';
+    Some((d0 * 10 + d1, rest))
 }
 
 fn is_leap_year(year: i32) -> bool {
@@ -414,32 +294,25 @@ fn days_in_month(year: i32, month: u8) -> u8 {
 }
 
 fn parse_tz(bytes: &[u8]) -> Option<PdfDateOffset> {
-    if bytes.is_empty() {
-        return None;
-    }
-    if bytes[0] == b'Z' {
-        if bytes.len() == 1 {
+    let (sign_byte, rest) = bytes.split_first()?;
+    if *sign_byte == b'Z' {
+        if rest.is_empty() {
             return Some(PdfDateOffset::utc());
         }
         // trailing garbage
         return None;
     }
 
-    let sign = match bytes[0] {
+    let sign = match *sign_byte {
         b'+' => OffsetSign::Plus,
         b'-' => OffsetSign::Minus,
         _ => return None,
     };
 
-    let mut rest = &bytes[1..];
-    if rest.len() < 2 {
-        return None;
-    }
-    let hours = parse_2_digits(&rest[0..2])?;
+    let (hours, rest) = take_2_digits(rest)?;
     if hours > 23 {
         return None;
     }
-    rest = &rest[2..];
 
     let mut minutes = 0;
 
@@ -449,34 +322,24 @@ fn parse_tz(bytes: &[u8]) -> Option<PdfDateOffset> {
     }
 
     // アポストロフィで始まる場合 (ISO 32000-1形式 or 分省略)
-    if rest[0] == b'\'' {
-        rest = &rest[1..];
-        if rest.is_empty() {
-            // 分省略 + アポストロフィ (ISO 32000-1形式分省略: +HH' / -HH')
-            return PdfDateOffset::new(sign, hours, minutes);
-        }
-        // 分が続く (+HH'mm / +HH'mm')
-        if rest.len() < 2 {
-            return None;
-        }
-        minutes = parse_2_digits(&rest[0..2])?;
-        if minutes > 59 {
-            return None;
-        }
-        rest = &rest[2..];
-
-        if rest.is_empty() {
-            // ISO 32000-2 形式 (+HH'mm)
-            return PdfDateOffset::new(sign, hours, minutes);
-        }
-        if rest == b"'" {
-            // ISO 32000-1 形式 (+HH'mm')
-            return PdfDateOffset::new(sign, hours, minutes);
-        }
-        return None;
+    let rest = rest.strip_prefix(b"'")?;
+    if rest.is_empty() {
+        // 分省略 + アポストロフィ (ISO 32000-1形式分省略: +HH' / -HH')
+        return PdfDateOffset::new(sign, hours, minutes);
     }
 
-    // アポストロフィがない場合（不正形式: +0900 など）
+    // 分が続く (+HH'mm / +HH'mm')
+    let (m, rest) = take_2_digits(rest)?;
+    if m > 59 {
+        return None;
+    }
+    minutes = m;
+
+    if rest.is_empty() || rest == b"'" {
+        // ISO 32000-2 形式 (+HH'mm) または ISO 32000-1 形式 (+HH'mm')
+        return PdfDateOffset::new(sign, hours, minutes);
+    }
+
     None
 }
 
