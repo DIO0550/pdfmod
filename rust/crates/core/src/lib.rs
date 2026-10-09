@@ -23,6 +23,7 @@
 pub(crate) mod binary;
 pub mod byte_offset;
 pub mod catalog;
+pub mod date;
 pub mod encrypt;
 pub mod error;
 pub mod file;
