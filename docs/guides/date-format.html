@@ -301,14 +301,14 @@ assert_eq!(offset.sign(), Some(OffsetSign::Plus));
 assert_eq!(offset.hours(), 9);
 assert_eq!(offset.minutes(), 0);
 assert_eq!(offset.total_offset_minutes(), 540);
-assert!(matches!(offset, PdfDateOffset::Local { .. }));</code></pre>
+assert!(matches!(offset, PdfDateOffset::Local(_)));</code></pre>
       <div class="table-wrap"><table>
         <thead><tr><th>API・型</th><th>役割・結果</th></tr></thead>
         <tbody>
           <tr><td><code>PdfDate::parse(&amp;str)</code></td><td>UTF-8文字列からのパース。無効時は <code>None</code></td></tr>
           <tr><td><code>PdfDate::from_bytes(&amp;[u8])</code></td><td>PDFバイト列からのパース。無効時は <code>None</code></td></tr>
           <tr><td><code>PdfDateOffset::Utc</code></td><td>UTC（<code>Z</code>）を表すバリアント（<code>utc()</code> でも生成可）</td></tr>
-          <tr><td><code>PdfDateOffset::Local</code></td><td>符号・時・分を保持するローカル時差バリアント</td></tr>
+          <tr><td><code>PdfDateOffset::Local(LocalOffset)</code></td><td>検証済みローカル時差を保持するバリアント</td></tr>
           <tr><td><code>PdfDateOffset::total_offset_minutes()</code></td><td>符号を考慮した総オフセット分（-1439〜1439）を算出</td></tr>
         </tbody>
       </table></div>

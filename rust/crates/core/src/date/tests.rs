@@ -33,11 +33,7 @@ fn test_iso_32000_1_full() {
     let offset = date.offset().expect("offset should exist");
     assert_eq!(
         offset,
-        PdfDateOffset::Local {
-            sign: OffsetSign::Plus,
-            hours: 9,
-            minutes: 0,
-        }
+        PdfDateOffset::Local(LocalOffset::new(OffsetSign::Plus, 9, 0).unwrap())
     );
     assert_eq!(offset.sign(), Some(OffsetSign::Plus));
     assert_eq!(offset.hours(), 9);
