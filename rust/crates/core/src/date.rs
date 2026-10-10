@@ -12,20 +12,68 @@ pub enum OffsetSign {
     Minus,
 }
 
+/// ローカルタイムゾーンオフセット（符号・時・分）。
+///
+/// 不変条件: `hours <= 23` かつ `minutes <= 59`。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LocalOffset {
+    sign: OffsetSign,
+    hours: u8,
+    minutes: u8,
+}
+
+impl LocalOffset {
+    /// 符号・時・分からローカルオフセットを生成する。
+    ///
+    /// `hours > 23` または `minutes > 59` の場合は `None` を返す。
+    #[must_use]
+    pub fn new(sign: OffsetSign, hours: u8, minutes: u8) -> Option<Self> {
+        if hours > 23 || minutes > 59 {
+            return None;
+        }
+        Some(Self {
+            sign,
+            hours,
+            minutes,
+        })
+    }
+
+    /// 符号を返す。
+    #[must_use]
+    pub fn sign(&self) -> OffsetSign {
+        self.sign
+    }
+
+    /// 時（0..=23）を返す。
+    #[must_use]
+    pub fn hours(&self) -> u8 {
+        self.hours
+    }
+
+    /// 分（0..=59）を返す。
+    #[must_use]
+    pub fn minutes(&self) -> u8 {
+        self.minutes
+    }
+
+    /// UTC に対する符号付き総オフセット分（-1439..=1439）を返す。
+    #[must_use]
+    pub fn total_offset_minutes(&self) -> i16 {
+        let total = (i16::from(self.hours)) * 60 + i16::from(self.minutes);
+        match self.sign {
+            OffsetSign::Minus => -total,
+            OffsetSign::Plus => total,
+        }
+    }
+}
+
 /// タイムゾーンオフセット。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PdfDateOffset {
     /// UTC ('Z')。
     Utc,
     /// 符号・時・分によるローカルオフセット。
-    Local {
-        /// 符号。
-        sign: OffsetSign,
-        /// 時 (0..=23)。
-        hours: u8,
-        /// 分 (0..=59)。
-        minutes: u8,
-    },
+    Local(LocalOffset),
 }
 
 impl PdfDateOffset {
@@ -35,43 +83,38 @@ impl PdfDateOffset {
         Self::Utc
     }
 
-    /// 符号・時・分からローカルオフセットを生成する（時: 0..=23, 分: 0..=59）。
+    /// 符号・時・分からローカルオフセットを生成する。
+    ///
+    /// `hours > 23` または `minutes > 59` の場合は `None` を返す。
     #[must_use]
     pub fn new(sign: OffsetSign, hours: u8, minutes: u8) -> Option<Self> {
-        if hours > 23 || minutes > 59 {
-            return None;
-        }
-        Some(Self::Local {
-            sign,
-            hours,
-            minutes,
-        })
+        LocalOffset::new(sign, hours, minutes).map(Self::Local)
     }
 
     /// 符号を返す（UTC の場合は None）。
     #[must_use]
     pub fn sign(&self) -> Option<OffsetSign> {
-        match *self {
+        match self {
             Self::Utc => None,
-            Self::Local { sign, .. } => Some(sign),
+            Self::Local(local) => Some(local.sign()),
         }
     }
 
     /// 時を返す（UTC の場合は 0）。
     #[must_use]
     pub fn hours(&self) -> u8 {
-        match *self {
+        match self {
             Self::Utc => 0,
-            Self::Local { hours, .. } => hours,
+            Self::Local(local) => local.hours(),
         }
     }
 
     /// 分を返す（UTC の場合は 0）。
     #[must_use]
     pub fn minutes(&self) -> u8 {
-        match *self {
+        match self {
             Self::Utc => 0,
-            Self::Local { minutes, .. } => minutes,
+            Self::Local(local) => local.minutes(),
         }
     }
 
@@ -84,19 +127,9 @@ impl PdfDateOffset {
     /// UTC に対する符号付き総オフセット分（-1439..=1439）を返す。
     #[must_use]
     pub fn total_offset_minutes(&self) -> i16 {
-        match *self {
+        match self {
             Self::Utc => 0,
-            Self::Local {
-                sign,
-                hours,
-                minutes,
-            } => {
-                let total = (i16::from(hours)) * 60 + i16::from(minutes);
-                match sign {
-                    OffsetSign::Minus => -total,
-                    OffsetSign::Plus => total,
-                }
-            }
+            Self::Local(local) => local.total_offset_minutes(),
         }
     }
 }
@@ -115,12 +148,16 @@ pub struct PdfDate {
 
 impl PdfDate {
     /// 文字列から PDF 日付をパースする。
+    ///
+    /// 構文不正、カレンダー・時刻・タイムゾーンの範囲外、または余分な末尾文字列がある場合は `None` を返す。
     #[must_use]
     pub fn parse(s: &str) -> Option<Self> {
         Self::from_bytes(s.as_bytes())
     }
 
     /// バイト列から PDF 日付をパースする。
+    ///
+    /// 構文不正、カレンダー・時刻・タイムゾーンの範囲外、または余分な末尾文字列がある場合は `None` を返す。
     #[must_use]
     pub fn from_bytes(bytes: &[u8]) -> Option<Self> {
         let rest = bytes.strip_prefix(b"D:").unwrap_or(bytes);
