@@ -190,8 +190,8 @@
         <pre><code><span class="comment">% 文書情報辞書の抜粋</span>
 &lt;&lt;
   <span class="key">/Title</span>        (PDF Date Specification)
-  <span class="key">/CreationDate</span> (<span class="val">D:20261009143000+09'00'</span>)
-  <span class="key">/ModDate</span>      (<span class="val">D:20261009143500Z</span>)
+  <span class="key">/CreationDate</span> (<span class="value">D:20261009143000+09'00'</span>)
+  <span class="key">/ModDate</span>      (<span class="value">D:20261009143500Z</span>)
 &gt;&gt;</code></pre>
         <div><h3>構文要素の意味</h3>
           <p><code>D:</code><br>日付文字列であることを示す接頭辞（推奨ですが、接頭辞なしの文字列もパース対象として扱われます）。</p>
@@ -217,7 +217,7 @@
           <tr><td><code>SS</code>（秒）</td><td>2桁の秒（00〜59）</td><td>省略可能。0〜59の範囲を検証</td></tr>
           <tr><td>タイムゾーン（TZ）</td><td><code>+HH'mm'</code> / <code>-HH'mm'</code> / <code>+HH'mm</code> / <code>+HH'</code> / <code>+HH</code> / <code>Z</code></td><td>秒までパース後、または月・日・時・分の各省略位置の直後に出現可能。不正形式は拒否</td></tr>
         </tbody>
-      </div></table></div>
+      </table></div>
       <div class="note warning"><strong>仕様と実装方針を区別する</strong>PDF仕様には不正な文字が含まれる場合の緩やかな回復規則の言及もありますが、本ライブラリではセキュリティと一貫性を重視し、余剰バイト（trailing garbage）や範囲外の日時は <code>None</code> として拒否する厳格パース方針を採用しています。</div>
     </section>
 
