@@ -31,6 +31,14 @@ fn test_iso_32000_1_full() {
     assert_eq!(date.second(), Some(0));
 
     let offset = date.offset().expect("offset should exist");
+    assert_eq!(
+        offset,
+        PdfDateOffset::Local {
+            sign: OffsetSign::Plus,
+            hours: 9,
+            minutes: 0,
+        }
+    );
     assert_eq!(offset.sign(), Some(OffsetSign::Plus));
     assert_eq!(offset.hours(), 9);
     assert_eq!(offset.minutes(), 0);
@@ -79,6 +87,7 @@ fn test_minute_omitted_without_apostrophe() {
 fn test_utc_z() {
     let date = PdfDate::parse("D:20260314120000Z").expect("parse should succeed");
     let offset = date.offset().expect("offset should exist");
+    assert_eq!(offset, PdfDateOffset::Utc);
     assert_eq!(offset.sign(), None);
     assert_eq!(offset.hours(), 0);
     assert_eq!(offset.minutes(), 0);
