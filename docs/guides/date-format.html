@@ -284,7 +284,7 @@ D:20261009extra           % 末尾の余剰文字 (trailing garbage)</code></pre
     <section class="section" id="implementation">
       <div class="section-heading"><span class="number">06</span><h2>実装と対応範囲</h2></div>
       <p>Rustクレート <code>pdfmod-core</code> における <code>PdfDate</code> の利用例です。</p>
-      <pre><code>use pdfmod_core::date::{PdfDate, OffsetSign};
+      <pre><code>use pdfmod_core::date::{PdfDate, PdfDateOffset, OffsetSign};
 
 let raw = "D:20261009143000+09'00'";
 let date = PdfDate::parse(raw).expect("valid PDF date");
@@ -300,13 +300,15 @@ let offset = date.offset().expect("tz offset present");
 assert_eq!(offset.sign(), Some(OffsetSign::Plus));
 assert_eq!(offset.hours(), 9);
 assert_eq!(offset.minutes(), 0);
-assert_eq!(offset.total_offset_minutes(), 540);</code></pre>
+assert_eq!(offset.total_offset_minutes(), 540);
+assert!(matches!(offset, PdfDateOffset::Local { .. }));</code></pre>
       <div class="table-wrap"><table>
         <thead><tr><th>API・型</th><th>役割・結果</th></tr></thead>
         <tbody>
           <tr><td><code>PdfDate::parse(&amp;str)</code></td><td>UTF-8文字列からのパース。無効時は <code>None</code></td></tr>
           <tr><td><code>PdfDate::from_bytes(&amp;[u8])</code></td><td>PDFバイト列からのパース。無効時は <code>None</code></td></tr>
-          <tr><td><code>PdfDateOffset::utc()</code></td><td>UTC（<code>+00'00'</code> または <code>Z</code>）を生成</td></tr>
+          <tr><td><code>PdfDateOffset::Utc</code></td><td>UTC（<code>Z</code>）を表すバリアント（<code>utc()</code> でも生成可）</td></tr>
+          <tr><td><code>PdfDateOffset::Local</code></td><td>符号・時・分を保持するローカル時差バリアント</td></tr>
           <tr><td><code>PdfDateOffset::total_offset_minutes()</code></td><td>符号を考慮した総オフセット分（-1439〜1439）を算出</td></tr>
         </tbody>
       </table></div>
