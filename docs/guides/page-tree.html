@@ -1,0 +1,410 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ページツリーと文書順 — PDF仕様解説</title>
+  <style>
+    :root {
+      --ink: #182f3c;
+      --muted: #526b76;
+      --paper: #f5f7f5;
+      --line: #d7e2e1;
+      --teal: #067666;
+      --mint: #e6f4ef;
+      --blue: #265bb3;
+      --sky: #eaf1ff;
+      --amber: #956000;
+      --sand: #fff4db;
+      --red: #ae3b42;
+      --rose: #fff0ee;
+      --nav-width: 250px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; scroll-padding-top: 24px; }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font: 18px/1.85 -apple-system, BlinkMacSystemFont,
+        "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
+    }
+    a { color: var(--blue); overflow-wrap: anywhere; }
+    button { font: inherit; cursor: pointer; touch-action: manipulation; }
+    a:focus-visible, button:focus-visible, summary:focus-visible {
+      outline: 3px solid #dd8c1f;
+      outline-offset: 4px;
+    }
+    aside {
+      position: fixed;
+      inset: 0 auto 0 0;
+      width: var(--nav-width);
+      overflow: auto;
+      background: #102e39;
+      color: white;
+      padding: 30px 23px;
+    }
+    .brand { font-size: 13px; font-weight: 750; letter-spacing: .14em; color: #8dddd0; }
+    .nav-title { font-size: 23px; line-height: 1.6; margin: 25px 0; overflow-wrap: anywhere; }
+    nav a {
+      display: block;
+      color: #d1e0e3;
+      padding: 10px;
+      margin: 5px 0;
+      border-radius: 7px;
+      font-size: 14px;
+      line-height: 1.6;
+      text-decoration: none;
+    }
+    nav a:hover, nav a[aria-current] { background: #204952; color: white; }
+    nav span { color: #8dddd0; font-size: 11px; margin-right: 9px; }
+    main { margin-left: var(--nav-width); padding: 55px 48px 60px; }
+    .wrap { max-width: 980px; margin: auto; }
+    .hero { border-bottom: 1px solid var(--line); padding: 12px 0 35px; }
+    .eyebrow { font-size: 13px; color: var(--teal); letter-spacing: .12em; font-weight: 800; }
+    h1 { font-size: clamp(32px, 4vw, 50px); line-height: 1.4; margin: 15px 0 22px; }
+    h2 { font-size: 28px; line-height: 1.5; margin: 0; }
+    h3 { font-size: 21px; margin: 20px 0 12px; }
+    p { margin: 14px 0; }
+    .lead { font-size: 20px; color: var(--muted); }
+    .meta { font-size: 13px; color: var(--muted); }
+    .section { padding: 48px 0 8px; scroll-margin-top: 24px; }
+    .section-heading { display: flex; align-items: flex-start; gap: 17px; margin-bottom: 21px; }
+    .number { border-top: 3px solid var(--teal); color: var(--teal); font-weight: 800; font-size: 15px; min-width: 33px; line-height: 2.6; }
+    code { font: .88em/1.8 ui-monospace, SFMono-Regular, Consolas, monospace; background: #e9eeee; padding: 2px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+    pre { background: #142f3b; color: #eaf5f6; padding: 24px; border-radius: 12px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 15px; line-height: 1.85; }
+    pre code { font-size: inherit; background: none; padding: 0; color: inherit; }
+    .key { color: #89e0ce; }
+    .value { color: #ffd688; }
+    .comment { color: #a3bdc5; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .grid > * { min-width: 0; }
+    .card { border: 1px solid var(--line); background: white; border-radius: 13px; padding: 24px; margin: 22px 0; }
+    .card-label { font-size: 13px; color: var(--muted); font-weight: 750; letter-spacing: .07em; margin-bottom: 16px; }
+    .note { border-left: 4px solid var(--teal); border-radius: 0 9px 9px 0; padding: 17px 21px; background: var(--mint); font-size: 16px; margin: 22px 0; }
+    .note strong { display: block; color: var(--teal); }
+    .note.warning { border-color: #c28c27; background: var(--sand); }
+    .note.warning strong { color: var(--amber); }
+    .note.error { border-color: var(--red); background: var(--rose); }
+    .note.error strong { color: var(--red); }
+    .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; margin: 22px 0; }
+    table { border-collapse: collapse; width: 100%; background: white; font-size: 15px; line-height: 1.7; }
+    th, td { text-align: left; vertical-align: top; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+    th { background: #eaf0ef; font-size: 13px; }
+    tr:last-child td { border-bottom: 0; }
+    .flow { max-width: 700px; margin: 0 auto; }
+    .flow-box { padding: 18px; text-align: center; border: 1px solid var(--line); border-radius: 10px; background: #f7f9f8; overflow-wrap: anywhere; }
+    .flow-box strong { display: block; }
+    .flow-box.primary { border-color: var(--teal); background: var(--mint); }
+    .flow-box.secondary { border-color: #adc3ea; background: var(--sky); }
+    .flow-arrow { text-align: center; font-size: 14px; color: var(--muted); padding: 12px 0; }
+    .branches { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    .branches > div { min-width: 0; }
+    .flow-caption { font-size: 14px; color: var(--muted); margin-top: 17px; }
+    .steps { padding-left: 25px; }
+    .steps li { margin: 14px 0; padding-left: 7px; }
+    .steps p { font-size: 16px; color: var(--muted); margin: 5px 0; }
+    .example-controls { display: flex; gap: 9px; flex-wrap: wrap; }
+    .example-controls button { font-size: 14px; padding: 8px 15px; background: white; color: var(--ink); border: 1px solid var(--line); border-radius: 7px; }
+    .example-controls button[aria-pressed="true"] { background: var(--teal); color: white; border-color: var(--teal); }
+    [hidden] { display: none !important; }
+    details { background: white; border: 1px solid var(--line); border-radius: 9px; padding: 15px 20px; margin: 18px 0; }
+    summary { cursor: pointer; font-weight: 700; }
+    footer { border-top: 1px solid var(--line); margin-top: 45px; padding-top: 24px; font-size: 14px; color: var(--muted); }
+    footer li { margin: 9px 0; }
+    @media (max-width: 1000px) {
+      :root { --nav-width: 210px; }
+      main { padding: 38px 28px; }
+      aside { padding: 27px 17px; }
+    }
+    @media (max-width: 760px) {
+      body { font-size: 17px; }
+      aside { position: static; width: auto; padding: 17px 20px; }
+      .nav-title { display: none; }
+      nav { display: flex; gap: 6px; overflow-x: auto; padding: 8px 0 3px; }
+      nav a { white-space: nowrap; font-size: 12px; margin: 0; padding: 6px 9px; }
+      main { margin: 0; padding: 25px 20px 45px; }
+      h1 { font-size: 34px; }
+      h2 { font-size: 25px; }
+      .lead { font-size: 18px; }
+      .grid, .branches { grid-template-columns: 1fr; }
+      .card { padding: 18px; }
+      pre { font-size: 13px; padding: 18px; }
+      th, td { padding: 11px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+    }
+    @media print {
+      aside, .example-controls { display: none !important; }
+      main { margin: 0; padding: 0; }
+      body { background: white; font-size: 11pt; }
+      h1 { font-size: 28pt; }
+      h2 { font-size: 20pt; }
+      .section { padding-top: 24px; }
+      .card, pre, .note, .flow-box { break-inside: avoid; }
+      pre { background: #eef2f4; color: #182f3c; }
+      .key { color: var(--teal); }
+      .value { color: var(--amber); }
+      .comment { color: var(--muted); }
+      .table-wrap { overflow: visible; }
+      [data-example-panel][hidden] { display: block !important; }
+      a { color: inherit; }
+    }
+  
+    .tree-diagram { display: block; width: 100%; max-width: 700px; height: auto; margin: auto; }
+    .page-order { display: flex; gap: 12px; flex-wrap: wrap; padding: 0; list-style: none; }
+    .page-order li { background: var(--sky); border: 1px solid #adc3ea; padding: 10px 18px; border-radius: 8px; }
+    nav a { font-size: 16px; }
+    table { font-size: 16px; }
+  </style>
+</head>
+<body>
+
+  <aside aria-label="目次">
+    <div class="brand">PDFMOD / FIELD NOTES</div>
+    <div class="nav-title">ページツリーと文書順</div>
+    <nav>
+      <a href="#overview"><span>01</span>役割と全体像</a>
+      <a href="#syntax"><span>02</span>PDF記述の読み方</a>
+      <a href="#rules"><span>03</span>仕様と回復方針</a>
+      <a href="#flow"><span>04</span>スタックで辿る</a>
+      <a href="#examples"><span>05</span>具体例で確かめる</a>
+      <a href="#implementation"><span>06</span>型とAPI</a>
+    </nav>
+  </aside>
+  <main id="top"><div class="wrap">
+    <header class="hero">
+      <div class="eyebrow">PDF INTERNALS / PAGE TREE</div>
+      <h1>ページツリーと文書順</h1>
+      <p class="lead">PDFのページは木構造に並びます。子の参照を順番に辿ると、ファイル内の配置やオブジェクト番号に左右されず、読む順番でページを取り出せます。</p>
+    </header>
+    <section class="section" id="overview">
+      <div class="section-heading"><span class="number">01</span><h2>枝が Pages、葉が Page</h2></div>
+      <p>ドキュメントカタログ（Document Catalog）の <code>/Pages</code> は、ページツリー（Page Tree）の根への間接参照です。<code>/Pages</code> ノードは子をまとめ、<code>/Page</code> ノードが1枚のページを表します。木の深さは一定ではありません。</p>
+      <div class="grid">
+        <div class="card"><h3>/Kids：子の並び</h3><p>直接の子への参照を並べた配列です。左から順に子へ降り、枝の中を最後まで読んでから次の兄弟へ進みます。これが深さ優先走査（Depth-First Search / DFS）です。</p></div>
+        <div class="card"><h3>/Count：配下の葉の総数</h3><p>直接の子の数ではありません。子の枝の下にあるページも数えます。下の根は Kids が2要素でも、Count は3です。</p></div>
+      </div>
+      <figure class="card">
+        <svg class="tree-diagram" viewBox="0 0 700 470" role="img" aria-labelledby="tree-title tree-description">
+          <title id="tree-title">深さの異なるページツリー</title>
+          <desc id="tree-description">根のオブジェクト2の子は3と4。3の子は5と6、6の子は7。文書順は5、7、4。</desc>
+          <defs><marker id="tree-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#526b76"/></marker></defs>
+          <g fill="none" stroke="#526b76" stroke-width="2" marker-end="url(#tree-arrow)">
+            <path d="M 315 82 L 215 135"/><path d="M 390 82 L 550 135"/>
+            <path d="M 185 200 L 95 255"/><path d="M 240 200 L 295 255"/>
+            <path d="M 295 320 L 295 375"/>
+          </g>
+          <g font-family="sans-serif" font-size="20" text-anchor="middle" fill="#182f3c">
+            <rect x="265" y="15" width="170" height="67" rx="10" fill="#e6f4ef" stroke="#067666"/>
+            <text x="350" y="42">2：/Pages</text><text x="350" y="68" font-size="17">/Count 3</text>
+            <rect x="130" y="135" width="170" height="65" rx="10" fill="#e6f4ef" stroke="#067666"/>
+            <text x="215" y="162">3：/Pages</text><text x="215" y="187" font-size="17">/Count 2</text>
+            <rect x="465" y="135" width="170" height="65" rx="10" fill="#eaf1ff" stroke="#265bb3"/>
+            <text x="550" y="162">4：/Page</text><text x="550" y="187" font-size="17">3ページ目</text>
+            <rect x="15" y="255" width="160" height="65" rx="10" fill="#eaf1ff" stroke="#265bb3"/>
+            <text x="95" y="282">5：/Page</text><text x="95" y="307" font-size="17">1ページ目</text>
+            <rect x="210" y="255" width="170" height="65" rx="10" fill="#e6f4ef" stroke="#067666"/>
+            <text x="295" y="282">6：/Pages</text><text x="295" y="307" font-size="17">/Count 1</text>
+            <rect x="210" y="375" width="170" height="65" rx="10" fill="#eaf1ff" stroke="#265bb3"/>
+            <text x="295" y="402">7：/Page</text><text x="295" y="427" font-size="17">2ページ目</text>
+          </g>
+        </svg>
+        <figcaption class="flow-caption">矢印は Kids の子参照。Parent の逆参照は省略しています。木の各段で左の子から読み、葉の順番は 5 → 7 → 4 になります。</figcaption>
+      </figure>
+      <ol class="page-order" aria-label="文書順"><li>1ページ目：5 0 R</li><li>2ページ目：7 0 R</li><li>3ページ目：4 0 R</li></ol>
+    </section>
+    <section class="section" id="syntax">
+      <div class="section-heading"><span class="number">02</span><h2>PDF記述を読む</h2></div>
+      <p>上の図に対応する、説明用の抜粋です。ヘッダ・xref・トレイラ・ページ属性を省略しているため、完全なPDFではありません。</p>
+      <pre><code>1 0 obj
+&lt;&lt; /Type /Catalog /Pages 2 0 R &gt;&gt;
+endobj
+2 0 obj
+&lt;&lt; /Type /Pages /Kids [3 0 R 4 0 R] /Count 3 &gt;&gt;
+endobj
+3 0 obj
+&lt;&lt; /Type /Pages /Parent 2 0 R /Kids [5 0 R 6 0 R] /Count 2 &gt;&gt;
+endobj
+4 0 obj
+&lt;&lt; /Type /Page /Parent 2 0 R &gt;&gt;
+endobj
+5 0 obj
+&lt;&lt; /Type /Page /Parent 3 0 R &gt;&gt;
+endobj
+6 0 obj
+&lt;&lt; /Type /Pages /Parent 3 0 R /Kids [7 0 R] /Count 1 &gt;&gt;
+endobj
+7 0 obj
+&lt;&lt; /Type /Page /Parent 6 0 R &gt;&gt;
+endobj</code></pre>
+      <p><code>3 0 R</code> は「オブジェクト番号3、世代番号0の間接参照（Indirect Reference）」です。<code>/Type /Pages</code> では Type がキー、Pages が名前オブジェクトの値です。カタログの <code>/Pages 2 0 R</code> は、Pages というキーに根への参照を設定しています。</p>
+      <div class="note"><strong>ファイル内の位置とページ順は別</strong>4 の辞書が 5 より先に保存されていても、Kids を辿ると 5 → 7 → 4 になります。オブジェクト番号でソートしてはいけません。</div>
+    </section>
+    <section class="section" id="rules">
+      <div class="section-heading"><span class="number">03</span><h2>仕様とライブラリの回復方針</h2></div>
+      <p>PDF仕様では Type・Kids・Count は Pages の必須エントリです。欠落や矛盾をどう回復するかは、このライブラリが選んだ方針です。</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>入力</th><th>走査の扱い</th></tr></thead>
+        <tbody>
+          <tr><td>Type が /Pages</td><td>Kids を子参照の配列として検証し、文書順に辿る。</td></tr>
+          <tr><td>Type が /Page</td><td>葉ページとして追加。根が Page なら <code>RootIsPage</code> エラー。</td></tr>
+          <tr><td>Type が欠落・null</td><td>解決した Kids が非nullなら Pages と推定。Kids が欠落・nullなら、Parent が間接参照のとき Page と推定。<code>InferredType</code> 警告を返す。根にも同じ規則を適用。</td></tr>
+          <tr><td>Type に推定根拠がない</td><td><code>CannotInferType</code> エラー。空の辞書を無条件にページとして数えない。</td></tr>
+          <tr><td>Type が他の名前・不正な型</td><td><code>InvalidType</code> または <code>InvalidKeyType</code> エラー。明示された不正値を推定で上書きしない。</td></tr>
+          <tr><td>Count と実走査数が異なる</td><td>各 Pages ノードについて <code>CountMismatch</code> 警告。実際に見つかったページ列を採用。</td></tr>
+          <tr><td>Count が欠落・null・負数・非整数</td><td><code>MissingCount</code> または <code>InvalidCount</code> 警告。Count による打ち切りや領域確保をしない。</td></tr>
+          <tr><td>Pages の Kids が欠落・null・非配列、要素が参照でない</td><td>構造エラー。空配列 <code>[]</code> は走査上受理し、配下の葉数を0とする。</td></tr>
+          <tr><td>同じノードの再訪</td><td>循環・複数箇所からの重複参照として <code>RepeatedNode</code> エラー。</td></tr>
+          <tr><td>参照解決失敗・参照先が辞書でない</td><td>エラーを伝播。不正な子を黙って省略した部分ページ列は返さない。</td></tr>
+        </tbody>
+      </table></div>
+      <div class="note warning"><strong>Count の不一致をページ番号の根拠にしない</strong>枝の Count が0でも、Kids にページがあれば列挙します。ページ取得の範囲判定は実走査したページ数で行います。</div>
+      <p>Type・Kids・Count の値自体が間接参照なら、既存の resolver で参照チェーンを解決します。Kids の配列要素は子参照として保持し、走査時に解決します。参照チェーンの循環や深さ制限のエラーと、ページツリー自体の深さは別です。Count 参照の解決自体が失敗した場合も、下位の原因を保ったエラーになります。</p>
+    </section>
+    <section class="section" id="flow">
+      <div class="section-heading"><span class="number">04</span><h2>明示スタックで深さ優先に辿る</h2></div>
+      <p>明示スタック（Explicit Stack）は、次に行う作業をヒープ上の配列に積む方法です。関数を再帰呼び出しせず、ループで処理できます。</p>
+      <ol class="steps">
+        <li><strong>根への Enter 作業を積む</strong><p>作業を1つ取り出し、訪問済みのオブジェクトIDを検査してから辞書を解決します。</p></li>
+        <li><strong>葉ならページ列の末尾へ追加する</strong><p>元の辞書を共有して保持します。描画命令や属性の参照はここでは辿りません。</p></li>
+        <li><strong>枝なら Leave と、逆順の子の Enter を積む</strong><p>後入れ先出し（Last-In, First-Out / LIFO）なので、Kids が [3, 4] なら先に4、次に3を積みます。次に取り出す子は3です。</p></li>
+        <li><strong>Leave で枝の葉数を検証する</strong><p>枝へ入る前後のページ列の長さの差が、その枝の実際の葉数です。Count と比較して必要なら警告を記録します。</p></li>
+        <li><strong>スタックが空になったら結果を返す</strong><p>ページ列と警告を一緒に返します。木の走査には独自の深さ上限を設けず、1万階層でも同じループで処理します。</p></li>
+      </ol>
+      <div class="note"><strong>Parent は登るための逆参照</strong>文書順の列挙は Kids だけを辿ります。Parent の一致検証や、MediaBox・Resources などの継承は後続処理の担当です。</div>
+    </section>
+    <section class="section" id="examples">
+      <div class="section-heading"><span class="number">05</span><h2>入力例を切り替えて確かめる</h2></div>
+      <p>各例は説明用の辞書の抜粋です。操作は例の表示を切り替え、PDFパーサは実行しません。</p>
+      <div class="card" data-examples>
+        <div class="example-controls" hidden aria-label="入力例の選択">
+          <button type="button" data-example="normal" aria-controls="example-normal" aria-pressed="true">正常</button>
+          <button type="button" data-example="mismatch" aria-controls="example-mismatch" aria-pressed="false">Count 不一致</button>
+          <button type="button" data-example="inferred" aria-controls="example-inferred" aria-pressed="false">Type 欠落</button>
+          <button type="button" data-example="empty" aria-controls="example-empty" aria-pressed="false">空の Kids</button>
+          <button type="button" data-example="error" aria-controls="example-error" aria-pressed="false">循環</button>
+        </div>
+        <div aria-live="polite">
+          <article id="example-normal" data-example-panel="normal">
+            <h3>単一ページ</h3><pre><code>2 0 obj &lt;&lt; /Type /Pages /Kids [3 0 R] /Count 1 &gt;&gt; endobj
+3 0 obj &lt;&lt; /Type /Page /Parent 2 0 R &gt;&gt; endobj</code></pre>
+            <div class="note"><strong>1ページ、警告なし</strong>ページ列は [3 0 R]。PageIndex(0) と PageNumber(1) が同じページを示します。</div>
+          </article>
+          <article id="example-mismatch" data-example-panel="mismatch">
+            <h3>宣言が0でも子は辿る</h3><pre><code>2 0 obj &lt;&lt; /Type /Pages /Kids [3 0 R 4 0 R] /Count 0 &gt;&gt; endobj
+3 0 obj &lt;&lt; /Type /Page /Parent 2 0 R &gt;&gt; endobj
+4 0 obj &lt;&lt; /Type /Page /Parent 2 0 R &gt;&gt; endobj</code></pre>
+            <div class="note warning"><strong>2ページ、CountMismatch 警告</strong>宣言値0、実走査数2。ページ列は [3 0 R, 4 0 R] を維持します。</div>
+          </article>
+          <article id="example-inferred" data-example-panel="inferred">
+            <h3>構造から種別を推定する</h3><pre><code>2 0 obj &lt;&lt; /Kids [3 0 R] /Count 1 &gt;&gt; endobj
+3 0 obj &lt;&lt; /Parent 2 0 R &gt;&gt; endobj</code></pre>
+            <div class="note warning"><strong>1ページ、InferredType 警告が2件</strong>2 は Kids があるため Pages、3 は Kids がなく Parent が参照のため Page。この回復はライブラリ独自の方針です。</div>
+          </article>
+          <article id="example-empty" data-example-panel="empty">
+            <h3>空配列を安全に扱う</h3><pre><code>2 0 obj &lt;&lt; /Type /Pages /Kids [] /Count 0 &gt;&gt; endobj</code></pre>
+            <div class="note"><strong>空のページ列</strong>PageIndex(0) の取得も None。Kids 自体が欠落した場合は MissingKids エラーになります。</div>
+          </article>
+          <article id="example-error" data-example-panel="error">
+            <h3>子が根へ戻る</h3><pre><code>2 0 obj &lt;&lt; /Type /Pages /Kids [3 0 R] /Count 1 &gt;&gt; endobj
+3 0 obj &lt;&lt; /Type /Pages /Kids [2 0 R] /Count 1 &gt;&gt; endobj</code></pre>
+            <div class="note error"><strong>RepeatedNode エラー</strong>2 → 3 → 2 と再訪します。エラーには再訪したオブジェクトIDが入り、ページ列は返しません。</div>
+          </article>
+        </div>
+      </div>
+    </section>
+    <section class="section" id="implementation">
+      <div class="section-heading"><span class="number">06</span><h2>ページ位置を型で区別する</h2></div>
+      <p><code>PageIndex</code> は0起点、<code>PageNumber</code> は1起点です。番号0は PageNumber にできません。文書に存在するかどうかは、走査済みの PageTree に問い合わせます。</p>
+      <p>取得済みの catalog を使う呼び出し側の抜粋です。走査失敗は PageTreeError として扱います。</p>
+      <pre><code>let tree = resolver.page_tree(&amp;catalog)?;
+let first_index = PageIndex::from(0);
+let first_page = tree.page(first_index);
+
+let first_number = PageNumber::new(1); // Some
+let invalid_number = PageNumber::new(0); // None
+let out_of_range = tree.page(PageIndex::from(usize::MAX)); // None
+// PageNumber は Into&lt;PageIndex&gt; で変換して取得する。</code></pre>
+      <div class="table-wrap"><table>
+        <thead><tr><th>API・型</th><th>役割</th></tr></thead>
+        <tbody>
+          <tr><td><code>ObjectResolver::page_tree(&amp;Catalog)</code></td><td>根から走査。成功は PageTree、構造・解決失敗は PageTreeError。</td></tr>
+          <tr><td><code>PageTree::pages()</code></td><td>文書順のページスライス。</td></tr>
+          <tr><td><code>PageTree::page(PageIndex)</code></td><td>範囲内なら Some、範囲外なら None。</td></tr>
+          <tr><td><code>PageTree::warnings()</code></td><td>各ノードの推定・Count 不正・不一致を型付きで報告。</td></tr>
+          <tr><td><code>Page::reference() / object()</code></td><td>Kids の参照と元のページ辞書。参照値・未解釈エントリを保持。</td></tr>
+          <tr><td><code>PageIndex::number()</code></td><td>1起点へ変換。usize::MAX の位置は番号を表現できず None。</td></tr>
+        </tbody>
+      </table></div>
+      <div class="grid">
+        <div class="card"><h3>対応する範囲</h3><p>葉の列挙、間接参照の解決、Type の推定、各枝の Count 検証、循環・重複の検出、ページ位置の安全な取得。</p></div>
+        <div class="card"><h3>後続処理の範囲</h3><p>Parent の参照整合性、MediaBox・Resources・CropBox・Rotate の継承、コンテンツ解析、描画、ページ編集。明示的な Page の必須属性全体を検証するAPIではありません。</p></div>
+      </div>
+    </section>
+    <footer><a href="#top">↑ 先頭に戻る</a></footer>
+  </div></main>
+  <script>
+    'use strict';
+    document.querySelectorAll('[data-examples]').forEach(group => {
+      const controls = group.querySelector('.example-controls');
+      const buttons = [...group.querySelectorAll('[data-example]')];
+      const panels = [...group.querySelectorAll('[data-example-panel]')];
+      if (!controls) {
+        return;
+      }
+      if (buttons.length === 0) {
+        return;
+      }
+      if (panels.length === 0) {
+        return;
+      }
+      function showExample(key) {
+        buttons.forEach(button => {
+          button.setAttribute('aria-pressed', String(button.dataset.example === key));
+        });
+        panels.forEach(panel => {
+          panel.hidden = panel.dataset.examplePanel !== key;
+        });
+      }
+      controls.hidden = false;
+      showExample(buttons[0].dataset.example);
+      buttons.forEach(button => {
+        button.addEventListener('click', () => showExample(button.dataset.example));
+      });
+    });
+    const sections = [...document.querySelectorAll('.section')];
+    const links = [...document.querySelectorAll('nav a[href^="#"]')];
+    let pending = false;
+    function updateNavigation() {
+      pending = false;
+      if (sections.length === 0) {
+        return;
+      }
+      let current = sections[0];
+      for (const section of sections) {
+        if (section.getBoundingClientRect().top <= window.innerHeight * .3) {
+          current = section;
+        }
+      }
+      links.forEach(link => {
+        if (link.hash === '#' + current.id) {
+          link.setAttribute('aria-current', 'location');
+          return;
+        }
+        link.removeAttribute('aria-current');
+      });
+    }
+    window.addEventListener('scroll', () => {
+      if (pending) {
+        return;
+      }
+      pending = true;
+      requestAnimationFrame(updateNavigation);
+    }, { passive: true });
+    window.addEventListener('resize', updateNavigation);
+    updateNavigation();
+  </script>
+</body>
+</html>

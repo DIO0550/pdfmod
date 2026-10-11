@@ -8,6 +8,7 @@ PDF機能の実装に合わせて、仕様の読み方と実装の振る舞い�
 | テーマ | 解説する内容 | 関連する実装 |
 | --- | --- | --- |
 | [ドキュメントカタログ](document-catalog.html) | Root・Catalog・Pagesの関係、必須キー、バージョンの優先関係、表示設定、未解釈エントリの保持、位置付きエラー | [Issue #635](https://github.com/DIO0550/pdfmod/issues/635) / [PR #736](https://github.com/DIO0550/pdfmod/pull/736) の作成時点（`6c654ce`） |
+| [ページツリーと文書順](page-tree.html) | Kids の深さ優先走査、各階層の Count 検証、Type 欠落の回復、循環・重複検出、0/1起点の型付きアクセス | [Issue #658](https://github.com/DIO0550/pdfmod/issues/658) / `rust/crates/core/src/page_tree.rs` / `rust/crates/core/src/resolver/page_tree.rs` |
 | [ページ矩形と境界ボックス](page-boxes.html) | 対角の正規化、5種のボックスの既定値、MediaBoxとの交差、不正入力と未解決参照の扱い | [Issue #636](https://github.com/DIO0550/pdfmod/issues/636) 実装版 |
 | [テキスト文字列](text-strings.html) | PDFDocEncoding・UTF-16BE・UTF-8、BOM判定、未割当バイト、サロゲート、不正入力の拒否／置換、バイト列との型境界 | [Issue #637](https://github.com/DIO0550/pdfmod/issues/637) / `rust/crates/core/src/text_string.rs` |
 | [日付文字列](date-format.html) | ISO 32000-1 / ISO 32000-2 構文、D: 接頭辞、階層的省略、タイムゾーン形式（' 区切り・Z）、うるう年・カレンダー厳格検証 | [Issue #638](https://github.com/DIO0550/pdfmod/issues/638) / `rust/crates/core/src/date.rs` |
