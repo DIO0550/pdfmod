@@ -33,6 +33,7 @@ pub mod lexer;
 pub mod object;
 pub mod object_stream;
 pub mod page_boxes;
+pub mod page_tree;
 pub mod parser;
 pub mod text_string;
 pub mod xref;
