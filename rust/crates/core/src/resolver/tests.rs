@@ -53,3 +53,4 @@ mod caching;
 mod recovery;
 
 mod catalog;
+mod page_tree;
