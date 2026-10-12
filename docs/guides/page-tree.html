@@ -256,7 +256,8 @@ endobj</code></pre>
           <tr><td>Count と実走査数が異なる</td><td>各 Pages ノードについて <code>CountMismatch</code> 警告。実際に見つかったページ列を採用。</td></tr>
           <tr><td>Count が欠落・null・負数・非整数</td><td><code>MissingCount</code> または <code>InvalidCount</code> 警告。Count による打ち切りや領域確保をしない。</td></tr>
           <tr><td>Pages の Kids が欠落・null・非配列、要素が参照でない</td><td>構造エラー。空配列 <code>[]</code> は走査上受理し、配下の葉数を0とする。</td></tr>
-          <tr><td>同じノードの再訪</td><td>循環・複数箇所からの重複参照として <code>RepeatedNode</code> エラー。</td></tr>
+          <tr><td>走査中の祖先を再訪</td><td>ページツリーの循環として <code>Cycle { node }</code> エラー。戻った祖先のオブジェクト番号と世代番号を返す。</td></tr>
+          <tr><td>走査済みのノードを再訪</td><td>循環ではない共有・重複として <code>RepeatedNode { node }</code> エラー。同じ親の Kids の重複も拒否。</td></tr>
           <tr><td>参照解決失敗・参照先が辞書でない</td><td>エラーを伝播。不正な子を黙って省略した部分ページ列は返さない。</td></tr>
         </tbody>
       </table></div>
@@ -267,12 +268,17 @@ endobj</code></pre>
       <div class="section-heading"><span class="number">04</span><h2>明示スタックで深さ優先に辿る</h2></div>
       <p>明示スタック（Explicit Stack）は、次に行う作業をヒープ上の配列に積む方法です。関数を再帰呼び出しせず、ループで処理できます。</p>
       <ol class="steps">
-        <li><strong>根への Enter 作業を積む</strong><p>作業を1つ取り出し、訪問済みのオブジェクトIDを検査してから辞書を解決します。</p></li>
+        <li><strong>根への Enter 作業を積む</strong><p>作業を1つ取り出し、祖先集合を先に検査します。祖先なら Cycle、それ以外の訪問済みIDなら RepeatedNode。初訪問のノードだけ辞書を解決します。</p></li>
         <li><strong>葉ならページ列の末尾へ追加する</strong><p>元の辞書を共有して保持します。描画命令や属性の参照はここでは辿りません。</p></li>
-        <li><strong>枝なら Leave と、逆順の子の Enter を積む</strong><p>後入れ先出し（Last-In, First-Out / LIFO）なので、Kids が [3, 4] なら先に4、次に3を積みます。次に取り出す子は3です。</p></li>
-        <li><strong>Leave で枝の葉数を検証する</strong><p>枝へ入る前後のページ列の長さの差が、その枝の実際の葉数です。Count と比較して必要なら警告を記録します。</p></li>
+        <li><strong>枝を祖先集合へ追加し、Leave と逆順の子の Enter を積む</strong><p>後入れ先出し（Last-In, First-Out / LIFO）なので、Kids が [3, 4] なら先に4、次に3を積みます。次に取り出す子は3です。</p></li>
+        <li><strong>Leave で祖先集合から除去し、枝の葉数を検証する</strong><p>Count が欠落・不正でも祖先集合からは除去します。枝へ入る前後のページ列の長さの差が、その枝の実際の葉数です。Count と比較して必要なら警告を記録します。</p></li>
         <li><strong>スタックが空になったら結果を返す</strong><p>ページ列と警告を一緒に返します。木の走査には独自の深さ上限を設けず、1万階層でも同じループで処理します。</p></li>
       </ol>
+      <div class="grid">
+        <div class="card"><h3>祖先集合：いま辿っている枝</h3><p>Pages に入ると追加し、退出すると除去します。ここにあるIDへ戻れば、自己参照や途中の祖先への循環です。葉は子を辿らないので追加しません。</p></div>
+        <div class="card"><h3>訪問済み集合：一度でも入ったノード</h3><p>退出してもIDを保持します。祖先集合にはなく、こちらにあれば、別の枝からの共有や同じ親の重複です。番号と世代の組で区別します。</p></div>
+      </div>
+      <p>木の深さ上限を設けないのは、関数の再帰を使わず、深さに応じたコールスタックの消費を避けられるためです。有限の入力では、初訪問のノードだけを展開し、再訪をエラーにするので走査は終了します。正当な深い木を根拠のない上限で拒否しません。ただし、巨大な入力のメモリ使用量や処理時間に上限を保証する方針ではありません。</p>
       <div class="note"><strong>Parent は登るための逆参照</strong>文書順の列挙は Kids だけを辿ります。Parent の一致検証や、MediaBox・Resources などの継承は後続処理の担当です。</div>
     </section>
     <section class="section" id="examples">
@@ -285,6 +291,8 @@ endobj</code></pre>
           <button type="button" data-example="inferred" aria-controls="example-inferred" aria-pressed="false">Type 欠落</button>
           <button type="button" data-example="empty" aria-controls="example-empty" aria-pressed="false">空の Kids</button>
           <button type="button" data-example="error" aria-controls="example-error" aria-pressed="false">循環</button>
+          <button type="button" data-example="shared" aria-controls="example-shared" aria-pressed="false">共有（DAG）</button>
+          <button type="button" data-example="invalid" aria-controls="example-invalid" aria-pressed="false">不正な Kids</button>
         </div>
         <div aria-live="polite">
           <article id="example-normal" data-example-panel="normal">
@@ -310,7 +318,21 @@ endobj</code></pre>
           <article id="example-error" data-example-panel="error">
             <h3>子が根へ戻る</h3><pre><code>2 0 obj &lt;&lt; /Type /Pages /Kids [3 0 R] /Count 1 &gt;&gt; endobj
 3 0 obj &lt;&lt; /Type /Pages /Kids [2 0 R] /Count 1 &gt;&gt; endobj</code></pre>
-            <div class="note error"><strong>RepeatedNode エラー</strong>2 → 3 → 2 と再訪します。エラーには再訪したオブジェクトIDが入り、ページ列は返しません。</div>
+            <div class="note error"><strong>Cycle エラー、node は 2 0</strong>2 → 3 → 2 と走査中の祖先へ戻ります。辞書自体の解決は成功しても、この親子関係の循環は別に検出します。ページ列は返しません。</div>
+          </article>
+          <article id="example-shared" data-example-panel="shared">
+            <h3>循環しなくても木ではない</h3><pre><code>2 0 obj &lt;&lt; /Type /Pages /Kids [3 0 R 4 0 R] /Count 2 &gt;&gt; endobj
+3 0 obj &lt;&lt; /Type /Pages /Parent 2 0 R /Kids [5 0 R] /Count 1 &gt;&gt; endobj
+4 0 obj &lt;&lt; /Type /Pages /Parent 2 0 R /Kids [5 0 R] /Count 1 &gt;&gt; endobj
+5 0 obj &lt;&lt; /Type /Page /Parent 3 0 R &gt;&gt; endobj</code></pre>
+            <p>根の2から、3と4という別々の親が同じ5を指しています。有向非巡回グラフ（Directed Acyclic Graph / DAG）は、有向の循環を持たないグラフです。この例は DAG ですが、複数の経路が5へ合流するため木ではありません。5から3への Parent は Kids 走査では辿りません。</p>
+            <div class="note error"><strong>RepeatedNode エラー、node は 5 0</strong>3の枝を退出した後、4の枝から5を再訪します。祖先ではないため循環とは区別します。PDFの木構造と単一の Parent に合わず、ページ番号や継承元が曖昧になるので、共有を受理せずページ列全体をエラーにします。枝を共有した場合も同じ方針です。</div>
+          </article>
+          <article id="example-invalid" data-example-panel="invalid">
+            <h3>Kids の要素は子への間接参照</h3><pre><code>2 0 obj &lt;&lt; /Type /Pages /Kids [3 0 R null] /Count 2 &gt;&gt; endobj
+3 0 obj &lt;&lt; /Type /Page /Parent 2 0 R &gt;&gt; endobj</code></pre>
+            <div class="note error"><strong>InvalidKid エラー</strong>親の node は 2 0、0起点の index は1、actual は Null。子の辞書を直接置いた場合も参照ではないため拒否します。</div>
+            <p>要素が参照でも、参照先が未定義なら resolver は null を返し、子のIDを含む NotADictionary になります。構文や世代の不一致で解決に失敗した場合は Resolution と下位原因を返します。すでに正常なページを読めていても、部分的なページ列は成功として返しません。</p>
           </article>
         </div>
       </div>

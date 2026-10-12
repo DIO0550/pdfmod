@@ -81,7 +81,12 @@ pub enum PageTreeError {
         /// 実際の要素種別。
         actual: ObjectKind,
     },
-    /// 同じノードを再訪した。循環または複数箇所からの重複参照。
+    /// 走査中の祖先を再訪したページツリーの循環。
+    Cycle {
+        /// 再訪した祖先のオブジェクト番号・世代番号。
+        node: ObjectId,
+    },
+    /// 走査済みのノードを再訪した。同じ親の重複参照も、複数の親による共有も拒否する。
     RepeatedNode {
         /// 再訪したノード。
         node: ObjectId,

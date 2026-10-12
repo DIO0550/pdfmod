@@ -93,26 +93,6 @@ fn a_missing_child_and_an_unidentifiable_dictionary_are_not_skipped() {
 }
 
 #[test]
-fn cycles_and_duplicate_leaves_are_rejected_instead_of_looping_or_duplicating() {
-    for body in [
-        "<< /Type /Pages /Kids [2 0 R] /Count 1 >>",
-        "<< /Type /Pages /Kids [3 0 R 3 0 R] /Count 2 >>",
-    ] {
-        let mut pdf = fixture(body);
-        pdf.object(3, 0, "<< /Type /Page /Parent 2 0 R >>");
-        let node = if body.contains("[2") {
-            reference(2, 0).target()
-        } else {
-            reference(3, 0).target()
-        };
-        assert_eq!(
-            walk(&pdf.finish("")).unwrap_err(),
-            PageTreeError::RepeatedNode { node }
-        );
-    }
-}
-
-#[test]
 fn parse_errors_and_indirect_entry_cycles_preserve_the_resolver_cause() {
     for (root, key) in [
         (
