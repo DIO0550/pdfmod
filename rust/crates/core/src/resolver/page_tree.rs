@@ -27,6 +27,7 @@ enum Visit {
 struct Walk {
     pages: Vec<Page>,
     warnings: Vec<PageTreeWarning>,
+    ancestors: HashSet<ObjectId>,
     visited: HashSet<ObjectId>,
     stack: Vec<Visit>,
 }
@@ -58,6 +59,9 @@ impl Walk {
         resolver: &mut ObjectResolver<'_>,
     ) -> Result<(), PageTreeError> {
         let node = reference.target();
+        if self.ancestors.contains(&node) {
+            return Err(PageTreeError::Cycle { node });
+        }
         if !self.visited.insert(node) {
             return Err(PageTreeError::RepeatedNode { node });
         }
@@ -81,6 +85,7 @@ impl Walk {
             PageNodeKind::Pages => {
                 let kids = parsed.kids(resolver)?;
                 let declared = parsed.count(resolver, &mut self.warnings)?;
+                self.ancestors.insert(node);
                 self.stack.push(Visit::Leave {
                     node,
                     start: self.pages.len(),
@@ -94,6 +99,7 @@ impl Walk {
     }
 
     fn leave(&mut self, node: ObjectId, start: usize, declared: Option<u64>) {
+        self.ancestors.remove(&node);
         let Some(declared) = declared else {
             return;
         };
@@ -110,7 +116,8 @@ impl Walk {
 
 impl ObjectResolver<'_> {
     /// カタログの Pages を明示スタックで走査し、文書順の葉ページと警告を返す。
-    /// 循環・重複ノード・不正な構造・参照解決失敗はエラー。属性の継承は行わない。
+    /// 祖先への再訪は Cycle、共有・重複ノードは RepeatedNode とし、対象IDを返す。
+    /// 不正な構造・参照解決失敗もエラー。木の深さ上限は設けず、属性の継承は行わない。
     ///
     /// ```
     /// use pdfmod_core::{catalog::Catalog, resolver::ObjectResolver};
