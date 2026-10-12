@@ -3,6 +3,7 @@
 mod cache;
 mod catalog;
 pub mod error;
+mod page_attributes;
 mod page_tree;
 pub mod recovery;
 use cache::ObjectCache;
