@@ -10,6 +10,7 @@ use crate::page_tree::{
 mod malformed;
 mod order;
 mod scale;
+mod structure;
 
 fn fixture(root: &str) -> PdfFixture {
     let mut pdf = PdfFixture::new();
