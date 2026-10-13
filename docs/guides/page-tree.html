@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ページツリーと文書順 — PDF仕様解説</title>
+  <title>ページツリー・文書順・属性の継承 — PDF仕様解説</title>
   <style>
     :root {
       --ink: #182f3c;
@@ -163,21 +163,22 @@
 
   <aside aria-label="目次">
     <div class="brand">PDFMOD / FIELD NOTES</div>
-    <div class="nav-title">ページツリーと文書順</div>
+    <div class="nav-title">ページツリーと属性の継承</div>
     <nav>
       <a href="#overview"><span>01</span>役割と全体像</a>
       <a href="#syntax"><span>02</span>PDF記述の読み方</a>
       <a href="#rules"><span>03</span>仕様と回復方針</a>
       <a href="#flow"><span>04</span>スタックで辿る</a>
       <a href="#examples"><span>05</span>具体例で確かめる</a>
-      <a href="#implementation"><span>06</span>型とAPI</a>
+      <a href="#inheritance"><span>06</span>属性を親から継承</a>
+      <a href="#implementation"><span>07</span>型とAPI</a>
     </nav>
   </aside>
   <main id="top"><div class="wrap">
     <header class="hero">
       <div class="eyebrow">PDF INTERNALS / PAGE TREE</div>
-      <h1>ページツリーと文書順</h1>
-      <p class="lead">PDFのページは木構造に並びます。子の参照を順番に辿ると、ファイル内の配置やオブジェクト番号に左右されず、読む順番でページを取り出せます。</p>
+      <h1>ページツリーと属性の継承</h1>
+      <p class="lead">PDFのページは木構造に並びます。Kids を辿って文書順に列挙し、Parent を遡ってページの寸法・表示領域・リソース・回転を決めます。</p>
     </header>
     <section class="section" id="overview">
       <div class="section-heading"><span class="number">01</span><h2>枝が Pages、葉が Page</h2></div>
@@ -279,7 +280,7 @@ endobj</code></pre>
         <div class="card"><h3>訪問済み集合：一度でも入ったノード</h3><p>退出してもIDを保持します。祖先集合にはなく、こちらにあれば、別の枝からの共有や同じ親の重複です。番号と世代の組で区別します。</p></div>
       </div>
       <p>木の深さ上限を設けないのは、関数の再帰を使わず、深さに応じたコールスタックの消費を避けられるためです。有限の入力では、初訪問のノードだけを展開し、再訪をエラーにするので走査は終了します。正当な深い木を根拠のない上限で拒否しません。ただし、巨大な入力のメモリ使用量や処理時間に上限を保証する方針ではありません。</p>
-      <div class="note"><strong>Parent は登るための逆参照</strong>文書順の列挙は Kids だけを辿ります。Parent の一致検証や、MediaBox・Resources などの継承は後続処理の担当です。</div>
+      <div class="note"><strong>列挙と属性の解決を分ける</strong><code>page_tree</code> は Kids を辿るAPIです。取得した Page に <code>page_attributes</code> を使うと、Parent を根まで遡って継承属性を解決します。列挙だけなら、寸法のないページも取得できます。</div>
     </section>
     <section class="section" id="examples">
       <div class="section-heading"><span class="number">05</span><h2>入力例を切り替えて確かめる</h2></div>
@@ -337,8 +338,81 @@ endobj</code></pre>
         </div>
       </div>
     </section>
+    <section class="section" id="inheritance">
+      <div class="section-heading"><span class="number">06</span><h2>属性ごとに、最も近い有効値を探す</h2></div>
+      <p>継承属性（Inheritable Attributes）は、ページ自身に有効な値がなければ親の Pages、それでもなければ祖父の Pages から受け取る属性です。4つの属性は独立して探索します。例えば MediaBox はページ自身、Rotate は祖父から採用できます。</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>属性</th><th>有効な値</th><th>根まで見つからない場合</th></tr></thead>
+        <tbody>
+          <tr><td>MediaBox</td><td>有限な数値4つの矩形</td><td>必須。<code>MissingMediaBox</code> エラー</td></tr>
+          <tr><td>CropBox</td><td>有限な数値4つの矩形</td><td>そのページの解決済み MediaBox</td></tr>
+          <tr><td>Resources</td><td>辞書</td><td>空の辞書。リソースを使う描画命令の検証は後続処理</td></tr>
+          <tr><td>Rotate</td><td>90の倍数の整数</td><td>0度</td></tr>
+        </tbody>
+      </table></div>
+      <p>リソース辞書（Resources）はフォント・画像などの名前を描画対象に結び付けます。辞書全体を最も近い有効値から採用し、祖先の辞書とはマージしません。ページの <code>/Resources &lt;&lt; &gt;&gt;</code> も有効な上書きです。辞書内部の Font などの参照は、そのリソースを使う処理で解決します。</p>
+      <div class="flow" role="group" aria-label="Parent を遡って Rotate を継承する例">
+        <div class="flow-box secondary"><strong>Page 3：Rotate 45</strong>90の倍数ではない。警告して次へ</div>
+        <div class="flow-arrow">Parent 4 0 R → 親へ</div>
+        <div class="flow-box"><strong>Pages 4：Rotate なし</strong>未設定。さらに次へ</div>
+        <div class="flow-arrow">Parent 2 0 R → 祖父へ</div>
+        <div class="flow-box primary"><strong>Pages 2：Rotate −90</strong>有効。270度として採用</div>
+      </div>
+      <div class="note warning"><strong>無効な局所値は継承を遮らない</strong>型違い、座標不正、参照の循環・構文不正などは、そのノードとキーと原因を警告に残し、祖先を探します。これは pdfmod の回復方針です。欠落・直接 null は未設定として扱います。参照が null に解決された場合は、その参照値を採用できない警告を返します。</div>
+      <ol class="steps">
+        <li><strong>ページから Parent を根まで辿る</strong><p>列挙時に覚えたカタログの根だけが探索の終点です。根以外の Parent 欠落・null、参照以外の Parent、解決失敗、辞書でない親、循環はエラー。根に Parent がある場合もエラーです。</p></li>
+        <li><strong>未確定の属性だけ読み、参照を解決して検証する</strong><p><code>/MediaBox 10 0 R</code> の値自体と、<code>[0 0 11 0 R 792]</code> の座標参照の両方を解決します。多段参照・参照の循環や深さ上限は ObjectResolver に委ねます。親チェーン自体は反復処理で深さ上限を設けません。</p></li>
+        <li><strong>有効な値を確定し、無効なら警告して続ける</strong><p>一度確定した属性は祖先で上書きしません。全属性が確定しても、親チェーンの検証は根まで続けます。</p></li>
+        <li><strong>最後に既定値を適用する</strong><p>CropBox の既定値を途中で決めると、祖先の CropBox を見逃します。根まで探してから、そのページの MediaBox を使います。</p></li>
+      </ol>
+      <div class="card" data-examples>
+        <div class="card-label">継承の入力例（説明用。Rustのパーサを実行するデモではありません）</div>
+        <div class="example-controls" hidden>
+          <button type="button" data-example="inherit-normal" aria-controls="inherit-normal" aria-pressed="true">祖父から継承</button>
+          <button type="button" data-example="inherit-invalid" aria-controls="inherit-invalid" aria-pressed="false">無効値を通過</button>
+          <button type="button" data-example="inherit-reference" aria-controls="inherit-reference" aria-pressed="false">座標の間接参照</button>
+          <button type="button" data-example="inherit-missing" aria-controls="inherit-missing" aria-pressed="false">必須値なし</button>
+        </div>
+        <div id="inherit-normal" data-example-panel="inherit-normal">
+          <h3>祖父の CropBox と Rotate を採用</h3>
+          <pre><code>% ページツリーの抜粋（xref・trailerは省略）
+2 0 obj &lt;&lt; /Type /Pages /Kids [4 0 R] /Count 1
+  /MediaBox [0 0 612 792] /CropBox [10 10 600 780] /Rotate -90 &gt;&gt; endobj
+4 0 obj &lt;&lt; /Type /Pages /Parent 2 0 R /Kids [3 0 R] /Count 1 &gt;&gt; endobj
+3 0 obj &lt;&lt; /Type /Page /Parent 4 0 R /MediaBox [0 0 100 200] &gt;&gt; endobj</code></pre>
+          <p>MediaBox はページの100×200。CropBox は祖父の矩形をそのまま採用し、Rotate は270度。Resources は空の辞書です。<code>PageAttributes::crop_box()</code> は継承した矩形を返し、MediaBox との交差は適用しません。表示領域の交差の規則は <a href="page-boxes.html">ページ矩形と境界ボックス</a> を参照してください。</p>
+        </div>
+        <div id="inherit-invalid" data-example-panel="inherit-invalid">
+          <h3>途中の無効値を警告して祖父へ進む</h3>
+          <pre><code>% ページツリーの抜粋
+2 0 obj &lt;&lt; /Type /Pages /Kids [4 0 R] /Count 1
+  /MediaBox [0 0 612 792] /Rotate 450 &gt;&gt; endobj
+4 0 obj &lt;&lt; /Type /Pages /Parent 2 0 R /Kids [3 0 R] /Count 1
+  /MediaBox /Wrong /Rotate 91 &gt;&gt; endobj
+3 0 obj &lt;&lt; /Type /Page /Parent 4 0 R /MediaBox [0 0] &gt;&gt; endobj</code></pre>
+          <div class="note warning"><strong>612×792、90度、警告3件</strong>3の MediaBox は要素不足、4の MediaBox は配列ではなく、Rotate は90の倍数ではありません。2から有効値を受け取り、450度を90度へ正規化します。</div>
+        </div>
+        <div id="inherit-reference" data-example-panel="inherit-reference">
+          <h3>値と座標の両方が間接参照</h3>
+          <pre><code>% ページツリーの抜粋
+2 0 obj &lt;&lt; /Type /Pages /Kids [3 0 R] /Count 1 /MediaBox 10 0 R &gt;&gt; endobj
+3 0 obj &lt;&lt; /Type /Page /Parent 2 0 R &gt;&gt; endobj
+10 0 obj [0 0 11 0 R 792] endobj
+11 0 obj 612 endobj</code></pre>
+          <p>10の配列を解決してから、3番目の座標11も解決します。結果は612×792。参照先が不正なら、その矩形全体を無効として祖先を探します。</p>
+        </div>
+        <div id="inherit-missing" data-example-panel="inherit-missing">
+          <h3>MediaBox が根まで見つからない</h3>
+          <pre><code>% ページツリーの抜粋
+2 0 obj &lt;&lt; /Type /Pages /Kids [3 0 R] /Count 1 &gt;&gt; endobj
+3 0 obj &lt;&lt; /Type /Page /Parent 2 0 R &gt;&gt; endobj</code></pre>
+          <div class="note error"><strong>MissingMediaBox エラー、page は 3 0</strong>MediaBox に既定のページサイズはありません。親チェーンが正常でも、ページの寸法を確定できません。</div>
+        </div>
+      </div>
+      <p>回転は整数の90の倍数だけを受理します。−90 → 270、450 → 90、720 → 0。45や91は丸めず警告して継承を続けます。90.0の実数も整数型ではないため警告します。</p>
+    </section>
     <section class="section" id="implementation">
-      <div class="section-heading"><span class="number">06</span><h2>ページ位置を型で区別する</h2></div>
+      <div class="section-heading"><span class="number">07</span><h2>ページ位置と属性を型で区別する</h2></div>
       <p><code>PageIndex</code> は0起点、<code>PageNumber</code> は1起点です。番号0は PageNumber にできません。文書に存在するかどうかは、走査済みの PageTree に問い合わせます。</p>
       <p>取得済みの catalog を使う呼び出し側の抜粋です。走査失敗は PageTreeError として扱います。</p>
       <pre><code>let tree = resolver.page_tree(&amp;catalog)?;
@@ -357,12 +431,15 @@ let out_of_range = tree.page(PageIndex::from(usize::MAX)); // None
           <tr><td><code>PageTree::page(PageIndex)</code></td><td>範囲内なら Some、範囲外なら None。</td></tr>
           <tr><td><code>PageTree::warnings()</code></td><td>各ノードの推定・Count 不正・不一致を型付きで報告。</td></tr>
           <tr><td><code>Page::reference() / object()</code></td><td>Kids の参照と元のページ辞書。参照値・未解釈エントリを保持。</td></tr>
+          <tr><td><code>ObjectResolver::page_attributes(&amp;Page)</code></td><td>同じ resolver で列挙したページの4属性を解決。失敗は PageAttributeError。</td></tr>
+          <tr><td><code>PageAttributes</code></td><td>media_box / crop_box / resources / rotation と回復警告 warnings。</td></tr>
+          <tr><td><code>PageRotation::new(i64)</code></td><td>90の倍数なら Some。degrees() は0・90・180・270のいずれか。</td></tr>
           <tr><td><code>PageIndex::number()</code></td><td>1起点へ変換。usize::MAX の位置は番号を表現できず None。</td></tr>
         </tbody>
       </table></div>
       <div class="grid">
-        <div class="card"><h3>対応する範囲</h3><p>葉の列挙、間接参照の解決、Type の推定、各枝の Count 検証、循環・重複の検出、ページ位置の安全な取得。</p></div>
-        <div class="card"><h3>後続処理の範囲</h3><p>Parent の参照整合性、MediaBox・Resources・CropBox・Rotate の継承、コンテンツ解析、描画、ページ編集。明示的な Page の必須属性全体を検証するAPIではありません。</p></div>
+        <div class="card"><h3>対応する範囲</h3><p>葉の列挙、Type の推定、各枝の Count 検証、循環・重複の検出、ページ位置の取得。別APIで Parent の終端・欠落・循環を検証し、4属性と座標参照を解決します。</p></div>
+        <div class="card"><h3>後続処理の範囲</h3><p>Kids と Parent の一致、親の Type の整合性、PageAttributes と PageBoxes の統合、リソース辞書内部の解釈、コンテンツ解析、描画、ページ編集。必須属性全体を検証するAPIではありません。</p></div>
       </div>
     </section>
     <footer><a href="#top">↑ 先頭に戻る</a></footer>

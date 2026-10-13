@@ -250,26 +250,31 @@ ISO 32000-1 §7.3.10 により、継承属性の値も配列の要素も間接�
 
 #### 継承の解決アルゴリズム
 
-```
-fn resolve_inherited_attribute(page: &PageObject, attr_name: &str) -> Option<PdfObject> {
-    // 1. ページ自身に属性が定義されているか確認
-    if let Some(value) = page.dictionary.get(attr_name) {
-        return Some(value.clone());
-    }
+Rust の `ObjectResolver::page_attributes(&Page)` は、`page_tree` で列挙したページから
+`/Parent` を反復処理で辿る。列挙時にページへ記録したカタログの根を終点とするため、
+中間ノードで `/Parent` が欠落した場合を、正常な根への到達と区別できる。
 
-    // 2. /Parent 参照を辿って上位ノードを探索
-    let mut current = page.parent;
-    while let Some(parent_node) = current {
-        if let Some(value) = parent_node.dictionary.get(attr_name) {
-            return Some(value.clone());
-        }
-        current = parent_node.parent;
-    }
+1. ページ自身から開始し、属性ごとに未確定の値だけを参照解決・検証する。
+2. 有効なら確定し、無効ならノード・キー・原因を警告して祖先の探索を続ける。
+3. `/Parent` が間接参照であることを確認して親へ進む。根以外の欠落・null、
+   参照解決失敗、辞書でない親、再訪による循環はエラー。根の `/Parent` も拒否する。
+4. 全属性が確定しても根まで親チェーンを検証し、最後に既定値を適用する。
 
-    // 3. ルートノードまで遡っても見つからない場合はNone
-    None
-}
-```
+| 属性 | Rust API の検証と既定値 |
+|:-----|:-----------------------|
+| `/MediaBox` | 値と座標参照を解決して `Rectangle` に変換。有効値がなければ `MissingMediaBox` |
+| `/CropBox` | 同様に矩形へ変換。不在ならそのページの解決済み `/MediaBox` |
+| `/Resources` | 最も近い有効な辞書全体を採用。祖先とはマージしない。不在なら空辞書 |
+| `/Rotate` | 90の倍数の整数を剰余で0・90・180・270度へ正規化。不在なら0度 |
+
+欠落・直接 null は未設定とし、警告しない。参照が null に解決された場合は
+採用できない値の型として警告する。参照の構文・循環・世代不一致なども警告して継承を続ける。
+Resources の内部参照と、描画が要求するリソースの有無の検証は後続処理へ委ねる。
+親チェーン自体の深さ上限は設けないが、値の多段参照の上限は ObjectResolver に従う。
+
+`PageAttributes` は継承した矩形を返し、MediaBox との交差は適用しない。
+`PageBoxes` との統合、`/Kids` と `/Parent` の相互一致、親の `/Type` の整合性は
+このAPIの検証範囲外とする。
 
 ### 4.2 継承メカニズムの落とし穴
 

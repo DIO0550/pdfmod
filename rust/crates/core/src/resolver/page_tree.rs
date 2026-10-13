@@ -80,7 +80,7 @@ impl Walk {
                 if reference == root {
                     return Err(PageTreeError::RootIsPage { node });
                 }
-                self.pages.push(Page::new(reference, object));
+                self.pages.push(Page::new(reference, root, object));
             }
             PageNodeKind::Pages => {
                 let kids = parsed.kids(resolver)?;
