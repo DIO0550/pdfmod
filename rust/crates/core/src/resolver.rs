@@ -2,6 +2,7 @@
 
 mod cache;
 mod catalog;
+mod document_info;
 pub mod error;
 mod page_attributes;
 mod page_tree;
