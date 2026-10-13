@@ -1,5 +1,6 @@
 //! 文書順のページ列と走査警告（docs/specs/03_document_architecture.md §3, §4.3）。
 
+pub mod attributes;
 pub mod error;
 pub mod index;
 pub mod warning;
@@ -14,12 +15,21 @@ use warning::PageTreeWarning;
 #[derive(Debug)]
 pub struct Page {
     reference: IndirectRef,
+    root: IndirectRef,
     object: Rc<PdfObject>,
 }
 
 impl Page {
-    pub(crate) fn new(reference: IndirectRef, object: Rc<PdfObject>) -> Self {
-        Self { reference, object }
+    pub(crate) fn new(reference: IndirectRef, root: IndirectRef, object: Rc<PdfObject>) -> Self {
+        Self {
+            reference,
+            root,
+            object,
+        }
+    }
+
+    pub(crate) fn root(&self) -> IndirectRef {
+        self.root
     }
 
     /// Kids に記録されていたページの間接参照。

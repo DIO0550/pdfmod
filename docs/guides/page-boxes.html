@@ -214,7 +214,7 @@ min_y = min(y₁, y₂)     max_y = max(y₁, y₂)
 <tr><td><code>media_box()</code></td><td>正規化済み MediaBox の借用</td></tr>
 <tr><td><code>crop_box() / bleed_box() / trim_box() / art_box()</code></td><td>既定値を適用した有効領域の Option&lt;Rectangle&gt;</td></tr>
 </tbody></table></div>
-<div class="grid"><div class="card"><h3>この実装で検証すること</h3><p>配列長・要素型・座標の有限性・幅と高さの有限性。不正な任意ボックスも黙って既定値には戻しません。</p><p>PageBoxError は対象キー、理由、呼び出し側が渡した位置を保持します。要素の index は0始まりで、ファイル中の位置そのものではありません。</p></div><div class="card"><h3>後続の処理が担当すること</h3><p>ページツリーの走査、MediaBox・CropBoxの継承、間接参照の解決、描画のクリッピング、Rotate・UserUnit の適用です。この変更ではまだ統合しません。</p></div></div>
+<div class="grid"><div class="card"><h3>この実装で検証すること</h3><p>配列長・要素型・座標の有限性・幅と高さの有限性。不正な任意ボックスも黙って既定値には戻しません。</p><p>PageBoxError は対象キー、理由、呼び出し側が渡した位置を保持します。要素の index は0始まりで、ファイル中の位置そのものではありません。</p></div><div class="card"><h3>上位処理との境界</h3><p>ページツリーの走査と4属性の継承・間接参照の解決は、別APIの <code>ObjectResolver::page_tree</code> / <code>page_attributes</code> が担当します。<a href="page-tree.html#inheritance">継承の解説</a>も参照してください。PageAttributes と PageBoxes の統合、描画のクリッピング、Rotate・UserUnit の適用は後続処理です。</p></div></div>
 <div class="note warning"><strong>数値表現の実装上の制限</strong>座標は f64 です。大きな整数は f64 の精度で丸めます。NaN・無限大を含む手動構築オブジェクトと、差分が無限大になる極端な座標はエラーです。これらはライブラリの型保証のための制約です。</div></section><footer><a href="#top">↑ 先頭に戻る</a></footer></div></main>
 <script>'use strict';
     const sections = [...document.querySelectorAll('.section')];
