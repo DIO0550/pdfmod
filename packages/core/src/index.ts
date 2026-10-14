@@ -62,7 +62,9 @@ export {
   ObjectStreamHeader,
 } from "./objects/index";
 export type {
+  AuthEvent,
   ContentStreamToken,
+  CryptFilterMethod,
   LexicalToken,
   ObjectId,
   PdfArray,
@@ -103,13 +105,26 @@ export type {
   XRefUsedEntry,
 } from "./pdf/index";
 export {
+  AesKeyMaterial,
+  AuthEvents,
   ByteOffset,
+  CryptFilter,
+  CryptFilterMethods,
+  CryptFilterSelector,
+  CryptFilters,
+  EncryptDictionary,
+  EncryptError,
   FreeObjectNumber,
   GenerationNumber,
   IndirectRef,
+  KeyLength,
+  KeyLengths,
   ObjectNumber,
   Operator,
   PdfVersion,
+  Permissions,
+  StandardAlgorithm,
+  StandardSecurityHandler,
   TokenType,
 } from "./pdf/index";
 export type { Brand } from "./utils/index";

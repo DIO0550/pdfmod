@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>暗号化辞書 — PDF仕様解説</title><style>
+    :root {
+      --ink: #182f3c;
+      --muted: #526b76;
+      --paper: #f5f7f5;
+      --line: #d7e2e1;
+      --teal: #067666;
+      --mint: #e6f4ef;
+      --blue: #265bb3;
+      --sky: #eaf1ff;
+      --amber: #956000;
+      --sand: #fff4db;
+      --red: #ae3b42;
+      --rose: #fff0ee;
+      --nav-width: 250px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; scroll-padding-top: 24px; }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font: 18px/1.85 -apple-system, BlinkMacSystemFont,
+        "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
+    }
+    a { color: var(--blue); overflow-wrap: anywhere; }
+    button { font: inherit; cursor: pointer; touch-action: manipulation; }
+    a:focus-visible, button:focus-visible, summary:focus-visible {
+      outline: 3px solid #dd8c1f;
+      outline-offset: 4px;
+    }
+    aside {
+      position: fixed;
+      inset: 0 auto 0 0;
+      width: var(--nav-width);
+      overflow: auto;
+      background: #102e39;
+      color: white;
+      padding: 30px 23px;
+    }
+    .brand { font-size: 13px; font-weight: 750; letter-spacing: .14em; color: #8dddd0; }
+    .nav-title { font-size: 23px; line-height: 1.6; margin: 25px 0; overflow-wrap: anywhere; }
+    nav a {
+      display: block;
+      color: #d1e0e3;
+      padding: 10px;
+      margin: 5px 0;
+      border-radius: 7px;
+      font-size: 14px;
+      line-height: 1.6;
+      text-decoration: none;
+    }
+    nav a:hover, nav a[aria-current] { background: #204952; color: white; }
+    nav span { color: #8dddd0; font-size: 11px; margin-right: 9px; }
+    main { margin-left: var(--nav-width); padding: 55px 48px 60px; }
+    .wrap { max-width: 980px; margin: auto; }
+    .hero { border-bottom: 1px solid var(--line); padding: 12px 0 35px; }
+    .eyebrow { font-size: 13px; color: var(--teal); letter-spacing: .12em; font-weight: 800; }
+    h1 { font-size: clamp(32px, 4vw, 50px); line-height: 1.4; margin: 15px 0 22px; }
+    h2 { font-size: 28px; line-height: 1.5; margin: 0; }
+    h3 { font-size: 21px; margin: 20px 0 12px; }
+    p { margin: 14px 0; }
+    .lead { font-size: 20px; color: var(--muted); }
+    .meta { font-size: 13px; color: var(--muted); }
+    .section { padding: 48px 0 8px; scroll-margin-top: 24px; }
+    .section-heading { display: flex; align-items: flex-start; gap: 17px; margin-bottom: 21px; }
+    .number { border-top: 3px solid var(--teal); color: var(--teal); font-weight: 800; font-size: 15px; min-width: 33px; line-height: 2.6; }
+    code { font: .88em/1.8 ui-monospace, SFMono-Regular, Consolas, monospace; background: #e9eeee; padding: 2px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+    pre { background: #142f3b; color: #eaf5f6; padding: 24px; border-radius: 12px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 15px; line-height: 1.85; }
+    pre code { font-size: inherit; background: none; padding: 0; color: inherit; }
+    .key { color: #89e0ce; }
+    .value { color: #ffd688; }
+    .comment { color: #a3bdc5; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .grid > * { min-width: 0; }
+    .card { border: 1px solid var(--line); background: white; border-radius: 13px; padding: 24px; margin: 22px 0; }
+    .card-label { font-size: 13px; color: var(--muted); font-weight: 750; letter-spacing: .07em; margin-bottom: 16px; }
+    .note { border-left: 4px solid var(--teal); border-radius: 0 9px 9px 0; padding: 17px 21px; background: var(--mint); font-size: 16px; margin: 22px 0; }
+    .note strong { display: block; color: var(--teal); }
+    .note.warning { border-color: #c28c27; background: var(--sand); }
+    .note.warning strong { color: var(--amber); }
+    .note.error { border-color: var(--red); background: var(--rose); }
+    .note.error strong { color: var(--red); }
+    .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; margin: 22px 0; }
+    table { border-collapse: collapse; width: 100%; background: white; font-size: 15px; line-height: 1.7; }
+    th, td { text-align: left; vertical-align: top; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+    th { background: #eaf0ef; font-size: 13px; }
+    tr:last-child td { border-bottom: 0; }
+    .flow { max-width: 700px; margin: 0 auto; }
+    .flow-box { padding: 18px; text-align: center; border: 1px solid var(--line); border-radius: 10px; background: #f7f9f8; overflow-wrap: anywhere; }
+    .flow-box strong { display: block; }
+    .flow-box.primary { border-color: var(--teal); background: var(--mint); }
+    .flow-box.secondary { border-color: #adc3ea; background: var(--sky); }
+    .flow-arrow { text-align: center; font-size: 14px; color: var(--muted); padding: 12px 0; }
+    .branches { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    .branches > div { min-width: 0; }
+    .flow-caption { font-size: 14px; color: var(--muted); margin-top: 17px; }
+    .steps { padding-left: 25px; }
+    .steps li { margin: 14px 0; padding-left: 7px; }
+    .steps p { font-size: 16px; color: var(--muted); margin: 5px 0; }
+    .example-controls { display: flex; gap: 9px; flex-wrap: wrap; }
+    .example-controls button { font-size: 14px; padding: 8px 15px; background: white; color: var(--ink); border: 1px solid var(--line); border-radius: 7px; }
+    .example-controls button[aria-pressed="true"] { background: var(--teal); color: white; border-color: var(--teal); }
+    [hidden] { display: none !important; }
+    details { background: white; border: 1px solid var(--line); border-radius: 9px; padding: 15px 20px; margin: 18px 0; }
+    summary { cursor: pointer; font-weight: 700; }
+    footer { border-top: 1px solid var(--line); margin-top: 45px; padding-top: 24px; font-size: 14px; color: var(--muted); }
+    footer li { margin: 9px 0; }
+    @media (max-width: 1000px) {
+      :root { --nav-width: 210px; }
+      main { padding: 38px 28px; }
+      aside { padding: 27px 17px; }
+    }
+    @media (max-width: 760px) {
+      body { font-size: 17px; }
+      aside { position: static; width: auto; padding: 17px 20px; }
+      .nav-title { display: none; }
+      nav { display: flex; gap: 6px; overflow-x: auto; padding: 8px 0 3px; }
+      nav a { white-space: nowrap; font-size: 12px; margin: 0; padding: 6px 9px; }
+      main { margin: 0; padding: 25px 20px 45px; }
+      h1 { font-size: 34px; }
+      h2 { font-size: 25px; }
+      .lead { font-size: 18px; }
+      .grid, .branches { grid-template-columns: 1fr; }
+      .card { padding: 18px; }
+      pre { font-size: 13px; padding: 18px; }
+      th, td { padding: 11px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+    }
+    @media print {
+      aside, .example-controls { display: none !important; }
+      main { margin: 0; padding: 0; }
+      body { background: white; font-size: 11pt; }
+      h1 { font-size: 28pt; }
+      h2 { font-size: 20pt; }
+      .section { padding-top: 24px; }
+      .card, pre, .note, .flow-box { break-inside: avoid; }
+      pre { background: #eef2f4; color: #182f3c; }
+      .key { color: var(--teal); }
+      .value { color: var(--amber); }
+      .comment { color: var(--muted); }
+      .table-wrap { overflow: visible; }
+      [data-example-panel][hidden] { display: block !important; }
+      a { color: inherit; }
+    }
+
+nav a { font-size: 16px; } table { font-size: 17px; } th { font-size: 15px; }
+@media (max-width: 760px) { nav { flex-wrap: wrap; overflow: visible; } nav a { font-size: 14px; } }
+</style></head><body>
+<aside aria-label="目次"><div class="brand">PDFMOD / FIELD NOTES</div><div class="nav-title">暗号化辞書</div><nav>
+<a href="#overview"><span>01</span>暗号化の起点</a><a href="#syntax"><span>02</span>辞書を読む</a>
+<a href="#algorithms"><span>03</span>有効な6組</a><a href="#filters"><span>04</span>crypt filter と単位</a>
+<a href="#permissions"><span>05</span>権限のビット表現</a><a href="#examples"><span>06</span>正常・未対応・不正</a>
+<a href="#implementation"><span>07</span>解析の境界</a></nav></aside>
+<main id="top"><div class="wrap"><header class="hero"><div class="eyebrow">PDF INTERNALS / ENCRYPTION DICTIONARY</div>
+<h1>暗号化辞書を読む</h1><p class="lead">PDFの <code>/Encrypt</code> は、暗号化の方式と鍵の材料を記述します。アルゴリズムの版、crypt filter、権限を、解釈できる型へ変換する仕組みを見ていきます。</p></header>
+<section class="section" id="overview"><div class="section-heading"><span class="number">01</span><h2>暗号化の起点</h2></div>
+<p>トレイラの <code>/Encrypt</code> が暗号化辞書を指します。直接辞書でも間接参照でも書けます。暗号化辞書自体は復号前に読む必要があるため、オブジェクトストリームには格納できません。</p>
+<div class="grid"><div class="card"><h3>セキュリティハンドラ</h3><p>Security handler はパスワードなどからアクセスを認証する方式です。<code>/Filter /Standard</code> はパスワードベースの標準ハンドラを表します。</p></div>
+<div class="card"><h3>暗号化される値</h3><p>対象は文字列とストリームです。辞書のキー名、名前オブジェクト、数値は暗号化されません。暗号化文書のトレイラには鍵導出に使用する <code>/ID</code> が必要です。</p></div></div>
+<div class="note"><strong>今回扱うのは辞書の構造</strong>辞書から方式と鍵の材料を読み取ります。文字列やストリームの復号、鍵導出、パスワード認証はこの型変換に含まれません。</div></section>
+<section class="section" id="syntax"><div class="section-heading"><span class="number">02</span><h2>辞書を読む</h2></div>
+<p>以下は説明用の抜粋です。暗号鍵の材料は短縮しており、完全なPDFや復号可能な鍵の例ではありません。</p>
+<pre><code>trailer
+&lt;&lt; /Root 1 0 R /Size 20 /Encrypt 8 0 R
+   /ID [&lt;00112233&gt; &lt;00112233&gt;] &gt;&gt;
+
+8 0 obj
+&lt;&lt; /Filter /Standard /V 4 /R 4 /Length 128
+   /O &lt;00FF&gt; /U (user) /P -4 /EncryptMetadata false
+   /CF &lt;&lt; /StdCF &lt;&lt; /CFM /AESV2 /Length 16 &gt;&gt; &gt;&gt;
+   /StmF /StdCF /StrF /StdCF &gt;&gt;
+endobj</code></pre>
+<p><code>8 0 R</code> はオブジェクト番号8・世代番号0への間接参照です。<code>&lt;&lt; &gt;&gt;</code> は辞書、<code>&lt;00FF&gt;</code> は16進形式のバイト列、<code>(user)</code> はリテラル文字列です。<code>/O</code> と <code>/U</code> はテキストとして復号せず、元のバイト列を保持します。</p>
+<div class="table-wrap"><table><thead><tr><th>キー</th><th>意味</th><th>保持・検証</th></tr></thead><tbody>
+<tr><td>/Filter /V /R</td><td>ハンドラ名・アルゴリズム版・リビジョン</td><td>Standard では必須。版の組を型へ変換</td></tr>
+<tr><td>/Length</td><td>ファイル暗号鍵のビット数</td><td>V2・V4 は40..128の8の倍数。省略時40</td></tr>
+<tr><td>/O /U</td><td>所有者・利用者パスワード由来の値</td><td>必須のバイト列。長さは検証しない</td></tr>
+<tr><td>/OE /UE /Perms</td><td>暗号化ファイル鍵と権限のコピー</td><td>R5・R6で必須のバイト列</td></tr>
+<tr><td>/EncryptMetadata</td><td>メタデータを暗号化するか</td><td>省略時 true。指定時は真偽値が必要</td></tr>
+</tbody></table></div></section>
+<section class="section" id="algorithms"><div class="section-heading"><span class="number">03</span><h2>/V × /R の有効な6組</h2></div>
+<p>版とリビジョンを独立した任意の数値にすると、仕様にない組を作れてしまいます。<code>StandardAlgorithm</code> は有効な組だけを判別可能な union として表します。</p>
+<div class="table-wrap"><table><thead><tr><th>型の種別</th><th>/V</th><th>/R</th><th>ファイル鍵長と付随する値</th></tr></thead><tbody>
+<tr><td>V1R2</td><td>1</td><td>2</td><td>RC4・40ビット固定</td></tr>
+<tr><td>V1R3</td><td>1</td><td>3</td><td>RC4・40ビット固定</td></tr>
+<tr><td>V2R3</td><td>2</td><td>3</td><td>RC4・/Length による可変長</td></tr>
+<tr><td>V4R4</td><td>4</td><td>4</td><td>/Length と crypt filter</td></tr>
+<tr><td>V5R5</td><td>5</td><td>5</td><td>AES-256・crypt filter と /OE /UE /Perms</td></tr>
+<tr><td>V5R6</td><td>5</td><td>6</td><td>AES-256・crypt filter と /OE /UE /Perms</td></tr>
+</tbody></table></div>
+<p>V1とV5の鍵長は版から確定するため、直下の <code>/Length</code> を使用しません。V5R5はISO 32000-2で非推奨のリビジョンですが、辞書の構造は読み取れます。</p>
+<div class="note warning"><strong>未対応は構造不正と区別する</strong>V0は未文書化、V3は非公開の方式です。表にない組や <code>/Adobe.PubSec</code> などのハンドラは <code>Unsupported</code> として、元の辞書を欠損なく保持します。</div></section>
+<section class="section" id="filters"><div class="section-heading"><span class="number">04</span><h2>crypt filter と鍵長の単位</h2></div>
+<p>Crypt filter は暗号方式の名前付き設定です。<code>/CF</code> が名前と設定の対応表になり、<code>/StmF</code> がストリーム、<code>/StrF</code> が文字列、<code>/EFF</code> が埋め込みファイルへの割り当てを表します。</p>
+<div class="grid"><div class="card"><h3>暗号方式 /CFM</h3><p><code>/None</code> は暗号化なし、<code>/V2</code> はRC4、<code>/AESV2</code> はAES-128、<code>/AESV3</code> はAES-256です。省略時は <code>/None</code>。未知の方式はエラーです。</p></div>
+<div class="card"><h3>組み込み /Identity</h3><p>暗号化しない指定で、<code>/CF</code> 内の定義は不要です。StmF・StrFの省略時もIdentityになります。EFFの省略は <code>None</code> として保持します。</p></div></div>
+<p><code>/Identity</code> 以外のセレクタは <code>/CF</code> に定義されていなければなりません。pdfmod はV4・V5で <code>/CF</code> を必須にする実装上の制限を持ち、空辞書は受理します。</p>
+<div class="table-wrap"><table><thead><tr><th>/CF 内の /Length</th><th>入力の解釈</th><th>正規化結果</th></tr></thead><tbody>
+<tr><td>5 / 16</td><td>バイト表記</td><td>40 / 128 ビット</td></tr>
+<tr><td>40 / 128</td><td>ビット表記</td><td>40 / 128 ビット</td></tr>
+<tr><td>17 / 44 / 256</td><td>受理する鍵長に該当しない</td><td>無視して None</td></tr>
+<tr><td>名前・実数・間接参照</td><td>整数の直接値ではない</td><td>解決せず None</td></tr>
+</tbody></table></div>
+<div class="note warning"><strong>直下の /Length と /CF 内は別の規則</strong>ISOは /CF 内の鍵長をバイト単位としますが、ビット表記のPDFも存在します。RustとTypeScriptは5..16を8倍し、それ以外をビット数として扱い、40..128の8の倍数だけを保持します。これはpdfmodの正規化規則です。AESV3自体は表現できますが、/CF の32・256はこの規則では保持しません。V5のファイル鍵長は256ビット固定です。</div>
+<p><code>/AuthEvent</code> は認証の時点です。<code>/DocOpen</code> は文書を開くとき、<code>/EFOpen</code> は埋め込みファイルを開くときです。pdfmodは省略・未知名・型不一致をDocOpenへ戻します。</p></section>
+<section class="section" id="permissions"><div class="section-heading"><span class="number">05</span><h2>/P のビット表現</h2></div>
+<p>Permissions は印刷・変更・抽出などのアクセス権限をビットで表します。例えば第3ビットは印刷、第5ビットは抽出、第12ビットは高解像度の印刷です。ビットが1なら許可を表します。</p>
+<div class="card"><h3>4294967292 と -4 は同じ32ビット</h3><p>仕様の符号付き表記は <code>/P -4</code> ですが、符号なし表記の <code>/P 4294967292</code> を書くPDFもあります。どちらも <code>permissions.bits = -4</code> に正規化します。</p><p>受理範囲は <code>-2147483648..4294967295</code> の整数です。範囲外は <code>INVALID_PERMISSIONS</code> になります。権限を実際に強制する処理は今回の対象外です。</p></div></section>
+<section class="section" id="examples"><div class="section-heading"><span class="number">06</span><h2>正常・未対応・不正を比べる</h2></div>
+<p>以下は暗号化辞書の抜粋です。短い /O・/U は辞書解析の例で、鍵導出に必要な長さは表していません。</p>
+<div class="card"><h3>正常：最小のV1R2</h3><pre><code>&lt;&lt; /Filter /Standard /V 1 /R 2 /O () /U () /P -4 &gt;&gt;</code></pre><p>Standard。40ビット固定、EncryptMetadataはtrue。空の鍵材料も長さ検証なしで保持します。</p></div>
+<div class="card"><h3>未対応：有効な型へ変換しない組</h3><pre><code>&lt;&lt; /Filter /Standard /V 1 /R 6 /Custom (keep) &gt;&gt;</code></pre><p>Unsupported。後続の必須キーは要求せず、Customを含めて元の辞書を保持します。</p></div>
+<div class="card"><h3>未対応：公開鍵ハンドラ</h3><pre><code>&lt;&lt; /Filter /Adobe.PubSec /Recipients [(opaque)] &gt;&gt;</code></pre><p>Unsupported。V・Rやハンドラ固有のキーを解釈しません。</p></div>
+<div class="card"><h3>不正：必須キーの間接参照</h3><pre><code>&lt;&lt; /Filter /Standard /V 2 /R 3 /Length 5 0 R
+   /O () /U () /P -4 &gt;&gt;</code></pre><p>INVALID_KEY_TYPE、キーは /Length。辞書内部の参照は解決しません。エラーには呼び出し側が渡した辞書のバイト位置を付けます。</p></div></section>
+<section class="section" id="implementation"><div class="section-heading"><span class="number">07</span><h2>解析の境界と対応範囲</h2></div>
+<ol class="steps"><li>解決済みの暗号化辞書を <code>EncryptDictionary.fromDictionary(dictionary, offset)</code> へ渡す。</li>
+<li>Filterを検証する。未知のハンドラならUnsupportedとして保持する。</li><li>StandardではV・Rを必須の整数として読む。対応外の組ならUnsupportedとして保持する。</li>
+<li>対応する組に必要な鍵長・crypt filter・追加鍵を読む。</li><li>共通のO・U・P・EncryptMetadataを読み、Standardを返す。</li></ol>
+<div class="note error"><strong>位置は辞書単位</strong>エラーの <code>offset</code> は渡された辞書の開始位置です。/CF/StdCF/CFMのようなキーのパスは報告しますが、個々の値の物理位置は取得しません。</div>
+<p>入力辞書からキーを削除したりバイト列を書き換えたりしません。必須キー欠落、型不一致、不正なファイル鍵長、未定義セレクタはResultのエラーで返します。</p>
+<p>TypeScriptの <code>PdfDocument.load</code> は引き続き暗号化PDFを <code>ENCRYPTED_PDF_UNSUPPORTED</code> として拒否します。この型化は復号機能の基盤であり、ドキュメント読込の復号対応は後続の作業です。</p></section>
+<footer><a href="#top">最上部へ</a> · <a href="README.md">解説一覧</a></footer></div></main>
+</body></html>
