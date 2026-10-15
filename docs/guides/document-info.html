@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ドキュメント情報辞書 — PDF仕様解説</title>
+  <style>
+    :root {
+      --ink: #182f3c;
+      --muted: #526b76;
+      --paper: #f5f7f5;
+      --line: #d7e2e1;
+      --teal: #067666;
+      --mint: #e6f4ef;
+      --blue: #265bb3;
+      --sky: #eaf1ff;
+      --amber: #956000;
+      --sand: #fff4db;
+      --red: #ae3b42;
+      --rose: #fff0ee;
+      --nav-width: 250px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; scroll-padding-top: 24px; }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font: 18px/1.85 -apple-system, BlinkMacSystemFont,
+        "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
+    }
+    a { color: var(--blue); overflow-wrap: anywhere; }
+    button { font: inherit; cursor: pointer; touch-action: manipulation; }
+    a:focus-visible, button:focus-visible, summary:focus-visible {
+      outline: 3px solid #dd8c1f;
+      outline-offset: 4px;
+    }
+    aside {
+      position: fixed;
+      inset: 0 auto 0 0;
+      width: var(--nav-width);
+      overflow: auto;
+      background: #102e39;
+      color: white;
+      padding: 30px 23px;
+    }
+    .brand { font-size: 13px; font-weight: 750; letter-spacing: .14em; color: #8dddd0; }
+    .nav-title { font-size: 23px; line-height: 1.6; margin: 25px 0; overflow-wrap: anywhere; }
+    nav a {
+      display: block;
+      color: #d1e0e3;
+      padding: 10px;
+      margin: 5px 0;
+      border-radius: 7px;
+      font-size: 14px;
+      line-height: 1.6;
+      text-decoration: none;
+    }
+    nav a:hover, nav a[aria-current] { background: #204952; color: white; }
+    nav span { color: #8dddd0; font-size: 11px; margin-right: 9px; }
+    main { margin-left: var(--nav-width); padding: 55px 48px 60px; }
+    .wrap { max-width: 980px; margin: auto; }
+    .hero { border-bottom: 1px solid var(--line); padding: 12px 0 35px; }
+    .eyebrow { font-size: 13px; color: var(--teal); letter-spacing: .12em; font-weight: 800; }
+    h1 { font-size: clamp(32px, 4vw, 50px); line-height: 1.4; margin: 15px 0 22px; }
+    h2 { font-size: 28px; line-height: 1.5; margin: 0; }
+    h3 { font-size: 21px; margin: 20px 0 12px; }
+    p { margin: 14px 0; }
+    .lead { font-size: 20px; color: var(--muted); }
+    .meta { font-size: 13px; color: var(--muted); }
+    .section { padding: 48px 0 8px; scroll-margin-top: 24px; }
+    .section-heading { display: flex; align-items: flex-start; gap: 17px; margin-bottom: 21px; }
+    .number { border-top: 3px solid var(--teal); color: var(--teal); font-weight: 800; font-size: 15px; min-width: 33px; line-height: 2.6; }
+    code { font: .88em/1.8 ui-monospace, SFMono-Regular, Consolas, monospace; background: #e9eeee; padding: 2px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+    pre { background: #142f3b; color: #eaf5f6; padding: 24px; border-radius: 12px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 15px; line-height: 1.85; }
+    pre code { font-size: inherit; background: none; padding: 0; color: inherit; }
+    .key { color: #89e0ce; }
+    .value { color: #ffd688; }
+    .comment { color: #a3bdc5; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .grid > * { min-width: 0; }
+    .card { border: 1px solid var(--line); background: white; border-radius: 13px; padding: 24px; margin: 22px 0; }
+    .card-label { font-size: 13px; color: var(--muted); font-weight: 750; letter-spacing: .07em; margin-bottom: 16px; }
+    .note { border-left: 4px solid var(--teal); border-radius: 0 9px 9px 0; padding: 17px 21px; background: var(--mint); font-size: 16px; margin: 22px 0; }
+    .note strong { display: block; color: var(--teal); }
+    .note.warning { border-color: #c28c27; background: var(--sand); }
+    .note.warning strong { color: var(--amber); }
+    .note.error { border-color: var(--red); background: var(--rose); }
+    .note.error strong { color: var(--red); }
+    .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; margin: 22px 0; }
+    table { border-collapse: collapse; width: 100%; background: white; font-size: 15px; line-height: 1.7; }
+    th, td { text-align: left; vertical-align: top; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+    th { background: #eaf0ef; font-size: 13px; }
+    tr:last-child td { border-bottom: 0; }
+    .flow { max-width: 700px; margin: 0 auto; }
+    .flow-box { padding: 18px; text-align: center; border: 1px solid var(--line); border-radius: 10px; background: #f7f9f8; overflow-wrap: anywhere; }
+    .flow-box strong { display: block; }
+    .flow-box.primary { border-color: var(--teal); background: var(--mint); }
+    .flow-box.secondary { border-color: #adc3ea; background: var(--sky); }
+    .flow-arrow { text-align: center; font-size: 14px; color: var(--muted); padding: 12px 0; }
+    .branches { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    .branches > div { min-width: 0; }
+    .flow-caption { font-size: 14px; color: var(--muted); margin-top: 17px; }
+    .steps { padding-left: 25px; }
+    .steps li { margin: 14px 0; padding-left: 7px; }
+    .steps p { font-size: 16px; color: var(--muted); margin: 5px 0; }
+    .example-controls { display: flex; gap: 9px; flex-wrap: wrap; }
+    .example-controls button { font-size: 14px; padding: 8px 15px; background: white; color: var(--ink); border: 1px solid var(--line); border-radius: 7px; }
+    .example-controls button[aria-pressed="true"] { background: var(--teal); color: white; border-color: var(--teal); }
+    [hidden] { display: none !important; }
+    details { background: white; border: 1px solid var(--line); border-radius: 9px; padding: 15px 20px; margin: 18px 0; }
+    summary { cursor: pointer; font-weight: 700; }
+    footer { border-top: 1px solid var(--line); margin-top: 45px; padding-top: 24px; font-size: 14px; color: var(--muted); }
+    footer li { margin: 9px 0; }
+    @media (max-width: 1000px) {
+      :root { --nav-width: 210px; }
+      main { padding: 38px 28px; }
+      aside { padding: 27px 17px; }
+    }
+    @media (max-width: 760px) {
+      body { font-size: 17px; }
+      aside { position: static; width: auto; padding: 17px 20px; }
+      .nav-title { display: none; }
+      nav { display: flex; gap: 6px; overflow-x: auto; padding: 8px 0 3px; }
+      nav a { white-space: nowrap; font-size: 12px; margin: 0; padding: 6px 9px; }
+      main { margin: 0; padding: 25px 20px 45px; }
+      h1 { font-size: 34px; }
+      h2 { font-size: 25px; }
+      .lead { font-size: 18px; }
+      .grid, .branches { grid-template-columns: 1fr; }
+      .card { padding: 18px; }
+      pre { font-size: 13px; padding: 18px; }
+      th, td { padding: 11px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+    }
+    @media print {
+      aside, .example-controls { display: none !important; }
+      main { margin: 0; padding: 0; }
+      body { background: white; font-size: 11pt; }
+      h1 { font-size: 28pt; }
+      h2 { font-size: 20pt; }
+      .section { padding-top: 24px; }
+      .card, pre, .note, .flow-box { break-inside: avoid; }
+      pre { background: #eef2f4; color: #182f3c; }
+      .key { color: var(--teal); }
+      .value { color: var(--amber); }
+      .comment { color: var(--muted); }
+      .table-wrap { overflow: visible; }
+      [data-example-panel][hidden] { display: block !important; }
+      a { color: inherit; }
+    }
+
+    nav a { font-size: 16px; }
+    table { font-size: 17px; }
+    th { font-size: 15px; }
+    @media (max-width: 760px) { nav { flex-wrap: wrap; overflow: visible; } nav a { font-size: 14px; } }
+    @media screen and (max-width: 760px) { table { min-width: 640px; } }
+
+  </style>
+</head>
+<body>
+
+  <aside aria-label="目次">
+    <div class="brand">PDFMOD / FIELD NOTES</div>
+    <div class="nav-title">ドキュメント情報辞書</div>
+    <nav>
+      <a href="#overview"><span>01</span>役割と全体像</a>
+      <a href="#syntax"><span>02</span>PDF記述を読む</a>
+      <a href="#rules"><span>03</span>項目と型の規則</a>
+      <a href="#flow"><span>04</span>失敗を分けて扱う</a>
+      <a href="#examples"><span>05</span>具体例を比較する</a>
+      <a href="#implementation"><span>06</span>APIと対応範囲</a>
+    </nav>
+  </aside>
+  <main id="top"><div class="wrap">
+    <header class="hero">
+      <div class="eyebrow">PDF INTERNALS / DOCUMENT INFORMATION</div>
+      <h1>ドキュメント情報辞書<br><code>/Info</code>を読む</h1>
+      <p class="lead">PDFのタイトル・作成者・作成日時は、文書の末尾から辿れる辞書に入っています。
+      情報辞書の位置、文字列の読み方、そして一部の値が壊れていても他の項目を取得する仕組みを見ていきます。</p>
+    </header>
+
+    <section class="section" id="overview">
+      <div class="section-heading"><span class="number">01</span><h2>文書についての情報を持つ辞書</h2></div>
+      <p>ドキュメント情報辞書（Document Information Dictionary）は、タイトルや作成アプリケーションなどの付加情報を持つ辞書です。
+      トレイラ（Trailer）は文書の入口を示す辞書で、その<code>/Info</code>が情報辞書への間接参照になります。</p>
+      <div class="grid">
+        <div class="card"><h3><code>/Root</code>から文書構造へ</h3><p>カタログとページツリーを辿って、ページの構造を読み取ります。詳しくは<a href="document-catalog.html">カタログの解説</a>を参照してください。</p></div>
+        <div class="card"><h3><code>/Info</code>から付加情報へ</h3><p>タイトルや作成者などを取得します。Infoも各項目も省略でき、ページの解析を要求せずに情報辞書を取得できます。</p></div>
+      </div>
+      <div class="note"><strong>CreatorとProducerの違い</strong>Creatorは元の文書を作ったアプリ、ProducerはPDFへ変換したアプリです。同じ値になる場合もあります。</div>
+    </section>
+
+    <section class="section" id="syntax">
+      <div class="section-heading"><span class="number">02</span><h2>トレイラから参照先を読む</h2></div>
+      <p>次の記述はPDFの抜粋です。ヘッダ・xref・startxrefなどは省略しています。</p>
+      <pre><code><span class="comment">% トレイラ内のInfoが5番のオブジェクトを指す</span>
+trailer
+&lt;&lt; /Size 6 /Root 1 0 R /Info 5 0 R &gt;&gt;
+
+5 0 obj
+&lt;&lt; /Title (Sample PDF)
+   /Author &lt;FEFF65E5672C&gt;
+   /Subject (PDF Specification)
+   /Keywords (pdf, metadata)
+   /Creator (MyApp)
+   /Producer (MyPDFLib 1.0)
+   /CreationDate (D:20260314120000+09'00')
+   /ModDate (D:20261013130000Z)
+   /Trapped /False
+   /VendorCode (ABC-123)
+&gt;&gt;
+endobj</code></pre>
+      <p><code>5 0 R</code>はオブジェクト番号5・世代番号0への参照です。<code>&lt;&lt; ... &gt;&gt;</code>が辞書、
+      <code>(...)</code>がリテラル文字列、<code>&lt;...&gt;</code>が16進文字列を表します。
+      AuthorはUTF-16BEのBOM付きバイト列で、復元すると「日本」になります。</p>
+      <div class="note warning"><strong>名前と真偽値は別の型</strong><code>/Trapped /False</code>の値は名前オブジェクトです。
+      <code>/Trapped false</code>は真偽値なので型エラーになります。</div>
+    </section>
+
+    <section class="section" id="rules">
+      <div class="section-heading"><span class="number">03</span><h2>項目ごとに読む型が決まる</h2></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>キー</th><th>意味・型</th><th>読み取り</th></tr></thead>
+        <tbody>
+          <tr><td>Title / Author / Subject / Keywords</td><td>タイトル・作成者・主題・キーワード。テキスト文字列。</td><td>PDFDocEncoding、BOM付きUTF-16BE・UTF-8を既存デコーダで復元。</td></tr>
+          <tr><td>Creator / Producer</td><td>文書作成・PDF変換のアプリ名。テキスト文字列。</td><td>上記と同じテキスト復元。</td></tr>
+          <tr><td>CreationDate / ModDate</td><td>作成日時・更新日時。日付文字列。</td><td>既存の日付パーサに生のバイト列を渡す。構文と日付の範囲を検証。</td></tr>
+          <tr><td>Trapped</td><td>印刷時の色版のずれを補うトラッピング処理の状態。名前。</td><td>True / False / Unknownの3値。省略はUnknown。未知の名前もUnknownに回復。</td></tr>
+          <tr><td>独自のキー</td><td>作成アプリなどが付加する情報。</td><td>解釈・参照解決せず元の辞書に保持。</td></tr>
+        </tbody>
+      </table></div>
+      <p>日付例の<code>+09'00'</code>はUTCより9時間進む時差、<code>Z</code>はUTCを表します。
+      月以下の省略や時差の不在は<a href="date-format.html">日付パーサ</a>の表現を保ち、明示されていない成分を埋めません。</p>
+      <div class="note warning"><strong>仕様の型とライブラリの回復方針</strong>テキストの不正な符号列はStrictで拒否します。未知のTrapped名はUnknownへ回復しますが、
+      名前以外の型や参照解決の失敗はエラーを保持します。文字列の置換や日付の自動修正は行いません。</div>
+      <p>エントリの<code>null</code>は不在と同じ扱いです。一方、空の文字列<code>()</code>は存在する空テキストで、欠落とは区別します。
+      テキスト符号化の詳細は<a href="text-strings.html">テキスト文字列の解説</a>で確認できます。</p>
+    </section>
+
+    <section class="section" id="flow">
+      <div class="section-heading"><span class="number">04</span><h2>辞書全体と項目の失敗を分ける</h2></div>
+      <p>以下は取得処理の分岐です。情報辞書に到達できない失敗と、到達後の項目の失敗を区別します。</p>
+      <figure class="card">
+        <div class="card-label">INFOの取得から項目ごとの結果へ</div>
+        <div class="flow">
+          <div class="flow-box secondary"><strong>トレイラのInfo</strong>不在・Nullなら空のDocumentInfo</div>
+          <div class="flow-arrow">↓ 間接参照を解決</div>
+          <div class="branches">
+            <div><div class="flow-box"><strong>辞書取得に失敗</strong>解決不能・辞書以外の値<br>DocumentInfoError</div></div>
+            <div><div class="flow-box primary"><strong>情報辞書を取得</strong>既知の項目を個別に読む</div></div>
+          </div>
+          <div class="flow-arrow">↓ 辞書を取得できた場合</div>
+          <div class="flow-box"><strong>項目ごとの3状態</strong>Ok(Some(値))：成功<br>Ok(None)：不在<br>Err(InfoValueError)：その項目の失敗</div>
+        </div>
+        <figcaption class="flow-caption">Trappedは不在時もUnknownという値を返します。未知・解放済み参照の解決結果はPDFオブジェクト層のNullとなり、不在として扱います。</figcaption>
+      </figure>
+      <ol class="steps">
+        <li><strong>Infoへの参照を解決する。</strong><p>辞書以外の値や解決不能なら、参照元トレイラの実ファイル位置を付けて返します。トレイラを持たないresolverではヘッダ位置付きのエラーです。</p></li>
+        <li><strong>既知の9項目を個別に読む。</strong><p>項目の間接参照も解決します。1項目が失敗しても他の項目の読み取りを続けます。</p></li>
+        <li><strong>解析結果と元の辞書を保持する。</strong><p>元の辞書をresolverと共有するので、未知のキーや壊れた文字列の元バイト列も取得できます。</p></li>
+      </ol>
+    </section>
+
+    <section class="section" id="examples">
+      <div class="section-heading"><span class="number">05</span><h2>正常・省略・不正を比較する</h2></div>
+      <p>次の辞書は説明用の抜粋です。各結果はRust実装のテストで確認する挙動に対応しています。</p>
+      <article class="card"><h3>正常な情報辞書</h3>
+        <pre><code>&lt;&lt; /Title (Annual Report)
+   /CreationDate (D:20261013)
+   /Trapped /True &gt;&gt;</code></pre>
+        <div class="note"><strong>値を型付きで取得</strong>Titleは「Annual Report」、CreationDateは2026年10月13日、TrappedはTrue。日付の時刻と時差は不在のままです。</div>
+      </article>
+      <article class="card"><h3>一部欠落・未知の名前</h3>
+        <pre><code>&lt;&lt; /Title () /Author null
+   /Trapped /Future /Custom 7 0 R &gt;&gt;</code></pre>
+        <div class="note warning"><strong>空テキスト・不在・回復を区別</strong>Titleは存在する空文字列、Authorは不在、TrappedはUnknown。
+        Customの参照はそのまま保持し、参照先が壊れていても読み込みません。Infoそのものがなければ空の結果です。</div>
+      </article>
+      <article class="card"><h3>一部の値が壊れた辞書</h3>
+        <pre><code>&lt;&lt; /Title (intact)
+   /Author &lt;FEFFD800&gt;
+   /CreationDate (D:20260230)
+   /ModDate (D:20261013)
+   /Trapped true &gt;&gt;</code></pre>
+        <div class="note error"><strong>3項目の失敗を保持し、正常値を取得</strong>Authorは孤立した上位サロゲート、CreationDateは存在しない2月30日、Trappedは名前以外の型です。
+        TitleとModDateは正常に取得できます。Authorのエラー位置2はBOMを含む文字列内のバイト位置で、PDFファイル位置ではありません。</div>
+      </article>
+    </section>
+
+    <section class="section" id="implementation">
+      <div class="section-heading"><span class="number">06</span><h2>取得APIと保持される結果</h2></div>
+      <p><code>ObjectResolver::document_info()</code>は<code>Result&lt;DocumentInfo, DocumentInfoError&gt;</code>を返します。
+      辞書を取得した後は、必要な項目のアクセサで成功・不在・エラーを分岐します。</p>
+      <pre><code>let info = resolver.document_info()?;
+match info.title() {
+    Ok(Some(title)) =&gt; println!("{}", title.as_str()),
+    Ok(None) =&gt; println!("タイトルはありません"),
+    Err(error) =&gt; println!("タイトルを読めません: {error:?}"),
+}
+// Titleが失敗していても、Authorの結果は個別に取り出せる。
+let author = info.author();</code></pre>
+      <div class="table-wrap"><table>
+        <thead><tr><th>API</th><th>返す内容</th></tr></thead>
+        <tbody>
+          <tr><td><code>title() / author() / subject() / keywords() / creator() / producer()</code></td><td>Result&lt;Option&lt;&amp;PdfTextString&gt;, &amp;InfoValueError&gt;</td></tr>
+          <tr><td><code>creation_date() / mod_date()</code></td><td>Result&lt;Option&lt;&amp;PdfDate&gt;, &amp;InfoValueError&gt;</td></tr>
+          <tr><td><code>trapped()</code></td><td>Result&lt;Trapped, &amp;InfoValueError&gt;。不在・未知の名前はUnknown。</td></tr>
+          <tr><td><code>entry(key)</code></td><td>既知・未知の元エントリ。参照や元のバイト列も変更しない。</td></tr>
+          <tr><td><code>object()</code></td><td>元の辞書への借用。不在・NullならNone。</td></tr>
+        </tbody>
+      </table></div>
+      <div class="grid">
+        <div class="card"><h3>対応する範囲</h3><p>9項目の解析、個別の失敗保持、項目の間接参照、オブジェクトストリーム内の情報辞書、未知キーの保持。</p></div>
+        <div class="card"><h3>別の処理になるもの</h3><p>情報辞書の編集・書き戻し、XMPメタデータの解析、暗号化文書の復号。現状のresolverは暗号化文書を開く際に拒否します。</p></div>
+      </div>
+      <div class="note"><strong>情報の一部が壊れていても使える</strong>情報辞書の取得成功と、すべての項目の解析成功は別です。アクセサのResultを項目ごとに確認できます。</div>
+    </section>
+    <footer><a href="#top">↑ 先頭に戻る</a></footer>
+  </div></main>
+</body>
+</html>
