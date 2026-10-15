@@ -30,7 +30,11 @@ impl PdfFixture {
             .extend_from_slice(format!("{number} {generation} obj\n{body}\nendobj\n").as_bytes());
         offset
     }
-    fn finish(mut self, extra: &str) -> Vec<u8> {
+    fn finish(self, extra: &str) -> Vec<u8> {
+        self.finish_with_trailer(extra, "")
+    }
+
+    fn finish_with_trailer(mut self, extra: &str, trailer_entries: &str) -> Vec<u8> {
         let offset = self.data.len();
         self.data.extend_from_slice(b"xref\n");
         for (number, position, generation) in &self.entries {
@@ -39,7 +43,7 @@ impl PdfFixture {
             );
         }
         self.data.extend_from_slice(
-            format!("{extra}trailer\n<< /Size 100 /Root 1 0 R >>\nstartxref\n{offset}\n%%EOF\n")
+            format!("{extra}trailer\n<< /Size 100 /Root 1 0 R {trailer_entries} >>\nstartxref\n{offset}\n%%EOF\n")
                 .as_bytes(),
         );
         self.data
@@ -53,5 +57,6 @@ mod caching;
 mod recovery;
 
 mod catalog;
+mod document_info;
 mod page_attributes;
 mod page_tree;
