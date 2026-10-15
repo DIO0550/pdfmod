@@ -11,6 +11,8 @@
 //!   エラーに「実際に来た型」を載せる用途も、文字列ラベルではなくデータを持たない判別 enum
 //!   （`ObjectKind` / `TokenKind`）で表す。網羅 match が書け、実在しないラベルを混入させられない。
 //!
+//! [`PdfDocument`] は借用バイト列から文書を開き、[`PdfPage`] の属性を必要時に解決する入口。
+//! `catalog` / `page_tree` / `document_info` は文書構造、`resolver` は間接参照の遅延解決を提供する。
 //! byte_offset / encrypt / error / file / filter / lexer / object / parser / xref の各モジュールは実装済み。
 //! `encrypt` は暗号化辞書（`/Encrypt`）の型表現を提供する（復号処理は未実装）。
 //! `file` はヘッダ解析と startxref の末尾スキャンを提供する。
@@ -18,12 +20,13 @@
 //! 他のフィルタは後続 PR で追加する。
 //! `xref` は xref エントリとテーブルの表現に加え、従来型 xref テーブルと相互参照ストリームの解析、
 //! トレイラの解析を提供する。
-//! `/Prev` チェーン走査は後続 PR で追加する。
+//! `/Prev` チェーン走査・オブジェクトストリーム内の参照解決にも対応する。
 
 pub(crate) mod binary;
 pub mod byte_offset;
 pub mod catalog;
 pub mod date;
+pub mod document;
 pub mod document_info;
 pub mod encrypt;
 pub mod error;
@@ -41,3 +44,6 @@ pub mod xref;
 
 /// 間接オブジェクトの遅延解決。
 pub mod resolver;
+
+pub use document::{DocumentError, PdfDocument, PdfPage};
+pub use page_tree::index::{PageIndex, PageNumber};

@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>文書からページへ — PDF仕様解説</title><style>
+    :root {
+      --ink: #182f3c;
+      --muted: #526b76;
+      --paper: #f5f7f5;
+      --line: #d7e2e1;
+      --teal: #067666;
+      --mint: #e6f4ef;
+      --blue: #265bb3;
+      --sky: #eaf1ff;
+      --amber: #956000;
+      --sand: #fff4db;
+      --red: #ae3b42;
+      --rose: #fff0ee;
+      --nav-width: 250px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; scroll-padding-top: 24px; }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font: 18px/1.85 -apple-system, BlinkMacSystemFont,
+        "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
+    }
+    a { color: var(--blue); overflow-wrap: anywhere; }
+    button { font: inherit; cursor: pointer; touch-action: manipulation; }
+    a:focus-visible, button:focus-visible, summary:focus-visible {
+      outline: 3px solid #dd8c1f;
+      outline-offset: 4px;
+    }
+    aside {
+      position: fixed;
+      inset: 0 auto 0 0;
+      width: var(--nav-width);
+      overflow: auto;
+      background: #102e39;
+      color: white;
+      padding: 30px 23px;
+    }
+    .brand { font-size: 13px; font-weight: 750; letter-spacing: .14em; color: #8dddd0; }
+    .nav-title { font-size: 23px; line-height: 1.6; margin: 25px 0; overflow-wrap: anywhere; }
+    nav a {
+      display: block;
+      color: #d1e0e3;
+      padding: 10px;
+      margin: 5px 0;
+      border-radius: 7px;
+      font-size: 14px;
+      line-height: 1.6;
+      text-decoration: none;
+    }
+    nav a:hover, nav a[aria-current] { background: #204952; color: white; }
+    nav span { color: #8dddd0; font-size: 11px; margin-right: 9px; }
+    main { margin-left: var(--nav-width); padding: 55px 48px 60px; }
+    .wrap { max-width: 980px; margin: auto; }
+    .hero { border-bottom: 1px solid var(--line); padding: 12px 0 35px; }
+    .eyebrow { font-size: 13px; color: var(--teal); letter-spacing: .12em; font-weight: 800; }
+    h1 { font-size: clamp(32px, 4vw, 50px); line-height: 1.4; margin: 15px 0 22px; }
+    h2 { font-size: 28px; line-height: 1.5; margin: 0; }
+    h3 { font-size: 21px; margin: 20px 0 12px; }
+    p { margin: 14px 0; }
+    .lead { font-size: 20px; color: var(--muted); }
+    .meta { font-size: 13px; color: var(--muted); }
+    .section { padding: 48px 0 8px; scroll-margin-top: 24px; }
+    .section-heading { display: flex; align-items: flex-start; gap: 17px; margin-bottom: 21px; }
+    .number { border-top: 3px solid var(--teal); color: var(--teal); font-weight: 800; font-size: 15px; min-width: 33px; line-height: 2.6; }
+    code { font: .88em/1.8 ui-monospace, SFMono-Regular, Consolas, monospace; background: #e9eeee; padding: 2px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+    pre { background: #142f3b; color: #eaf5f6; padding: 24px; border-radius: 12px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 15px; line-height: 1.85; }
+    pre code { font-size: inherit; background: none; padding: 0; color: inherit; }
+    .key { color: #89e0ce; }
+    .value { color: #ffd688; }
+    .comment { color: #a3bdc5; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .grid > * { min-width: 0; }
+    .card { border: 1px solid var(--line); background: white; border-radius: 13px; padding: 24px; margin: 22px 0; }
+    .card-label { font-size: 13px; color: var(--muted); font-weight: 750; letter-spacing: .07em; margin-bottom: 16px; }
+    .note { border-left: 4px solid var(--teal); border-radius: 0 9px 9px 0; padding: 17px 21px; background: var(--mint); font-size: 16px; margin: 22px 0; }
+    .note strong { display: block; color: var(--teal); }
+    .note.warning { border-color: #c28c27; background: var(--sand); }
+    .note.warning strong { color: var(--amber); }
+    .note.error { border-color: var(--red); background: var(--rose); }
+    .note.error strong { color: var(--red); }
+    .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; margin: 22px 0; }
+    table { border-collapse: collapse; width: 100%; background: white; font-size: 15px; line-height: 1.7; }
+    th, td { text-align: left; vertical-align: top; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+    th { background: #eaf0ef; font-size: 13px; }
+    tr:last-child td { border-bottom: 0; }
+    .flow { max-width: 700px; margin: 0 auto; }
+    .flow-box { padding: 18px; text-align: center; border: 1px solid var(--line); border-radius: 10px; background: #f7f9f8; overflow-wrap: anywhere; }
+    .flow-box strong { display: block; }
+    .flow-box.primary { border-color: var(--teal); background: var(--mint); }
+    .flow-box.secondary { border-color: #adc3ea; background: var(--sky); }
+    .flow-arrow { text-align: center; font-size: 14px; color: var(--muted); padding: 12px 0; }
+    .branches { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    .branches > div { min-width: 0; }
+    .flow-caption { font-size: 14px; color: var(--muted); margin-top: 17px; }
+    .steps { padding-left: 25px; }
+    .steps li { margin: 14px 0; padding-left: 7px; }
+    .steps p { font-size: 16px; color: var(--muted); margin: 5px 0; }
+    .example-controls { display: flex; gap: 9px; flex-wrap: wrap; }
+    .example-controls button { font-size: 14px; padding: 8px 15px; background: white; color: var(--ink); border: 1px solid var(--line); border-radius: 7px; }
+    .example-controls button[aria-pressed="true"] { background: var(--teal); color: white; border-color: var(--teal); }
+    [hidden] { display: none !important; }
+    details { background: white; border: 1px solid var(--line); border-radius: 9px; padding: 15px 20px; margin: 18px 0; }
+    summary { cursor: pointer; font-weight: 700; }
+    footer { border-top: 1px solid var(--line); margin-top: 45px; padding-top: 24px; font-size: 14px; color: var(--muted); }
+    footer li { margin: 9px 0; }
+    @media (max-width: 1000px) {
+      :root { --nav-width: 210px; }
+      main { padding: 38px 28px; }
+      aside { padding: 27px 17px; }
+    }
+    @media (max-width: 760px) {
+      body { font-size: 17px; }
+      aside { position: static; width: auto; padding: 17px 20px; }
+      .nav-title { display: none; }
+      nav { display: flex; gap: 6px; overflow-x: auto; padding: 8px 0 3px; }
+      nav a { white-space: nowrap; font-size: 12px; margin: 0; padding: 6px 9px; }
+      main { margin: 0; padding: 25px 20px 45px; }
+      h1 { font-size: 34px; }
+      h2 { font-size: 25px; }
+      .lead { font-size: 18px; }
+      .grid, .branches { grid-template-columns: 1fr; }
+      .card { padding: 18px; }
+      pre { font-size: 13px; padding: 18px; }
+      th, td { padding: 11px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+    }
+    @media print {
+      aside, .example-controls { display: none !important; }
+      main { margin: 0; padding: 0; }
+      body { background: white; font-size: 11pt; }
+      h1 { font-size: 28pt; }
+      h2 { font-size: 20pt; }
+      .section { padding-top: 24px; }
+      .card, pre, .note, .flow-box { break-inside: avoid; }
+      pre { background: #eef2f4; color: #182f3c; }
+      .key { color: var(--teal); }
+      .value { color: var(--amber); }
+      .comment { color: var(--muted); }
+      .table-wrap { overflow: visible; }
+      [data-example-panel][hidden] { display: block !important; }
+      a { color: inherit; }
+    }
+  </style></head><body>
+<aside aria-label="目次"><div class="brand">PDFMOD / FIELD NOTES</div><div class="nav-title">文書からページへ</div><nav>
+<a href="#overview"><span>01</span>文書の入口</a><a href="#syntax"><span>02</span>参照関係を読む</a><a href="#rules"><span>03</span>ページと描画内容</a><a href="#flow"><span>04</span>必要時に読む</a><a href="#examples"><span>05</span>正常・境界・エラー</a><a href="#implementation"><span>06</span>Rust API</a>
+</nav></aside>
+<main id="top"><div class="wrap"><header class="hero"><div class="eyebrow">PDF INTERNALS / DOCUMENT &amp; PAGE</div><h1>文書からページへ</h1><p class="lead">PDFはオブジェクト同士の参照でできています。ファイルを開く処理、ページの属性を調べる処理、描画ストリームを読む処理を順にたどります。</p></header>
+<section class="section" id="overview"><div class="section-heading"><span class="number">01</span><h2>文書の入口をつなぐ</h2></div>
+<p>相互参照情報（cross-reference / xref）は、間接オブジェクトの格納位置を示す索引です。トレイラ（trailer）の <code>/Root</code> が文書カタログ（Catalog）を指し、カタログの <code>/Pages</code> がページツリーの根を指します。</p>
+<div class="grid"><div class="card"><h3>PdfDocument</h3><p>ファイル構造とカタログを保持します。ページ・情報辞書・リソースを、必要になった操作ごとに解決する入口です。</p></div><div class="card"><h3>PdfPage</h3><p>対象ページの継承属性をまとめた結果です。元の辞書も保持するため、描画内容への参照を失いません。</p></div></div>
+<div class="note"><strong>開くことと、全部を読むことは別</strong>文書を開いた時点ではページを列挙しません。後続ページに壊れたオブジェクトがあっても、そこを読む操作まではエラーになりません。</div></section>
+<section class="section" id="syntax"><div class="section-heading"><span class="number">02</span><h2>PDF記述の参照関係</h2></div>
+<p>以下は説明用の抜粋です。ヘッダ・xref・トレイラ全体・各 <code>endobj</code> を省略しており、このままでは完全なPDFではありません。<code>3 0 R</code> は「オブジェクト番号3、世代番号0」への間接参照です。</p>
+<pre><code>trailer &lt;&lt; /Root 1 0 R /Info 8 0 R ... &gt;&gt;
+1 0 obj &lt;&lt; /Type /Catalog /Pages 2 0 R &gt;&gt;
+2 0 obj &lt;&lt; /Type /Pages /Kids [3 0 R 4 0 R] /Count 2
+           /MediaBox [0 0 600 800] /Resources 5 0 R /Rotate 90 &gt;&gt;
+3 0 obj &lt;&lt; /Type /Page /Parent 2 0 R /Contents 6 0 R &gt;&gt;
+4 0 obj &lt;&lt; /Type /Page /Parent 2 0 R /Contents [6 0 R 7 0 R] &gt;&gt;
+5 0 obj &lt;&lt; /Font &lt;&lt; /F1 9 0 R &gt;&gt; &gt;&gt;
+6 0 obj &lt;&lt; /Length 1 &gt;&gt; stream ... endstream
+7 0 obj &lt;&lt; /Length 1 &gt;&gt; stream ... endstream
+8 0 obj &lt;&lt; /Title (Example) &gt;&gt;</code></pre>
+<div class="grid"><div class="card"><h3>ページの順序</h3><p><code>/Kids</code> の順に深さ優先でたどるため、最初は3番、次は4番です。オブジェクト番号の大小で並べ替えません。</p></div><div class="card"><h3>継承の方向</h3><p>ページから <code>/Parent</code> を根までたどります。両ページは親の600 × 800の矩形、90度回転、リソース辞書を継承します。</p></div></div></section>
+<section class="section" id="rules"><div class="section-heading"><span class="number">03</span><h2>ページの属性と描画内容</h2></div>
+<div class="table-wrap"><table><thead><tr><th>項目</th><th>意味・継承</th><th>公開APIの取り扱い</th></tr></thead><tbody>
+<tr><td>MediaBox</td><td>物理メディア矩形。継承可能。</td><td>必須。対角を正規化し、寸法を取得できる。</td></tr>
+<tr><td>CropBox</td><td>表示矩形。継承可能。</td><td>省略時はMediaBox。ここでは交差処理を適用しない。</td></tr>
+<tr><td>Rotate</td><td>時計回りの回転。継承可能。</td><td>省略時0度。90度の倍数を0・90・180・270度へ正規化。</td></tr>
+<tr><td>Resources</td><td>フォントや画像の名前とオブジェクトを対応付ける辞書。継承可能。</td><td>最も近い有効な辞書を取得。辞書内の参照先は読み込まない。</td></tr>
+<tr><td>Contents</td><td>描画命令のストリーム、またはその配列。継承しない。</td><td>ページ固有の値を保持。明示操作でストリーム列へ解決。</td></tr>
+</tbody></table></div>
+<p>継承属性の無効な局所値は警告として記録し、祖先を探すのが現在の回復方針です。親チェーンの欠落・循環や、有効なMediaBoxがどこにもない場合はエラーになります。Resourcesがどこにもない場合に空辞書を使うこともライブラリの回復方針です。</p>
+<div class="note warning"><strong>Contents配列は順序を保つ</strong>単一の <code>6 0 R</code> も、<code>[6 0 R 7 0 R]</code> も受け取れます。配列を間接参照した形式にも対応します。PDFの処理では順に連結して命令を解釈しますが、この文書APIは展開・結合を行わず、ストリーム処理側へ渡す境界とします。</div>
+<p>ストリームには <code>/Filter</code> が付くことがあり、生バイト列がそのまま描画命令とは限りません。各ストリームのフィルタを展開してから順序どおりに扱う必要があります。現在のRust文書APIは描画命令の解析までは提供しません。</p></section>
+<section class="section" id="flow"><div class="section-heading"><span class="number">04</span><h2>必要になった段階で読む</h2></div>
+<div class="table-wrap"><table><thead><tr><th>操作</th><th>読み込む範囲</th><th>残すもの</th></tr></thead><tbody>
+<tr><td>open(bytes)</td><td>ヘッダ、xref、トレイラ、カタログ</td><td>ページツリー、Info、Resources、Contentsの参照先</td></tr>
+<tr><td>page(index)</td><td>先頭から対象までのツリー辞書、対象の親チェーンと継承属性</td><td>後続ページ、リソース辞書内の参照先、Contents</td></tr>
+<tr><td>page_count()</td><td>初回はページツリー構造の全走査</td><td>各ページの継承属性、リソース参照先、Contents</td></tr>
+<tr><td>document_info()</td><td>Info辞書とその項目</td><td>ページ・描画内容</td></tr>
+<tr><td>content_streams(page)</td><td>指定ページのContents本体と各ストリーム</td><td>フィルタの展開、配列の結合、描画命令の解析</td></tr>
+</tbody></table></div>
+<p><code>/Count</code> は子孫の葉ページ数の宣言です。誤った宣言を使ってページを落とさないよう、現在の実装はCountで枝刈りしません。正確なページ数を得る操作は全辞書を走査しますが、文書を開く操作や先頭ページだけの取得に全走査を強制しません。</p>
+<p>ページ取得のたびに先頭から対象までを走査します。間接オブジェクトの再利用には件数上限付きキャッシュを使いますが、ページ番号索引によるランダムアクセスの最適化は未実装です。</p>
+<div class="note warning"><strong>部分走査は全体の検証ではない</strong>先頭ページを取得できても、後続ノードが正しいとは限りません。祖先のCount不一致は枝を最後まで走査して退出したときに分かるため、途中で停止した走査では未検出です。構造全体を確かめるにはpage_countを呼びます。</div></section>
+<section class="section" id="examples"><div class="section-heading"><span class="number">05</span><h2>正常・境界・エラー</h2></div>
+<div class="card"><h3>正常：2ページの寸法を取得</h3><p>先ほどの例では、最初のページも次のページも600 × 800、回転は90度です。2ページ目のContentsを読むと6番・7番のストリームが順番を保って返ります。フォント9番は必要になるまで解決されません。</p></div>
+<div class="card"><h3>境界：空・省略・範囲外</h3><p><code>/Kids []</code> は現在の回復方針で0ページとして受理します。実ページ数が2なら、0起点のindex=2は <code>Ok(None)</code> です。Contentsの不在・Null・空配列は空のストリーム列になります。Infoが無ければタイトルなどは不在として取得できます。</p></div>
+<div class="card"><h3>回復：誤ったCount</h3><p>Kidsに2ページあっても <code>/Count 99</code> なら、page_countは2を返し、CountMismatch警告を保持します。Countの型不正や欠落も警告して走査を続けます。参照解決自体が失敗した場合はエラーです。</p></div>
+<div class="card"><h3>エラー：いつ検出するか</h3><p>ヘッダ・xref・Rootの破損はopen時に検出します。後続ページの破損はその位置までの走査またはpage_countで検出します。Contents配列に整数・Null・配列が入っていたらcontent_streamsが配列位置付きのエラーを返します。Info項目の不正は他項目の成功を妨げません。</p></div></section>
+<section class="section" id="implementation"><div class="section-heading"><span class="number">06</span><h2>Rust APIで読む</h2></div>
+<pre><code>use pdfmod_core::{DocumentError, PdfDocument, PageIndex};
+
+fn inspect(bytes: &amp;[u8]) -&gt; Result&lt;(), DocumentError&gt; {
+    let mut document = PdfDocument::open(bytes)?;
+    if let Some(page) = document.page(PageIndex::from(0))? {
+        let width = page.media_box().width();
+        let rotation = page.rotation().degrees();
+        let resources = page.resources();
+        let streams = document.content_streams(&amp;page)?;
+    }
+    let count = document.page_count()?;
+    let info = document.document_info()?;
+    Ok(())
+}</code></pre>
+<p>入力バイト列は文書が借用します。PageIndexは0起点、PageNumberは1起点で0を構築できず、<code>number.into()</code> でPageIndexに変換します。PdfPageは読み取り専用の属性を持つため、次のページを取得しても前の結果を保持できます。</p>
+<p><code>content_streams</code> の結果は <code>Vec&lt;Rc&lt;PdfObject&gt;&gt;</code> で、各要素はStreamです。キャッシュされたオブジェクトを共有し、ストリームの大きな生バイト列を複製しません。<code>page.contents()</code> では解決前の値を確認できます。ページと参照は取得元の文書で使います。</p>
+<p>暗号化文書の復号、Contentsの展開・連結・命令解析、描画、編集・書き出しはこの入口に追加していません。失敗はDocumentErrorの各段階で区別し、元の型付き原因を保持します。</p>
+<p>関連：<a href="page-tree.html">ページツリーと属性の継承</a> / <a href="document-info.html">情報辞書</a> / <a href="document-catalog.html">カタログ</a></p></section>
+<footer><a href="#top">最上部へ戻る</a></footer></div></main>
+</body></html>
