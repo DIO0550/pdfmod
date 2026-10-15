@@ -51,6 +51,10 @@ pub struct PageTree {
 }
 
 impl PageTree {
+    pub(crate) fn into_parts(self) -> (Vec<Page>, Vec<PageTreeWarning>) {
+        (self.pages, self.warnings)
+    }
+
     pub(crate) fn new(pages: Vec<Page>, warnings: Vec<PageTreeWarning>) -> Self {
         Self { pages, warnings }
     }

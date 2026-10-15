@@ -7,6 +7,7 @@ PDF機能の実装に合わせて、仕様の読み方と実装の振る舞い�
 
 | テーマ | 解説する内容 | 関連する実装 |
 | --- | --- | --- |
+| [文書からページへ](document-api.html) | PdfDocument / PdfPage の入口、ページの継承属性、単一・配列のContents、遅延解決の範囲、実ページ数・警告・エラー | [Issue #674](https://github.com/DIO0550/pdfmod/issues/674) / `rust/crates/core/src/document.rs` / `rust/crates/core/src/document/` |
 | [ドキュメントカタログ](document-catalog.html) | Root・Catalog・Pagesの関係、必須キー、バージョンの優先関係、表示設定、未解釈エントリの保持、位置付きエラー | [Issue #635](https://github.com/DIO0550/pdfmod/issues/635) / [PR #736](https://github.com/DIO0550/pdfmod/pull/736) の作成時点（`6c654ce`） |
 | [ドキュメント情報辞書](document-info.html) | Info参照、6つのテキスト項目・2つの日付・Trapped、項目ごとの成功／不在／失敗、未知キー保持、間接参照とNull | [Issue #661](https://github.com/DIO0550/pdfmod/issues/661) / `rust/crates/core/src/document_info.rs` / `rust/crates/core/src/resolver/document_info.rs` |
 | [ページツリーと属性の継承](page-tree.html) | Kids の文書順走査、Count・Type の検証、循環と共有の区別、型付きページ位置、Parent チェーンによる4属性の継承、無効値の回復、間接座標参照、回転の正規化と既定値 | [Issue #658](https://github.com/DIO0550/pdfmod/issues/658) / [Issue #659](https://github.com/DIO0550/pdfmod/issues/659) / [Issue #660](https://github.com/DIO0550/pdfmod/issues/660) / `rust/crates/core/src/page_tree.rs` / `rust/crates/core/src/resolver/page_attributes.rs` |
