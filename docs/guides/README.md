@@ -16,6 +16,8 @@ PDF機能の実装に合わせて、仕様の読み方と実装の振る舞い�
 | [日付文字列](date-format.html) | ISO 32000-1 / ISO 32000-2 構文、D: 接頭辞、階層的省略、タイムゾーン形式（' 区切り・Z）、うるう年・カレンダー厳格検証 | [Issue #638](https://github.com/DIO0550/pdfmod/issues/638) / `rust/crates/core/src/date.rs` |
 | [字句トークンと描画命令の境界](token-layers.html) | 字句解析と演算子の再分類、LexicalTokenとContentStreamToken、巻き戻しと画像辞書の型境界、Operator.value、正常例・未知の命令・壊れた画像 | [Issue #308](https://github.com/DIO0550/pdfmod/issues/308) / `packages/core/src/pdf/types/token/index.ts` |
 
+| [暗号化辞書](encryption-dictionary.html) | Standard の6組、crypt filter と Identity、鍵長の単位正規化、符号なし権限、未対応辞書の保持、間接参照と解析の境界 | [Issue #651](https://github.com/DIO0550/pdfmod/issues/651) / `packages/core/src/pdf/encryption/index.ts` / `rust/crates/core/src/encrypt.rs` |
+
 ## 読み方
 
 リポジトリを取得し、対象のHTMLファイルをブラウザで開いてください。GitHubのファイル画面ではHTMLのソースが表示されます。
