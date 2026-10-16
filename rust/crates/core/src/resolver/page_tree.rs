@@ -9,6 +9,7 @@ use crate::catalog::Catalog;
 use crate::object::{indirect_ref::IndirectRef, object_id::ObjectId};
 use crate::page_tree::{
     error::PageTreeError,
+    index::PageIndex,
     warning::{PageNodeKind, PageTreeWarning},
     Page, PageTree,
 };
@@ -37,6 +38,7 @@ impl Walk {
         mut self,
         root: IndirectRef,
         resolver: &mut ObjectResolver<'_>,
+        target: Option<PageIndex>,
     ) -> Result<PageTree, PageTreeError> {
         self.stack.push(Visit::Enter(root));
         while let Some(visit) = self.stack.pop() {
@@ -47,6 +49,9 @@ impl Walk {
                     start,
                     declared,
                 } => self.leave(node, start, declared),
+            }
+            if target.is_some_and(|index| self.pages.len() > index.value()) {
+                break;
             }
         }
         Ok(PageTree::new(self.pages, self.warnings))
@@ -134,6 +139,14 @@ impl ObjectResolver<'_> {
     /// # }
     /// ```
     pub fn page_tree(&mut self, catalog: &Catalog) -> Result<PageTree, PageTreeError> {
-        Walk::default().run(catalog.pages(), self)
+        Walk::default().run(catalog.pages(), self, None)
+    }
+
+    pub(crate) fn page_prefix(
+        &mut self,
+        catalog: &Catalog,
+        index: PageIndex,
+    ) -> Result<PageTree, PageTreeError> {
+        Walk::default().run(catalog.pages(), self, Some(index))
     }
 }
