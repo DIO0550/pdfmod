@@ -19,8 +19,47 @@ ISO 32000-1:2008 (PDF 1.7) / ISO 32000-2:2020 (PDF 2.0) 準拠を目標とする
 
 ## 現在の状態
 
-字句解析・オブジェクトモデル・パーサ（Phase R1 相当）まで実装済み。xref / フィルタ /
-ドキュメント構造 / コンテンツストリーム相当は未実装で、後続 PR で追加する。
+字句解析・オブジェクトモデル・パーサに加え、xref テーブル／ストリームと `/Prev` チェーン、
+間接オブジェクトの遅延解決、オブジェクトストリーム、FlateDecode・Predictor を実装済み。
+カタログ・ページツリー・継承属性・情報辞書を `PdfDocument` / `PdfPage` の公開 API から取得できる。
+暗号化文書の復号・描画命令の解析・レンダリング・書き出しは未対応。
+
+```rust
+use pdfmod_core::{DocumentError, PdfDocument, PageNumber};
+
+fn inspect(bytes: &[u8]) -> Result<(), DocumentError> {
+    let mut document = PdfDocument::open(bytes)?;
+    if let Some(number) = PageNumber::new(1) {
+        if let Some(page) = document.page(number.into())? {
+            println!("{} × {}", page.media_box().width(), page.media_box().height());
+            let resources = page.resources();
+            let streams = document.content_streams(&page)?;
+        }
+    }
+    let count = document.page_count()?;
+    let info = document.document_info()?;
+    Ok(())
+}
+```
+
+`open` は入力スライスを借用し、ヘッダ・xref・トレイラ・カタログまでを検証する。
+`page(PageIndex)` は先頭から対象までの辞書だけを走査し、対象の継承属性を解決する。
+`PageIndex` は0起点、`PageNumber` は1起点で、`Into` で変換する。範囲外は `Ok(None)`。
+`page_count` は誤った `/Count` を信用せず初回に構造全体を走査し、実際の葉数を記憶する。
+この走査では他ページの属性・リソース参照先・描画ストリームは解決しない。
+繰り返しページ取得は毎回先頭から走査するため、大量ページのランダムアクセスの最適化は今後の課題。
+
+`PdfPage::contents` は未解決の値を返す。`content_streams` を明示的に呼ぶと、
+単一ストリーム・直接配列・配列への間接参照を記述順の `Rc<PdfObject>` 列へ解決する。
+各要素は `PdfObject::Stream`。フィルタ展開・配列の結合はこの API では行わない。
+リソース辞書内のフォント・画像などの参照は `resolve` で必要時に取得できる。
+ページと参照は取得元の文書で使う。
+
+`document_info` は要求時に `/Info` を解析し、不在なら空の結果を返す。
+各項目の不正は独立して保持する。ツリーの警告は `page_tree_warnings`、
+対象ページの属性回復警告は `PdfPage::warnings` で確認できる。
+全構造の検証が必要な場合は `page_count` を呼ぶ。先頭ページだけの取得では、
+後続ノードの破損や、未退出の祖先の Count 不一致は未検出のままになる。
 
 ```
 rust/
@@ -32,11 +71,16 @@ rust/
         ├── Cargo.toml
         └── src/
             ├── lib.rs
-            ├── byte_offset.rs        # バイトオフセットのブランド型
-            ├── error.rs,  error/     # PdfError / PdfErrorCode
-            ├── lexer.rs,  lexer/     # 字句解析（トークン、リテラル/16進文字列、EOL処理）
-            ├── object.rs, object/    # オブジェクトモデル（PdfObject、辞書、名前、ID、間接参照）
-            └── parser.rs, parser/    # 構文解析（配列、辞書、間接参照）
+            ├── document.rs, document/         # PdfDocument / PdfPage の公開 API
+            ├── catalog.rs, document_info.rs   # カタログ・情報辞書
+            ├── page_tree.rs, page_tree/       # ページツリー・継承属性
+            ├── geometry.rs, page_boxes.rs     # 矩形・境界ボックス
+            ├── resolver.rs, resolver/         # 間接オブジェクトの遅延解決
+            ├── file.rs, xref.rs, object_stream.rs # ファイル構造・相互参照
+            ├── filter.rs, filter/             # FlateDecode・Predictor
+            ├── byte_offset.rs, error.rs       # オフセット・エラー
+            ├── lexer.rs, object.rs, parser.rs # 字句解析・オブジェクト・構文解析
+            └── text_string.rs, date.rs        # テキスト文字列・日付
 ```
 
 ## ビルド・テスト
@@ -47,5 +91,7 @@ cargo build
 cargo test
 ```
 
-> **注意:** 現在のコンテナには Rust ツールチェーン (`rustc` / `cargo`) が未インストール。
-> devcontainer 再ビルド後（rustup 導入後）に `cargo build` / `cargo test` で検証すること。
+```sh
+cargo fmt --all -- --check
+cargo clippy --workspace --all-targets -- -D warnings
+```

@@ -443,6 +443,30 @@ fn iterate_pages_inner(
 }
 ```
 
+### 4.4 Rust の文書・ページ公開 API
+
+`PdfDocument::open(&[u8])` は入力を借用してヘッダ・xref・トレイラ・カタログを
+解決する。`PdfDocument` / `PdfPage` / `DocumentError` とページ位置型はクレート直下から
+利用できる。構築時にはページ列・継承属性・Info・Contents を先読みしない。
+
+- `page(PageIndex)` は既存の明示スタック走査を対象の葉まで実行し、そのページだけの
+  継承属性を解決して `Ok(Some(PdfPage))` を返す。範囲外は `Ok(None)`。
+  `PageNumber` は `Into<PageIndex>` で渡す。Count による枝刈りは行わず、毎回先頭から走査する。
+- `page_count()` は初回に構造全体を走査して実際の葉数を記憶する。属性・Resources・Contents の
+  参照先は解決しない。構造全体の不正はこの全走査で検出する。
+- `page_tree_warnings()` は直近の成功した走査の警告を返し、全走査成功後はその警告を保持する。
+  部分走査では後続ノードや未退出の祖先の Count 不一致を検証したことにはならない。
+- `PdfPage` は継承解決済みの MediaBox・CropBox・Rotate・Resources と元のページ辞書を持つ。
+  `resources()` の内側の参照は保持し、`resolve(IndirectRef)` で必要時に取得する。
+- `PdfPage::contents()` はページ固有の未解決値を返す。`content_streams(&PdfPage)` は、
+  単一ストリーム・直接配列・配列への間接参照を、記述順の Stream オブジェクト列へ解決する。
+  不在・Null は空列。配列要素がストリームでなければ対象ページ・要素位置・実際の型をエラーに保持する。
+  フィルタ展開・結合・描画命令解析はコンテンツストリーム処理側の責務とし、このAPIでは実行しない。
+- `document_info()` は Info を要求時に取得する。辞書全体の失敗と項目ごとの失敗の扱いは§5の通り。
+
+ページ・間接参照は取得元の文書で使用する。暗号化文書は既存の resolver と同じく拒否する。
+入力自体は借用し、解決済みオブジェクトの所有は `Rc` で共有する。
+
 ## 5. ドキュメント情報辞書
 
 トレイラの `/Info` エントリから参照される辞書。
