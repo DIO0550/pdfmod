@@ -150,7 +150,7 @@ test("継承-Resources: 親 /Pages の /Resources が子 /Page に継承され�
   const outcome = unwrapOk(
     await PageTreeWalker.walk(root, makeResolverMap(objects)),
   );
-  expect(outcome.pages[0].resources).toBe(parentResources);
+  expect(outcome.pages[0].resources.dictionary).toBe(parentResources);
 });
 
 test("継承-Resources シャドウ: 子 /Page の /Resources は親を置き換える", async () => {
@@ -176,7 +176,7 @@ test("継承-Resources シャドウ: 子 /Page の /Resources は親を置き換
   const outcome = unwrapOk(
     await PageTreeWalker.walk(root, makeResolverMap(objects)),
   );
-  expect(outcome.pages[0].resources).toBe(childResources);
+  expect(outcome.pages[0].resources.dictionary).toBe(childResources);
 });
 
 test("継承-CropBox: 親 /Pages に /CropBox があり子 /Page にない場合、継承される", async () => {
@@ -496,7 +496,7 @@ test("/Pages 側 /Resources indirect-ref で resolver Err → RESOURCES_RESOLVE_
   expect(
     outcome.warnings.some((w) => w.code === "RESOURCES_RESOLVE_FAILED"),
   ).toBe(true);
-  expect(outcome.pages[0].resources.entries.size).toBe(0);
+  expect(outcome.pages[0].resources.dictionary.entries.size).toBe(0);
 });
 
 test("/Page 側 /Resources indirect-ref で resolver Err → RESOURCES_RESOLVE_FAILED + 空辞書継承", async () => {
@@ -522,7 +522,7 @@ test("/Page 側 /Resources indirect-ref で resolver Err → RESOURCES_RESOLVE_F
   expect(
     outcome.warnings.some((w) => w.code === "RESOURCES_RESOLVE_FAILED"),
   ).toBe(true);
-  expect(outcome.pages[0].resources.entries.size).toBe(0);
+  expect(outcome.pages[0].resources.dictionary.entries.size).toBe(0);
 });
 
 test("/Resources が直接配置の非辞書（integer 等）でも RESOURCES_RESOLVE_FAILED 警告 + 走査継続", async () => {
@@ -542,7 +542,7 @@ test("/Resources が直接配置の非辞書（integer 等）でも RESOURCES_RE
         w.message.includes("unexpected direct type"),
     ),
   ).toBe(true);
-  expect(outcome.pages[0].resources.entries.size).toBe(0);
+  expect(outcome.pages[0].resources.dictionary.entries.size).toBe(0);
 });
 
 test("/Resources 解決結果が dictionary でない場合も RESOURCES_RESOLVE_FAILED + 走査継続", async () => {
@@ -562,7 +562,7 @@ test("/Resources 解決結果が dictionary でない場合も RESOURCES_RESOLVE
   expect(
     outcome.warnings.some((w) => w.code === "RESOURCES_RESOLVE_FAILED"),
   ).toBe(true);
-  expect(outcome.pages[0].resources.entries.size).toBe(0);
+  expect(outcome.pages[0].resources.dictionary.entries.size).toBe(0);
 });
 
 test("ページ /Resources が invalid（解決失敗）なら親の /Resources を継承する", async () => {
@@ -594,7 +594,7 @@ test("ページ /Resources が invalid（解決失敗）なら親の /Resources 
   );
   const outcome = unwrapOk(await PageTreeWalker.walk(root, resolver));
   expect(outcome.pages.length).toBe(1);
-  expect(outcome.pages[0].resources).toBe(parentResources);
+  expect(outcome.pages[0].resources.dictionary).toBe(parentResources);
   expect(
     outcome.warnings.some((w) => w.code === "RESOURCES_RESOLVE_FAILED"),
   ).toBe(true);
@@ -625,7 +625,7 @@ test("ページ /Resources が indirect-ref でも親を完全シャドウイン
   const outcome = unwrapOk(
     await PageTreeWalker.walk(root, makeResolverMap(objects)),
   );
-  expect(outcome.pages[0].resources).toBe(childResources);
+  expect(outcome.pages[0].resources.dictionary).toBe(childResources);
 });
 
 test("末端 /Page に /MediaBox が無ければ MEDIABOX_NOT_FOUND で Err", async () => {

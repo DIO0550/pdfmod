@@ -242,7 +242,7 @@ test("Resources-a: ページの /Resources は親を完全シャドウイング�
       PAGE_REF,
     ),
   );
-  expect(outcome.page.resources).toBe(pageResources);
+  expect(outcome.page.resources.dictionary).toBe(pageResources);
 });
 
 test("Resources-b: 両方未定義なら空辞書が設定される", () => {
@@ -255,8 +255,8 @@ test("Resources-b: 両方未定義なら空辞書が設定される", () => {
       PAGE_REF,
     ),
   );
-  expect(outcome.page.resources.type).toBe("dictionary");
-  expect(outcome.page.resources.entries.size).toBe(0);
+  expect(outcome.page.resources.dictionary.type).toBe("dictionary");
+  expect(outcome.page.resources.dictionary.entries.size).toBe(0);
 });
 
 test("contents-a: /Contents が単一 indirect-ref のとき some(IndirectRef) として取り出される", () => {
