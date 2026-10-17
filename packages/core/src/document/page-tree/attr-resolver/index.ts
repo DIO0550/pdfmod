@@ -1,12 +1,9 @@
 import type { PdfParseError } from "../../../pdf/errors/error/index";
 import type { PdfWarning } from "../../../pdf/errors/warning/index";
-import type {
-  IndirectRef,
-  PdfDictionary,
-  PdfValue,
-} from "../../../pdf/types/pdf-types/index";
+import type { IndirectRef } from "../../../pdf/types/pdf-types/index";
 import { none, type Option, some } from "../../../utils/option/index";
 import { err, ok, type Result } from "../../../utils/result/index";
+import { PdfResources } from "../../resources/index";
 import type { InheritedAttrs } from "../inheritance-resolver";
 import {
   PAGE_ROTATE_0,
@@ -46,19 +43,6 @@ const projectRotate = (raw: number): PageRotate => {
   }
   return PAGE_ROTATE_0;
 };
-
-/**
- * 空の `/Resources` 辞書を新規生成する。
- * フォールバックの度にフレッシュなインスタンスを返し、ページ間で entries が
- * 共有されないことを保証する（Object.freeze は内部 Map を不変化しないため、
- * 単一インスタンスを使い回すと cross-page contamination の恐れがある）。
- *
- * @returns 新規空辞書
- */
-const createEmptyResources = (): PdfDictionary => ({
-  type: "dictionary",
-  entries: new Map<string, PdfValue>(),
-});
 
 /**
  * ページ属性の継承解決 utility を束ねた namespace。
@@ -145,16 +129,13 @@ export const AttrResolver = {
   },
 
   /**
-   * `/Resources` を解決する。ページ直属 → 継承 → 空辞書（毎回新規）の順に採用する。
+   * `/Resources` を解決する。ページ直属 → 継承 → 空リソース（毎回新規）の順に採用する。
    *
    * @param inherited - 祖先継承属性
    * @param pageLeaf - ページ直属の事前解決属性
-   * @returns 解決済み Resources 辞書
+   * @returns 解決済み PdfResources
    */
-  resources(
-    inherited: InheritedAttrs,
-    pageLeaf: InheritedAttrs,
-  ): PdfDictionary {
-    return pageLeaf.resources ?? inherited.resources ?? createEmptyResources();
+  resources(inherited: InheritedAttrs, pageLeaf: InheritedAttrs): PdfResources {
+    return PdfResources.from(pageLeaf.resources ?? inherited.resources);
   },
 } as const;

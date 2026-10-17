@@ -33,6 +33,7 @@ export type {
   PdfDocumentLoadError,
   PdfPageRectangle,
   PdfRectangle,
+  PdfResourceCategory,
   ResolvedPage,
   ResolveInheritedOutcome,
   WalkPageTreeResult,
@@ -42,9 +43,11 @@ export {
   DocumentInfoParser,
   InheritanceResolver,
   PageTreeWalker,
+  PDF_RESOURCE_CATEGORIES,
   PdfDocument,
   PdfHeader,
   PdfPage,
+  PdfResources,
   PdfTrapped,
 } from "./document/index";
 export { NumberEx } from "./ext/number/index";

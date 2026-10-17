@@ -1,9 +1,9 @@
 import type {
   IndirectRef,
-  PdfDictionary,
   PdfObject,
 } from "../../../pdf/types/pdf-types/index";
 import type { Option } from "../../../utils/option/index";
+import type { PdfResources } from "../../resources/index";
 
 /**
  * PDF の rectangle 型。
@@ -61,8 +61,8 @@ export type PageRotate =
 export interface ResolvedPage {
   /** ページの物理的寸法 [llx, lly, urx, ury]（ポイント単位、正規化済み） */
   mediaBox: PdfRectangle;
-  /** 描画リソース辞書（未継承時は空辞書） */
-  resources: PdfDictionary;
+  /** 描画リソース（未継承時は空リソース） */
+  resources: PdfResources;
   /** トリミング領域（未指定時は mediaBox と同一、正規化済み） */
   cropBox: PdfRectangle;
   /** 表示時の回転角度（0/90/180/270 に正規化済み） */
