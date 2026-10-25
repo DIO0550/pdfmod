@@ -192,7 +192,7 @@ test("退化した mediaBox [0, 0, 0, 0] から構築すると width/height が 
   expect(page.mediaBox).toEqual([0, 0, 0, 0]);
 });
 
-test("TC-21: PdfPage.from による resources プロパティの保持・公開", () => {
+test("PdfPage.from による resources プロパティの保持・公開", () => {
   const customResources = PdfResources.from({
     type: "dictionary",
     entries: new Map([["Font", { type: "name", value: "F1" }]]),

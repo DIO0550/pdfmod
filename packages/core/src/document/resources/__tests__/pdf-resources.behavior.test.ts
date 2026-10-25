@@ -66,7 +66,7 @@ const createStubResolver = (
   };
 };
 
-test("TC-01: 直値カテゴリ辞書と直値エントリの取得 (Font)", async () => {
+test("直値カテゴリ辞書と直値エントリの取得 (Font)", async () => {
   const fontDict = makeDict([["Type", { type: "name", value: "Font" }]]);
   const resourcesDict = makeDict([["Font", makeDict([["F1", fontDict]])]]);
   const resources = PdfResources.from(resourcesDict);
@@ -80,7 +80,7 @@ test("TC-01: 直値カテゴリ辞書と直値エントリの取得 (Font)", asy
   }
 });
 
-test("TC-02: 間接参照カテゴリ辞書の解決", async () => {
+test("間接参照カテゴリ辞書の解決", async () => {
   const fontDict = makeDict([["Type", { type: "name", value: "Font" }]]);
   const catDict = makeDict([["F1", fontDict]]);
   const resources = PdfResources.from(
@@ -96,7 +96,7 @@ test("TC-02: 間接参照カテゴリ辞書の解決", async () => {
   }
 });
 
-test("TC-03: 間接参照エントリ（フォント辞書）の解決", async () => {
+test("間接参照エントリ（フォント辞書）の解決", async () => {
   const fontDict = makeDict([["Type", { type: "name", value: "Font" }]]);
   const resources = PdfResources.from(
     makeDict([["Font", makeDict([["F1", indirectRefValue(3, 0)]])]]),
@@ -111,7 +111,7 @@ test("TC-03: 間接参照エントリ（フォント辞書）の解決", async (
   }
 });
 
-test("TC-04: 間接参照エントリ（XObjectストリーム）の解決", async () => {
+test("間接参照エントリ（XObjectストリーム）の解決", async () => {
   const xobjectStream = makeStream(
     makeDict([
       ["Type", { type: "name", value: "XObject" }],
@@ -137,7 +137,7 @@ test("TC-04: 間接参照エントリ（XObjectストリーム）の解決", asy
   }
 });
 
-test("TC-05: 未知カテゴリ辞書・エントリの保持と解決 (/CustomCat)", async () => {
+test("未知カテゴリ辞書・エントリの保持と解決 (/CustomCat)", async () => {
   const customDict = makeDict([["Data", { type: "integer", value: 123 }]]);
   const resources = PdfResources.from(
     makeDict([["CustomCat", makeDict([["Item1", indirectRefValue(5, 0)]])]]),
@@ -157,7 +157,7 @@ test("TC-05: 未知カテゴリ辞書・エントリの保持と解決 (/CustomC
   }
 });
 
-test("TC-06: 存在しないカテゴリ名の指定", async () => {
+test("存在しないカテゴリ名の指定", async () => {
   const resources = PdfResources.from(makeDict([["Font", makeDict()]]));
   const resolver = createStubResolver(new Map());
 
@@ -171,7 +171,7 @@ test("TC-06: 存在しないカテゴリ名の指定", async () => {
   expect(opt.some).toBe(false);
 });
 
-test("TC-07: 存在しないエントリ名の指定", async () => {
+test("存在しないエントリ名の指定", async () => {
   const resources = PdfResources.from(
     makeDict([["Font", makeDict([["F1", makeDict()]])]]),
   );
@@ -182,7 +182,7 @@ test("TC-07: 存在しないエントリ名の指定", async () => {
   expect(opt.some).toBe(false);
 });
 
-test("TC-08: 空のリソース辞書に対する lookup", async () => {
+test("空のリソース辞書に対する lookup", async () => {
   const resources = PdfResources.createEmpty();
   const resolver = createStubResolver(new Map());
 
@@ -191,7 +191,7 @@ test("TC-08: 空のリソース辞書に対する lookup", async () => {
   expect(opt.some).toBe(false);
 });
 
-test("TC-09: 非推奨キー /ProcSet の無視・スキップ", async () => {
+test("非推奨キー /ProcSet の無視・スキップ", async () => {
   const resources = PdfResources.from(
     makeDict([
       [
@@ -226,7 +226,7 @@ test("TC-09: 非推奨キー /ProcSet の無視・スキップ", async () => {
   expect(lookupOpt.some).toBe(false);
 });
 
-test("TC-10: hasCategory による存在判定（/ProcSet は常に false）", () => {
+test("hasCategory による存在判定（/ProcSet は常に false）", () => {
   const resources = PdfResources.from(
     makeDict([
       ["Font", makeDict()],
@@ -245,7 +245,7 @@ test("TC-10: hasCategory による存在判定（/ProcSet は常に false）", (
   expect(PdfResources.hasCategory(resources, "XObject")).toBe(false);
 });
 
-test("TC-11: 無効な間接参照（存在しないオブジェクト番号）のエラー伝播", async () => {
+test("無効な間接参照（存在しないオブジェクト番号）のエラー伝播", async () => {
   const resources = PdfResources.from(
     makeDict([["Font", indirectRefValue(999, 0)]]),
   );
@@ -256,7 +256,7 @@ test("TC-11: 無効な間接参照（存在しないオブジェクト番号）�
   expect((err as unknown as { code: string }).code).toBe("OBJECT_NOT_FOUND");
 });
 
-test("TC-12: 循環間接参照の検出エラー伝播 (CIRCULAR_REFERENCE)", async () => {
+test("循環間接参照の検出エラー伝播 (CIRCULAR_REFERENCE)", async () => {
   const resources = PdfResources.from(
     makeDict([["Font", indirectRefValue(10, 0)]]),
   );
@@ -273,7 +273,7 @@ test("TC-12: 循環間接参照の検出エラー伝播 (CIRCULAR_REFERENCE)", a
   expect((err as unknown as { code: string }).code).toBe("CIRCULAR_REFERENCE");
 });
 
-test("TC-13: カテゴリ値が非辞書（整数・配列等）の場合の安全な無視", async () => {
+test("カテゴリ値が非辞書（整数・配列等）の場合の安全な無視", async () => {
   const resources = PdfResources.from(
     makeDict([["Font", { type: "integer", value: 42 }]]),
   );
@@ -284,7 +284,7 @@ test("TC-13: カテゴリ値が非辞書（整数・配列等）の場合の安�
   expect(opt.some).toBe(false);
 });
 
-test("TC-15: カテゴリとエントリの2段階間接参照の同時解決", async () => {
+test("カテゴリとエントリの2段階間接参照の同時解決", async () => {
   const fontDict = makeDict([["Type", { type: "name", value: "Font" }]]);
   const catDict = makeDict([["F1", indirectRefValue(3, 0)]]);
   const resources = PdfResources.from(
@@ -305,7 +305,7 @@ test("TC-15: カテゴリとエントリの2段階間接参照の同時解決", 
   }
 });
 
-test("TC-16: 未アクセスエントリの参照解決スキップ（オンデマンド解決の検証）", async () => {
+test("未アクセスエントリの参照解決スキップ（オンデマンド解決の検証）", async () => {
   const font1 = makeDict([["Type", { type: "name", value: "Font" }]]);
   const resolvedRefs: string[] = [];
   const resources = PdfResources.from(
@@ -329,7 +329,7 @@ test("TC-16: 未アクセスエントリの参照解決スキップ（オンデ�
   expect(resolvedRefs).toEqual(["1-0"]);
 });
 
-test("TC-17: カテゴリ間接参照の解決先が非辞書型の場合のフォールバック", async () => {
+test("カテゴリ間接参照の解決先が非辞書型の場合のフォールバック", async () => {
   const resources = PdfResources.from(
     makeDict([["Font", indirectRefValue(2, 0)]]),
   );
@@ -342,7 +342,7 @@ test("TC-17: カテゴリ間接参照の解決先が非辞書型の場合のフ�
   expect(opt.some).toBe(false);
 });
 
-test("TC-18: 同一リソースに対する並行 lookup の競合安全性 (Promise.all)", async () => {
+test("同一リソースに対する並行 lookup の競合安全性 (Promise.all)", async () => {
   const font1 = makeDict([["Name", { type: "name", value: "F1" }]]);
   const font2 = makeDict([["Name", { type: "name", value: "F2" }]]);
   const imageStream = makeStream(
@@ -381,7 +381,7 @@ test("TC-18: 同一リソースに対する並行 lookup の競合安全性 (Pro
   expect(unwrapOk(res3).some).toBe(true);
 });
 
-test("TC-19: 同一入力に対する lookup のべき等性", async () => {
+test("同一入力に対する lookup のべき等性", async () => {
   const fontDict = makeDict();
   const resources = PdfResources.from(
     makeDict([["Font", makeDict([["F1", fontDict]])]]),
@@ -394,7 +394,7 @@ test("TC-19: 同一入力に対する lookup のべき等性", async () => {
   expect(unwrapOk(first)).toEqual(unwrapOk(second));
 });
 
-test("TC-22: 標準カテゴリ /ExtGState（グラフィックス状態辞書）の解決", async () => {
+test("標準カテゴリ /ExtGState（グラフィックス状態辞書）の解決", async () => {
   const gsDict = makeDict([
     ["Type", { type: "name", value: "ExtGState" }],
     ["ca", { type: "real", value: 0.5 }],
@@ -417,7 +417,7 @@ test("TC-22: 標準カテゴリ /ExtGState（グラフィックス状態辞書�
   }
 });
 
-test("TC-23: 標準カテゴリ /ColorSpace（色空間辞書・配列）の解決", async () => {
+test("標準カテゴリ /ColorSpace（色空間辞書・配列）の解決", async () => {
   const colorSpaceArray: PdfValue = {
     type: "array",
     elements: [{ type: "name", value: "ICCBased" }, indirectRefValue(7, 0)],
@@ -440,7 +440,7 @@ test("TC-23: 標準カテゴリ /ColorSpace（色空間辞書・配列）の解�
   }
 });
 
-test("TC-24: 標準カテゴリ /Pattern（タイリングパターンストリーム）の解決", async () => {
+test("標準カテゴリ /Pattern（タイリングパターンストリーム）の解決", async () => {
   const patternStream = makeStream(
     makeDict([
       ["Type", { type: "name", value: "Pattern" }],
@@ -465,7 +465,7 @@ test("TC-24: 標準カテゴリ /Pattern（タイリングパターンストリ�
   }
 });
 
-test("TC-25: 標準カテゴリ /Shading（シェーディング辞書）の解決", async () => {
+test("標準カテゴリ /Shading（シェーディング辞書）の解決", async () => {
   const shadingDict = makeDict([
     ["ShadingType", { type: "integer", value: 2 }],
   ]);
@@ -487,7 +487,7 @@ test("TC-25: 標準カテゴリ /Shading（シェーディング辞書）の解�
   }
 });
 
-test("TC-26: 標準カテゴリ /Properties（マークされたコンテンツのプロパティ）の解決", async () => {
+test("標準カテゴリ /Properties（マークされたコンテンツのプロパティ）の解決", async () => {
   const propDict = makeDict([
     [
       "Title",
@@ -512,7 +512,7 @@ test("TC-26: 標準カテゴリ /Properties（マークされたコンテンツ�
   }
 });
 
-test("TC-30: PdfResources.from の引数省略・undefined による空辞書初期化", () => {
+test("PdfResources.from の引数省略・undefined による空辞書初期化", () => {
   const fromUndefined = PdfResources.from(undefined);
   const fromOmitted = PdfResources.from();
 
@@ -520,7 +520,7 @@ test("TC-30: PdfResources.from の引数省略・undefined による空辞書初
   expect(fromOmitted.dictionary.entries.size).toBe(0);
 });
 
-test("TC-31: PdfResources.getCategory 単体での解決とフォールバック", async () => {
+test("PdfResources.getCategory 単体での解決とフォールバック", async () => {
   const fontCat = makeDict([["F1", makeDict()]]);
   const resources = PdfResources.from(
     makeDict([
@@ -554,7 +554,7 @@ test("TC-31: PdfResources.getCategory 単体での解決とフォールバック
   expect(procSetOpt.some).toBe(false);
 });
 
-test("TC-32: 空カテゴリ辞書に対する lookup の安全な終了", async () => {
+test("空カテゴリ辞書に対する lookup の安全な終了", async () => {
   const resources = PdfResources.from(makeDict([["Font", makeDict()]]));
   const resolver = createStubResolver(new Map());
 
@@ -563,7 +563,7 @@ test("TC-32: 空カテゴリ辞書に対する lookup の安全な終了", async
   expect(opt.some).toBe(false);
 });
 
-test("TC-33: エントリ値が直接プリミティブオブジェクトの場合の透過的解決", async () => {
+test("エントリ値が直接プリミティブオブジェクトの場合の透過的解決", async () => {
   const nameVal: PdfValue = { type: "name", value: "Title" };
   const resources = PdfResources.from(
     makeDict([["Properties", makeDict([["Tag", nameVal]])]]),
@@ -583,7 +583,7 @@ test("TC-33: エントリ値が直接プリミティブオブジェクトの場�
   }
 });
 
-test("TC-34: リソース名に特殊文字・エスケープが含まれる場合の lookup", async () => {
+test("リソース名に特殊文字・エスケープが含まれる場合の lookup", async () => {
   const fontDict = makeDict();
   const resources = PdfResources.from(
     makeDict([["Font", makeDict([["F#201", fontDict]])]]),
@@ -603,7 +603,7 @@ test("TC-34: リソース名に特殊文字・エスケープが含まれる場�
   }
 });
 
-test("TC-35: エントリ間接参照の先が null オブジェクトの場合の返却", async () => {
+test("エントリ間接参照の先が null オブジェクトの場合の返却", async () => {
   const nullObj: PdfObject = { type: "null" };
   const resources = PdfResources.from(
     makeDict([["Font", makeDict([["F1", indirectRefValue(10, 0)]])]]),
@@ -618,7 +618,7 @@ test("TC-35: エントリ間接参照の先が null オブジェクトの場合�
   }
 });
 
-test("TC-36: エントリレベルでの間接参照先不在エラーの伝播", async () => {
+test("エントリレベルでの間接参照先不在エラーの伝播", async () => {
   const catDict = makeDict([["F1", indirectRefValue(999, 0)]]);
   const resources = PdfResources.from(
     makeDict([["Font", indirectRefValue(2, 0)]]),
@@ -630,7 +630,7 @@ test("TC-36: エントリレベルでの間接参照先不在エラーの伝播"
   expect((err as unknown as { code: string }).code).toBe("OBJECT_NOT_FOUND");
 });
 
-test("TC-37: 大規模リソース辞書（100+エントリ）でのオンデマンド lookup の性能・安全確認", async () => {
+test("大規模リソース辞書（100+エントリ）でのオンデマンド lookup の性能・安全確認", async () => {
   const largeEntries: [string, PdfValue][] = [];
   const store = new Map<string, PdfObject>();
   for (let i = 1; i <= 100; i++) {
