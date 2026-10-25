@@ -13,14 +13,14 @@ import {
   PdfResources,
 } from "../index";
 
-test("TC-39: PdfResources インターフェースの読み取り専用性（readonly 制約）", () => {
+test("PdfResources インターフェースの読み取り専用性（readonly 制約）", () => {
   const resources: PdfResources = PdfResources.createEmpty();
   expectTypeOf(resources.dictionary).toEqualTypeOf<PdfDictionary>();
   // @ts-expect-error dictionary is readonly
   resources.dictionary = {} as PdfDictionary;
 });
 
-test("TC-40: PDF_RESOURCE_CATEGORIES 配列と PdfResourceCategory 型の厳密な一致", () => {
+test("PDF_RESOURCE_CATEGORIES 配列と PdfResourceCategory 型の厳密な一致", () => {
   expectTypeOf<PdfResourceCategory>().toEqualTypeOf<
     | "ExtGState"
     | "ColorSpace"
@@ -38,7 +38,7 @@ test("TC-40: PDF_RESOURCE_CATEGORIES 配列と PdfResourceCategory 型の厳密�
   const _invalidCat: PdfResourceCategory = "InvalidCategory";
 });
 
-test("TC-41: PdfResources.lookup の戻り値型の推論チェック", () => {
+test("PdfResources.lookup の戻り値型の推論チェック", () => {
   const resources: PdfResources = PdfResources.createEmpty();
   const resolveRef: ResolveRef = {} as ResolveRef;
 

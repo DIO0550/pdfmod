@@ -148,7 +148,7 @@ test("AttrResolver.rotate の警告メッセージにページ参照番号が含
   });
 });
 
-test("TC-14: AttrResolver.resources は pageLeaf.resources を最優先で返し、親リソースを完全置換する", () => {
+test("AttrResolver.resources は pageLeaf.resources を最優先で返し、親リソースを完全置換する", () => {
   const leafResources = okDict(
     new Map<string, PdfValue>([["Font", { type: "name", value: "F2" }]]),
   );
@@ -166,7 +166,7 @@ test("TC-14: AttrResolver.resources は pageLeaf.resources を最優先で返し
   });
 });
 
-test("TC-20: AttrResolver.resources は pageLeaf.resources undefined で inherited.resources を返す", () => {
+test("AttrResolver.resources は pageLeaf.resources undefined で inherited.resources を返す", () => {
   const inheritedResources = okDict(
     new Map<string, PdfValue>([["XObject", { type: "name", value: "X1" }]]),
   );
@@ -175,7 +175,7 @@ test("TC-20: AttrResolver.resources は pageLeaf.resources undefined で inherit
   expect(res.dictionary).toBe(inheritedResources);
 });
 
-test("TC-38: AttrResolver.resources は両 undefined で空辞書を返す", () => {
+test("AttrResolver.resources は両 undefined で空辞書を返す", () => {
   const out = AttrResolver.resources(NO_INHERIT, NO_INHERIT);
   expect(out.dictionary.type).toBe("dictionary");
   expect(out.dictionary.entries.size).toBe(0);
@@ -188,7 +188,7 @@ test("AttrResolver.resources は空辞書フォールバック時に毎回別イ
   expect(out1.dictionary.entries).not.toBe(out2.dictionary.entries);
 });
 
-test("TC-27: 3階層ページツリーでのルートPagesからの継承解決", () => {
+test("3階層ページツリーでのルートPagesからの継承解決", () => {
   const rootResources = okDict(
     new Map<string, PdfValue>([["Font", { type: "name", value: "F1" }]]),
   );
@@ -206,7 +206,7 @@ test("TC-27: 3階層ページツリーでのルートPagesからの継承解決"
   expect(leafResources.dictionary).toBe(rootResources);
 });
 
-test("TC-28: 3階層ページツリーでの中間Pagesによるルートリソースのオーバーライド（全置換原則）", () => {
+test("3階層ページツリーでの中間Pagesによるルートリソースのオーバーライド（全置換原則）", () => {
   const rootResources = okDict(
     new Map<string, PdfValue>([["Font", { type: "name", value: "F1" }]]),
   );
@@ -231,7 +231,7 @@ test("TC-28: 3階層ページツリーでの中間Pagesによるルートリソ�
   });
 });
 
-test("TC-29: 親Pagesノードの /Resources 自体が解決済み辞書の場合の継承解決", () => {
+test("親Pagesノードの /Resources 自体が解決済み辞書の場合の継承解決", () => {
   const parentResources = okDict(
     new Map<string, PdfValue>([["Font", { type: "name", value: "F1" }]]),
   );
