@@ -334,8 +334,8 @@ endobj</code></pre>
 
     <section class="section" id="implementation">
       <div class="section-heading"><span class="number">06</span><h2>実装と対応範囲</h2></div>
-      <p>TypeScript API（<code>@pdfmod/core</code>）におけるリソースの利用例です。</p>
-      <pre><code>import { PdfPage, PdfResources } from "@pdfmod/core";
+      <p>TypeScript API（<code>@pdfmod/core</code>）におけるリソースの利用例です。以下の抜粋では、<code>page</code> は読み込み済みのページ、<code>resolveRef</code> はその文書の間接参照解決関数とします。<code>Result</code> の <code>ok</code> で成功を、<code>Option</code> の <code>some</code> で値の存在を確認します。</p>
+      <pre><code>import { PdfResources } from "@pdfmod/core";
 
 // ページからリソース辞書を取得
 const resources: PdfResources = page.resources;
@@ -350,7 +350,8 @@ if (PdfResources.hasCategory(resources, "Font")) {
     resolveRef,
   );
 
-  if (isOk(fontResult) &amp;&amp; isSome(fontResult.value)) {
+  const hasFont = fontResult.ok &amp;&amp; fontResult.value.some;
+  if (hasFont) {
     const fontObj = fontResult.value.value;
     console.log("Found font:", fontObj);
   }
@@ -362,8 +363,8 @@ if (PdfResources.hasCategory(resources, "Font")) {
           <tr><td><code>PdfResources.createEmpty()</code></td><td>リソース不在時のフォールバック用空辞書を生成。</td></tr>
           <tr><td><code>PdfResources.from(dict?)</code></td><td>辞書から <code>PdfResources</code> を安全に生成（引数なし時は空辞書）。</td></tr>
           <tr><td><code>PdfResources.hasCategory(res, cat)</code></td><td>カテゴリの存在判定。<code>/ProcSet</code> の場合は常に <code>false</code>。</td></tr>
-          <tr><td><code>PdfResources.getCategory(res, cat, resolveRef?)</code></td><td>カテゴリ辞書を遅延解決して <code>Option&lt;PdfDictionary&gt;</code> を返却。</td></tr>
-          <tr><td><code>PdfResources.lookup(res, cat, name, resolveRef)</code></td><td>カテゴリと個別エントリを2段階遅延解決して <code>Option&lt;PdfObject | PdfStream&gt;</code> を返却。</td></tr>
+          <tr><td><code>PdfResources.getCategory(res, cat, resolveRef)</code></td><td>カテゴリ辞書を非同期で遅延解決し、<code>Result&lt;Option&lt;PdfDictionary&gt;, PdfError&gt;</code> を返却。</td></tr>
+          <tr><td><code>PdfResources.lookup(res, cat, name, resolveRef)</code></td><td>カテゴリと個別エントリを非同期で2段階遅延解決し、<code>Result&lt;Option&lt;PdfObject&gt;, PdfError&gt;</code> を返却（<code>PdfObject</code> はストリームを含む）。</td></tr>
         </tbody>
       </table></div>
       <div class="grid">
