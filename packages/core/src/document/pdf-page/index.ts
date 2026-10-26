@@ -5,6 +5,7 @@ import {
   type PageRotate,
   type ResolvedPage,
 } from "../page-tree/resolved-page";
+import type { PdfResources } from "../resources/index";
 
 /**
  * `PdfPage` の `mediaBox` / `cropBox` で公開する readonly タプル型。
@@ -22,6 +23,7 @@ interface PdfPageFields {
   readonly ref: IndirectRef;
   readonly width: number;
   readonly height: number;
+  readonly resources: PdfResources;
 }
 
 /**
@@ -40,6 +42,7 @@ export class PdfPage {
   readonly ref: IndirectRef;
   readonly width: number;
   readonly height: number;
+  readonly resources: PdfResources;
 
   private constructor(fields: PdfPageFields) {
     this.mediaBox = fields.mediaBox;
@@ -49,6 +52,7 @@ export class PdfPage {
     this.ref = fields.ref;
     this.width = fields.width;
     this.height = fields.height;
+    this.resources = fields.resources;
   }
 
   /**
@@ -88,6 +92,7 @@ export class PdfPage {
       ref: resolved.objectRef,
       width,
       height,
+      resources: resolved.resources,
     });
   }
 }
