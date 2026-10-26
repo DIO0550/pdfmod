@@ -1,8 +1,5 @@
 import { expect, test } from "vitest";
-import type {
-  PdfDictionary,
-  PdfValue,
-} from "../../../../pdf/types/pdf-types/index";
+import type { PdfValue } from "../../../../pdf/types/pdf-types/index";
 import { AttrResolver } from "../../attr-resolver";
 import type { InheritedAttrs } from "../../inheritance-resolver";
 import {
@@ -151,15 +148,22 @@ test("AttrResolver.rotate の警告メッセージにページ参照番号が含
   });
 });
 
-test("AttrResolver.resources は pageLeaf.resources を最優先で返す", () => {
+test("AttrResolver.resources は pageLeaf.resources を最優先で返し、親リソースを完全置換する", () => {
   const leafResources = okDict(
-    new Map<string, PdfValue>([["Font", { type: "name", value: "F1" }]]),
+    new Map<string, PdfValue>([["Font", { type: "name", value: "F2" }]]),
   );
   const inherited: InheritedAttrs = {
-    resources: okDict(new Map<string, PdfValue>()),
+    resources: okDict(
+      new Map<string, PdfValue>([["Font", { type: "name", value: "F1" }]]),
+    ),
   };
   const pageLeaf: InheritedAttrs = { resources: leafResources };
-  expect(AttrResolver.resources(inherited, pageLeaf)).toBe(leafResources);
+  const res = AttrResolver.resources(inherited, pageLeaf);
+  expect(res.dictionary).toBe(leafResources);
+  expect(res.dictionary.entries.get("Font")).toEqual({
+    type: "name",
+    value: "F2",
+  });
 });
 
 test("AttrResolver.resources は pageLeaf.resources undefined で inherited.resources を返す", () => {
@@ -167,20 +171,72 @@ test("AttrResolver.resources は pageLeaf.resources undefined で inherited.reso
     new Map<string, PdfValue>([["XObject", { type: "name", value: "X1" }]]),
   );
   const inherited: InheritedAttrs = { resources: inheritedResources };
-  expect(AttrResolver.resources(inherited, NO_INHERIT)).toBe(
-    inheritedResources,
-  );
+  const res = AttrResolver.resources(inherited, NO_INHERIT);
+  expect(res.dictionary).toBe(inheritedResources);
 });
 
 test("AttrResolver.resources は両 undefined で空辞書を返す", () => {
   const out = AttrResolver.resources(NO_INHERIT, NO_INHERIT);
-  expect(out.type).toBe("dictionary");
-  expect(out.entries.size).toBe(0);
+  expect(out.dictionary.type).toBe("dictionary");
+  expect(out.dictionary.entries.size).toBe(0);
 });
 
 test("AttrResolver.resources は空辞書フォールバック時に毎回別インスタンスを返す（cross-page contamination 防止）", () => {
-  const out1: PdfDictionary = AttrResolver.resources(NO_INHERIT, NO_INHERIT);
-  const out2: PdfDictionary = AttrResolver.resources(NO_INHERIT, NO_INHERIT);
-  expect(out1).not.toBe(out2);
-  expect(out1.entries).not.toBe(out2.entries);
+  const out1 = AttrResolver.resources(NO_INHERIT, NO_INHERIT);
+  const out2 = AttrResolver.resources(NO_INHERIT, NO_INHERIT);
+  expect(out1.dictionary).not.toBe(out2.dictionary);
+  expect(out1.dictionary.entries).not.toBe(out2.dictionary.entries);
+});
+
+test("3階層ページツリーでのルートPagesからの継承解決", () => {
+  const rootResources = okDict(
+    new Map<string, PdfValue>([["Font", { type: "name", value: "F1" }]]),
+  );
+  // Root -> Middle (リソース未定義)
+  const middleInherited: InheritedAttrs = { resources: rootResources };
+  const middleLeaf: InheritedAttrs = {};
+  const middleResolvedResources =
+    middleLeaf.resources ?? middleInherited.resources;
+
+  // Middle -> Leaf (リソース未定義)
+  const leafInherited: InheritedAttrs = { resources: middleResolvedResources };
+  const leafLeaf: InheritedAttrs = {};
+  const leafResources = AttrResolver.resources(leafInherited, leafLeaf);
+
+  expect(leafResources.dictionary).toBe(rootResources);
+});
+
+test("3階層ページツリーでの中間Pagesによるルートリソースのオーバーライド（全置換原則）", () => {
+  const rootResources = okDict(
+    new Map<string, PdfValue>([["Font", { type: "name", value: "F1" }]]),
+  );
+  const middleResources = okDict(
+    new Map<string, PdfValue>([["Font", { type: "name", value: "F2" }]]),
+  );
+
+  // Root -> Middle (Middle でオーバーライド)
+  const middleInherited: InheritedAttrs = { resources: rootResources };
+  const middleLeaf: InheritedAttrs = { resources: middleResources };
+  const middleResolved = middleLeaf.resources ?? middleInherited.resources;
+
+  // Middle -> Leaf (未定義)
+  const leafInherited: InheritedAttrs = { resources: middleResolved };
+  const leafLeaf: InheritedAttrs = {};
+  const leafRes = AttrResolver.resources(leafInherited, leafLeaf);
+
+  expect(leafRes.dictionary).toBe(middleResources);
+  expect(leafRes.dictionary.entries.get("Font")).toEqual({
+    type: "name",
+    value: "F2",
+  });
+});
+
+test("親Pagesノードの /Resources 自体が解決済み辞書の場合の継承解決", () => {
+  const parentResources = okDict(
+    new Map<string, PdfValue>([["Font", { type: "name", value: "F1" }]]),
+  );
+  const inherited: InheritedAttrs = { resources: parentResources };
+  const leafRes = AttrResolver.resources(inherited, NO_INHERIT);
+
+  expect(leafRes.dictionary).toBe(parentResources);
 });

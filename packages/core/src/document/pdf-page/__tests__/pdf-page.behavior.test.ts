@@ -2,7 +2,6 @@ import { expect, test } from "vitest";
 import { GenerationNumber } from "../../../pdf/types/generation-number/index";
 import type { IndirectRef } from "../../../pdf/types/indirect-ref/index";
 import { ObjectNumber } from "../../../pdf/types/object-number/index";
-import type { PdfDictionary } from "../../../pdf/types/pdf-types/index";
 import { none } from "../../../utils/option/index";
 import type {
   PageRotate,
@@ -10,11 +9,7 @@ import type {
   ResolvedPage,
 } from "../../page-tree/resolved-page";
 import { PdfPage } from "../../pdf-page";
-
-const emptyDict: PdfDictionary = {
-  type: "dictionary",
-  entries: new Map(),
-};
+import { PdfResources } from "../../resources/index";
 
 const makeRef = (objNum: number, genNum = 0): IndirectRef => ({
   objectNumber: ObjectNumber.of(objNum),
@@ -27,6 +22,7 @@ interface MakeResolvedPageArgs {
   rotate?: PageRotate;
   userUnit?: number;
   objectRef?: IndirectRef;
+  resources?: PdfResources;
 }
 
 const makeResolvedPage = (args: MakeResolvedPageArgs = {}): ResolvedPage => {
@@ -36,7 +32,7 @@ const makeResolvedPage = (args: MakeResolvedPageArgs = {}): ResolvedPage => {
     cropBox: args.cropBox ?? mediaBox,
     rotate: args.rotate ?? 0,
     userUnit: args.userUnit ?? 1.0,
-    resources: emptyDict,
+    resources: args.resources ?? PdfResources.createEmpty(),
     contents: none,
     annots: none,
     objectRef: args.objectRef ?? makeRef(1, 0),
@@ -194,4 +190,18 @@ test("退化した mediaBox [0, 0, 0, 0] から構築すると width/height が 
   expect(page.width).toBe(0);
   expect(page.height).toBe(0);
   expect(page.mediaBox).toEqual([0, 0, 0, 0]);
+});
+
+test("PdfPage.from による resources プロパティの保持・公開", () => {
+  const customResources = PdfResources.from({
+    type: "dictionary",
+    entries: new Map([["Font", { type: "name", value: "F1" }]]),
+  });
+  const resolved = makeResolvedPage({ resources: customResources });
+  const page = PdfPage.from(resolved);
+  expect(page.resources).toBe(customResources);
+  expect(page.resources.dictionary.entries.get("Font")).toEqual({
+    type: "name",
+    value: "F1",
+  });
 });

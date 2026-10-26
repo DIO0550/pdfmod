@@ -1,0 +1,440 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>リソース辞書と属性継承・間接参照の遅延解決 | pdfmod</title>
+  <style>
+    :root {
+      --ink: #182f3c;
+      --muted: #526b76;
+      --paper: #f5f7f5;
+      --line: #d7e2e1;
+      --teal: #067666;
+      --mint: #e6f4ef;
+      --blue: #265bb3;
+      --sky: #eaf1ff;
+      --amber: #956000;
+      --sand: #fff4db;
+      --red: #ae3b42;
+      --rose: #fff0ee;
+      --nav-width: 250px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; scroll-padding-top: 24px; }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font: 18px/1.85 -apple-system, BlinkMacSystemFont,
+        "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
+    }
+    a { color: var(--blue); overflow-wrap: anywhere; }
+    button { font: inherit; cursor: pointer; touch-action: manipulation; }
+    a:focus-visible, button:focus-visible, summary:focus-visible {
+      outline: 3px solid #dd8c1f;
+      outline-offset: 4px;
+    }
+    aside {
+      position: fixed;
+      inset: 0 auto 0 0;
+      width: var(--nav-width);
+      overflow: auto;
+      background: #102e39;
+      color: white;
+      padding: 30px 23px;
+    }
+    .brand { font-size: 13px; font-weight: 750; letter-spacing: .14em; color: #8dddd0; }
+    .nav-title { font-size: 23px; line-height: 1.6; margin: 25px 0; overflow-wrap: anywhere; }
+    nav a {
+      display: block;
+      color: #d1e0e3;
+      padding: 10px;
+      margin: 5px 0;
+      border-radius: 7px;
+      font-size: 14px;
+      line-height: 1.6;
+      text-decoration: none;
+    }
+    nav a:hover, nav a[aria-current] { background: #204952; color: white; }
+    nav span { color: #8dddd0; font-size: 11px; margin-right: 9px; }
+    main { margin-left: var(--nav-width); padding: 55px 48px 60px; }
+    .wrap { max-width: 980px; margin: auto; }
+    .hero { border-bottom: 1px solid var(--line); padding: 12px 0 35px; }
+    .eyebrow { font-size: 13px; color: var(--teal); letter-spacing: .12em; font-weight: 800; }
+    h1 { font-size: clamp(32px, 4vw, 50px); line-height: 1.4; margin: 15px 0 22px; }
+    h2 { font-size: 28px; line-height: 1.5; margin: 0; }
+    h3 { font-size: 21px; margin: 20px 0 12px; }
+    p { margin: 14px 0; }
+    .lead { font-size: 20px; color: var(--muted); }
+    .meta { font-size: 13px; color: var(--muted); }
+    .section { padding: 48px 0 8px; scroll-margin-top: 24px; }
+    .section-heading { display: flex; align-items: flex-start; gap: 17px; margin-bottom: 21px; }
+    .number { border-top: 3px solid var(--teal); color: var(--teal); font-weight: 800; font-size: 15px; min-width: 33px; line-height: 2.6; }
+    code { font: .88em/1.8 ui-monospace, SFMono-Regular, Consolas, monospace; background: #e9eeee; padding: 2px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+    pre { background: #142f3b; color: #eaf5f6; padding: 24px; border-radius: 12px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 15px; line-height: 1.85; }
+    pre code { font-size: inherit; background: none; padding: 0; color: inherit; }
+    .key { color: #89e0ce; }
+    .value { color: #ffd688; }
+    .comment { color: #a3bdc5; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .grid > * { min-width: 0; }
+    .card { border: 1px solid var(--line); background: white; border-radius: 13px; padding: 24px; margin: 22px 0; }
+    .card-label { font-size: 13px; color: var(--muted); font-weight: 750; letter-spacing: .07em; margin-bottom: 16px; }
+    .note { border-left: 4px solid var(--teal); border-radius: 0 9px 9px 0; padding: 17px 21px; background: var(--mint); font-size: 16px; margin: 22px 0; }
+    .note strong { display: block; color: var(--teal); }
+    .note.warning { border-color: #c28c27; background: var(--sand); }
+    .note.warning strong { color: var(--amber); }
+    .note.error { border-color: var(--red); background: var(--rose); }
+    .note.error strong { color: var(--red); }
+    .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; margin: 22px 0; }
+    table { border-collapse: collapse; width: 100%; background: white; font-size: 15px; line-height: 1.7; }
+    th, td { text-align: left; vertical-align: top; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+    th { background: #eaf0ef; font-size: 13px; }
+    tr:last-child td { border-bottom: 0; }
+    .flow { max-width: 700px; margin: 0 auto; }
+    .flow-box { padding: 18px; text-align: center; border: 1px solid var(--line); border-radius: 10px; background: #f7f9f8; overflow-wrap: anywhere; }
+    .flow-box strong { display: block; }
+    .flow-box.primary { border-color: var(--teal); background: var(--mint); }
+    .flow-box.secondary { border-color: #adc3ea; background: var(--sky); }
+    .flow-arrow { text-align: center; font-size: 14px; color: var(--muted); padding: 12px 0; }
+    .branches { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    .branches > div { min-width: 0; }
+    .flow-caption { font-size: 14px; color: var(--muted); margin-top: 17px; }
+    .steps { padding-left: 25px; }
+    .steps li { margin: 14px 0; padding-left: 7px; }
+    .steps p { font-size: 16px; color: var(--muted); margin: 5px 0; }
+    .example-controls { display: flex; gap: 9px; flex-wrap: wrap; }
+    .example-controls button { font-size: 14px; padding: 8px 15px; background: white; color: var(--ink); border: 1px solid var(--line); border-radius: 7px; }
+    .example-controls button[aria-pressed="true"] { background: var(--teal); color: white; border-color: var(--teal); }
+    [hidden] { display: none !important; }
+    details { background: white; border: 1px solid var(--line); border-radius: 9px; padding: 15px 20px; margin: 18px 0; }
+    summary { cursor: pointer; font-weight: 700; }
+    footer { border-top: 1px solid var(--line); margin-top: 45px; padding-top: 24px; font-size: 14px; color: var(--muted); }
+    footer li { margin: 9px 0; }
+    @media (max-width: 1000px) {
+      :root { --nav-width: 210px; }
+      main { padding: 38px 28px; }
+      aside { padding: 27px 17px; }
+    }
+    @media (max-width: 760px) {
+      body { font-size: 17px; }
+      aside { position: static; width: auto; padding: 17px 20px; }
+      .nav-title { display: none; }
+      nav { display: flex; gap: 6px; overflow-x: auto; padding: 8px 0 3px; }
+      nav a { white-space: nowrap; font-size: 12px; margin: 0; padding: 6px 9px; }
+      main { margin: 0; padding: 25px 20px 45px; }
+      h1 { font-size: 34px; }
+      h2 { font-size: 25px; }
+      .lead { font-size: 18px; }
+      .grid, .branches { grid-template-columns: 1fr; }
+      .card { padding: 18px; }
+      pre { font-size: 13px; padding: 18px; }
+      th, td { padding: 11px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+    }
+    @media print {
+      aside, .example-controls { display: none !important; }
+      main { margin: 0; padding: 0; }
+      body { background: white; font-size: 11pt; }
+      h1 { font-size: 28pt; }
+      h2 { font-size: 20pt; }
+      .section { padding-top: 24px; }
+      .card, pre, .note, .flow-box { break-inside: avoid; }
+      pre { background: #eef2f4; color: #182f3c; }
+      .key { color: var(--teal); }
+      .value { color: var(--amber); }
+      .comment { color: var(--muted); }
+      .table-wrap { overflow: visible; }
+      [data-example-panel][hidden] { display: block !important; }
+      a { color: inherit; }
+    }
+  </style>
+</head>
+<body>
+  <aside aria-label="目次">
+    <div class="brand">PDFMOD / FIELD NOTES</div>
+    <div class="nav-title">リソース辞書と属性継承</div>
+    <nav>
+      <a href="#overview" aria-current="location"><span>01</span>役割と全体像</a>
+      <a href="#syntax"><span>02</span>PDF記述の読み方</a>
+      <a href="#rules"><span>03</span>仕様と取り扱い</a>
+      <a href="#flow"><span>04</span>処理の流れ</a>
+      <a href="#examples"><span>05</span>具体例で確かめる</a>
+      <a href="#implementation"><span>06</span>実装と対応範囲</a>
+    </nav>
+  </aside>
+  <main id="top"><div class="wrap">
+    <header class="hero">
+      <div class="eyebrow">PDF INTERNALS / PAGE RESOURCES</div>
+      <h1>リソース辞書と属性継承</h1>
+      <p class="lead">描画オペレータが参照するフォントや画像、色空間を名前と結びつける <code>/Resources</code> 辞書。ページツリーにおける「全置換原則」による継承ルールと、間接参照の2段階オンデマンド解決を解説します。</p>
+    </header>
+
+    <section class="section" id="overview">
+      <div class="section-heading"><span class="number">01</span><h2>役割と全体像</h2></div>
+      <p>PDF のコンテンツストリーム（描画命令列）では、フォントや画像、グラフィックス状態などの外部オブジェクトを <code>/F1 12 Tf</code> や <code>/Im1 Do</code> のように<strong>リソース名</strong>で指定します。このリソース名と実際のオブジェクトを結びつけるのが <strong>Resources 辞書（<code>/Resources</code>）</strong> です。</p>
+      <div class="grid">
+        <div class="card">
+          <h3>/Resources 辞書</h3>
+          <p>ページ（<code>Page</code>）またはページグループ（<code>Pages</code>）が保持する辞書です。カテゴリ名（<code>/Font</code>、<code>/XObject</code> など）をキーとし、その下に各リソース名の辞書をネストします。</p>
+        </div>
+        <div class="card">
+          <h3>属性の継承（全置換原則）</h3>
+          <p><code>/Resources</code> は親 Pages から子 Page へ継承される属性です。ただしキーごとのマージは行われず、最も近い先祖ノードの辞書で<strong>完全に置換（完全上書き）</strong>されます。</p>
+        </div>
+      </div>
+      <div class="note">
+        <strong>ここで押さえる要点</strong>
+        子ページに <code>/Resources</code> が定義されている場合、親 Pages のリソースは一切継承されません。また、リソース辞書内の間接参照はページ読み込み時に一括解決するのではなく、実際に必要となった時点で遅延（オンデマンド）解決します。
+      </div>
+    </section>
+
+    <section class="section" id="syntax">
+      <div class="section-heading"><span class="number">02</span><h2>PDF記述を読む</h2></div>
+      <p>次はページツリーとリソース辞書の関係を示す抜粋例です。</p>
+      <div class="grid">
+        <pre><code><span class="comment">% 親 Pages ノード</span>
+2 0 obj
+&lt;&lt;
+  <span class="key">/Type</span> <span class="value">/Pages</span>
+  <span class="key">/Kids</span> [<span class="value">3 0 R</span>]
+  <span class="key">/Count</span> <span class="value">1</span>
+  <span class="key">/Resources</span> &lt;&lt;
+    <span class="key">/Font</span> &lt;&lt; <span class="key">/F1</span> <span class="value">10 0 R</span> &gt;&gt;
+    <span class="key">/XObject</span> &lt;&lt; <span class="key">/Im1</span> <span class="value">20 0 R</span> &gt;&gt;
+  &gt;&gt;
+&gt;&gt;
+endobj
+
+<span class="comment">% 子 Page ノード（リソース上書き）</span>
+3 0 obj
+&lt;&lt;
+  <span class="key">/Type</span> <span class="value">/Page</span>
+  <span class="key">/Parent</span> <span class="value">2 0 R</span>
+  <span class="key">/Resources</span> &lt;&lt;
+    <span class="key">/Font</span> &lt;&lt; <span class="key">/F2</span> <span class="value">11 0 R</span> &gt;&gt;
+  &gt;&gt;
+  <span class="key">/MediaBox</span> [<span class="value">0 0 612 792</span>]
+&gt;&gt;
+endobj</code></pre>
+        <div>
+          <h3>記号と値の意味</h3>
+          <p><code>/Font &lt;&lt; /F1 10 0 R &gt;&gt;</code><br>リソースカテゴリ <code>/Font</code> の下に、リソース名 <code>/F1</code> とフォント辞書への間接参照 <code>10 0 R</code> が登録されています。</p>
+          <p><code>3 0 obj の /Resources</code><br>子 Page で <code>/Font</code> のみを持つリソース辞書が指定されています。この場合、親ノード（<code>2 0 obj</code>）に存在する <code>/XObject</code>（<code>/Im1</code>）は継承されず、子ページからは参照できません。</p>
+        </div>
+      </div>
+      <div class="note warning">
+        <strong>辞書のマージは行われません</strong>
+        JavaScript のスプレッド構文やオブジェクトマージ（<code>{ ...parent, ...child }</code>）のような挙動を期待すると誤りになります。PDF仕様上、子辞書が存在する場合は親辞書全体が遮断されます。
+      </div>
+    </section>
+
+    <section class="section" id="rules">
+      <div class="section-heading"><span class="number">03</span><h2>仕様と取り扱い</h2></div>
+      <p>ISO 32000-1 (PDF 1.7) Table 33 および ISO 32000-2 (PDF 2.0) Table 34 で定義されるリソースカテゴリと、本ライブラリでの取り扱いです。</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>カテゴリ名</th><th>格納されるオブジェクト</th><th>取り扱いと解決方針</th></tr></thead>
+        <tbody>
+          <tr><td><code>Font</code></td><td>フォント辞書（Type 1, TrueType, Type 0 等）</td><td>辞書オブジェクトまたはその間接参照を解決。</td></tr>
+          <tr><td><code>XObject</code></td><td>外部オブジェクト（画像ストリーム、フォーム等）</td><td><code>PdfStream</code> または <code>PdfDictionary</code> を透過的に解決。</td></tr>
+          <tr><td><code>ExtGState</code></td><td>グラフィックス状態パラメータ辞書</td><td>線幅、透明度、ブレンドモードなどの辞書を解決。</td></tr>
+          <tr><td><code>ColorSpace</code></td><td>色空間辞書または名前・配列</td><td>ICCBased、Separation、DeviceN などのオブジェクトを解決。</td></tr>
+          <tr><td><code>Pattern</code></td><td>タイリングパターンやシェーディングパターン</td><td>パターンのストリームまたは辞書を解決。</td></tr>
+          <tr><td><code>Shading</code></td><td>スムーズシェーディング辞書</td><td>グラデーション等のシェーディング辞書を解決。</td></tr>
+          <tr><td><code>Properties</code></td><td>マークされたコンテンツのプロパティ辞書</td><td>タグ付き PDF やレイヤー情報の辞書を解決。</td></tr>
+          <tr><td><code>ProcSet</code></td><td>プロシージャセット（名前の配列）</td><td><strong>PDF 2.0 で非推奨</strong>。カテゴリとして扱わずスキップ。</td></tr>
+          <tr><td>未知のカテゴリ</td><td>仕様外またはプライベートな辞書</td><td>安全に保持され、同一の lookup API で取得可能。</td></tr>
+        </tbody>
+      </table></div>
+      <div class="note warning">
+        <strong>仕様と実装方針を区別する</strong>
+        PDF仕様ではカテゴリ辞書自体も間接参照（例: <code>/Font 15 0 R</code>）にすることが認められています。本実装では、カテゴリ辞書の間接参照と、その中に含まれる個別エントリの間接参照の両方をオンデマンドで解決する2段階解決（Two-stage lazy resolution）を採用しています。
+      </div>
+    </section>
+
+    <section class="section" id="flow">
+      <div class="section-heading"><span class="number">04</span><h2>処理の流れを辿る</h2></div>
+      <p>ページツリー走査から個別リソースの取得までの全体フローです。</p>
+      <figure class="card">
+        <div class="card-label">リソース継承と2段階オンデマンド解決</div>
+        <div class="flow">
+          <div class="flow-box secondary"><strong>ページツリー走査（AttrResolver.resources）</strong>Page ノード直下、または最も近い親 Pages の /Resources 辞書を探索</div>
+          <div class="flow-arrow">↓ 見つかった辞書（未定義時は空辞書）をラップ</div>
+          <div class="flow-box primary"><strong>PdfResources インスタンス生成</strong>辞書の実体は保持し、間接参照は未解決のまま保持</div>
+          <div class="flow-arrow">↓ PdfResources.lookup(res, "Font", "F1", resolveRef)</div>
+          <div class="branches">
+            <div>
+              <div class="flow-arrow">第1段階：カテゴリ辞書の取得</div>
+              <div class="flow-box"><strong>resolveRef（カテゴリ）</strong>/Font が間接参照なら辞書オブジェクトを解決</div>
+            </div>
+            <div>
+              <div class="flow-arrow">第2段階：個別エントリの取得</div>
+              <div class="flow-box"><strong>resolveRef（エントリ）</strong>/F1 が間接参照なら対象オブジェクト/ストリームを解決</div>
+            </div>
+          </div>
+        </div>
+        <figcaption class="flow-caption">未アクセスのカテゴリやエントリに含まれる破損した間接参照は解決されないため、ページ全体の読み込みに影響を与えません。</figcaption>
+      </figure>
+      <ol class="steps">
+        <li><strong>ページツリーの属性継承探索</strong><p>対象ノード直下に <code>/Resources</code> があればそれを採用します。なければ祖先配列を葉から根に向かって順に走査し、最初に見つかった辞書を採用します。いずれにも無ければ <code>PdfResources.createEmpty()</code> を返します。</p></li>
+        <li><strong>第1段階：カテゴリ辞書の解決</strong><p><code>lookup</code> 時に、指定されたカテゴリ（例: <code>Font</code>）の値を取得します。直接辞書ならそのまま、間接参照なら <code>resolveRef</code> で辞書を解決します。</p></li>
+        <li><strong>第2段階：個別エントリの解決</strong><p>カテゴリ辞書内から対象の名前（例: <code>F1</code>）のエントリを取り出します。直接値ならそのまま、間接参照なら <code>resolveRef</code> を呼び出してフォント辞書や画像ストリーム（<code>PdfStream</code>）を取得して返します。</p></li>
+      </ol>
+    </section>
+
+    <section class="section" id="examples">
+      <div class="section-heading"><span class="number">05</span><h2>具体例で確かめる</h2></div>
+      <p>リソースの定義状況と <code>lookup</code> の解決結果のパターンです。</p>
+      <div class="card" data-examples>
+        <div class="card-label">TRY IT — 入力例を切り替える</div>
+        <div class="example-controls" hidden aria-label="入力例の選択">
+          <button type="button" data-example="normal" aria-controls="example-normal" aria-pressed="true">間接参照の連鎖解決</button>
+          <button type="button" data-example="default" aria-controls="example-default" aria-pressed="false">全置換による上書き</button>
+          <button type="button" data-example="error" aria-controls="example-error" aria-pressed="false">未定義・ProcSet・壊れた参照</button>
+        </div>
+        <div aria-live="polite">
+          <article id="example-normal" data-example-panel="normal">
+            <h3>間接参照の連鎖解決</h3>
+            <pre><code>/Resources &lt;&lt; /Font 2 0 R &gt;&gt;
+2 0 obj &lt;&lt; /F1 3 0 R &gt;&gt; endobj
+3 0 obj &lt;&lt; /Type /Font /Subtype /Type1 /BaseFont /Helvetica &gt;&gt; endobj</code></pre>
+            <div class="note">
+              <strong>結果：Some(Helvetica Font Dict) が返る</strong>
+              <code>lookup(resources, "Font", "F1", resolveRef)</code> により、まず <code>2 0 R</code> が辞書として解決され、次に <code>3 0 R</code> がフォント辞書として解決されて透過的に返されます。
+            </div>
+          </article>
+          <article id="example-default" data-example-panel="default">
+            <h3>全置換による上書き（親リソースの遮断）</h3>
+            <pre><code>親 Pages: /Resources &lt;&lt; /Font &lt;&lt; /F1 ... &gt;&gt; /XObject &lt;&lt; /Im1 ... &gt;&gt; &gt;&gt;
+子 Page : /Resources &lt;&lt; /Font &lt;&lt; /F2 ... &gt;&gt; &gt;&gt;</code></pre>
+            <div class="note warning">
+              <strong>結果：F2 のみ取得可能、Im1 は ok(none)</strong>
+              子ページのリソース辞書が親を全置換するため、親に存在していた <code>/XObject</code>（<code>/Im1</code>）は参照できず、安全に <code>none</code> が返ります。
+            </div>
+          </article>
+          <article id="example-error" data-example-panel="error">
+            <h3>未定義・ProcSet・壊れた参照</h3>
+            <pre><code>/Resources &lt;&lt;
+  /ProcSet [/PDF /Text]
+  /Font &lt;&lt; /F1 999 0 R &gt;&gt;
+&gt;&gt;
+<span class="comment">% 999 0 R はファイル中に存在しない壊れた参照</span></code></pre>
+            <div class="note error">
+              <strong>結果：ProcSet は無視、未アクセスならエラーなし</strong>
+              <code>hasCategory("ProcSet")</code> は <code>false</code> を返します。また、<code>/F1</code> にアクセスしない限り壊れた <code>999 0 R</code> の解決は走らないため、他エントリへのアクセスは阻害されません。
+            </div>
+          </article>
+        </div>
+        <p class="meta">説明用の例です。ブラウザ上でPDFパーサを実行するものではありません。</p>
+      </div>
+    </section>
+
+    <section class="section" id="implementation">
+      <div class="section-heading"><span class="number">06</span><h2>実装と対応範囲</h2></div>
+      <p>TypeScript API（<code>@pdfmod/core</code>）におけるリソースの利用例です。以下の抜粋では、<code>page</code> は読み込み済みのページ、<code>resolveRef</code> はその文書の間接参照解決関数とします。<code>Result</code> の <code>ok</code> で成功を、<code>Option</code> の <code>some</code> で値の存在を確認します。</p>
+      <pre><code>import { PdfResources } from "@pdfmod/core";
+
+// ページからリソース辞書を取得
+const resources: PdfResources = page.resources;
+
+// カテゴリ存在チェック（ProcSet は常に false）
+if (PdfResources.hasCategory(resources, "Font")) {
+  // フォントリソースの遅延解決
+  const fontResult = await PdfResources.lookup(
+    resources,
+    "Font",
+    "F1",
+    resolveRef,
+  );
+
+  const hasFont = fontResult.ok &amp;&amp; fontResult.value.some;
+  if (hasFont) {
+    const fontObj = fontResult.value.value;
+    console.log("Found font:", fontObj);
+  }
+}</code></pre>
+      <div class="table-wrap"><table>
+        <thead><tr><th>API・型</th><th>役割・結果</th></tr></thead>
+        <tbody>
+          <tr><td><code>PdfResources</code></td><td>解決済みリソース辞書をラップする型。<code>dictionary: PdfDictionary</code> を保持。</td></tr>
+          <tr><td><code>PdfResources.createEmpty()</code></td><td>リソース不在時のフォールバック用空辞書を生成。</td></tr>
+          <tr><td><code>PdfResources.from(dict?)</code></td><td>辞書から <code>PdfResources</code> を安全に生成（引数なし時は空辞書）。</td></tr>
+          <tr><td><code>PdfResources.hasCategory(res, cat)</code></td><td>カテゴリの存在判定。<code>/ProcSet</code> の場合は常に <code>false</code>。</td></tr>
+          <tr><td><code>PdfResources.getCategory(res, cat, resolveRef)</code></td><td>カテゴリ辞書を非同期で遅延解決し、<code>Result&lt;Option&lt;PdfDictionary&gt;, PdfError&gt;</code> を返却。</td></tr>
+          <tr><td><code>PdfResources.lookup(res, cat, name, resolveRef)</code></td><td>カテゴリと個別エントリを非同期で2段階遅延解決し、<code>Result&lt;Option&lt;PdfObject&gt;, PdfError&gt;</code> を返却（<code>PdfObject</code> はストリームを含む）。</td></tr>
+        </tbody>
+      </table></div>
+      <div class="grid">
+        <div class="card">
+          <h3>今回対応する範囲</h3>
+          <p>ページツリーからの全置換属性継承、空辞書フォールバック、標準・カスタムカテゴリの保持、2段階オンデマンド解決、ストリーム透過返却、非推奨 <code>/ProcSet</code> の除外。</p>
+        </div>
+        <div class="card">
+          <h3>後続処理・未対応の範囲</h3>
+          <p>フォント辞書内部のエンコーディング・CMAP 解析、画像ストリームのデコードとピクセル展開、コンテントストリーム描画命令の実行。</p>
+        </div>
+      </div>
+      <div class="note">
+        <strong>覚えておくこと</strong>
+        ① <code>/Resources</code> はキー単位でマージされず、直近の祖先辞書で完全に上書きされます。② 間接参照はオンデマンド解決されるため、不要な解決オーバーヘッドや破損参照の巻き添えを防ぎます。③ <code>PdfResources.lookup</code> は辞書だけでなく画像などのストリームも透過的に返却します。
+      </div>
+    </section>
+
+    <footer><a href="#top">↑ 先頭に戻る</a></footer>
+  </div></main>
+  <script>
+    'use strict';
+
+    document.querySelectorAll('[data-examples]').forEach(group => {
+      const controls = group.querySelector('.example-controls');
+      const buttons = [...group.querySelectorAll('[data-example]')];
+      const panels = [...group.querySelectorAll('[data-example-panel]')];
+      if (!controls || buttons.length === 0 || panels.length === 0) return;
+
+      function showExample(key) {
+        buttons.forEach(button => {
+          button.setAttribute('aria-pressed', String(button.dataset.example === key));
+        });
+        panels.forEach(panel => {
+          panel.hidden = panel.dataset.examplePanel !== key;
+        });
+      }
+
+      controls.hidden = false;
+      showExample(buttons[0].dataset.example);
+      buttons.forEach(button => {
+        button.addEventListener('click', () => showExample(button.dataset.example));
+      });
+    });
+
+    const sections = [...document.querySelectorAll('.section')];
+    const links = [...document.querySelectorAll('nav a[href^="#"]')];
+    let pending = false;
+    function updateNavigation() {
+      pending = false;
+      if (sections.length === 0) return;
+      let current = sections[0];
+      for (const section of sections) {
+        if (section.getBoundingClientRect().top <= window.innerHeight * .3) current = section;
+      }
+      links.forEach(link => {
+        if (link.hash === '#' + current.id) {
+          link.setAttribute('aria-current', 'location');
+          return;
+        }
+        link.removeAttribute('aria-current');
+      });
+    }
+    window.addEventListener('scroll', () => {
+      if (pending) return;
+      pending = true;
+      requestAnimationFrame(updateNavigation);
+    }, { passive: true });
+    window.addEventListener('resize', updateNavigation);
+    updateNavigation();
+  </script>
+</body>
+</html>
