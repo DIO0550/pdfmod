@@ -10,6 +10,7 @@ test.each([
   [5, 6, "V5R6", "/CF << >> /OE (owner) /UE (user) /Perms (perms)"],
 ])("/V %i /R %i は %s として表現される", (v, r, kind, extra) => {
   const { result } = parseEncryption(standardEntries(v, r, extra));
+
   expect(result).toMatchObject({
     ok: true,
     value: { type: "Standard", handler: { algorithm: { kind } } },
@@ -18,6 +19,7 @@ test.each([
 
 test("/O と /U は文字列デコードせず元のバイト列を保持する", () => {
   const { result } = parseEncryption(standardEntries(1, 2));
+
   expect(result).toMatchObject({
     ok: true,
     value: {
@@ -33,6 +35,7 @@ test("/R 6 の /OE /UE /Perms は長さを検証せず保持する", () => {
   const { result } = parseEncryption(
     standardEntries(5, 6, "/CF << >> /OE <00> /UE <01> /Perms <02>"),
   );
+
   expect(result).toMatchObject({
     ok: true,
     value: {
@@ -54,10 +57,12 @@ test.each([
   "/Custom /Something 5 0 R",
 ])("未対応ハンドラ %s は欠損なく生辞書を保持する", (filter) => {
   const { result, raw } = parseEncryption(`/Filter ${filter}`);
+
   expect(result).toMatchObject({
     ok: true,
     value: { type: "Unsupported", raw },
   });
+
   if (result.ok && result.value.type === "Unsupported") {
     expect(result.value.raw).toBe(raw);
   }
@@ -76,6 +81,7 @@ test.each([
   const { result, raw } = parseEncryption(
     `/Filter /Standard /V ${v} /R ${r} /Custom (keep)`,
   );
+
   expect(result).toEqual({
     ok: true,
     value: { type: "Unsupported", filter: "Standard", raw },
@@ -86,6 +92,7 @@ test.each([true, false])("/EncryptMetadata %s を取り出す", (flag) => {
   const { result } = parseEncryption(
     standardEntries(1, 2, `/EncryptMetadata ${flag}`),
   );
+
   expect(result).toMatchObject({
     ok: true,
     value: { handler: { encryptMetadata: flag } },

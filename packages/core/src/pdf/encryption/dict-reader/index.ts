@@ -23,9 +23,11 @@ export const EncryptDictReader = {
     field: Field<T>,
   ): Result<Option<Extract<PdfValue, { type: T }>>, EncryptError> {
     const value = reader.dictionary.entries.get(field.key);
+
     if (value === undefined) {
       return ok(none);
     }
+
     if (value.type !== field.type) {
       return err(
         EncryptError.create(
@@ -38,6 +40,7 @@ export const EncryptDictReader = {
         ),
       );
     }
+
     // 型引数 T と value.type の一致を実行時に確定させる境界。
     return ok(some(value as Extract<PdfValue, { type: T }>));
   },
@@ -48,9 +51,11 @@ export const EncryptDictReader = {
     field: Field<T>,
   ): Result<Extract<PdfValue, { type: T }>, EncryptError> {
     const result = EncryptDictReader.optional(reader, field);
+
     if (!result.ok) {
       return result;
     }
+
     if (!result.value.some) {
       return err(
         EncryptError.create(
@@ -63,6 +68,7 @@ export const EncryptDictReader = {
         ),
       );
     }
+
     return ok(result.value.value);
   },
 } as const;

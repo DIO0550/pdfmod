@@ -11,8 +11,11 @@ export const CryptFilterMethods = {
   AesV2: "AESV2",
   AesV3: "AESV3",
 } as const;
+
 export type CryptFilterMethod = ValueOf<typeof CryptFilterMethods>;
+
 export const AuthEvents = { DocOpen: "DocOpen", EfOpen: "EFOpen" } as const;
+
 export type AuthEvent = ValueOf<typeof AuthEvents>;
 
 /** /CF の暗号方式・認証イベント・正規化済み鍵長。 */
@@ -29,13 +32,16 @@ export const CryptFilter = {
       key: "CFM",
       type: "name",
     });
+
     if (!method.ok) {
       return method;
     }
+
     const methodName = method.value.some
       ? method.value.value.value
       : CryptFilterMethods.None;
     const parsedMethod = CryptFilter.methodFromName(methodName);
+
     if (!parsedMethod.some) {
       return err(
         EncryptError.create(
@@ -48,13 +54,16 @@ export const CryptFilter = {
         ),
       );
     }
+
     const auth = reader.dictionary.entries.get("AuthEvent");
     const isEfOpen = auth?.type === "name" && auth.value === AuthEvents.EfOpen;
+
     const length = reader.dictionary.entries.get("Length");
     const parsedLength =
       length?.type === "integer"
         ? KeyLength.fromCryptFilterLength(length.value)
         : none;
+
     return ok({
       method: parsedMethod.value,
       authEvent: isEfOpen ? AuthEvents.EfOpen : AuthEvents.DocOpen,
@@ -67,12 +76,16 @@ export const CryptFilter = {
     switch (name) {
       case CryptFilterMethods.None:
         return some(CryptFilterMethods.None);
+
       case CryptFilterMethods.V2:
         return some(CryptFilterMethods.V2);
+
       case CryptFilterMethods.AesV2:
         return some(CryptFilterMethods.AesV2);
+
       case CryptFilterMethods.AesV3:
         return some(CryptFilterMethods.AesV3);
+
       default:
         return none;
     }
@@ -94,6 +107,7 @@ export const CryptFilterSelector = {
     if (name === "Identity") {
       return ok({ type: "Identity" });
     }
+
     if (!filters.has(name)) {
       return err(
         EncryptError.create(
@@ -106,6 +120,7 @@ export const CryptFilterSelector = {
         ),
       );
     }
+
     return ok({ type: "Named", name });
   },
 } as const;
@@ -127,10 +142,13 @@ export const CryptFilters = {
       key: "CF",
       type: "dictionary",
     });
+
     if (!dictionary.ok) {
       return dictionary;
     }
+
     const filters = new Map<string, CryptFilter>();
+
     for (const [name, value] of dictionary.value.entries) {
       if (value.type !== "dictionary") {
         return err(
@@ -144,29 +162,40 @@ export const CryptFilters = {
           ),
         );
       }
+
       const filter = CryptFilter.fromDictionary({
         ...reader,
         dictionary: value,
         path: `/CF/${name}`,
       });
+
       if (!filter.ok) {
         return filter;
       }
+
       filters.set(name, filter.value);
     }
+
     const stream = CryptFilters.readSelector(reader, "StmF", filters);
+
     if (!stream.ok) {
       return stream;
     }
+
     const string = CryptFilters.readSelector(reader, "StrF", filters);
+
     if (!string.ok) {
       return string;
     }
+
     const embeddedFile = CryptFilters.readSelector(reader, "EFF", filters);
+
     if (!embeddedFile.ok) {
       return embeddedFile;
     }
+
     const identity: CryptFilterSelector = { type: "Identity" };
+
     return ok({
       filters,
       stream: stream.value.some ? stream.value.value : identity,
@@ -182,20 +211,25 @@ export const CryptFilters = {
     filters: CryptFilters["filters"],
   ): Result<Option<CryptFilterSelector>, EncryptError> {
     const name = EncryptDictReader.optional(reader, { key, type: "name" });
+
     if (!name.ok) {
       return name;
     }
+
     if (!name.value.some) {
       return ok(none);
     }
+
     const selector = CryptFilterSelector.fromName(
       name.value.value.value,
       filters,
       { ...reader, path: `/${key}` },
     );
+
     if (!selector.ok) {
       return selector;
     }
+
     return ok(some(selector.value));
   },
 } as const;

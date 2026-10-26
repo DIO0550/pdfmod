@@ -32,9 +32,11 @@ export const KeyLength = {
       bits >= MIN_BYTES * BITS_PER_BYTE &&
       bits <= MAX_BYTES * BITS_PER_BYTE &&
       bits % BITS_PER_BYTE === 0;
+
     if (!valid) {
       return none;
     }
+
     return some(bits as KeyLength);
   },
 
@@ -42,9 +44,11 @@ export const KeyLength = {
   fromCryptFilterLength(raw: number): Option<KeyLength> {
     const isBytes = raw >= MIN_BYTES && raw <= MAX_BYTES;
     const bits = isBytes ? raw * BITS_PER_BYTE : raw;
+
     if (!Number.isInteger(raw)) {
       return none;
     }
+
     return KeyLength.fromBits(bits);
   },
 } as const;

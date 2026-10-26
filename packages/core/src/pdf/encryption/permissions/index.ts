@@ -16,6 +16,7 @@ export const Permissions = {
   ): Result<Permissions, EncryptError> {
     const valid =
       Number.isInteger(value) && value >= MIN_SIGNED && value <= MAX_UNSIGNED;
+
     if (!valid) {
       return err(
         EncryptError.create(
@@ -28,6 +29,7 @@ export const Permissions = {
         ),
       );
     }
+
     return ok({ bits: value | 0 });
   },
 } as const;
