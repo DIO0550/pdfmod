@@ -36,35 +36,45 @@ export const EncryptDictionary = {
     offset: ByteOffset,
   ): Result<EncryptDictionary, EncryptError> {
     const reader: EncryptDictReader = { dictionary, offset, path: "" };
+
     const filter = EncryptDictReader.required(reader, {
       key: "Filter",
       type: "name",
     });
+
     if (!filter.ok) {
       return filter;
     }
+
     const unsupported: EncryptDictionary = {
       type: "Unsupported",
       filter: filter.value.value,
       raw: dictionary,
     };
+
     if (filter.value.value !== "Standard") {
       return ok(unsupported);
     }
+
     const algorithm = StandardAlgorithm.fromDictionary(reader);
+
     if (!algorithm.ok) {
       return algorithm;
     }
+
     if (!algorithm.value.some) {
       return ok(unsupported);
     }
+
     const handler = StandardSecurityHandler.fromDictionary(
       reader,
       algorithm.value.value,
     );
+
     if (!handler.ok) {
       return handler;
     }
+
     return ok({ type: "Standard", handler: handler.value });
   },
 } as const;

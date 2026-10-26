@@ -21,23 +21,29 @@ export const AesKeyMaterial = {
       key: "OE",
       type: "string",
     });
+
     if (!owner.ok) {
       return owner;
     }
+
     const user = EncryptDictReader.required(reader, {
       key: "UE",
       type: "string",
     });
+
     if (!user.ok) {
       return user;
     }
+
     const perms = EncryptDictReader.required(reader, {
       key: "Perms",
       type: "string",
     });
+
     if (!perms.ok) {
       return perms;
     }
+
     return ok({
       ownerEncryptedKey: owner.value.value,
       userEncryptedKey: user.value.value,
@@ -79,29 +85,39 @@ export const StandardAlgorithm = {
       key: "V",
       type: "integer",
     });
+
     if (!version.ok) {
       return version;
     }
+
     const revision = EncryptDictReader.required(reader, {
       key: "R",
       type: "integer",
     });
+
     if (!revision.ok) {
       return revision;
     }
+
     switch (`${version.value.value}:${revision.value.value}`) {
       case "1:2":
         return ok(some({ kind: "V1R2" }));
+
       case "1:3":
         return ok(some({ kind: "V1R3" }));
+
       case "2:3":
         return StandardAlgorithm.readVariableLength(reader, "V2R3");
+
       case "4:4":
         return StandardAlgorithm.readVariableLength(reader, "V4R4");
+
       case "5:5":
         return StandardAlgorithm.readAes256(reader, "V5R5");
+
       case "5:6":
         return StandardAlgorithm.readAes256(reader, "V5R6");
+
       default:
         return ok(none);
     }
@@ -116,11 +132,14 @@ export const StandardAlgorithm = {
       key: "Length",
       type: "integer",
     });
+
     if (!length.ok) {
       return length;
     }
+
     const bits = length.value.some ? length.value.value.value : BITS_40;
     const keyLength = KeyLength.fromBits(bits);
+
     if (!keyLength.some) {
       return err(
         EncryptError.create(
@@ -133,13 +152,17 @@ export const StandardAlgorithm = {
         ),
       );
     }
+
     if (kind === "V2R3") {
       return ok(some({ kind, keyLength: keyLength.value }));
     }
+
     const filters = CryptFilters.fromDictionary(reader);
+
     if (!filters.ok) {
       return filters;
     }
+
     return ok(
       some({ kind, keyLength: keyLength.value, cryptFilters: filters.value }),
     );
@@ -151,13 +174,17 @@ export const StandardAlgorithm = {
     kind: "V5R5" | "V5R6",
   ): Result<Option<StandardAlgorithm>, EncryptError> {
     const filters = CryptFilters.fromDictionary(reader);
+
     if (!filters.ok) {
       return filters;
     }
+
     const keys = AesKeyMaterial.fromDictionary(reader);
+
     if (!keys.ok) {
       return keys;
     }
+
     return ok(some({ kind, cryptFilters: filters.value, keys: keys.value }));
   },
 
@@ -167,9 +194,11 @@ export const StandardAlgorithm = {
       case "V1R2":
       case "V1R3":
         return BITS_40;
+
       case "V2R3":
       case "V4R4":
         return algorithm.keyLength;
+
       case "V5R5":
       case "V5R6":
         return BITS_256;

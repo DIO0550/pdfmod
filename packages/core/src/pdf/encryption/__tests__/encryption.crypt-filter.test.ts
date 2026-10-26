@@ -4,19 +4,24 @@ import { parseEncryption, standardEntries } from "./encryption.test.helpers";
 
 const parseFilters = (extra: string): CryptFilters => {
   const { result } = parseEncryption(standardEntries(4, 4, extra));
+
   expect(result).toMatchObject({
     ok: true,
     value: { type: "Standard", handler: { algorithm: { kind: "V4R4" } } },
   });
+
   if (!result.ok) {
     throw new Error("crypt filter の解析失敗");
   }
+
   if (result.value.type !== "Standard") {
     throw new Error("標準ハンドラが必要");
   }
+
   if (result.value.handler.algorithm.kind !== "V4R4") {
     throw new Error("V4R4 が必要");
   }
+
   return result.value.handler.algorithm.cryptFilters;
 };
 
@@ -31,6 +36,7 @@ test.each([
   const filters = parseFilters(
     `/CF << /StdCF << /CFM /V2 /Length ${raw} >> >>`,
   );
+
   expect(filters.filters.get("StdCF")?.length).toEqual({
     some: true,
     value: bits,
@@ -93,6 +99,7 @@ test.each([
 
 test("省略された /StmF・/StrF は Identity、/EFF は None", () => {
   const filters = parseFilters("/CF << >>");
+
   expect([filters.stream, filters.string, filters.embeddedFile]).toEqual([
     { type: "Identity" },
     { type: "Identity" },
@@ -104,6 +111,7 @@ test("/Identity は /CF に定義がなくても組み込みとして扱う", ()
   const filters = parseFilters(
     "/CF << >> /StmF /Identity /StrF /Identity /EFF /Identity",
   );
+
   expect([filters.stream, filters.string, filters.embeddedFile]).toEqual([
     { type: "Identity" },
     { type: "Identity" },
@@ -115,11 +123,13 @@ test("名前付きセレクタは対応する /CF を指す", () => {
   const filters = parseFilters(
     "/CF << /Stream << /CFM /AESV2 >> /String << /CFM /V2 >> >> /StmF /Stream /StrF /String /EFF /Stream",
   );
+
   expect([filters.stream, filters.string, filters.embeddedFile]).toEqual([
     { type: "Named", name: "Stream" },
     { type: "Named", name: "String" },
     { some: true, value: { type: "Named", name: "Stream" } },
   ]);
+
   expect(filters.filters.size).toBe(2);
 });
 

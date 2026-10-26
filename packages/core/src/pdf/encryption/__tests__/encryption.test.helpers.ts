@@ -16,12 +16,15 @@ export const parseEncryption = (
     new TextEncoder().encode(`%PDF-\n << ${entries} >>`),
     offset,
   );
+
   if (!parsed.ok) {
     throw new Error(parsed.error.message);
   }
+
   if (parsed.value.type !== "dictionary") {
     throw new Error("暗号化辞書が必要です");
   }
+
   return {
     raw: parsed.value,
     result: EncryptDictionary.fromDictionary(parsed.value, offset),

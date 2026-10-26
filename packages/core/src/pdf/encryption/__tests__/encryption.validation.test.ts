@@ -67,14 +67,19 @@ test.each([
   [5, 6, "/CF << >> /OE () /UE () /Perms () /Length 5 0 R", 256],
 ])("/V %i /R %i のファイル鍵長は %s から %i ビットになる", (v, r, extra, bits) => {
   const { result } = parseEncryption(standardEntries(v, r, extra));
+
   expect(result.ok).toBe(true);
+
   if (!result.ok) {
     return;
   }
+
   expect(result.value.type).toBe("Standard");
+
   if (result.value.type !== "Standard") {
     return;
   }
+
   expect(StandardAlgorithm.keyLength(result.value.handler.algorithm)).toBe(
     bits,
   );
@@ -113,6 +118,7 @@ test("対応済み辞書のキーも未知のキーも変更しない", () => {
     "/CF << /StdCF << /CFM /AESV2 /Length 16 >> >> /StmF /StdCF /Custom 5 0 R",
   );
   const { raw } = parseEncryption(entries);
+
   expect([...raw.entries.keys()]).toEqual([
     "Filter",
     "V",
@@ -124,6 +130,7 @@ test("対応済み辞書のキーも未知のキーも変更しない", () => {
     "StmF",
     "Custom",
   ]);
+
   expect(raw.entries.get("CF")).toMatchObject({
     entries: new Map([
       [

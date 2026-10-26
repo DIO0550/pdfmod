@@ -23,31 +23,41 @@ export const StandardSecurityHandler = {
       key: "O",
       type: "string",
     });
+
     if (!owner.ok) {
       return owner;
     }
+
     const user = EncryptDictReader.required(reader, {
       key: "U",
       type: "string",
     });
+
     if (!user.ok) {
       return user;
     }
+
     const p = EncryptDictReader.required(reader, { key: "P", type: "integer" });
+
     if (!p.ok) {
       return p;
     }
+
     const permissions = Permissions.fromInteger(p.value.value, reader.offset);
+
     if (!permissions.ok) {
       return permissions;
     }
+
     const metadata = EncryptDictReader.optional(reader, {
       key: "EncryptMetadata",
       type: "boolean",
     });
+
     if (!metadata.ok) {
       return metadata;
     }
+
     return ok({
       algorithm,
       ownerKey: owner.value.value,
