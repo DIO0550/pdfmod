@@ -212,6 +212,7 @@ nav a { font-size: 16px; } table { font-size: 17px; } th { font-size: 15px; }
 <tr><td>名前・実数・間接参照</td><td>整数の直接値ではない</td><td>解決せず None</td></tr>
 </tbody></table></div>
 <div class="note warning"><strong>直下の /Length と /CF 内は別の規則</strong>ISOは /CF 内の鍵長をバイト単位としますが、ビット表記のPDFも存在します。RustとTypeScriptは5..16を8倍し、それ以外をビット数として扱い、40..128の8の倍数だけを保持します。これはpdfmodの正規化規則です。AESV3自体は表現できますが、/CF の32・256はこの規則では保持しません。V5のファイル鍵長は256ビット固定です。</div>
+<p>TypeScriptの <code>CryptFilter</code> も方式で分岐するunionです。AESV2の <code>keyLength</code> は128、AESV3は256という固定値の型です。一方、<code>length</code> は入力辞書の /Length を正規化して保持する値であり、AESの固定鍵長を上書きしません。V2（RC4）の指定長は <code>length</code> で読み、省略はNoneのまま扱います。</p>
 <p><code>/AuthEvent</code> は認証の時点です。<code>/DocOpen</code> は文書を開くとき、<code>/EFOpen</code> は埋め込みファイルを開くときです。pdfmodは省略・未知名・型不一致をDocOpenへ戻します。</p></section>
 <section class="section" id="permissions"><div class="section-heading"><span class="number">05</span><h2>/P のビット表現</h2></div>
 <p>Permissions は印刷・変更・抽出などのアクセス権限をビットで表します。例えば第3ビットは印刷、第5ビットは抽出、第12ビットは高解像度の印刷です。ビットが1なら許可を表します。</p>
@@ -228,6 +229,7 @@ nav a { font-size: 16px; } table { font-size: 17px; } th { font-size: 15px; }
 <li>Filterを検証する。未知のハンドラならUnsupportedとして保持する。</li><li>StandardではV・Rを必須の整数として読む。対応外の組ならUnsupportedとして保持する。</li>
 <li>対応する組に必要な鍵長・crypt filter・追加鍵を読む。</li><li>共通のO・U・P・EncryptMetadataを読み、Standardを返す。</li></ol>
 <div class="note error"><strong>位置は辞書単位</strong>エラーの <code>offset</code> は渡された辞書の開始位置です。/CF/StdCF/CFMのようなキーのパスは報告しますが、個々の値の物理位置は取得しません。</div>
+<p>キーと期待型を表す <code>PdfDictionaryField</code> と直接値の取得・型チェックは、PDF共通の <code>PdfDictionaryReader</code> が担当します。暗号化側はそのエラーを <code>EncryptError</code> に変換し、暗号化固有の制約を検証します。</p>
 <p>入力辞書からキーを削除したりバイト列を書き換えたりしません。必須キー欠落、型不一致、不正なファイル鍵長、未定義セレクタはResultのエラーで返します。</p>
 <p>TypeScriptの <code>PdfDocument.load</code> は引き続き暗号化PDFを <code>ENCRYPTED_PDF_UNSUPPORTED</code> として拒否します。この型化は復号機能の基盤であり、ドキュメント読込の復号対応は後続の作業です。</p>
 <h3>TypeScriptで解析結果を読む</h3>
@@ -272,7 +274,7 @@ nav a { font-size: 16px; } table { font-size: 17px; } th { font-size: 15px; }
 <li><code>ByteOffset</code> はバイト位置を表す型です。この例の辞書は入力の先頭にあるので、位置が確定した定数0に <code>of(0)</code> を使います。外部入力の数値には、検証する <code>create</code> を使います。</li>
 <li><code>Result</code> は成功と失敗を値で表す型です。<code>ok</code> がfalseなら <code>error</code>、trueなら <code>value</code> を読みます。<code>Unsupported</code> は失敗ではなく、解釈せず保持できた成功です。</li>
 <li>判別可能なunionは、<code>type</code> や <code>kind</code> の値で中身の型が決まる仕組みです。未対応の分岐を抜けるとStandardだけが残り、<code>handler</code> を安全に読めます。</li>
-<li>鍵長は <code>StandardAlgorithm.keyLength</code> から読みます。固定長のV1・V5には <code>algorithm.keyLength</code> フィールドを持たせていないためです。</li>
+<li>鍵長は <code>algorithm.keyLength</code> または <code>StandardAlgorithm.keyLength</code> から読みます。V1の型は40、V5の型は256に限定され、異なる鍵長を代入すると型エラーになります。V2・V4も40〜128の8刻みだけを許します。</li>
 </ul></section>
 <footer><a href="#top">最上部へ</a> · <a href="README.md">解説一覧</a></footer></div></main>
 </body></html>

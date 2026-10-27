@@ -1,4 +1,5 @@
 import { ok, type Result } from "../../../utils/result/index";
+import type { PdfDictionaryReader } from "../../dictionary-reader/index";
 import { EncryptDictReader } from "../dict-reader/index";
 import type { EncryptError } from "../error/index";
 import { Permissions } from "../permissions/index";
@@ -16,7 +17,7 @@ export type StandardSecurityHandler = {
 export const StandardSecurityHandler = {
   /** 対応済みアルゴリズムの /O・/U・/P・/EncryptMetadata を読む。 */
   fromDictionary(
-    reader: EncryptDictReader,
+    reader: PdfDictionaryReader,
     algorithm: StandardAlgorithm,
   ): Result<StandardSecurityHandler, EncryptError> {
     const owner = EncryptDictReader.required(reader, {

@@ -1,6 +1,7 @@
 import type { ValueOf } from "../../../utils/index";
 import { none, type Option, some } from "../../../utils/option/index";
 import { err, ok, type Result } from "../../../utils/result/index";
+import type { PdfDictionaryReader } from "../../dictionary-reader/index";
 import { EncryptDictReader } from "../dict-reader/index";
 import { EncryptError } from "../error/index";
 import { KeyLength } from "../key-length/index";
@@ -18,16 +19,26 @@ export const AuthEvents = { DocOpen: "DocOpen", EfOpen: "EFOpen" } as const;
 
 export type AuthEvent = ValueOf<typeof AuthEvents>;
 
+const AES_128_BITS = 128;
+const AES_256_BITS = 256;
+
 /** /CF の暗号方式・認証イベント・正規化済み鍵長。 */
 export type CryptFilter = {
-  readonly method: CryptFilterMethod;
   readonly authEvent: AuthEvent;
+  /** 入力辞書の /Length の正規化値。AES方式の固定鍵長とは独立して保持する。 */
   readonly length: Option<KeyLength>;
-};
+} & (
+  | { readonly method: "None" }
+  | { readonly method: "V2" }
+  | { readonly method: "AESV2"; readonly keyLength: typeof AES_128_BITS }
+  | { readonly method: "AESV3"; readonly keyLength: typeof AES_256_BITS }
+);
 
 export const CryptFilter = {
   /** /CF エントリを読む。AuthEvent と Length の不正値は Rust と同じく既定扱い。 */
-  fromDictionary(reader: EncryptDictReader): Result<CryptFilter, EncryptError> {
+  fromDictionary(
+    reader: PdfDictionaryReader,
+  ): Result<CryptFilter, EncryptError> {
     const method = EncryptDictReader.optional(reader, {
       key: "CFM",
       type: "name",
@@ -64,11 +75,24 @@ export const CryptFilter = {
         ? KeyLength.fromCryptFilterLength(length.value)
         : none;
 
-    return ok({
-      method: parsedMethod.value,
+    const attributes = {
       authEvent: isEfOpen ? AuthEvents.EfOpen : AuthEvents.DocOpen,
       length: parsedLength,
-    });
+    };
+
+    switch (parsedMethod.value) {
+      case "None":
+        return ok({ ...attributes, method: "None" });
+
+      case "V2":
+        return ok({ ...attributes, method: "V2" });
+
+      case "AESV2":
+        return ok({ ...attributes, method: "AESV2", keyLength: AES_128_BITS });
+
+      case "AESV3":
+        return ok({ ...attributes, method: "AESV3", keyLength: AES_256_BITS });
+    }
   },
 
   /** 仕様の4方式だけを名前から受理する。 */
@@ -102,7 +126,7 @@ export const CryptFilterSelector = {
   fromName(
     name: string,
     filters: CryptFilters["filters"],
-    reader: EncryptDictReader,
+    reader: PdfDictionaryReader,
   ): Result<CryptFilterSelector, EncryptError> {
     if (name === "Identity") {
       return ok({ type: "Identity" });
@@ -136,7 +160,7 @@ export type CryptFilters = {
 export const CryptFilters = {
   /** /V 4 以降の /CF とセレクタを読む。 */
   fromDictionary(
-    reader: EncryptDictReader,
+    reader: PdfDictionaryReader,
   ): Result<CryptFilters, EncryptError> {
     const dictionary = EncryptDictReader.required(reader, {
       key: "CF",
@@ -206,7 +230,7 @@ export const CryptFilters = {
 
   /** 任意の名前を読み、/CF の定義を検証する。 */
   readSelector(
-    reader: EncryptDictReader,
+    reader: PdfDictionaryReader,
     key: "StmF" | "StrF" | "EFF",
     filters: CryptFilters["filters"],
   ): Result<Option<CryptFilterSelector>, EncryptError> {

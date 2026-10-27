@@ -157,3 +157,18 @@ test.each([
     error: { code, key, offset: 7 },
   });
 });
+
+test.each([
+  ["AESV2", 128],
+  ["AESV3", 256],
+])("/%s の固定鍵長 %i は入力の /Length と混同しない", (method, keyLength) => {
+  const filter = parseFilters(
+    `/CF << /StdCF << /CFM /${method} /Length 5 >> >>`,
+  ).filters.get("StdCF");
+
+  expect(filter).toMatchObject({
+    method,
+    keyLength,
+    length: { some: true, value: 40 },
+  });
+});
