@@ -1,5 +1,6 @@
 import { none, type Option, some } from "../../../utils/option/index";
 import { err, ok, type Result } from "../../../utils/result/index";
+import type { PdfDictionaryReader } from "../../dictionary-reader/index";
 import { CryptFilters } from "../crypt-filters/index";
 import { EncryptDictReader } from "../dict-reader/index";
 import { EncryptError } from "../error/index";
@@ -15,7 +16,7 @@ export type AesKeyMaterial = {
 export const AesKeyMaterial = {
   /** バイト列は長さを検証しない。検証は鍵導出の責務。 */
   fromDictionary(
-    reader: EncryptDictReader,
+    reader: PdfDictionaryReader,
   ): Result<AesKeyMaterial, EncryptError> {
     const owner = EncryptDictReader.required(reader, {
       key: "OE",
@@ -54,8 +55,8 @@ export const AesKeyMaterial = {
 
 /** 有効な6組のみを表し、版固有のフィールドをその組に閉じ込める。 */
 export type StandardAlgorithm =
-  | { readonly kind: "V1R2" }
-  | { readonly kind: "V1R3" }
+  | { readonly kind: "V1R2"; readonly keyLength: typeof BITS_40 }
+  | { readonly kind: "V1R3"; readonly keyLength: typeof BITS_40 }
   | { readonly kind: "V2R3"; readonly keyLength: KeyLength }
   | {
       readonly kind: "V4R4";
@@ -64,11 +65,13 @@ export type StandardAlgorithm =
     }
   | {
       readonly kind: "V5R5";
+      readonly keyLength: typeof BITS_256;
       readonly cryptFilters: CryptFilters;
       readonly keys: AesKeyMaterial;
     }
   | {
       readonly kind: "V5R6";
+      readonly keyLength: typeof BITS_256;
       readonly cryptFilters: CryptFilters;
       readonly keys: AesKeyMaterial;
     };
@@ -79,7 +82,7 @@ const BITS_256 = 256;
 export const StandardAlgorithm = {
   /** /V と /R を読み、対応外の組は None とする。 */
   fromDictionary(
-    reader: EncryptDictReader,
+    reader: PdfDictionaryReader,
   ): Result<Option<StandardAlgorithm>, EncryptError> {
     const version = EncryptDictReader.required(reader, {
       key: "V",
@@ -101,10 +104,10 @@ export const StandardAlgorithm = {
 
     switch (`${version.value.value}:${revision.value.value}`) {
       case "1:2":
-        return ok(some({ kind: "V1R2" }));
+        return ok(some({ kind: "V1R2", keyLength: BITS_40 }));
 
       case "1:3":
-        return ok(some({ kind: "V1R3" }));
+        return ok(some({ kind: "V1R3", keyLength: BITS_40 }));
 
       case "2:3":
         return StandardAlgorithm.readVariableLength(reader, "V2R3");
@@ -125,7 +128,7 @@ export const StandardAlgorithm = {
 
   /** /V 2・4 の可変長鍵を読む。 */
   readVariableLength(
-    reader: EncryptDictReader,
+    reader: PdfDictionaryReader,
     kind: "V2R3" | "V4R4",
   ): Result<Option<StandardAlgorithm>, EncryptError> {
     const length = EncryptDictReader.optional(reader, {
@@ -170,7 +173,7 @@ export const StandardAlgorithm = {
 
   /** /V 5 の crypt filter と追加鍵を読む。直下の /Length は使用しない。 */
   readAes256(
-    reader: EncryptDictReader,
+    reader: PdfDictionaryReader,
     kind: "V5R5" | "V5R6",
   ): Result<Option<StandardAlgorithm>, EncryptError> {
     const filters = CryptFilters.fromDictionary(reader);
@@ -185,23 +188,18 @@ export const StandardAlgorithm = {
       return keys;
     }
 
-    return ok(some({ kind, cryptFilters: filters.value, keys: keys.value }));
+    return ok(
+      some({
+        kind,
+        keyLength: BITS_256,
+        cryptFilters: filters.value,
+        keys: keys.value,
+      }),
+    );
   },
 
   /** ファイル暗号鍵の長さをビット単位で返す。 */
-  keyLength(algorithm: StandardAlgorithm): KeyLength | typeof BITS_256 {
-    switch (algorithm.kind) {
-      case "V1R2":
-      case "V1R3":
-        return BITS_40;
-
-      case "V2R3":
-      case "V4R4":
-        return algorithm.keyLength;
-
-      case "V5R5":
-      case "V5R6":
-        return BITS_256;
-    }
+  keyLength<T extends StandardAlgorithm>(algorithm: T): T["keyLength"] {
+    return algorithm.keyLength;
   },
 } as const;

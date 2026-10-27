@@ -1,4 +1,5 @@
 import { ok, type Result } from "../../utils/result/index";
+import type { PdfDictionaryReader } from "../dictionary-reader/index";
 import type { ByteOffset } from "../types/byte-offset/index";
 import type { PdfDictionary } from "../types/pdf-types/index";
 import { EncryptDictReader } from "./dict-reader/index";
@@ -35,7 +36,7 @@ export const EncryptDictionary = {
     dictionary: PdfDictionary,
     offset: ByteOffset,
   ): Result<EncryptDictionary, EncryptError> {
-    const reader: EncryptDictReader = { dictionary, offset, path: "" };
+    const reader: PdfDictionaryReader = { dictionary, offset, path: "" };
 
     const filter = EncryptDictReader.required(reader, {
       key: "Filter",

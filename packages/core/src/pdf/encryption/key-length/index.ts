@@ -5,7 +5,7 @@ const BITS_PER_BYTE = 8;
 const MIN_BYTES = 5;
 const MAX_BYTES = 16;
 
-/** 可変長 RC4 / AES-128 で使用できるビット数。 */
+/** 辞書で指定する可変長 で使用できるビット数。 */
 export const KeyLengths = {
   Bits40: 40,
   Bits48: 48,
@@ -21,7 +21,7 @@ export const KeyLengths = {
   Bits128: 128,
 } as const;
 
-/** 可変長 RC4 / AES-128 の鍵長。単位はビット。 */
+/** 辞書で指定する可変長 の鍵長。単位はビット。 */
 export type KeyLength = ValueOf<typeof KeyLengths>;
 
 export const KeyLength = {

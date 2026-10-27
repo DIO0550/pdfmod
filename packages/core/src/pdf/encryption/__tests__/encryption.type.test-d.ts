@@ -1,5 +1,6 @@
 import { expectTypeOf, test } from "vitest";
 import type {
+  CryptFilter,
   CryptFilterMethod,
   EncryptDictionary,
   KeyLength,
@@ -51,4 +52,48 @@ test("未対応辞書は生辞書を保持して標準ハンドラとは区別�
   expectTypeOf<
     Extract<EncryptDictionary, { type: "Standard" }>
   >().not.toHaveProperty("raw");
+});
+
+test("アルゴリズムの種類から固定鍵長が決まり別の長さは代入できない", () => {
+  expectTypeOf<
+    Extract<StandardAlgorithm, { kind: "V1R2" | "V1R3" }>["keyLength"]
+  >().toEqualTypeOf<40>();
+
+  expectTypeOf<
+    Extract<StandardAlgorithm, { kind: "V5R5" | "V5R6" }>["keyLength"]
+  >().toEqualTypeOf<256>();
+
+  expectTypeOf<
+    Extract<StandardAlgorithm, { kind: "V2R3" | "V4R4" }>["keyLength"]
+  >().toEqualTypeOf<KeyLength>();
+
+  expectTypeOf<{
+    kind: "V1R2";
+    keyLength: 128;
+  }>().not.toExtend<StandardAlgorithm>();
+
+  type Aes256 = Extract<StandardAlgorithm, { kind: "V5R6" }>;
+  expectTypeOf<
+    Omit<Aes256, "keyLength"> & { keyLength: 128 }
+  >().not.toExtend<StandardAlgorithm>();
+});
+
+test("AES方式の鍵長は128または256の固定値で結び付く", () => {
+  expectTypeOf<
+    Extract<CryptFilter, { method: "AESV2" }>["keyLength"]
+  >().toEqualTypeOf<128>();
+
+  expectTypeOf<
+    Extract<CryptFilter, { method: "AESV3" }>["keyLength"]
+  >().toEqualTypeOf<256>();
+
+  type Aes128 = Extract<CryptFilter, { method: "AESV2" }>;
+  expectTypeOf<
+    Omit<Aes128, "keyLength"> & { keyLength: 256 }
+  >().not.toExtend<CryptFilter>();
+
+  type Aes256 = Extract<CryptFilter, { method: "AESV3" }>;
+  expectTypeOf<
+    Omit<Aes256, "keyLength"> & { keyLength: 128 }
+  >().not.toExtend<CryptFilter>();
 });

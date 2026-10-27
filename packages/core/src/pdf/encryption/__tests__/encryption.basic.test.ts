@@ -105,3 +105,19 @@ test("/EncryptMetadata の既定値は true", () => {
     value: { handler: { encryptMetadata: true } },
   });
 });
+
+test.each([
+  [1, 2, 40, ""],
+  [1, 3, 40, ""],
+  [5, 5, 256, "/CF << >> /OE (o) /UE (u) /Perms (p)"],
+  [5, 6, 256, "/CF << >> /OE (o) /UE (u) /Perms (p)"],
+])("/V %i /R %i の固定鍵長 %i を型化した値に保持する", (v, r, keyLength, extra) => {
+  const { result } = parseEncryption(
+    standardEntries(v, r, `${extra} /Length 128`),
+  );
+
+  expect(result).toMatchObject({
+    ok: true,
+    value: { handler: { algorithm: { keyLength } } },
+  });
+});
