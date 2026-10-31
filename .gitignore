@@ -160,3 +160,7 @@ vite.config.ts.timestamp-*
 /plugin-workspace/
 .plugin-workspace/
 .codex/
+
+# PR 解説生成・検証の Python キャッシュ
+__pycache__/
+*.pyc

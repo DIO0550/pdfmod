@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "pr": 123,
+  "sha": "0123456789abcdef0123456789abcdef01234567",
+  "overview": {
+    "title": "PDFの解析で、不正な入力を呼び出し側へ返す（書式見本）",
+    "lead": "これは説明の書式見本です。PR番号・SHA・パス・行・文章を実際の差分に合わせて置き換えてください。",
+    "before": [{"text": "変更前にどの入力で何が起きたかを書く"}],
+    "after": [{"text": "変更後の結果と、呼び出し側が扱える失敗を書く"}]
+  },
+  "impact": {
+    "title": "読み込めないPDFの理由を区別できる",
+    "lead": "利用者が確認できる結果を、具体的な入力とともに説明する。"
+  },
+  "primers": [
+    {
+      "kind": "language",
+      "id": "result",
+      "category": "Rust · エラー処理",
+      "label": "Result<T, E>",
+      "gist": "成功時の値と失敗時の理由を、どちらか一方だけ持つ型。",
+      "passages": [
+        {"kind": "text", "text": "成功は `Ok(value)`、失敗は `Err(error)` で表す。`match` で分岐すると、それぞれの値を取り出して処理できる。このあと、変更箇所で何を成功とし何を失敗とするかを説明する。"},
+        {"kind": "excerpt", "excerpt": {"path": "rust/crates/core/src/error.rs", "start": 1, "end": 4}},
+        {"kind": "caution", "text": "この抜粋のパスと行は仮指定。実際に結果を返すコードを選び、戻り値の型・各分岐・呼び出し側との関係を説明する。"}
+      ],
+      "occurrences": [{"path": "rust/crates/core/src/error.rs", "text": "変更した関数と、その呼び出し側を示す"}]
+    }
+  ]
+}

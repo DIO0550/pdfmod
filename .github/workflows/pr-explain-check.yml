@@ -1,0 +1,40 @@
+name: PR Explain Check
+
+on:
+  pull_request:
+    paths:
+      - '.github/scripts/**'
+      - '.github/pr-explain/**'
+      - '.github/workflows/pr-explain*.yml'
+      - 'harness/**'
+  push:
+    branches: [main]
+    paths:
+      - '.github/scripts/**'
+      - '.github/pr-explain/**'
+      - '.github/workflows/pr-explain*.yml'
+      - 'harness/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-explain-check-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: '24'
+      - name: Check map, explanation, renderer, publisher and comments
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: python3 -m unittest discover -s harness/tests -p 'test_pr*.py' -v
