@@ -103,10 +103,22 @@ ISO 32000-1 表 20（共通）・表 21（標準ハンドラ）。
 
 ## 6. pdfmod での扱い
 
-- 暗号化辞書は `crate::encrypt::EncryptDictionary` として型化する（#604）
+- 暗号化辞書は Rust の `crate::encrypt::EncryptDictionary` と TypeScript の `EncryptDictionary.fromDictionary(dictionary, offset)` で型化する
+- TypeScript の型化は独立した辞書変換APIであり、`PdfDocument.load` は復号未対応として暗号化PDFを引き続き拒否する
 - `/V` × `/R` は §3 の 6 種だけを `StandardAlgorithm` のバリアントとして持ち、不正な組み合わせを構築できないようにする
 - 未対応のセキュリティハンドラ（`/Adobe.PubSec` など）・未対応の `/V` は `EncryptDictionary::Unsupported` として生の辞書を保持し、**解析を止めない**
 - `/Filter` `/V` `/R` の欠落や、Standard と名乗る辞書の構造不正は `EncryptError` として位置情報付きで報告する
 - `/O` `/U` `/OE` `/UE` `/Perms` は長さを検証せずバイト列のまま保持する（検証は鍵導出の実装の責務）
 - 暗号化辞書の中に書かれた間接参照（`/Length 5 0 R` など）は解決しない
 - 復号処理（RC4 / AES）・鍵導出・パスワード認証は未実装
+
+### TypeScript と Rust の共通解析方針
+
+- `/V 1` の鍵長は 40 ビット、`/V 5` は 256 ビット固定とし、直下の `/Length` は使用しない
+- `/V 2`・`/V 4` では直下の `/Length` を検証し、省略時は 40 ビットとする
+- `/V 4`・`/V 5` の `/CF` は本実装では必須とし、空辞書は受理する
+- `/CF` 内の `/AuthEvent` は省略・未知名・型不一致を `/DocOpen` として扱う
+- `/CF` 内の `/Length` は型不一致・間接参照を無視し、§4 の規則で正規化できる直接整数だけを保持する。AESV3でも32・256は保持せず、V5のファイル鍵長は版から256ビットと確定する
+- `/P` は -2147483648..4294967295 の整数を受理し、符号付き32ビットの同じビットパターンに正規化する
+- 未対応の `/V` × `/R` は必要な `/V`・`/R` の型を検証した後に生辞書を保持する。未対応ハンドラでは `/Filter` のみを検証する
+- TypeScript の構造エラーは `EncryptError` のキーのパスと、呼び出し側が渡した辞書の開始位置を保持する。個々の値の位置は取得しない
