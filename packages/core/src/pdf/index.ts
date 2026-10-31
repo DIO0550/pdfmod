@@ -4,6 +4,7 @@
  * @module
  */
 
+export * from "./encryption/index";
 export * from "./errors/index";
 export * from "./filter/index";
 export { TextSpace } from "./text-space/index";
