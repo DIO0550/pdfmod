@@ -1,0 +1,514 @@
+{
+  "version": 1,
+  "pr": 1024,
+  "sha": "0123456789abcdef0123456789abcdef01234567",
+  "issue": 1022,
+  "overview": {
+    "title": "調味料の登録で、入力の誤りと保存の失敗を分ける",
+    "lead": "登録前に名前を確かめ、保存できたときだけ入力を閉じる変更の見本。パス・sha・行・テスト名は実際のPRに合わせて置き換える。",
+    "before": [
+      {
+        "text": "名前が空でも保存処理へ進んでいた"
+      }
+    ],
+    "after": [
+      {
+        "text": "名前の誤りを保存前に返す",
+        "message": "put-explain"
+      },
+      {
+        "text": "保存できたときだけ登録画面を閉じる",
+        "message": "put-map"
+      }
+    ],
+    "highlights": [
+      {
+        "title": "登録の入口",
+        "text": "入力から保存までを見る",
+        "go": {
+          "kind": "feature",
+          "id": "publish"
+        }
+      },
+      {
+        "title": "保存の境界",
+        "text": "入力と保存の結果を返す",
+        "go": {
+          "kind": "layer",
+          "layer": "Data"
+        }
+      },
+      {
+        "title": "保存処理",
+        "text": "画面と永続化をつなぐ",
+        "go": {
+          "kind": "file",
+          "path": "src/SeasoningManager/SeasoningManager/Data/ItemActions.swift"
+        }
+      },
+      {
+        "title": "保存の結果",
+        "text": "画面へ成功・失敗を返す",
+        "go": {
+          "kind": "message",
+          "id": "put-map"
+        }
+      },
+      {
+        "title": "登録の流れ",
+        "text": "入力確認から保存まで",
+        "go": {
+          "kind": "flow",
+          "id": "explain"
+        }
+      }
+    ]
+  },
+  "features": [
+    {
+      "id": "publish",
+      "label": "調味料の登録",
+      "role": "名前を確かめ、個体を保存する"
+    }
+  ],
+  "layerRoles": [
+    {
+      "layer": "Data",
+      "role": "保存の操作と結果を扱う"
+    }
+  ],
+  "concepts": [
+    {
+      "path": "src/SeasoningManager/SeasoningManager/ContentView.swift",
+      "name": "登録画面",
+      "role": "入力を保持し、保存結果を表示する",
+      "feature": "publish"
+    },
+    {
+      "path": "src/SeasoningManager/SeasoningManager/Data/ItemActions.swift",
+      "name": "保存操作",
+      "role": "入力確認と永続化の結果を返す",
+      "feature": "publish",
+      "change": "入力の失敗を型付きの結果で返す"
+    },
+    {
+      "path": "src/SeasoningManager/SeasoningManager/Domain/ItemRegistration.swift",
+      "name": "登録の判定",
+      "role": "名前が空かどうかを判定する",
+      "feature": "publish",
+      "change": "入力の失敗を型付きの結果で返す"
+    },
+    {
+      "path": "src/SeasoningManager/SeasoningManager/Models/SeasoningItem.swift",
+      "name": "調味料の個体",
+      "role": "保存される個体の値を持つ",
+      "graph": false
+    }
+  ],
+  "messages": [
+    {
+      "id": "put-map",
+      "from": "src/SeasoningManager/SeasoningManager/ContentView.swift",
+      "to": "src/SeasoningManager/SeasoningManager/Data/ItemActions.swift",
+      "kind": "cmd",
+      "name": "個体を保存する",
+      "code": "ItemActions.register(name:)",
+      "via": "call",
+      "payload": "入力した名前",
+      "returns": "Result<SeasoningItem, RegistrationFailure>"
+    },
+    {
+      "id": "put-explain",
+      "from": "src/SeasoningManager/SeasoningManager/Data/ItemActions.swift",
+      "to": "src/SeasoningManager/SeasoningManager/Domain/ItemRegistration.swift",
+      "kind": "qry",
+      "name": "名前を確かめる",
+      "code": "ItemRegistration.validate(name:)",
+      "via": "call",
+      "payload": "入力した名前",
+      "returns": "Result<String, RegistrationFailure>",
+      "status": "added"
+    }
+  ],
+  "flows": [
+    {
+      "id": "explain",
+      "label": "調味料を登録するとき",
+      "steps": [
+        "put-explain",
+        "put-map"
+      ]
+    },
+    {
+      "id": "push",
+      "label": "保存の結果を見るとき",
+      "steps": [
+        "put-map"
+      ]
+    }
+  ],
+  "commitStories": [
+    {
+      "sha": "89abcdef0123456789abcdef0123456789abcdef",
+      "phase": "core",
+      "role": "名前の確認を保存の前へ置く",
+      "why": "空の名前を保存せず、画面が失敗の種類に応じて案内できるようにする。",
+      "flows": [
+        "explain"
+      ],
+      "review": [
+        "失敗で入力と既存データが保たれるか"
+      ],
+      "before": [
+        {
+          "text": "保存の失敗と入力の誤りを区別しにくかった"
+        }
+      ],
+      "after": [
+        {
+          "text": "型付きの結果で、入力と保存の失敗を返す",
+          "message": "put-explain"
+        }
+      ],
+      "notes": [
+        {
+          "path": "src/SeasoningManager/SeasoningManager/Domain/ItemRegistration.swift",
+          "start": 1,
+          "end": 3,
+          "text": "保存の前に名前を確認する"
+        },
+        {
+          "path": "src/SeasoningManager/SeasoningManager/Data/ItemActions.swift",
+          "side": "old",
+          "start": 58,
+          "end": 60,
+          "text": "従来の保存入口。実際のPRの旧側の行に置き換える"
+        }
+      ]
+    }
+  ],
+  "suites": [
+    {
+      "id": "build",
+      "label": "個体の登録",
+      "file": "src/SeasoningManager/SeasoningManagerTests/ItemActionsTests.swift"
+    }
+  ],
+  "tests": [
+    {
+      "id": "unknown-key",
+      "suite": "build",
+      "name": "空の名前は登録できない",
+      "techniques": [
+        "error",
+        "boundary"
+      ],
+      "why": "名前のない個体が一覧へ増えるのを防ぐ",
+      "given": "未登録の調味料と空の名前",
+      "when": "登録を試す",
+      "then": "入力の失敗を返し、保存済みの個体は増えない",
+      "commit": "89abcdef0123456789abcdef0123456789abcdef",
+      "values": {
+        "columns": [
+          "名前",
+          "結果"
+        ],
+        "rows": [
+          {
+            "cells": [
+              "空文字",
+              "失敗"
+            ],
+            "boundary": true
+          },
+          {
+            "cells": [
+              "しょうゆ",
+              "成功"
+            ]
+          }
+        ]
+      },
+      "targets": [
+        "src/SeasoningManager/SeasoningManager/Domain/ItemRegistration.swift"
+      ],
+      "covers": [
+        "put-explain"
+      ]
+    },
+    {
+      "id": "stale",
+      "suite": "build",
+      "name": "保存の失敗では入力が残る",
+      "techniques": [
+        "state"
+      ],
+      "why": "入力し直さずに保存を再試行できるようにする",
+      "given": "入力済みで保存に失敗する状況",
+      "when": "登録を試す",
+      "then": "保存の失敗を表示し、入力は残る",
+      "todo": true,
+      "targets": [
+        "src/SeasoningManager/SeasoningManager/Data/ItemActions.swift"
+      ]
+    }
+  ],
+  "impact": {
+    "title": "名前を確かめてから調味料を登録できる",
+    "lead": "空の名前はその場で直せます。保存に失敗しても入力を保ち、もう一度試せます。",
+    "changed": {
+      "before": [
+        {
+          "text": "名前が空でも保存へ進んでいた"
+        }
+      ],
+      "after": [
+        {
+          "text": "名前が空なら保存の前に知らせる",
+          "message": "put-explain"
+        },
+        {
+          "text": "保存できたときだけ入力画面を閉じる",
+          "message": "put-map"
+        }
+      ],
+      "text": "入力の誤りと保存できなかった場合を分けて案内します。"
+    },
+    "tables": [
+      {
+        "label": "名前と保存結果",
+        "gist": "名前があれば保存を試し、保存できなければ入力を残します。",
+        "text": "空の名前では保存へ進まないことも確かめます。",
+        "rowHeads": [
+          {
+            "id": "passing",
+            "label": "名前がある"
+          },
+          {
+            "id": "failing",
+            "label": "名前が空",
+            "note": "空白だけも含む"
+          }
+        ],
+        "columnHeads": [
+          {
+            "id": "mapped",
+            "label": "保存できる"
+          },
+          {
+            "id": "unmapped",
+            "label": "保存できない"
+          }
+        ],
+        "outcomes": [
+          {
+            "rowHead": "passing",
+            "columnHead": "mapped",
+            "result": "登録される",
+            "was": "保存を試みていた"
+          },
+          {
+            "rowHead": "failing",
+            "columnHead": "mapped",
+            "result": "名前の入力を求める",
+            "was": "保存を試みていた",
+            "tests": [
+              "unknown-key"
+            ]
+          },
+          {
+            "rowHead": "passing",
+            "columnHead": "unmapped",
+            "result": "入力を残し再試行できる",
+            "situation": "名前を入力したが保存できなかった",
+            "note": "入力は残る"
+          },
+          {
+            "rowHead": "failing",
+            "columnHead": "unmapped",
+            "result": "名前の入力を求める",
+            "tests": [
+              "unknown-key"
+            ]
+          }
+        ]
+      }
+    ],
+    "added": [
+      {
+        "label": "保存に失敗したとき",
+        "before": [
+          {
+            "text": "失敗後に入力をやり直す必要があった"
+          }
+        ],
+        "after": [
+          {
+            "text": "入力を残したまま再試行できる",
+            "message": "put-map"
+          }
+        ],
+        "text": "端末の保存が回復したら同じ内容で試せます。",
+        "tests": [
+          "stale"
+        ]
+      }
+    ],
+    "kept": [
+      {
+        "text": "入力の失敗では個体が増えない",
+        "tests": [
+          "unknown-key"
+        ]
+      },
+      {
+        "text": "保存できなければ登録画面は閉じない",
+        "tests": [
+          "stale"
+        ]
+      },
+      {
+        "text": "既存の個体の名前は変わらない"
+      }
+    ]
+  },
+  "primers": [
+    {
+      "kind": "language",
+      "id": "object-pairs-hook",
+      "category": "Swift · 結果",
+      "label": "`Result<Success, Failure>`",
+      "gist": "成功と失敗を、別の値として返す[[結果|json]]の型。",
+      "passages": [
+        {
+          "kind": "text",
+          "text": "成功は `success`、失敗は `failure` で返す。画面は[[失敗の種類|pair]]を見て案内を選ぶ。"
+        },
+        {
+          "kind": "declaration",
+          "code": "func validate(name: String) -> Result<String, RegistrationFailure>"
+        },
+        {
+          "kind": "parameters",
+          "parameters": [
+            {
+              "name": "name",
+              "type": "String",
+              "text": "登録する名前。空なら[[入力の失敗|duplicated]]を返す。",
+              "note": "空白を取り除いて判定する"
+            },
+            {
+              "name": "Failure",
+              "type": "Error",
+              "text": "[[失敗の種類|pair]]を表す型"
+            }
+          ]
+        },
+        {
+          "kind": "caution",
+          "text": "失敗を成功へ変換せず、[[`RegistrationFailure`|duplicated]]として返す。"
+        },
+        {
+          "kind": "memo",
+          "text": "フレームワークの例外は保存の境界で結果へ変換する。"
+        },
+        {
+          "kind": "excerpt",
+          "excerpt": {
+            "path": "src/SeasoningManager/SeasoningManager/Domain/ItemRegistration.swift",
+            "start": 1,
+            "end": 3
+          }
+        }
+      ],
+      "occurrences": [
+        {
+          "path": "src/SeasoningManager/SeasoningManager/Domain/ItemRegistration.swift",
+          "lineRange": {
+            "start": 1,
+            "end": 3
+          },
+          "text": "登録の判定が結果を返す",
+          "shas": [
+            "89abcdef0123456789abcdef0123456789abcdef",
+            "fedcba9876543210fedcba9876543210fedcba98"
+          ]
+        }
+      ],
+      "seeAlso": [
+        "shape-table"
+      ]
+    },
+    {
+      "kind": "codebase",
+      "id": "shape-table",
+      "category": "保存 · 登録",
+      "label": "保存前の入力確認",
+      "gist": "入力確認と保存を[[境界|route]]でつなぎ、失敗を画面へ返す。",
+      "status": "added",
+      "passages": [
+        {
+          "kind": "text",
+          "text": "保存操作が名前を確認し、成功した値だけを永続化へ渡す。"
+        },
+        {
+          "kind": "rule",
+          "text": "保存の成否を画面から隠さない。"
+        },
+        {
+          "kind": "spec",
+          "text": "入力の失敗では既存データを変えない。"
+        },
+        {
+          "kind": "history",
+          "text": "この見本では、空の名前でも保存を試していた入口から切り替える。"
+        },
+        {
+          "kind": "excerpt",
+          "excerpt": {
+            "path": "src/SeasoningManager/SeasoningManager/Data/ItemActions.swift",
+            "start": 1,
+            "end": 3
+          }
+        }
+      ],
+      "occurrences": [
+        {
+          "path": "src/SeasoningManager/SeasoningManager/Data/ItemActions.swift",
+          "text": "保存の操作が判定結果を受け取る"
+        }
+      ],
+      "seeAlso": [
+        "object-pairs-hook"
+      ],
+      "tests": [
+        "unknown-key"
+      ],
+      "flows": [
+        "explain"
+      ]
+    }
+  ],
+  "terms": [
+    {
+      "id": "json",
+      "label": "結果",
+      "text": "成功か失敗かと、それぞれに必要な値を持つ型。"
+    },
+    {
+      "id": "pair",
+      "label": "失敗の種類",
+      "text": "入力の誤りと保存の失敗など、呼び出し側が扱う区別。"
+    },
+    {
+      "id": "duplicated",
+      "label": "RegistrationFailure",
+      "text": "この見本で登録の失敗を表す型名。実際の実装名へ置き換える。"
+    },
+    {
+      "id": "route",
+      "label": "境界",
+      "text": "業務の判断と保存など、責務が切り替わる場所。"
+    }
+  ]
+}
