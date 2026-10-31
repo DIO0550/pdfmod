@@ -159,7 +159,7 @@ nav a { font-size: 16px; } table { font-size: 17px; } th { font-size: 15px; }
 <a href="#overview"><span>01</span>暗号化の起点</a><a href="#syntax"><span>02</span>辞書を読む</a>
 <a href="#algorithms"><span>03</span>有効な6組</a><a href="#filters"><span>04</span>crypt filter と単位</a>
 <a href="#permissions"><span>05</span>権限のビット表現</a><a href="#examples"><span>06</span>正常・未対応・不正</a>
-<a href="#implementation"><span>07</span>解析の境界</a></nav></aside>
+<a href="#implementation"><span>07</span>解析の境界</a><a href="#algorithm-types"><span>08</span>方式ごとの型と責務</a></nav></aside>
 <main id="top"><div class="wrap"><header class="hero"><div class="eyebrow">PDF INTERNALS / ENCRYPTION DICTIONARY</div>
 <h1>暗号化辞書を読む</h1><p class="lead">PDFの <code>/Encrypt</code> は、暗号化の方式と鍵の材料を記述します。アルゴリズムの版、crypt filter、権限を、解釈できる型へ変換する仕組みを見ていきます。</p></header>
 <section class="section" id="overview"><div class="section-heading"><span class="number">01</span><h2>暗号化の起点</h2></div>
@@ -276,5 +276,42 @@ nav a { font-size: 16px; } table { font-size: 17px; } th { font-size: 15px; }
 <li>判別可能なunionは、<code>type</code> や <code>kind</code> の値で中身の型が決まる仕組みです。未対応の分岐を抜けるとStandardだけが残り、<code>handler</code> を安全に読めます。</li>
 <li>鍵長は <code>algorithm.keyLength</code> または <code>StandardAlgorithm.keyLength</code> から読みます。V1の型は40、V5の型は256に限定され、異なる鍵長を代入すると型エラーになります。V2・V4も40〜128の8刻みだけを許します。</li>
 </ul></section>
+<section class="section" id="algorithm-types"><div class="section-heading"><span class="number">08</span><h2>方式ごとの型に生成を任せる</h2></div>
+<p><code>/V</code> と <code>/R</code> を読むと、どの方式として辞書を解釈するかが決まります。その先の読み取りは、選ばれた方式の型が担当します。例えば <code>V2R3</code> は可変鍵長、<code>V4R4</code> は可変鍵長とcrypt filter、<code>V5R6</code> はAES-256用のパラメーターを読み取ります。</p>
+<p>TypeScriptの <code>type</code> は実行時には消えるため、型の宣言だけでは処理を実行できません。そこで同じ名前の <code>const</code> に生成関数を置きます。この組を<strong>コンパニオンオブジェクト</strong>と呼びます。型注釈の <code>V5R6</code> は値の形を表し、<code>V5R6.fromDictionary(reader)</code> は実際の読み取り処理を呼びます。</p>
+<div class="table-wrap" tabindex="0" role="region" aria-label="方式ごとの生成処理"><table><thead><tr><th>型</th><th>生成入口</th><th>担当する内容</th></tr></thead><tbody>
+<tr><td>V1R2 / V1R3</td><td>create()</td><td>40ビット固定の値を生成。追加の辞書項目は不要</td></tr>
+<tr><td>V2R3</td><td>fromDictionary(reader)</td><td>直下の /Length。省略時40ビット、不正値はエラー</td></tr>
+<tr><td>V4R4</td><td>fromDictionary(reader)</td><td>直下の /Length とcrypt filterの定義・割り当て</td></tr>
+<tr><td>V5R5 / V5R6</td><td>fromDictionary(reader)</td><td>256ビット固定、crypt filter、/OE・/UE・/Perms</td></tr>
+</tbody></table></div>
+<h3>全方式の入口は、選択して委譲する</h3>
+<p>次は実装の抜粋です。<code>StandardAlgorithm</code> は6つの名前付き型をまとめたunionです。入口が <code>/V 5 /R 6</code> を選ぶと <code>V5R6</code> へ委譲します。<code>map</code> は成功値だけを <code>some</code> で包み、失敗はエラーのまま返します。未対応の組は <code>none</code> として、生辞書を保持する処理へ戻ります。</p>
+<pre><code><span class="keyword">export type</span> <span class="type">StandardAlgorithm</span> =
+  | <span class="type">V1R2</span> | <span class="type">V1R3</span> | <span class="type">V2R3</span>
+  | <span class="type">V4R4</span> | <span class="type">V5R5</span> | <span class="type">V5R6</span>;
+
+<span class="comment">// StandardAlgorithm.fromDictionary の分岐の抜粋</span>
+<span class="keyword">case</span> <span class="value">"5:6"</span>:
+  <span class="keyword">return</span> map(<span class="type">V5R6</span>.fromDictionary(reader), some);</code></pre>
+<h3>共通の材料を使っても、生成結果はその方式だけ</h3>
+<p><code>V5R5</code> と <code>V5R6</code> は、辞書から読む項目が共通です。これを内部の <code>Aes256Parameters</code> にまとめ、両方式から利用します。<code>&amp;</code> は型の交差で、共通項目に <code>kind: "V5R6"</code> を加えます。同じ項目を持っていても <code>kind</code> が違うため、V5R5の値をV5R6の値として渡すことはできません。</p>
+<pre><code><span class="comment">// importを省略した実装の抜粋</span>
+<span class="keyword">export type</span> <span class="type">V5R6</span> = <span class="type">Aes256Parameters</span> &amp; {
+  <span class="keyword">readonly</span> kind: <span class="value">"V5R6"</span>;
+};
+
+<span class="keyword">export const</span> <span class="type">V5R6</span> = {
+  fromDictionary(reader: <span class="type">PdfDictionaryReader</span>): <span class="type">Result</span>&lt;<span class="type">V5R6</span>, <span class="type">EncryptError</span>&gt; {
+    <span class="keyword">return</span> map(<span class="type">Aes256Parameters</span>.fromDictionary(reader), (parameters) =&gt; ({
+      ...parameters,
+      kind: <span class="value">"V5R6"</span>,
+    }));
+  },
+} <span class="keyword">as const</span>;</code></pre>
+<p>成功した戻り値は <code>StandardAlgorithm</code> 全体ではなく <code>V5R6</code> です。呼び出し側は、もう一度方式を調べずに <code>keys</code> や固定値256の <code>keyLength</code> を扱えます。可変鍵長の読み取りは <code>KeyLength.fromEncryptionDictionary</code>、AESの追加鍵の読み取りは <code>AesKeyMaterial.fromDictionary</code> が共有します。</p>
+<ol class="steps"><li><strong>PDFの辞書を読む入口</strong><p>外部入力には <code>EncryptDictionary.fromDictionary</code> を使います。ハンドラ名と /V・/R の判定、方式の生成、共通キーの読み取りをつなぎます。</p></li><li><strong>選択された方式の項目を読む</strong><p>各方式の <code>fromDictionary</code> は方式固有の項目を読みます。/V・/R 自体の再判定や、共通の /O・/U・/P の検証は担当しません。</p></li><li><strong>正常・省略・不正を値として返す</strong><p>V2R3で /Length 128 は128ビット、省略は40ビット、/Length 44 はキー /Length と辞書開始位置を持つエラーになります。生成処理を分けても、この解析方針は変わりません。</p></li></ol>
+<div class="note"><strong>版の選択と、バイト列の暗号処理は別の責務</strong>V4R4ではcrypt filterから暗号方式を選びます。ここで分離したのは辞書を解釈する型と生成処理です。パスワード認証・鍵導出・RC4やAESによる復号は未実装です。鍵材料のバイト列の長さも、この段階では検証しません。</div>
+</section>
 <footer><a href="#top">最上部へ</a> · <a href="README.md">解説一覧</a></footer></div></main>
 </body></html>

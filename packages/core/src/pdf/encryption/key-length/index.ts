@@ -1,5 +1,9 @@
 import type { ValueOf } from "../../../utils/index";
 import { none, type Option, some } from "../../../utils/option/index";
+import { err, ok, type Result } from "../../../utils/result/index";
+import type { PdfDictionaryReader } from "../../dictionary-reader/index";
+import { EncryptDictReader } from "../dict-reader/index";
+import { EncryptError } from "../error/index";
 
 const BITS_PER_BYTE = 8;
 const MIN_BYTES = 5;
@@ -25,6 +29,44 @@ export const KeyLengths = {
 export type KeyLength = ValueOf<typeof KeyLengths>;
 
 export const KeyLength = {
+  /**
+   * /V 2・4 の暗号化辞書直下の /Length を読む。省略時は40ビット。
+   * @param reader 暗号化辞書とエラー位置。
+   * @returns 可変鍵長。/Length の型やビット数が不正ならエラー。
+   */
+  fromEncryptionDictionary(
+    reader: PdfDictionaryReader,
+  ): Result<KeyLength, EncryptError> {
+    const length = EncryptDictReader.optional(reader, {
+      key: "Length",
+      type: "integer",
+    });
+
+    if (!length.ok) {
+      return length;
+    }
+
+    const bits = length.value.some
+      ? length.value.value.value
+      : KeyLengths.Bits40;
+    const keyLength = KeyLength.fromBits(bits);
+
+    if (!keyLength.some) {
+      return err(
+        EncryptError.create(
+          {
+            code: "INVALID_KEY_LENGTH",
+            key: "/Length",
+            message: `Invalid file key length: ${bits} bits`,
+          },
+          reader.offset,
+        ),
+      );
+    }
+
+    return ok(keyLength.value);
+  },
+
   /** 40..128 ビット、8 の倍数だけを受理する。 */
   fromBits(bits: number): Option<KeyLength> {
     const valid =
