@@ -1,0 +1,150 @@
+name: PR Explain Deploy
+
+on:
+  push:
+    branches: [gh-pages]
+  workflow_run:
+    workflows: [PR Explain]
+    types: [completed]
+  workflow_dispatch:
+
+permissions: {}
+
+# サイト全体で直列化する。ロックを取った後に最新 gh-pages を取得し、古い版への巻き戻りを防ぐ。
+concurrency:
+  group: github-pages-site
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: >-
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_repository.full_name == github.repository)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      # workflow_run の artifact や PR のコードを使わず、今の公開用ブランチを読む。
+      - name: Checkout latest site after lock
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: gh-pages
+          path: site
+          persist-credentials: false
+
+      - name: Configure Pages
+        uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5.0.0
+
+      - name: Upload site
+        uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4.0.0
+        with:
+          path: site
+
+      - name: Deploy site
+        id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4.0.5
+
+      # 同じ job が公開した site を読む。未公開の最新 gh-pages を取り直さない。
+      - name: Comment published PR links
+        if: success() && steps.deployment.outcome == 'success'
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        env:
+          PR_EXPLAIN_PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+        with:
+          script: |
+            const fs = require('node:fs/promises');
+            const path = require('node:path');
+            const marker = '<!-- pdfmod-pr-explain -->';
+            const repository = `${context.repo.owner}/${context.repo.repo}`;
+            const published = path.resolve('site/pr-explain');
+            let entries;
+            try {
+              entries = await fs.readdir(published, { withFileTypes: true });
+            } catch (error) {
+              if (error.code === 'ENOENT') {
+                return;
+              }
+              throw error;
+            }
+
+            const pageUrl = new URL(process.env.PR_EXPLAIN_PAGE_URL);
+            if (!pageUrl.pathname.endsWith('/')) {
+              pageUrl.pathname += '/';
+            }
+            const runUrl = `${context.serverUrl}/${repository}/actions/runs/${context.runId}`;
+
+            async function readPublishedMap(folder) {
+              try {
+                const index = await fs.lstat(path.join(folder, 'index.html'));
+                const mapFile = await fs.lstat(path.join(folder, 'change-map.json'));
+                if (!index.isFile() || !mapFile.isFile()) {
+                  return null;
+                }
+                return JSON.parse(await fs.readFile(path.join(folder, 'change-map.json'), 'utf8'));
+              } catch (error) {
+                if (error.code === 'ENOENT' || error instanceof SyntaxError) {
+                  return null;
+                }
+                throw error;
+              }
+            }
+
+            async function commentPublishedPr(entry) {
+              const match = /^pr-([1-9][0-9]*)$/.exec(entry.name);
+              if (!entry.isDirectory() || match?.[0] !== entry.name) {
+                return;
+              }
+              const number = Number(match[1]);
+              if (!Number.isSafeInteger(number)) {
+                return;
+              }
+
+              const map = await readPublishedMap(path.join(published, entry.name));
+              if (map?.version !== 2 || map.pr !== number) {
+                return;
+              }
+              const validHead = typeof map.head === 'string' && map.head.length === 40 && /^[a-f0-9]{40}$/.test(map.head);
+              if (!validHead) {
+                return;
+              }
+
+              let pr;
+              try {
+                ({ data: pr } = await github.rest.pulls.get({ ...context.repo, pull_number: number }));
+              } catch (error) {
+                if (error.status === 404) {
+                  return;
+                }
+                throw error;
+              }
+              if (pr.state !== 'open' || pr.head?.repo?.full_name !== repository) {
+                return;
+              }
+              if (pr.user?.login === 'dependabot[bot]' || pr.head.sha !== map.head) {
+                return;
+              }
+
+              const url = new URL(`pr-explain/${entry.name}/`, pageUrl).href;
+              const body = `${marker}\n[📖 PR の解説](${url}) · \`${map.head}\` · [公開 CI](${runUrl})`;
+              const comments = await github.paginate(github.rest.issues.listComments, { ...context.repo, issue_number: number, per_page: 100 });
+              const previous = comments.find(comment => comment.user?.login === 'github-actions[bot]' && comment.body?.startsWith(marker));
+              if (!previous) {
+                await github.rest.issues.createComment({ ...context.repo, issue_number: number, body });
+                return;
+              }
+              if (previous.body !== body) {
+                await github.rest.issues.updateComment({ ...context.repo, comment_id: previous.id, body });
+              }
+            }
+
+            for (const entry of entries) {
+              await commentPublishedPr(entry);
+            }
