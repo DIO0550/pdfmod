@@ -129,6 +129,12 @@ export {
   StandardAlgorithm,
   StandardSecurityHandler,
   TokenType,
+  V1R2,
+  V1R3,
+  V2R3,
+  V4R4,
+  V5R5,
+  V5R6,
 } from "./pdf/index";
 export type { Brand } from "./utils/index";
 export { LRUCache } from "./utils/index";

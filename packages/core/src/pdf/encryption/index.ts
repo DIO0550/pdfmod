@@ -18,7 +18,16 @@ export {
 export { EncryptError } from "./error/index";
 export { KeyLength, KeyLengths } from "./key-length/index";
 export { Permissions } from "./permissions/index";
-export { AesKeyMaterial, StandardAlgorithm } from "./standard-algorithm/index";
+export {
+  AesKeyMaterial,
+  StandardAlgorithm,
+  V1R2,
+  V1R3,
+  V2R3,
+  V4R4,
+  V5R5,
+  V5R6,
+} from "./standard-algorithm/index";
 export { StandardSecurityHandler } from "./standard-security-handler/index";
 
 /** /Encrypt の標準ハンドラ、または解釈せず保持する未対応辞書。 */
