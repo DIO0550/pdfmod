@@ -13,7 +13,8 @@ import unittest
 ROOT = Path(__file__).resolve().parents[2]
 WORKFLOW = ROOT / ".github/workflows/pr-explain-deploy.yml"
 WORKFLOW_SOURCE = WORKFLOW.read_text(encoding="utf-8")
-SCRIPT = textwrap.dedent(WORKFLOW_SOURCE.split("          script: |\n", 1)[1])
+SCRIPT = textwrap.dedent(WORKFLOW_SOURCE.split("      - name: Comment published PR links\n", 1)[1].split("          script: |\n", 1)[1])
+BRANCH_SCRIPT = textwrap.dedent(WORKFLOW_SOURCE.split("          script: |\n", 1)[1].split("\n  deploy:", 1)[0])
 PR_WORKFLOW_SOURCE = (ROOT / ".github/workflows/pr-explain.yml").read_text(encoding="utf-8")
 CLOSE_STEP = PR_WORKFLOW_SOURCE.split("      - name: Mark existing comment as closed\n", 1)[1]
 CLOSE_SCRIPT = textwrap.dedent(CLOSE_STEP.split("          script: |\n", 1)[1])
@@ -71,6 +72,13 @@ const AsyncFunction = Object.getPrototypeOf(async function() {}).constructor;
 
 
 class PrExplainCommentWiring(unittest.TestCase):
+    def test_deploy_requires_existing_branch_before_entering_pages_environment(self):
+        site, deploy = WORKFLOW_SOURCE.split("\n  deploy:", 1)
+        self.assertNotIn("environment:", site)
+        self.assertIn("exists: ${{ steps.branch.outputs.exists }}", site)
+        self.assertIn("needs: site", deploy)
+        self.assertIn("if: needs.site.outputs.exists == 'true'", deploy)
+
     def test_comment_runs_after_successful_deploy_in_same_job_and_reads_its_site(self):
         self.assertLess(WORKFLOW_SOURCE.index("      - name: Deploy site"), WORKFLOW_SOURCE.index("      - name: Comment published PR links"))
         comment_step = WORKFLOW_SOURCE.split("      - name: Comment published PR links\n", 1)[1]
@@ -233,6 +241,59 @@ class PrExplainPublishedComments(unittest.TestCase):
         self.assertNotIn("https:", changed[0]["body"])
         self.prs["1"] = self.pr()
         self.assertEqual(self.mutations(self.operations(script=CLOSE_SCRIPT)), [])
+
+
+@unittest.skipUnless(NODE, "Node.js がないため公開ブランチ検査は未実施")
+class PrExplainBranchCheck(unittest.TestCase):
+    def execute(self, status):
+        runner = r"""
+const input = JSON.parse(require('node:fs').readFileSync(0, 'utf8'));
+const calls = [];
+const github = { rest: { git: { getRef: async args => {
+  calls.push({ operation: 'getRef', ...args });
+  if (input.status !== 200) {
+    throw Object.assign(Error(`GitHub status ${input.status}`), { status: input.status });
+  }
+  return { data: { ref: 'refs/heads/gh-pages' } };
+} } } };
+const core = {
+  setOutput: (name, value) => calls.push({ operation: 'output', name, value }),
+  summary: {
+    addRaw(text) { calls.push({ operation: 'summary', text }); return this; },
+    async write() {}
+  }
+};
+const AsyncFunction = Object.getPrototypeOf(async function() {}).constructor;
+new AsyncFunction('github', 'context', 'core', input.script)(
+  github, { repo: { owner: 'DIO0550', repo: 'pdfmod' } }, core
+).then(() => process.stdout.write(JSON.stringify(calls)))
+ .catch(error => { console.error(error.message); process.exitCode = 1; });
+"""
+        return subprocess.run([NODE, "-e", runner], input=json.dumps({"status": status, "script": BRANCH_SCRIPT}), text=True, capture_output=True)
+
+    def test_existing_branch_allows_deploy(self):
+        result = self.execute(200)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout), [
+            {"operation": "getRef", "owner": "DIO0550", "repo": "pdfmod", "ref": "heads/gh-pages"},
+            {"operation": "output", "name": "exists", "value": "true"},
+        ])
+
+    def test_missing_branch_skips_deploy_and_explains_first_generation(self):
+        result = self.execute(404)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        calls = json.loads(result.stdout)
+        self.assertEqual(calls[1], {"operation": "output", "name": "exists", "value": "false"})
+        self.assertEqual(calls[2]["operation"], "summary")
+        self.assertIn("PR作成・push・reopen", calls[2]["text"])
+
+    def test_permission_and_service_failures_are_not_treated_as_missing_branch(self):
+        for status in [403, 500]:
+            with self.subTest(status=status):
+                result = self.execute(status)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(f"GitHub status {status}", result.stderr)
+                self.assertEqual(result.stdout, "")
 
 
 if __name__ == "__main__":
