@@ -1,0 +1,209 @@
+{
+  "version": 1,
+  "pr": 753,
+  "sha": "b6c733218f34561521c12dc71d34f542a6d95988",
+  "issue": 665,
+  "overview": {
+    "title": "フォントのローカル名から辞書へ到達する",
+    "lead": "/F1 12 Tf の F1 はページ内の名前です。リソース辞書の対応表を通って実体へ到達し、辞書だけを呼び出し側へ返します。読む順序は、地図の取得API、テスト、技術の手引きです。",
+    "before": [
+      {
+        "text": "汎用lookupは任意のオブジェクトを返すため、フォントとして辞書を取得する側が毎回型を確認する必要があった。"
+      }
+    ],
+    "after": [
+      {
+        "text": "getFontがFontカテゴリの解決と辞書への絞り込みを担い、不在と解析失敗を区別して返す。Tfの名前・サイズは従来どおり保存する。"
+      }
+    ]
+  },
+  "concepts": [
+    {
+      "path": "packages/core/src/document/resources/index.ts",
+      "name": "フォント辞書の取得",
+      "role": "現在のリソース辞書から要求された名前だけを遅延解決する。",
+      "change": "辞書だけを成功値として返すgetFontを追加。"
+    },
+    {
+      "path": "packages/core/src/document/resources/__tests__/pdf-resources.font.test.ts",
+      "name": "実バイト列による検証",
+      "role": "実パーサ・実オブジェクトストアと描画命令のインタプリタを接続する。"
+    }
+  ],
+  "commitStories": [
+    {
+      "sha": "b6c733218f34561521c12dc71d34f542a6d95988",
+      "phase": "core",
+      "role": "フォント取得の型付き入口と回帰テストを追加する",
+      "why": "汎用検索の結果をフォント辞書として利用する境界を、呼び出し側ごとに繰り返さずリソース側へ閉じ込めるため。",
+      "review": [
+        "getFontは参照解決失敗をNoneへ変換しない。",
+        "Tfを非同期化せず、保存した名前を渡して辞書を必要時に取得する。",
+        "取得した辞書内部のエンコーディングや種別の検証は行わない。"
+      ]
+    }
+  ],
+  "suites": [
+    {
+      "id": "fonts",
+      "label": "フォント辞書の取得と状態保持",
+      "file": "packages/core/src/document/resources/__tests__/pdf-resources.font.test.ts"
+    }
+  ],
+  "tests": [
+    {
+      "id": "tf-success",
+      "suite": "fonts",
+      "name": "Tf が保持した名前からフォント辞書へ到達できる",
+      "techniques": [
+        "state",
+        "regression"
+      ],
+      "why": "名前の字句解析とフォント辞書取得を接続し、別々の単体試験では見落とす受け渡しを検証する。",
+      "given": "FontとF1の両方が間接参照で、フォント辞書にHelveticaが指定されている。",
+      "when": "BT /F#31 12 Tf ET を実行し、状態から取得した名前をgetFontへ渡す。",
+      "then": "BaseFontがHelveticaの辞書を取得し、サイズ12を保持する。",
+      "excerpt": {
+        "path": "packages/core/src/document/resources/__tests__/pdf-resources.font.test.ts",
+        "start": 112,
+        "end": 139,
+        "text": "test(\"Tf が保持した名前からフォント辞書へ到達できる\", async () => {\n  const { resources, resolveRef } = setup({\n    resources: \"<< /Font 1 0 R >>\",\n    objects: [\"<< /F1 2 0 R >>\", FontBody],\n  });\n  const executed = ContentStreamInterpreter.execute({\n    data: new TextEncoder().encode(\"BT /F#31 12 Tf ET\"),\n  });\n  assert(executed.ok);\n  const { textState } = GraphicsStateStack.current(\n    executed.value.context.graphicsStateStack,\n  );\n  assert(textState.fontName.some);\n\n  const result = await PdfResources.getFont(\n    resources,\n    textState.fontName.value,\n    resolveRef,\n  );\n\n  assert(result.ok);\n  assert(result.value.some);\n  expect(result.value.value.entries.get(\"BaseFont\")).toEqual({\n    type: \"name\",\n    value: \"Helvetica\",\n  });\n  expect(textState.fontSize).toBe(12);\n});"
+      }
+    },
+    {
+      "id": "tf-missing",
+      "suite": "fonts",
+      "name": "未知フォントへ切り替えても Tf の名前・サイズと他のテキスト状態を保つ",
+      "techniques": [
+        "state",
+        "error"
+      ],
+      "why": "全て既定値の入力では状態を誤って初期化するバグを検出できないため、文字間隔等に非既定値を設定する。",
+      "given": "F1だけが登録され、文字間隔2、単語間隔3、水平倍率80などが指定されている。",
+      "when": "F1からMissingへ切り替えて取得する。",
+      "then": "未解決を返し、最新の名前Missingとサイズ18、他のテキスト状態を保つ。",
+      "excerpt": {
+        "path": "packages/core/src/document/resources/__tests__/pdf-resources.font.test.ts",
+        "start": 141,
+        "end": 173,
+        "text": "test(\"未知フォントへ切り替えても Tf の名前・サイズと他のテキスト状態を保つ\", async () => {\n  const { resources, resolveRef } = setup({\n    resources: `<< /Font << /F1 ${FontBody} >> >>`,\n  });\n  const executed = ContentStreamInterpreter.execute({\n    data: new TextEncoder().encode(\n      \"BT 2 Tc 3 Tw 80 Tz 14 TL 2 Tr 5 Ts /F1 12 Tf /Missing 18 Tf ET\",\n    ),\n  });\n  assert(executed.ok);\n  const { textState } = GraphicsStateStack.current(\n    executed.value.context.graphicsStateStack,\n  );\n  assert(textState.fontName.some);\n\n  const result = await PdfResources.getFont(\n    resources,\n    textState.fontName.value,\n    resolveRef,\n  );\n\n  expect(result).toEqual(ok(none));\n  expect(textState).toMatchObject({\n    fontName: { some: true, value: \"Missing\" },\n    fontSize: 18,\n    charSpace: 2,\n    wordSpace: 3,\n    horizontalScaling: 80,\n    leading: 14,\n    renderingMode: 2,\n    rise: 5,\n  });\n});"
+      }
+    }
+  ],
+  "impact": {
+    "title": "フォントの指定先が分かる",
+    "lead": "ページ内の名前を手掛かりに実体の辞書を取得できます。文字描画や文字コード変換の追加ではありません。",
+    "changed": {
+      "before": [
+        {
+          "text": "フォントの指定先が辞書かどうか、利用する側で個別に確認する必要があった。"
+        }
+      ],
+      "after": [
+        {
+          "text": "辞書を取得できた場合と、指定先が見つからない場合、読み取りに失敗した場合を区別できる。"
+        }
+      ]
+    },
+    "kept": [
+      {
+        "text": "フォントが見つからなくても、指定された名前やサイズ、文字間隔は保たれる。",
+        "tests": [
+          "tf-missing"
+        ]
+      }
+    ]
+  },
+  "primers": [
+    {
+      "kind": "language",
+      "id": "result-option",
+      "category": "TypeScript · 成功と不在",
+      "label": "Result<Option<T>, E>",
+      "gist": "処理の成功・失敗と、成功時に値があるかを二段階で表す型です。",
+      "passages": [
+        {
+          "kind": "text",
+          "text": "Resultはokという判別子で成功値とエラーを分けます。Optionはsomeという判別子で値の有無を分けます。名前がないだけの場合と、参照先の構文が壊れた場合を同じ不在へ丸めると、呼び出し側が原因を判断できなくなります。"
+        },
+        {
+          "kind": "excerpt",
+          "excerpt": {
+            "path": "packages/core/src/document/resources/index.ts",
+            "start": 98,
+            "end": 124,
+            "text": "  async getFont(\n    resources: PdfResources,\n    name: string,\n    resolveRef: ResolveRef,\n  ): Promise<Result<Option<PdfDictionary>, PdfError>> {\n    const result = await PdfResources.lookup(\n      resources,\n      \"Font\",\n      name,\n      resolveRef,\n    );\n\n    if (!result.ok) {\n      return result;\n    }\n\n    if (!result.value.some) {\n      return ok(none);\n    }\n\n    const font = result.value.value;\n\n    if (font.type !== \"dictionary\") {\n      return ok(none);\n    }\n\n    return ok(some(font));"
+          }
+        },
+        {
+          "kind": "text",
+          "text": "まず!result.okでエラーをそのまま返します。次に!result.value.someで不在を返し、その先だけで実体に触れます。最後にtypeがdictionaryであることを確認するので、成功時の値をPdfDictionaryへ絞れます。この分岐で型が狭まる仕組みを型の絞り込みと呼びます。"
+        },
+        {
+          "kind": "caution",
+          "text": "Noneは参照解決処理の失敗を意味しません。getFontは受け取ったErrをそのまま返します。下位のObjectStoreがNullへ回復する場合は、辞書不在として扱います。"
+        }
+      ],
+      "occurrences": [
+        {
+          "path": "packages/core/src/document/resources/index.ts",
+          "text": "getFontの戻り値とガード節"
+        }
+      ]
+    },
+    {
+      "kind": "codebase",
+      "id": "lazy-font",
+      "category": "設計 · 状態と参照解決",
+      "label": "同期的なTfと必要時の辞書取得",
+      "gist": "名前とサイズの状態更新を先に行い、現在のページの辞書を使って必要時に名前を解決します。",
+      "status": "added",
+      "tests": [
+        "tf-success",
+        "tf-missing"
+      ],
+      "passages": [
+        {
+          "kind": "text",
+          "text": "Tfはフォント名とサイズを選ぶ描画命令です。F1は文書全体で一意なフォント名ではなく、現在のページ等のリソース辞書のキーです。辞書の解決には非同期の参照取得が必要ですが、既存の描画命令ハンドラは同期的に状態を更新します。"
+        },
+        {
+          "kind": "excerpt",
+          "excerpt": {
+            "path": "packages/core/src/content-stream/operators/text/tf/index.ts",
+            "start": 54,
+            "end": 69,
+            "text": "  const current = GraphicsStateStack.current(context.graphicsStateStack);\n  const nextTextState = TextState.update(current.textState, {\n    fontName: some(fontName),\n    fontSize: sizeValue,\n  });\n  const next = GraphicsState.update(current, { textState: nextTextState });\n  const graphicsStateStack = GraphicsStateStack.replaceCurrent(\n    context.graphicsStateStack,\n    next,\n  );\n\n  return ok({\n    operandStack: context.operandStack,\n    graphicsStateStack,\n    markedContentStack: context.markedContentStack,\n  });"
+          }
+        },
+        {
+          "kind": "text",
+          "text": "この既存コードで名前とサイズを保持できています。getFontを呼ぶ側は、その名前と同じ文書のリソース辞書・解決関数を渡します。ハンドラへ非同期処理を持ち込む変更も、名前と解決結果を状態へ二重保存する変更も不要です。"
+        },
+        {
+          "kind": "excerpt",
+          "excerpt": {
+            "path": "packages/core/src/document/resources/__tests__/pdf-resources.font.test.ts",
+            "start": 117,
+            "end": 138,
+            "text": "  const executed = ContentStreamInterpreter.execute({\n    data: new TextEncoder().encode(\"BT /F#31 12 Tf ET\"),\n  });\n  assert(executed.ok);\n  const { textState } = GraphicsStateStack.current(\n    executed.value.context.graphicsStateStack,\n  );\n  assert(textState.fontName.some);\n\n  const result = await PdfResources.getFont(\n    resources,\n    textState.fontName.value,\n    resolveRef,\n  );\n\n  assert(result.ok);\n  assert(result.value.some);\n  expect(result.value.value.entries.get(\"BaseFont\")).toEqual({\n    type: \"name\",\n    value: \"Helvetica\",\n  });\n  expect(textState.fontSize).toBe(12);"
+          }
+        },
+        {
+          "kind": "caution",
+          "text": "最終状態には最後のTfの指定だけが残ります。描画途中の各テキストを処理する場合は、その時点の状態とスコープを使って解決してください。辞書の取得だけでは文字コードやグリフ幅は分かりません。"
+        }
+      ],
+      "occurrences": [
+        {
+          "path": "packages/core/src/document/resources/index.ts",
+          "text": "現在のスコープと名前を引数で受ける入口"
+        },
+        {
+          "path": "packages/core/src/document/resources/__tests__/pdf-resources.font.test.ts",
+          "text": "保存された名前から辞書へ到達する呼び出し例"
+        }
+      ]
+    }
+  ]
+}
