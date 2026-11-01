@@ -1,0 +1,379 @@
+{
+  "version": 2,
+  "pr": 753,
+  "headBranch": "feature/665-font-resource-resolution",
+  "baseBranch": "main",
+  "mergeBase": "da9e834f346c4a1385472b80dd287a78a2c07102",
+  "head": "b6c733218f34561521c12dc71d34f542a6d95988",
+  "groups": [
+    {
+      "label": "TypeScript · core",
+      "files": [
+        {
+          "path": "packages/core/src/content-stream/graphics-state/index.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/interpreter/index.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/document/index.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/document/page-tree/attr-resolver/index.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/document/page-tree/resolved-page/index.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/document/pdf-page/index.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/document/resources/index.ts",
+          "status": "M",
+          "oldPath": null,
+          "additions": 38,
+          "deletions": 0,
+          "changed": true,
+          "target": null
+        },
+        {
+          "path": "packages/core/src/objects/object-parser/index.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/objects/object-store/index.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/pdf/errors/index.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/pdf/types/index.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/utils/option/index.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/utils/result/index.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/document/pdf-page/__tests__/pdf-page.behavior.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/document/resources/__tests__/pdf-resources.behavior.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/document/resources/__tests__/pdf-resources.font.test.ts",
+          "status": "A",
+          "oldPath": null,
+          "additions": 173,
+          "deletions": 0,
+          "changed": true,
+          "target": "packages/core/src/document/resources/index.ts"
+        },
+        {
+          "path": "packages/core/src/document/resources/__tests__/pdf-resources.test-d.ts",
+          "status": "M",
+          "oldPath": null,
+          "additions": 4,
+          "deletions": 0,
+          "changed": true,
+          "target": "packages/core/src/document/resources/index.ts"
+        }
+      ]
+    },
+    {
+      "label": "PDF 仕様の解説",
+      "files": [
+        {
+          "path": "docs/guides/README.md",
+          "status": "M",
+          "oldPath": null,
+          "additions": 1,
+          "deletions": 1,
+          "changed": true,
+          "target": null
+        },
+        {
+          "path": "docs/guides/encryption-dictionary.html",
+          "changed": false
+        },
+        {
+          "path": "docs/guides/resources.html",
+          "status": "M",
+          "oldPath": null,
+          "additions": 64,
+          "deletions": 6,
+          "changed": true,
+          "target": null
+        }
+      ]
+    },
+    {
+      "label": "仕様・設計",
+      "files": [
+        {
+          "path": "docs/specs/04_resources_graphics_state.md",
+          "status": "M",
+          "oldPath": null,
+          "additions": 9,
+          "deletions": 0,
+          "changed": true,
+          "target": null
+        }
+      ]
+    }
+  ],
+  "tests": {
+    "added": [
+      {
+        "file": "packages/core/src/document/resources/__tests__/pdf-resources.font.test.ts",
+        "name": "/Font とフォント辞書の直値・間接参照を解決できる: $resources"
+      },
+      {
+        "file": "packages/core/src/document/resources/__tests__/pdf-resources.font.test.ts",
+        "name": "Tf が保持した名前からフォント辞書へ到達できる"
+      },
+      {
+        "file": "packages/core/src/document/resources/__tests__/pdf-resources.font.test.ts",
+        "name": "参照先の構文不正は未解決として握りつぶさない: %s"
+      },
+      {
+        "file": "packages/core/src/document/resources/__tests__/pdf-resources.font.test.ts",
+        "name": "名前がない、または辞書でないフォントは未解決になる: $resources"
+      },
+      {
+        "file": "packages/core/src/document/resources/__tests__/pdf-resources.font.test.ts",
+        "name": "未知フォントへ切り替えても Tf の名前・サイズと他のテキスト状態を保つ"
+      }
+    ],
+    "removed": [],
+    "files": [
+      "packages/core/src/document/resources/__tests__/pdf-resources.font.test.ts"
+    ]
+  },
+  "commits": [
+    {
+      "sha": "b6c733218f34561521c12dc71d34f542a6d95988",
+      "merge": false,
+      "author": "DIO0550",
+      "date": "2026-11-01T10:03:43+09:00",
+      "subject": "feat: resolve font dictionaries from resource names (#665)",
+      "body": "",
+      "files": [
+        {
+          "path": "docs/guides/README.md",
+          "status": "M",
+          "oldPath": null,
+          "additions": 1,
+          "deletions": 1,
+          "patch": "@@ -11,7 +11,7 @@ PDF機能の実装に合わせて、仕様の読み方と実装の振る舞い\n | [ドキュメントカタログ](document-catalog.html) | Root・Catalog・Pagesの関係、必須キー、バージョンの優先関係、表示設定、未解釈エントリの保持、位置付きエラー | [Issue #635](https://github.com/DIO0550/pdfmod/issues/635) / [PR #736](https://github.com/DIO0550/pdfmod/pull/736) の作成時点（`6c654ce`） |\n | [ドキュメント情報辞書](document-info.html) | Info参照、6つのテキスト項目・2つの日付・Trapped、項目ごとの成功／不在／失敗、未知キー保持、間接参照とNull | [Issue #661](https://github.com/DIO0550/pdfmod/issues/661) / `rust/crates/core/src/document_info.rs` / `rust/crates/core/src/resolver/document_info.rs` |\n | [ページツリーと属性の継承](page-tree.html) | Kids の文書順走査、Count・Type の検証、循環と共有の区別、型付きページ位置、Parent チェーンによる4属性の継承、無効値の回復、間接座標参照、回転の正規化と既定値 | [Issue #658](https://github.com/DIO0550/pdfmod/issues/658) / [Issue #659](https://github.com/DIO0550/pdfmod/issues/659) / [Issue #660](https://github.com/DIO0550/pdfmod/issues/660) / `rust/crates/core/src/page_tree.rs` / `rust/crates/core/src/resolver/page_attributes.rs` |\n-| [リソース辞書と属性継承](resources.html) | /Resources 辞書構造、全置換原則による属性継承、空辞書フォールバック、2段階オンデマンド間接参照解決、非推奨 /ProcSet のスキップ、ストリーム透過返却 | [Issue #648](https://github.com/DIO0550/pdfmod/issues/648) / `packages/core/src/document/resources/` / `packages/core/src/document/page-tree/attr-resolver/` |\n+| [リソース辞書と属性継承](resources.html) | /Resources 辞書構造、全置換原則による属性継承、空辞書フォールバック、2段階オンデマンド間接参照解決、非推奨 /ProcSet のスキップ、ストリーム透過返却、Tfの名前からのフォント辞書取得と未解決の扱い | [Issue #665](https://github.com/DIO0550/pdfmod/issues/665) / [Issue #648](https://github.com/DIO0550/pdfmod/issues/648) / `packages/core/src/document/resources/` / `packages/core/src/document/page-tree/attr-resolver/` |\n | [ページ矩形と境界ボックス](page-boxes.html) | 対角の正規化、5種のボックスの既定値、MediaBoxとの交差、不正入力と未解決参照の扱い | [Issue #636](https://github.com/DIO0550/pdfmod/issues/636) 実装版 |\n | [テキスト文字列](text-strings.html) | PDFDocEncoding・UTF-16BE・UTF-8、BOM判定、未割当バイト、サロゲート、不正入力の拒否／置換、バイト列との型境界 | [Issue #637](https://github.com/DIO0550/pdfmod/issues/637) / `rust/crates/core/src/text_string.rs` |\n | [日付文字列](date-format.html) | ISO 32000-1 / ISO 32000-2 構文、D: 接頭辞、階層的省略、タイムゾーン形式（' 区切り・Z）、うるう年・カレンダー厳格検証 | [Issue #638](https://github.com/DIO0550/pdfmod/issues/638) / `rust/crates/core/src/date.rs` |",
+          "patchLines": 9,
+          "truncated": false
+        },
+        {
+          "path": "docs/guides/resources.html",
+          "status": "M",
+          "oldPath": null,
+          "additions": 64,
+          "deletions": 6,
+          "patch": "@@ -163,7 +163,8 @@\n       <a href=\"#rules\"><span>03</span>仕様と取り扱い</a>\n       <a href=\"#flow\"><span>04</span>処理の流れ</a>\n       <a href=\"#examples\"><span>05</span>具体例で確かめる</a>\n-      <a href=\"#implementation\"><span>06</span>実装と対応範囲</a>\n+      <a href=\"#font\"><span>06</span>Tfからフォント辞書へ</a>\n+      <a href=\"#implementation\"><span>07</span>実装と対応範囲</a>\n     </nav>\n   </aside>\n   <main id=\"top\"><div class=\"wrap\">\n@@ -332,8 +333,65 @@ endobj</code></pre>\n       </div>\n     </section>\n \n+    <section class=\"section\" id=\"font\">\n+      <div class=\"section-heading\"><span class=\"number\">06</span><h2>Tfからフォント辞書へ</h2></div>\n+      <p><code>/F1</code> はフォント製品の名前ではなく、現在のリソース辞書で使う<strong>ローカル名</strong>です。別のページの <code>/F1</code> が同じフォントとは限りません。次の抜粋では <code>12 Tf</code> の直前の名前を手掛かりに、辞書へ2段階で到達します。</p>\n+      <pre><code><span class=\"comment\">% PDF断片。完全なPDFではありません。</span>\n+/Resources &lt;&lt; /Font 6 0 R &gt;&gt;\n+\n+6 0 obj\n+&lt;&lt; /F1 7 0 R &gt;&gt;\n+endobj\n+\n+7 0 obj\n+&lt;&lt; /Type /Font /Subtype /Type1 /BaseFont /Helvetica &gt;&gt;\n+endobj\n+\n+<span class=\"comment\">% コンテンツストリームの本文</span>\n+BT /F1 12 Tf (Hello) Tj ET</code></pre>\n+      <ol class=\"steps\">\n+        <li><code>Tf</code> が名前 <code>F1</code> とサイズ <code>12</code> をテキスト状態に保存します。名前の先頭の <code>/</code> は構文上の記号なので、APIへ渡す文字列には含めません。</li>\n+        <li>ページの <code>/Resources</code> にある <code>/Font</code> の値を読みます。この例では <code>6 0 R</code> を解決し、名前の対応表を取得します。</li>\n+        <li>対応表の <code>/F1</code> を読み、<code>7 0 R</code> を解決します。実体が辞書なら取得成功です。直接埋め込まれた辞書でも同じ結果になります。</li>\n+      </ol>\n+      <h3>不在と失敗を分ける</h3>\n+      <p><code>Result</code> は処理の成功・失敗、<code>Option</code> は成功時に値があるかを表します。この二つを重ねることで、「名前がない」と「参照先を解析できない」を区別できます。次の扱いはpdfmodの回復方針であり、壊れたフォントをPDF仕様上有効とみなす意味ではありません。</p>\n+      <div class=\"table-wrap\"><table>\n+        <thead><tr><th>入力</th><th>取得結果</th><th>テキスト状態</th></tr></thead>\n+        <tbody>\n+          <tr><td>名前に対応する辞書がある</td><td><code>Ok(Some(辞書))</code></td><td>名前・サイズを保持</td></tr>\n+          <tr><td>名前または /Font がない</td><td><code>Ok(None)</code>：未解決</td><td>名前・サイズ・文字間隔等を保持</td></tr>\n+          <tr><td>/Font または名前の参照先が数値・Null・ストリーム</td><td><code>Ok(None)</code>：辞書として扱わない</td><td>状態を変更しない</td></tr>\n+          <tr><td>参照解決関数が構文エラー等を返す</td><td><code>Err(原因)</code>：呼び出し側へ伝播</td><td>状態を変更しない</td></tr>\n+        </tbody>\n+      </table></div>\n+      <h3>保存した名前をAPIへ渡す</h3>\n+      <p>次はTypeScriptの関数本体の抜粋です。<code>textState</code> は <code>Tf</code> 実行後の状態、<code>resources</code> と <code>resolveRef</code> は同じ文書・ページのものを渡します。</p>\n+      <pre><code>if (!textState.fontName.some) {\n+  return ok(none);\n+}\n+\n+const result = await PdfResources.getFont(\n+  resources,\n+  textState.fontName.value,\n+  resolveRef,\n+);\n+\n+if (!result.ok) {\n+  return result; <span class=\"comment\">// 参照先の解析失敗を呼び出し側へ返す</span>\n+}\n+\n+if (!result.value.some) {\n+  return ok(none); <span class=\"comment\">// 未解決。フォントを勝手に置き換えない</span>\n+}\n+\n+const dictionary = result.value.value;\n+return ok(some(dictionary));</code></pre>\n+      <div class=\"note\"><strong>辞書の取得とフォントの解釈は別の段階です。</strong>このAPIは辞書の内容を保持して返します。<code>/Subtype</code> の妥当性、文字コードの変換、グリフ幅、埋め込みフォントの読み込みはここでは扱いません。また、解決結果をテキスト状態へ重複保存しないため、フォント切替後に古い辞書が残ることもありません。</div>\n+    </section>\n+\n     <section class=\"section\" id=\"implementation\">\n-      <div class=\"section-heading\"><span class=\"number\">06</span><h2>実装と対応範囲</h2></div>\n+      <div class=\"section-heading\"><span class=\"number\">07</span><h2>実装と対応範囲</h2></div>\n       <p>TypeScript API（<code>@pdfmod/core</code>）におけるリソースの利用例です。以下の抜粋では、<code>page</code> は読み込み済みのページ、<code>resolveRef</code> はその文書の間接参照解決関数とします。<code>Result</code> の <code>ok</code> で成功を、<code>Option</code> の <code>some</code> で値の存在を確認します。</p>\n       <pre><code>import { PdfResources } from \"@pdfmod/core\";\n \n@@ -343,9 +401,8 @@ const resources: PdfResources = page.resources;\n // カテゴリ存在チェック（ProcSet は常に false）\n if (PdfResources.hasCategory(resources, \"Font\")) {\n   // フォントリソースの遅延解決\n-  const fontResult = await PdfResources.lookup(\n+  const fontResult = await PdfResources.getFont(\n     resources,\n-    \"Font\",\n     \"F1\",\n     resolveRef,\n   );\n@@ -364,17 +421,18 @@ if (PdfResources.hasCategory(resources, \"Font\")) {\n           <tr><td><code>PdfResources.from(dict?)</code></td><td>辞書から <code>PdfResources</code> を安全に生成（引数なし時は空辞書）。</td></tr>\n           <tr><td><code>PdfResources.hasCategory(res, cat)</code></td><td>カテゴリの存在判定。<code>/ProcSet</code> の場合は常に <code>false</code>。</td></tr>\n           <tr><td><code>PdfResources.getCategory(res, cat, resolveRef)</code></td><td>カテゴリ辞書を非同期で遅延解決し、<code>Result&lt;Option&lt;PdfDictionary&gt;, PdfError&gt;</code> を返却。</td></tr>\n+          <tr><td><code>PdfResources.getFont(res, name, resolveRef)</code></td><td>Fontカテゴリから辞書だけを取得。戻り値は <code>Result&lt;Option&lt;PdfDictionary&gt;, PdfError&gt;</code>。</td></tr>\n           <tr><td><code>PdfResources.lookup(res, cat, name, resolveRef)</code></td><td>カテゴリと個別エントリを非同期で2段階遅延解決し、<code>Result&lt;Option&lt;PdfObject&gt;, PdfError&gt;</code> を返却（<code>PdfObject</code> はストリームを含む）。</td></tr>\n         </tbody>\n       </table></div>\n       <div class=\"grid\">\n         <div class=\"card\">\n           <h3>今回対応する範囲</h3>\n-          <p>ページツリーからの全置換属性継承、空辞書フォールバック、標準・カスタムカテゴリの保持、2段階オンデマンド解決、ストリーム透過返却、非推奨 <code>/ProcSet</code> の除外。</p>\n+          <p>ページツリーからの全置換属性継承、空辞書フォールバック、標準・カスタムカテゴリの保持、2段階オンデマンド解決、ストリーム透過返却、フォント辞書への型を絞った到達、非推奨 <code>/ProcSet</code> の除外。</p>\n         </div>\n         <div class=\"card\">\n           <h3>後続処理・未対応の範囲</h3>\n-          <p>フォント辞書内部のエンコーディング・CMAP 解析、画像ストリームのデコードとピクセル展開、コンテントストリーム描画命令の実行。</p>\n+          <p>フォント辞書内部のエンコーディング・CMAP 解析、画像ストリームのデコードとピクセル展開、フォントを用いた文字描画。<code>Tf</code> の名前・サイズの保存は既存のインタプリタが行います。</p>\n         </div>\n       </div>\n       <div class=\"note\">",
+          "patchLines": 109,
+          "truncated": false,
+          "hunkOpeningLines": [
+            {
+              "old": null,
+              "new": null
+            },
+            {
+              "old": null,
+              "new": null
+            },
+            {
+              "old": null,
+              "new": null
+            },
+            {
+              "old": null,
+              "new": null
+            }
+          ]
+        },
+        {
+          "path": "docs/specs/04_resources_graphics_state.md",
+          "status": "M",
+          "oldPath": null,
+          "additions": 9,
+          "deletions": 0,
+          "patch": "@@ -50,6 +50,15 @@ ET\n   5. フォント辞書からフォントプログラム、エンコーディング等を読み込み\n ```\n \n+#### 名前解決の結果と状態の保持\n+\n+- `/Font` サブ辞書と各フォント辞書は、直接値・間接参照のどちらでも解決する。\n+- フォント取得APIが返す成功値は辞書に限定する。辞書内部のフォント種別・エンコーディングの検証は後段が担う。\n+- pdfmodの回復方針として、名前または `/Font` がない場合、あるいは解決結果が辞書でない場合は、エラーではなく「未解決」を返す。\n+- 参照解決処理が返したエラーは、その原因を保ったまま伝播する。未解決と混同しない。\n+- `Tf` の指定した名前・サイズはテキスト状態に保持する。フォント取得が未解決でも、文字間隔・単語間隔・水平倍率・行送り・描画モード・ライズを変更しない。\n+- 名前の解決には現在のページ等のリソーススコープを使い、別のスコープの同名フォントへフォールバックしない。\n+\n ### 3.2 /XObject（外部オブジェクト辞書）\n \n 再利用可能なグラフィカルコンテンツをマッピングする。",
+          "patchLines": 16,
+          "truncated": false
+        },
+        {
+          "path": "packages/core/src/document/resources/__tests__/pdf-resources.font.test.ts",
+          "status": "A",
+          "oldPath": null,
+          "additions": 173,
+          "deletions": 0,
+          "patch": "@@ -0,0 +1,173 @@\n+import { assert, expect, test } from \"vitest\";\n+import { GraphicsStateStack } from \"../../../content-stream/graphics-state/index\";\n+import { ContentStreamInterpreter } from \"../../../content-stream/interpreter/index\";\n+import { ObjectParser } from \"../../../objects/object-parser/index\";\n+import { ObjectStore } from \"../../../objects/object-store/index\";\n+import {\n+  ByteOffset,\n+  GenerationNumber,\n+  ObjectNumber,\n+  type ResolveRef,\n+  type XRefEntry,\n+} from \"../../../pdf/types/index\";\n+import { none } from \"../../../utils/option/index\";\n+import { ok } from \"../../../utils/result/index\";\n+import { PdfResources } from \"../index\";\n+\n+const FontBody = \"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\";\n+\n+/**\n+ * 実バイト列からリソース辞書と間接オブジェクトストアを準備する。\n+ * @param source - リソース辞書のPDF記述と、1番から順に配置するオブジェクト本体\n+ * @returns リソース辞書と実ストアを使った参照解決関数\n+ */\n+function setup(source: {\n+  readonly resources: string;\n+  readonly objects?: readonly string[];\n+}): { readonly resources: PdfResources; readonly resolveRef: ResolveRef } {\n+  const objects = (source.objects ?? []).map(\n+    (body, index) => `${index + 1} 0 obj\\n${body}\\nendobj\\n`,\n+  );\n+  const entries = objects.map((_, index): [ObjectNumber, XRefEntry] => [\n+    ObjectNumber.of(index + 1),\n+    {\n+      type: 1,\n+      offset: ByteOffset.of(objects.slice(0, index).join(\"\").length),\n+      generationNumber: GenerationNumber.of(0),\n+    },\n+  ]);\n+  const store = ObjectStore.create({\n+    data: new TextEncoder().encode(objects.join(\"\")),\n+    xref: { entries: new Map(entries), size: objects.length + 1 },\n+  });\n+  assert(store.ok);\n+\n+  const parsed = ObjectParser.parse(\n+    new TextEncoder().encode(source.resources),\n+    ByteOffset.of(0),\n+  );\n+  assert(parsed.ok);\n+  assert(parsed.value.type === \"dictionary\");\n+\n+  return {\n+    resources: PdfResources.from(parsed.value),\n+    resolveRef: (ref) => store.value.get(ref),\n+  };\n+}\n+\n+test.each([\n+  { resources: `<< /Font << /F1 ${FontBody} >> >>` },\n+  { resources: `<< /Font 1 0 R >>`, objects: [`<< /F1 ${FontBody} >>`] },\n+  { resources: \"<< /Font << /F1 1 0 R >> >>\", objects: [FontBody] },\n+  { resources: \"<< /Font 1 0 R >>\", objects: [\"<< /F1 2 0 R >>\", FontBody] },\n+])(\"/Font とフォント辞書の直値・間接参照を解決できる: $resources\", async (source) => {\n+  const { resources, resolveRef } = setup(source);\n+\n+  const result = await PdfResources.getFont(resources, \"F1\", resolveRef);\n+\n+  assert(result.ok);\n+  assert(result.value.some);\n+  expect(result.value.value.entries.get(\"BaseFont\")).toEqual({\n+    type: \"name\",\n+    value: \"Helvetica\",\n+  });\n+});\n+\n+test.each([\n+  { resources: `<< /Font << /F2 ${FontBody} >> >>` },\n+  { resources: \"<< >>\" },\n+  { resources: \"<< /Font 42 >>\" },\n+  { resources: \"<< /Font 1 0 R >>\", objects: [\"42\"] },\n+  { resources: \"<< /Font << /F1 42 >> >>\" },\n+  { resources: \"<< /Font << /F1 1 0 R >> >>\", objects: [\"42\"] },\n+  { resources: \"<< /Font << /F1 null >> >>\" },\n+  { resources: \"<< /Font << /F1 99 0 R >> >>\" },\n+  {\n+    resources: \"<< /Font << /F1 1 0 R >> >>\",\n+    objects: [\"<< /Length 0 >>\\nstream\\n\\nendstream\"],\n+  },\n+])(\"名前がない、または辞書でないフォントは未解決になる: $resources\", async (source) => {\n+  const { resources, resolveRef } = setup(source);\n+\n+  const result = await PdfResources.getFont(resources, \"F1\", resolveRef);\n+\n+  expect(result).toEqual(ok(none));\n+});\n+\n+test.each([\n+  \"<< /Font 1 0 R >>\",\n+  \"<< /Font << /F1 1 0 R >> >>\",\n+])(\"参照先の構文不正は未解決として握りつぶさない: %s\", async (source) => {\n+  const { resources, resolveRef } = setup({\n+    resources: source,\n+    objects: [\"<< /Broken >>\"],\n+  });\n+\n+  const result = await PdfResources.getFont(resources, \"F1\", resolveRef);\n+\n+  assert(!result.ok);\n+  expect(result.error.code).toBe(\"OBJECT_PARSE_UNEXPECTED_TOKEN\");\n+});\n+\n+test(\"Tf が保持した名前からフォント辞書へ到達できる\", async () => {\n+  const { resources, resolveRef } = setup({\n+    resources: \"<< /Font 1 0 R >>\",\n+    objects: [\"<< /F1 2 0 R >>\", FontBody],\n+  });\n+  const executed = ContentStreamInterpreter.execute({\n+    data: new TextEncoder().encode(\"BT /F#31 12 Tf ET\"),\n+  });\n+  assert(executed.ok);\n+  const { textState } = GraphicsStateStack.current(\n+    executed.value.context.graphicsStateStack,\n+  );\n+  assert(textState.fontName.some);\n+\n+  const result = await PdfResources.getFont(\n+    resources,\n+    textState.fontName.value,\n+    resolveRef,\n+  );\n+\n+  assert(result.ok);\n+  assert(result.value.some);\n+  expect(result.value.value.entries.get(\"BaseFont\")).toEqual({\n+    type: \"name\",\n+    value: \"Helvetica\",\n+  });\n+  expect(textState.fontSize).toBe(12);\n+});\n+\n+test(\"未知フォントへ切り替えても Tf の名前・サイズと他のテキスト状態を保つ\", async () => {\n+  const { resources, resolveRef } = setup({\n+    resources: `<< /Font << /F1 ${FontBody} >> >>`,\n+  });\n+  const executed = ContentStreamInterpreter.execute({\n+    data: new TextEncoder().encode(\n+      \"BT 2 Tc 3 Tw 80 Tz 14 TL 2 Tr 5 Ts /F1 12 Tf /Missing 18 Tf ET\",\n+    ),\n+  });\n+  assert(executed.ok);\n+  const { textState } = GraphicsStateStack.current(\n+    executed.value.context.graphicsStateStack,\n+  );\n+  assert(textState.fontName.some);\n+\n+  const result = await PdfResources.getFont(\n+    resources,\n+    textState.fontName.value,\n+    resolveRef,\n+  );\n+\n+  expect(result).toEqual(ok(none));\n+  expect(textState).toMatchObject({\n+    fontName: { some: true, value: \"Missing\" },\n+    fontSize: 18,\n+    charSpace: 2,\n+    wordSpace: 3,\n+    horizontalScaling: 80,\n+    leading: 14,\n+    renderingMode: 2,\n+    rise: 5,\n+  });\n+});",
+          "patchLines": 174,
+          "truncated": false
+        },
+        {
+          "path": "packages/core/src/document/resources/__tests__/pdf-resources.test-d.ts",
+          "status": "M",
+          "oldPath": null,
+          "additions": 4,
+          "deletions": 0,
+          "patch": "@@ -50,6 +50,10 @@ test(\"PdfResources.lookup の戻り値型の推論チェック\", () => {\n     PdfResources.getCategory(resources, \"Font\", resolveRef),\n   ).toEqualTypeOf<Promise<Result<Option<PdfDictionary>, PdfError>>>();\n \n+  expectTypeOf(PdfResources.getFont(resources, \"F1\", resolveRef)).toEqualTypeOf<\n+    Promise<Result<Option<PdfDictionary>, PdfError>>\n+  >();\n+\n   expectTypeOf(\n     PdfResources.hasCategory(resources, \"Font\"),\n   ).toEqualTypeOf<boolean>();",
+          "patchLines": 11,
+          "truncated": false
+        },
+        {
+          "path": "packages/core/src/document/resources/index.ts",
+          "status": "M",
+          "oldPath": null,
+          "additions": 38,
+          "deletions": 0,
+          "patch": "@@ -86,6 +86,44 @@ export const PdfResources = {\n     return PdfResources.from();\n   },\n \n+  /**\n+   * `/Font` のローカル名からフォント辞書を解決する（docs/specs/04 §3.1）。\n+   * 辞書内部のフォント種別・エンコーディングは解釈しない。\n+   *\n+   * @param resources - ページ等の現在のスコープのリソース辞書\n+   * @param name - Tf が指定した、先頭のスラッシュを含まない名前\n+   * @param resolveRef - 同じ文書の間接参照解決関数\n+   * @returns 辞書なら Some、不在・辞書以外なら None。参照解決の失敗は Err\n+   */\n+  async getFont(\n+    resources: PdfResources,\n+    name: string,\n+    resolveRef: ResolveRef,\n+  ): Promise<Result<Option<PdfDictionary>, PdfError>> {\n+    const result = await PdfResources.lookup(\n+      resources,\n+      \"Font\",\n+      name,\n+      resolveRef,\n+    );\n+\n+    if (!result.ok) {\n+      return result;\n+    }\n+\n+    if (!result.value.some) {\n+      return ok(none);\n+    }\n+\n+    const font = result.value.value;\n+\n+    if (font.type !== \"dictionary\") {\n+      return ok(none);\n+    }\n+\n+    return ok(some(font));\n+  },\n+\n   /**\n    * 指定されたカテゴリが存在するか判定する。\n    * カテゴリが `/ProcSet` の場合は非推奨のため常に false を返す。",
+          "patchLines": 45,
+          "truncated": false
+        }
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "from": "docs/guides/encryption-dictionary.html",
+      "to": "docs/guides/README.md",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/document/index.ts",
+      "to": "packages/core/src/document/resources/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/document/page-tree/attr-resolver/index.ts",
+      "to": "packages/core/src/document/resources/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/document/page-tree/resolved-page/index.ts",
+      "to": "packages/core/src/document/resources/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/document/pdf-page/__tests__/pdf-page.behavior.test.ts",
+      "to": "packages/core/src/document/resources/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/document/pdf-page/index.ts",
+      "to": "packages/core/src/document/resources/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/document/resources/__tests__/pdf-resources.behavior.test.ts",
+      "to": "packages/core/src/document/resources/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/document/resources/__tests__/pdf-resources.font.test.ts",
+      "to": "packages/core/src/content-stream/graphics-state/index.ts",
+      "status": "added"
+    },
+    {
+      "from": "packages/core/src/document/resources/__tests__/pdf-resources.font.test.ts",
+      "to": "packages/core/src/content-stream/interpreter/index.ts",
+      "status": "added"
+    },
+    {
+      "from": "packages/core/src/document/resources/__tests__/pdf-resources.font.test.ts",
+      "to": "packages/core/src/document/resources/index.ts",
+      "status": "added"
+    },
+    {
+      "from": "packages/core/src/document/resources/__tests__/pdf-resources.font.test.ts",
+      "to": "packages/core/src/objects/object-parser/index.ts",
+      "status": "added"
+    },
+    {
+      "from": "packages/core/src/document/resources/__tests__/pdf-resources.font.test.ts",
+      "to": "packages/core/src/objects/object-store/index.ts",
+      "status": "added"
+    },
+    {
+      "from": "packages/core/src/document/resources/__tests__/pdf-resources.font.test.ts",
+      "to": "packages/core/src/pdf/types/index.ts",
+      "status": "added"
+    },
+    {
+      "from": "packages/core/src/document/resources/__tests__/pdf-resources.font.test.ts",
+      "to": "packages/core/src/utils/option/index.ts",
+      "status": "added"
+    },
+    {
+      "from": "packages/core/src/document/resources/__tests__/pdf-resources.font.test.ts",
+      "to": "packages/core/src/utils/result/index.ts",
+      "status": "added"
+    },
+    {
+      "from": "packages/core/src/document/resources/__tests__/pdf-resources.test-d.ts",
+      "to": "packages/core/src/document/resources/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/document/resources/__tests__/pdf-resources.test-d.ts",
+      "to": "packages/core/src/pdf/errors/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/document/resources/__tests__/pdf-resources.test-d.ts",
+      "to": "packages/core/src/pdf/types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/document/resources/__tests__/pdf-resources.test-d.ts",
+      "to": "packages/core/src/utils/option/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/document/resources/__tests__/pdf-resources.test-d.ts",
+      "to": "packages/core/src/utils/result/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/document/resources/index.ts",
+      "to": "packages/core/src/pdf/errors/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/document/resources/index.ts",
+      "to": "packages/core/src/pdf/types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/document/resources/index.ts",
+      "to": "packages/core/src/utils/option/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/document/resources/index.ts",
+      "to": "packages/core/src/utils/result/index.ts",
+      "status": "kept"
+    }
+  ]
+}
