@@ -1,0 +1,109 @@
+name: PR Explain
+
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize, closed]
+
+permissions: {}
+
+concurrency:
+  group: pr-explain-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  change-map:
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.actor != 'dependabot[bot]' &&
+      github.event.pull_request.user.login != 'dependabot[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Ignore outdated PR events
+        id: current
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        with:
+          script: |
+            const eventPr = context.payload.pull_request;
+            const { data: current } = await github.rest.pulls.get({ ...context.repo, pull_number: eventPr.number });
+            const expectedState = context.payload.action === 'closed' ? 'closed' : 'open';
+            core.setOutput('ready', current.state === expectedState && current.head.sha === eventPr.head.sha);
+
+      # PR のスクリプトや hook は実行しない。信頼する base の固定 SHA だけを展開する。
+      - name: Checkout trusted base
+        if: steps.current.outputs.ready == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check installed mechanism
+        if: steps.current.outputs.ready == 'true'
+        id: installed
+        run: |
+          if [ -f .github/scripts/build-pr-change-map.py ] && [ -f .github/scripts/pr-explain-pages.sh ]; then
+            echo 'ready=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'ready=false' >> "$GITHUB_OUTPUT"
+            echo 'Trusted base has no PR Explain mechanism. The first installation PR is not published.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Fetch head as Git objects and build map
+        if: steps.installed.outputs.ready == 'true' && github.event.action != 'closed'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
+          HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+          PR: ${{ github.event.pull_request.number }}
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          credential="$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
+          echo "::add-mask::$credential"
+          git -c core.hooksPath=/dev/null -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $credential" fetch --no-tags origin "$HEAD_SHA"
+          python3 .github/scripts/build-pr-change-map.py --base "$BASE_SHA" --head "$HEAD_SHA" --pr "$PR" --head-branch "$HEAD_BRANCH" --base-branch "$BASE_BRANCH" > "$RUNNER_TEMP/change-map.json"
+
+      - name: Publish map or remove closed PR
+        if: steps.installed.outputs.ready == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          ACTION: ${{ github.event.action }}
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          credential="$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
+          echo "::add-mask::$credential"
+          export GIT_CONFIG_COUNT=2
+          export GIT_CONFIG_KEY_0='http.https://github.com/.extraheader'
+          export GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $credential"
+          export GIT_CONFIG_KEY_1='core.hooksPath'
+          export GIT_CONFIG_VALUE_1='/dev/null'
+          if [ "$ACTION" = 'closed' ]; then
+            bash .github/scripts/pr-explain-pages.sh remove "$PR"
+          else
+            bash .github/scripts/pr-explain-pages.sh put-map "$PR" "$RUNNER_TEMP/change-map.json" .github/pr-explain/templates/index.html
+          fi
+
+      - name: Mark existing comment as closed
+        if: steps.installed.outputs.ready == 'true' && github.event.action == 'closed'
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        with:
+          script: |
+            const marker = '<!-- pdfmod-pr-explain -->';
+            const pr = context.payload.pull_request;
+            const { data: current } = await github.rest.pulls.get({ ...context.repo, pull_number: pr.number });
+            if (current.state !== 'closed' || current.head.sha !== pr.head.sha) {
+              return;
+            }
+
+            const comments = await github.paginate(github.rest.issues.listComments, { ...context.repo, issue_number: pr.number, per_page: 100 });
+            const previous = comments.find(comment => comment.user?.login === 'github-actions[bot]' && comment.body?.startsWith(marker));
+            const body = `${marker}\nPR を閉じたため、解説ページを削除しました。`;
+            if (previous && previous.body !== body) {
+              await github.rest.issues.updateComment({ ...context.repo, comment_id: previous.id, body });
+            }

@@ -35,6 +35,13 @@ pnpm モノレポで `@pdfmod/core`（PDF処理エンジン）と `@pdfmod/react
 PDF機能の実装・仕様に関わる振る舞いの変更時は、[pdf-spec-guide](.agents/skills/pdf-spec-guide/SKILL.md) スキルを読み、同じPRで `docs/guides/` の解説を追加・更新する。
 手順とHTMLテンプレートはスキル内で管理する。PDF仕様・解説に影響しない変更では実行不要。
 
+## PRごとの解説
+
+PR作成・振る舞いが変わるpush・reopen時は [PR解説の作成手順](docs/development/pr-explain.md) に従い、
+コード抜粋付きの `explain.json` を作成・検証する。Actionsは差分の地図を生成し、Pages公開成功後にPRへリンクを載せる。
+文章の解説は自動生成されない。検証後に公開手順を実行し、公開CIの結果を確認する。
+これはPDF仕様の `docs/guides/` の解説とは別であり、生成物はPRブランチへコミットしない。
+
 ## 開発スキル
 
 TypeScript を変更する作業では、以下を **Skill ツールで実行**する（memory があっても省略せず最新版を読み込む）。
