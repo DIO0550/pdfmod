@@ -24,3 +24,4 @@ export type { PdfPageRectangle } from "./pdf-page";
 export { PdfPage } from "./pdf-page";
 export type { PdfResourceCategory } from "./resources/index";
 export { PDF_RESOURCE_CATEGORIES, PdfResources } from "./resources/index";
+export type { PdfXObject } from "./resources/xobject/index";

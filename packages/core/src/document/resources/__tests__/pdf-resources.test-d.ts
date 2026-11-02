@@ -1,4 +1,5 @@
 import { assertType, expectTypeOf, test } from "vitest";
+import type { PdfXObject } from "../../../index";
 import type { PdfError } from "../../../pdf/errors/index";
 import type {
   PdfDictionary,
@@ -53,6 +54,10 @@ test("PdfResources.lookup の戻り値型の推論チェック", () => {
   expectTypeOf(PdfResources.getFont(resources, "F1", resolveRef)).toEqualTypeOf<
     Promise<Result<Option<PdfDictionary>, PdfError>>
   >();
+
+  expectTypeOf(
+    PdfResources.getXObject(resources, "Logo", resolveRef),
+  ).toEqualTypeOf<Promise<Result<Option<PdfXObject>, PdfError>>>();
 
   expectTypeOf(
     PdfResources.hasCategory(resources, "Font"),

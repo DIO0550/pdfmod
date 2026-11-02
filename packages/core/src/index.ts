@@ -34,6 +34,7 @@ export type {
   PdfPageRectangle,
   PdfRectangle,
   PdfResourceCategory,
+  PdfXObject,
   ResolvedPage,
   ResolveInheritedOutcome,
   WalkPageTreeResult,
