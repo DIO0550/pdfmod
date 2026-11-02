@@ -1376,13 +1376,24 @@ const cases = [
     expected: ["f2", "f1"],
   },
   {
-    label: "最初に開くタブは、言語に節があれば言語、無くて実装にあれば実装、どちらにも無ければ言語",
+    label: "最初に開くタブは、言語・PDF・実装の順で節があるタブ、どこにも無ければ言語",
     actual: () => [
       [primerOf({ id: "b", kind: "codebase" }), primerOf({ id: "a" })],
       [primerOf({ id: "b", kind: "codebase" })],
+      [primerOf({ id: "b", kind: "codebase" }), primerOf({ id: "p", kind: "pdf" })],
+      [primerOf({ id: "p", kind: "pdf" })],
       [primerOf({ id: "x", kind: "framework" })],
     ].map((primers) => PrimerTopics.firstTabOf(primerTopicsOf({ primers }))),
-    expected: ["language", "codebase", "language"],
+    expected: ["language", "codebase", "pdf", "pdf", "language"],
+  },
+  {
+    label: "PDF の節は専用タブに出て、実装への関連リンクと抜粋を保ち、変更状態を持たない",
+    actual: () => {
+      const primers = [primerOf({ id: "p", kind: "pdf", passages: [{ kind: "excerpt", excerpt: { path: "a.ts", start: 1, end: 1, text: "sample" } }], seeAlso: ["c"] }), primerOf({ id: "c", kind: "codebase", label: "実装" })];
+      const topic = tabTopicsOf({ primers }, "pdf")[0];
+      return [topic.id, topic.status, topic.passages[0].excerpt.text, topic.seeAlso];
+    },
+    expected: ["p", null, "sample", [{ tab: "codebase", index: 0, label: "実装" }]],
   },
   {
     label: "出てくる場所の行の範囲を省けば null、shas を省けば届く先は無い",

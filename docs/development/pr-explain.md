@@ -18,9 +18,10 @@ PDF仕様の恒久的な説明は従来どおり `docs/guides/` に置く。
 ## 初回設定
 
 1. この仕組みのPRを `main` にマージする。
-2. リポジトリの **Settings → Pages → Build and deployment → Source: GitHub Actions** を選ぶ。
-3. `github-pages` environment にブランチ制限がある場合は、`main` と `gh-pages` からのデプロイを許可する。
-4. 導入後のPRを作成・push・reopenし、`PR Explain` と `PR Explain Deploy` の成功を確認する。
+2. **Settings → Pages → Build and deployment** で、公開方法を選ぶ。
+   - **GitHub Actions**: `PR Explain Deploy` が公開し、その job 内でコメントする。環境の許可ブランチは運用に合わせて `main` / `gh-pages` を設定する。
+   - **Deploy from a branch** (`gh-pages` / root): 標準の `pages build and deployment` が公開し、成功後に `PR Explain Comment` がコメントする。独自deployは環境へ入る前にスキップする。
+3. 導入後のPRを作成・push・reopenし、`PR Explain`、選択した公開CI、コメントの成功を確認する。
 
 導入PR自体は、信頼するbaseにスクリプトがないため自動公開しない。すでに開いているPRは次のpushまたはreopenで対象となる。
 `gh-pages` ブランチは、導入後のPRを初めて生成したときに作成する。導入PRのマージだけでは作成しない。
@@ -47,13 +48,17 @@ git rev-parse HEAD
 | `commitStories` | 各コミットの意図、変更が必要だった理由、レビュー箇所 |
 | `suites` / `tests` | 実際のテスト名、前提・操作・期待結果、境界値を選んだ理由 |
 | `impact` | 利用者から見た変更前後、条件ごとの結果。実装の識別子は持ち込まない |
-| `primers` | 言語機能 (`language`) と、このコードベースの設計 (`codebase`) の説明 |
+| `primers` | 言語機能 (`language`)、PDF の仕組み (`pdf`)、このコードベースの設計 (`codebase`) の説明 |
 | `terms` | 本文の `[[表示名|id]]` から参照する用語の定義 |
 
 技術の節は、用語の定義 → 何に困るか → 最小のコード → このPRでの使われ方 → 注意点の順で書く。
 たとえば `Result`、enum、所有権、パーサの境界は、初めて読む人がコードを追えるところから説明する。
 「型安全になった」だけで済ませず、扱える値・扱えない値と、呼び出し側のコードがどう変わるかを示す。
 各技術の節には実コードの `excerpt` を1つ以上入れる。宣言やファイル名だけでは代用しない。
+PDFの機能に関わるPRでは `kind: "pdf"` の節も書く。短いPDF記述を `declaration` に置き、
+オペランド・辞書・参照の意味、適用されるスコープ、実装している範囲を説明する。
+仕様の節番号を `spec` に示し、pdfmod独自の回復動作は仕様の要件と区別する。
+例: `/F1 12 Tf` → 現在の `/Resources` → `/Font` → フォント辞書。`seeAlso` で実装の節へつなぐ。
 
 抜粋は `path` / `start` / `end` を指定する（1始まり、最大80行）。`text` は手で転記しない。
 validator が指定SHAのGit objectから本文を読み、行番号と中身を固定する。
@@ -85,8 +90,11 @@ bash .github/scripts/pr-explain-pages.sh put-explain 123 /tmp/pdfmod-explain.jso
 終了コード3は地図未配置または削除済み。PRが開いていて生成CIが成功しているか確認する。
 解説と地図のSHAが異なる場合は古い解説として帯を表示する。変更後は最新SHAで書き直す。
 
-通常は `gh-pages` へのpushで `PR Explain Deploy` が起動する。`GITHUB_TOKEN` のpushでは別のpush workflowが起動しないため、
+GitHub Actions方式では、`gh-pages` へのpushで `PR Explain Deploy` が起動する。`GITHUB_TOKEN` のpushでは別のpush workflowが起動しないため、
 自動生成側は `workflow_run` でもデプロイを起動する。手動公開で同じ制限のある認証を使う場合は、Actions画面からdeployを手動実行する。
+ブランチ方式では標準の Pages 公開CIが成功した後にコメントする。公開CIの `head_sha` を読み、
+まだ公開されていない最新ブランチを取り直さない。実行コードは既定ブランチから取得し、公開HTML/JSONはデータとして扱う。
+新しい通知workflowは `main` にマージしてから有効になる。
 公開CI成功とPRコメントのリンクを確認して完了とする。PRを閉じるとそのPRのフォルダを削除し、既存コメントも閉鎖表示へ更新する。
 
 ## 検査と制限

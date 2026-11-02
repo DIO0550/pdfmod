@@ -163,7 +163,8 @@
       <a href="#rules"><span>03</span>仕様と取り扱い</a>
       <a href="#flow"><span>04</span>処理の流れ</a>
       <a href="#examples"><span>05</span>具体例で確かめる</a>
-      <a href="#implementation"><span>06</span>実装と対応範囲</a>
+      <a href="#font"><span>06</span>Tfからフォント辞書へ</a>
+      <a href="#implementation"><span>07</span>実装と対応範囲</a>
     </nav>
   </aside>
   <main id="top"><div class="wrap">
@@ -332,8 +333,65 @@ endobj</code></pre>
       </div>
     </section>
 
+    <section class="section" id="font">
+      <div class="section-heading"><span class="number">06</span><h2>Tfからフォント辞書へ</h2></div>
+      <p><code>/F1</code> はフォント製品の名前ではなく、現在のリソース辞書で使う<strong>ローカル名</strong>です。別のページの <code>/F1</code> が同じフォントとは限りません。次の抜粋では <code>12 Tf</code> の直前の名前を手掛かりに、辞書へ2段階で到達します。</p>
+      <pre><code><span class="comment">% PDF断片。完全なPDFではありません。</span>
+/Resources &lt;&lt; /Font 6 0 R &gt;&gt;
+
+6 0 obj
+&lt;&lt; /F1 7 0 R &gt;&gt;
+endobj
+
+7 0 obj
+&lt;&lt; /Type /Font /Subtype /Type1 /BaseFont /Helvetica &gt;&gt;
+endobj
+
+<span class="comment">% コンテンツストリームの本文</span>
+BT /F1 12 Tf (Hello) Tj ET</code></pre>
+      <ol class="steps">
+        <li><code>Tf</code> が名前 <code>F1</code> とサイズ <code>12</code> をテキスト状態に保存します。名前の先頭の <code>/</code> は構文上の記号なので、APIへ渡す文字列には含めません。</li>
+        <li>ページの <code>/Resources</code> にある <code>/Font</code> の値を読みます。この例では <code>6 0 R</code> を解決し、名前の対応表を取得します。</li>
+        <li>対応表の <code>/F1</code> を読み、<code>7 0 R</code> を解決します。実体が辞書なら取得成功です。直接埋め込まれた辞書でも同じ結果になります。</li>
+      </ol>
+      <h3>不在と失敗を分ける</h3>
+      <p><code>Result</code> は処理の成功・失敗、<code>Option</code> は成功時に値があるかを表します。この二つを重ねることで、「名前がない」と「参照先を解析できない」を区別できます。次の扱いはpdfmodの回復方針であり、壊れたフォントをPDF仕様上有効とみなす意味ではありません。</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>入力</th><th>取得結果</th><th>テキスト状態</th></tr></thead>
+        <tbody>
+          <tr><td>名前に対応する辞書がある</td><td><code>Ok(Some(辞書))</code></td><td>名前・サイズを保持</td></tr>
+          <tr><td>名前または /Font がない</td><td><code>Ok(None)</code>：未解決</td><td>名前・サイズ・文字間隔等を保持</td></tr>
+          <tr><td>/Font または名前の参照先が数値・Null・ストリーム</td><td><code>Ok(None)</code>：辞書として扱わない</td><td>状態を変更しない</td></tr>
+          <tr><td>参照解決関数が構文エラー等を返す</td><td><code>Err(原因)</code>：呼び出し側へ伝播</td><td>状態を変更しない</td></tr>
+        </tbody>
+      </table></div>
+      <h3>保存した名前をAPIへ渡す</h3>
+      <p>次はTypeScriptの関数本体の抜粋です。<code>textState</code> は <code>Tf</code> 実行後の状態、<code>resources</code> と <code>resolveRef</code> は同じ文書・ページのものを渡します。</p>
+      <pre><code>if (!textState.fontName.some) {
+  return ok(none);
+}
+
+const result = await PdfResources.getFont(
+  resources,
+  textState.fontName.value,
+  resolveRef,
+);
+
+if (!result.ok) {
+  return result; <span class="comment">// 参照先の解析失敗を呼び出し側へ返す</span>
+}
+
+if (!result.value.some) {
+  return ok(none); <span class="comment">// 未解決。フォントを勝手に置き換えない</span>
+}
+
+const dictionary = result.value.value;
+return ok(some(dictionary));</code></pre>
+      <div class="note"><strong>辞書の取得とフォントの解釈は別の段階です。</strong>このAPIは辞書の内容を保持して返します。<code>/Subtype</code> の妥当性、文字コードの変換、グリフ幅、埋め込みフォントの読み込みはここでは扱いません。また、解決結果をテキスト状態へ重複保存しないため、フォント切替後に古い辞書が残ることもありません。</div>
+    </section>
+
     <section class="section" id="implementation">
-      <div class="section-heading"><span class="number">06</span><h2>実装と対応範囲</h2></div>
+      <div class="section-heading"><span class="number">07</span><h2>実装と対応範囲</h2></div>
       <p>TypeScript API（<code>@pdfmod/core</code>）におけるリソースの利用例です。以下の抜粋では、<code>page</code> は読み込み済みのページ、<code>resolveRef</code> はその文書の間接参照解決関数とします。<code>Result</code> の <code>ok</code> で成功を、<code>Option</code> の <code>some</code> で値の存在を確認します。</p>
       <pre><code>import { PdfResources } from "@pdfmod/core";
 
@@ -343,9 +401,8 @@ const resources: PdfResources = page.resources;
 // カテゴリ存在チェック（ProcSet は常に false）
 if (PdfResources.hasCategory(resources, "Font")) {
   // フォントリソースの遅延解決
-  const fontResult = await PdfResources.lookup(
+  const fontResult = await PdfResources.getFont(
     resources,
-    "Font",
     "F1",
     resolveRef,
   );
@@ -364,17 +421,18 @@ if (PdfResources.hasCategory(resources, "Font")) {
           <tr><td><code>PdfResources.from(dict?)</code></td><td>辞書から <code>PdfResources</code> を安全に生成（引数なし時は空辞書）。</td></tr>
           <tr><td><code>PdfResources.hasCategory(res, cat)</code></td><td>カテゴリの存在判定。<code>/ProcSet</code> の場合は常に <code>false</code>。</td></tr>
           <tr><td><code>PdfResources.getCategory(res, cat, resolveRef)</code></td><td>カテゴリ辞書を非同期で遅延解決し、<code>Result&lt;Option&lt;PdfDictionary&gt;, PdfError&gt;</code> を返却。</td></tr>
+          <tr><td><code>PdfResources.getFont(res, name, resolveRef)</code></td><td>Fontカテゴリから辞書だけを取得。戻り値は <code>Result&lt;Option&lt;PdfDictionary&gt;, PdfError&gt;</code>。</td></tr>
           <tr><td><code>PdfResources.lookup(res, cat, name, resolveRef)</code></td><td>カテゴリと個別エントリを非同期で2段階遅延解決し、<code>Result&lt;Option&lt;PdfObject&gt;, PdfError&gt;</code> を返却（<code>PdfObject</code> はストリームを含む）。</td></tr>
         </tbody>
       </table></div>
       <div class="grid">
         <div class="card">
           <h3>今回対応する範囲</h3>
-          <p>ページツリーからの全置換属性継承、空辞書フォールバック、標準・カスタムカテゴリの保持、2段階オンデマンド解決、ストリーム透過返却、非推奨 <code>/ProcSet</code> の除外。</p>
+          <p>ページツリーからの全置換属性継承、空辞書フォールバック、標準・カスタムカテゴリの保持、2段階オンデマンド解決、ストリーム透過返却、フォント辞書への型を絞った到達、非推奨 <code>/ProcSet</code> の除外。</p>
         </div>
         <div class="card">
           <h3>後続処理・未対応の範囲</h3>
-          <p>フォント辞書内部のエンコーディング・CMAP 解析、画像ストリームのデコードとピクセル展開、コンテントストリーム描画命令の実行。</p>
+          <p>フォント辞書内部のエンコーディング・CMAP 解析、画像ストリームのデコードとピクセル展開、フォントを用いた文字描画。<code>Tf</code> の名前・サイズの保存は既存のインタプリタが行います。</p>
         </div>
       </div>
       <div class="note">

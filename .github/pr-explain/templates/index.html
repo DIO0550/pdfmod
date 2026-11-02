@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-MmOC0QeGbpNkyAmcdRdWdKCHYAsQdTfujlQSWc+yV0M='; style-src 'unsafe-inline'; font-src 'none'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-OoaqBkFOU+8JOgbP/dVQ4mrRYTMU75iS/xx1Zz6Fchk='; style-src 'unsafe-inline'; font-src 'none'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>PR 解説</title>
 <style>
@@ -1730,9 +1730,9 @@ button.change-item:hover { background: var(--track); }
     // kind のオブジェクトには求めない。kind に依らないオブジェクト(Shape)なら null で、どれにも求める。Shapes と Variants から
     // 導いたものと同じ並びで、`pr-explain-core-cases.sh` が突き合わせる。配列は欠けても `listOf` が空として読むので入れない。
     const Required = Object.freeze([
-      { route: "primers[].category", kinds: ["language", "codebase"] },
-      { route: "primers[].label", kinds: ["language", "codebase"] },
-      { route: "primers[].gist", kinds: ["language", "codebase"] },
+      { route: "primers[].category", kinds: ["language", "pdf", "codebase"] },
+      { route: "primers[].label", kinds: ["language", "pdf", "codebase"] },
+      { route: "primers[].gist", kinds: ["language", "pdf", "codebase"] },
       { route: "primers[].passages[].text", kinds: ["text", "caution", "memo", "rule", "spec", "history"] },
       { route: "primers[].passages[].code", kinds: ["declaration"] },
       { route: "primers[].passages[].parameters[].name", kinds: null },
@@ -1888,12 +1888,12 @@ button.change-item:hover { background: var(--track); }
   });
 
   /**
-   * 技術の手引きの節の並び。解説の `primers` を、kind ごとのタブ(言語・フレームワーク / この PR の実装)に、書いた順で分ける。
+   * 技術の手引きの節の並び。解説の `primers` を、kind ごとのタブ(言語・フレームワーク / PDF の仕組み / この PR の実装)に、書いた順で分ける。
    * 用語は `terms` を印から引き、節の用語とタブの用語集はどちらも印から導く(書かせない)。
    */
   const PrimerTopics = (() => {
-    const PrimerKinds = Object.freeze({ Language: "language", Codebase: "codebase" });
-    // この PR の実装の節で、状態を省いたもの(前からある)。言語・フレームワークの節は状態を持たない(null)。
+    const PrimerKinds = Object.freeze({ Language: "language", Pdf: "pdf", Codebase: "codebase" });
+    // この PR の実装の節で、状態を省いたもの(前からある)。言語・PDF の節は状態を持たない(null)。
     const Existing = "existing";
     // 段の kind。順と綴りは `build-pr-explain.py` の Variants の Passage と同じで、`pr-explain-core-cases.sh` が突き合わせる。
     const PassageKinds = Object.freeze(["text", "declaration", "parameters", "excerpt", ...Object.keys(Vocabulary.remarkKinds)]);
@@ -1970,12 +1970,10 @@ button.change-item:hover { background: var(--track); }
       /**
        * 最初に開くタブ。
        * @param primerTopics `create` が返した、書かれている技術の手引き
-       * @returns 言語・フレームワークに節があればそれ、無くてこの PR の実装にあればそれ。どちらにも無ければ言語・フレームワーク
+       * @returns 言語・PDF・実装の順で最初に節があるタブ。どこにも無ければ言語・フレームワーク
        */
       firstTabOf: (primerTopics) => {
-        const hasLanguage = primerTopics.tabs[PrimerKinds.Language].topics.length > 0;
-        const hasOnlyCodebase = !hasLanguage && primerTopics.tabs[PrimerKinds.Codebase].topics.length > 0;
-        return hasOnlyCodebase ? PrimerKinds.Codebase : PrimerKinds.Language;
+        return Object.values(PrimerKinds).find((kind) => primerTopics.tabs[kind].topics.length > 0) ?? PrimerKinds.Language;
       },
       /**
        * 解説の `primers` を、タブごとの節の並びにする。
@@ -1985,7 +1983,7 @@ button.change-item:hover { background: var(--track); }
        * @param flows 解説の流れを id で引く表
        * @param reachOf 出てくる場所の 1 つの sha が、変更の経緯のどこまで届くかを返す(`{sha, path, lineRange}` を受け取る)
        * @returns `{kind: "unwritten"}`(`primers` が無いか空)か `{kind: "written", tabs}`。`tabs` はタブ(kind)ごとの
-       *   `{topics, glossary}`。節の `status` は、この PR の実装の節なら added / changed / `Existing`、言語・フレームワークの節は null
+       *   `{topics, glossary}`。節の `status` は、この PR の実装の節なら added / changed / `Existing`、言語・PDF の節は null
        */
       create: ({ primers, terms, testAt, flows, reachOf }) => {
         const written = listOf(primers);
@@ -5862,6 +5860,15 @@ button.change-item:hover { background: var(--track); }
       eyebrow: "技術の手引き · 言語・フレームワーク",
       title: "この PR を読むのに要る、言語とフレームワークの知識",
       lead: "この PR の差分に出てくる書き方を、出てくる場所と一緒にまとめています。順に読む必要はありません。差分を読んでいて引っかかったところだけ引いてください。このリポジトリ固有の仕組みは「この PR の実装」タブにあります。",
+    },
+    pdf: {
+      label: "PDF の仕組み",
+      chip: "PDF",
+      description: "PDF の構文・オブジェクト・仕様上の意味",
+      tocNote: "PDF の例から実装へ",
+      eyebrow: "技術の手引き · PDF の仕組み",
+      title: "この PR を読むのに要る、PDF の知識",
+      lead: "PDF の小さな例から、命令や辞書が表す意味を説明します。仕様上の意味と、この PR が実装している範囲を、実コードの抜粋と一緒に確認できます。",
     },
     codebase: {
       label: "この PR の実装",
