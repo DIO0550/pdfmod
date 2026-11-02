@@ -450,6 +450,9 @@ primer_with_excerpt='d["primers"] = [{"kind": "language", "id": "p", "category":
 run_build minimal "$primer_with_excerpt" --repo "$repo"
 report pass "$(inspect_output '"tests" not in out and out["primers"][0]["passages"][0]["excerpt"]["text"] == "two\nthree"')" "tests の無い解説でも、段の抜粋に作業ツリーではなく解説時点の sha の中身が入る"
 
+run_build minimal "$primer_with_excerpt; d[\"primers\"][0][\"kind\"] = \"pdf\"" --repo "$repo"
+report pass "$(inspect_output 'out["primers"][0]["kind"] == "pdf" and out["primers"][0]["passages"][0]["excerpt"]["text"] == "two\nthree"')" "PDF の節も実コードの抜粋を解説時点の sha から取り出す"
+
 two_passage_excerpts='ps = d["primers"][0]["passages"]; ex = lambda start, end: {"kind": "excerpt", "excerpt": {"path": "kept.txt", "start": start, "end": end, "emphasis": [{"start": end, "end": end}]}}; d["primers"][0]["passages"] = [ps[0], ex(1, 2), ps[1], ex(4, 5), *ps[2:]]; d["tests"][0]["excerpt"] = {"path": "kept.txt", "start": 2, "end": 3, "emphasis": [{"start": 2, "end": 2}]}'
 run_build sample "$two_passage_excerpts" --repo "$repo"
 report pass "$(inspect_output '[out["tests"][0]["excerpt"]["text"], out["primers"][0]["passages"][1]["excerpt"]["text"], out["primers"][0]["passages"][3]["excerpt"]["text"]] == ["two\nthree", "one\ntwo", "four\nfive"]')" "テストの抜粋と、1 節の 2 つの段の抜粋の 3 か所すべてに、それぞれの範囲の中身が入る"

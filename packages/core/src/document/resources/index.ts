@@ -87,6 +87,44 @@ export const PdfResources = {
   },
 
   /**
+   * `/Font` のローカル名からフォント辞書を解決する（docs/specs/04 §3.1）。
+   * 辞書内部のフォント種別・エンコーディングは解釈しない。
+   *
+   * @param resources - ページ等の現在のスコープのリソース辞書
+   * @param name - Tf が指定した、先頭のスラッシュを含まない名前
+   * @param resolveRef - 同じ文書の間接参照解決関数
+   * @returns 辞書なら Some、不在・辞書以外なら None。参照解決の失敗は Err
+   */
+  async getFont(
+    resources: PdfResources,
+    name: string,
+    resolveRef: ResolveRef,
+  ): Promise<Result<Option<PdfDictionary>, PdfError>> {
+    const result = await PdfResources.lookup(
+      resources,
+      "Font",
+      name,
+      resolveRef,
+    );
+
+    if (!result.ok) {
+      return result;
+    }
+
+    if (!result.value.some) {
+      return ok(none);
+    }
+
+    const font = result.value.value;
+
+    if (font.type !== "dictionary") {
+      return ok(none);
+    }
+
+    return ok(some(font));
+  },
+
+  /**
    * 指定されたカテゴリが存在するか判定する。
    * カテゴリが `/ProcSet` の場合は非推奨のため常に false を返す。
    *

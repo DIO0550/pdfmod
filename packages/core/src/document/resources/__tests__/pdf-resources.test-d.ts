@@ -50,6 +50,10 @@ test("PdfResources.lookup の戻り値型の推論チェック", () => {
     PdfResources.getCategory(resources, "Font", resolveRef),
   ).toEqualTypeOf<Promise<Result<Option<PdfDictionary>, PdfError>>>();
 
+  expectTypeOf(PdfResources.getFont(resources, "F1", resolveRef)).toEqualTypeOf<
+    Promise<Result<Option<PdfDictionary>, PdfError>>
+  >();
+
   expectTypeOf(
     PdfResources.hasCategory(resources, "Font"),
   ).toEqualTypeOf<boolean>();
