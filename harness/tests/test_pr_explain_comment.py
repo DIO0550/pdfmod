@@ -13,7 +13,9 @@ import unittest
 ROOT = Path(__file__).resolve().parents[2]
 WORKFLOW = ROOT / ".github/workflows/pr-explain-deploy.yml"
 WORKFLOW_SOURCE = WORKFLOW.read_text(encoding="utf-8")
-SCRIPT = textwrap.dedent(WORKFLOW_SOURCE.split("      - name: Comment published PR links\n", 1)[1].split("          script: |\n", 1)[1])
+COMMENT_SOURCE = (ROOT / ".github/scripts/comment-pr-explain.cjs").read_text(encoding="utf-8")
+SCRIPT = "return await require(" + json.dumps(str(ROOT / ".github/scripts/comment-pr-explain.cjs")) + ")({ github, context });"
+COMMENT_WORKFLOW = (ROOT / ".github/workflows/pr-explain-comment.yml").read_text(encoding="utf-8")
 BRANCH_SCRIPT = textwrap.dedent(WORKFLOW_SOURCE.split("          script: |\n", 1)[1].split("\n  deploy:", 1)[0])
 PR_WORKFLOW_SOURCE = (ROOT / ".github/workflows/pr-explain.yml").read_text(encoding="utf-8")
 CLOSE_STEP = PR_WORKFLOW_SOURCE.split("      - name: Mark existing comment as closed\n", 1)[1]
@@ -86,11 +88,27 @@ class PrExplainCommentWiring(unittest.TestCase):
         self.assertIn("PR_EXPLAIN_PAGE_URL: ${{ steps.deployment.outputs.page_url }}", comment_step)
         self.assertIn("      pull-requests: write\n", WORKFLOW_SOURCE)
         self.assertEqual(re.findall(r"^  ([a-z][a-z-]*):$", WORKFLOW_SOURCE, re.M)[-1], "deploy")
-        self.assertEqual(WORKFLOW_SOURCE.count("uses: actions/checkout@"), 1)
+        self.assertEqual(WORKFLOW_SOURCE.count("uses: actions/checkout@"), 2)
+        self.assertIn("ref: ${{ github.event.repository.default_branch }}", WORKFLOW_SOURCE)
         self.assertIn("ref: gh-pages\n          path: site", WORKFLOW_SOURCE)
-        self.assertNotIn("child_process", SCRIPT)
-        self.assertNotIn("fetch(", SCRIPT)
+        self.assertNotIn("child_process", COMMENT_SOURCE)
+        self.assertNotIn("fetch(", COMMENT_SOURCE)
         self.assertNotIn("${{ github.event.pull_request.head", WORKFLOW_SOURCE)
+
+    def test_branch_pages_comment_waits_for_success_and_uses_published_commit(self):
+        self.assertIn("workflows: [pages build and deployment]", COMMENT_WORKFLOW)
+        self.assertIn("github.event.workflow_run.conclusion == 'success'", COMMENT_WORKFLOW)
+        self.assertIn("github.event.workflow_run.head_branch == 'gh-pages'", COMMENT_WORKFLOW)
+        self.assertIn("github.event.workflow_run.head_repository.full_name == github.repository", COMMENT_WORKFLOW)
+        self.assertIn("ref: ${{ github.event.workflow_run.head_sha }}", COMMENT_WORKFLOW)
+        self.assertIn("ref: ${{ github.event.repository.default_branch }}", COMMENT_WORKFLOW)
+        self.assertIn("path: trusted", COMMENT_WORKFLOW)
+        self.assertIn("runId: context.payload.workflow_run.id", COMMENT_WORKFLOW)
+        self.assertIn("pages.html_url", COMMENT_WORKFLOW)
+        self.assertNotIn("environment:", COMMENT_WORKFLOW)
+        for source in (WORKFLOW_SOURCE, COMMENT_WORKFLOW):
+            self.assertIn("group: github-pages-site", source)
+            self.assertIn("trusted/.github/scripts/comment-pr-explain.cjs", source)
 
     def test_map_workflow_only_updates_existing_comment_when_pr_is_closed(self):
         self.assertIn("github.event.action == 'closed'", CLOSE_STEP)
@@ -245,7 +263,7 @@ class PrExplainPublishedComments(unittest.TestCase):
 
 @unittest.skipUnless(NODE, "Node.js がないため公開ブランチ検査は未実施")
 class PrExplainBranchCheck(unittest.TestCase):
-    def execute(self, status):
+    def execute(self, status, build_type="workflow"):
         runner = r"""
 const input = JSON.parse(require('node:fs').readFileSync(0, 'utf8'));
 const calls = [];
@@ -255,7 +273,7 @@ const github = { rest: { git: { getRef: async args => {
     throw Object.assign(Error(`GitHub status ${input.status}`), { status: input.status });
   }
   return { data: { ref: 'refs/heads/gh-pages' } };
-} } } };
+} }, repos: { getPages: async () => ({ data: { build_type: input.buildType } }) } } };
 const core = {
   setOutput: (name, value) => calls.push({ operation: 'output', name, value }),
   summary: {
@@ -269,7 +287,7 @@ new AsyncFunction('github', 'context', 'core', input.script)(
 ).then(() => process.stdout.write(JSON.stringify(calls)))
  .catch(error => { console.error(error.message); process.exitCode = 1; });
 """
-        return subprocess.run([NODE, "-e", runner], input=json.dumps({"status": status, "script": BRANCH_SCRIPT}), text=True, capture_output=True)
+        return subprocess.run([NODE, "-e", runner], input=json.dumps({"status": status, "script": BRANCH_SCRIPT, "buildType": build_type}), text=True, capture_output=True)
 
     def test_existing_branch_allows_deploy(self):
         result = self.execute(200)
@@ -278,6 +296,13 @@ new AsyncFunction('github', 'context', 'core', input.script)(
             {"operation": "getRef", "owner": "DIO0550", "repo": "pdfmod", "ref": "heads/gh-pages"},
             {"operation": "output", "name": "exists", "value": "true"},
         ])
+
+    def test_branch_pages_mode_skips_custom_deploy_before_environment(self):
+        result = self.execute(200, build_type="legacy")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        calls = json.loads(result.stdout)
+        self.assertEqual(calls[1], {"operation": "output", "name": "exists", "value": "false"})
+        self.assertIn("PR Explain Comment", calls[2]["text"])
 
     def test_missing_branch_skips_deploy_and_explains_first_generation(self):
         result = self.execute(404)

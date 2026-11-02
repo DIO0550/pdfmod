@@ -411,6 +411,7 @@ Variants: dict[str, dict[str, dict[str, Field]]] = {
     },
     "Primer": {
         "language": PrimerFields,
+        "pdf": PrimerFields,
         "codebase": {
             **PrimerFields,
             "status": may(Word(PrimerStatuses)),
