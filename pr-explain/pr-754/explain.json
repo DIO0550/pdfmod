@@ -1,0 +1,210 @@
+{
+  "version": 1,
+  "pr": 754,
+  "sha": "2618ea5bd0fac1bb6e9db82ab0fc5e0f5f848507",
+  "issue": 666,
+  "overview": {
+    "title": "同じ描画命令から写真と図を見分ける",
+    "lead": "PDFの描画命令に現れる名前はページ内の別名です。その名前を手掛かりに元のストリームを取得し、画像とフォームで異なる属性を読めるようにしました。",
+    "before": [
+      {
+        "text": "汎用のリソース取得ではストリームを取得できても、呼び出し側が辞書の種別と属性を一つずつ確認していました。"
+      }
+    ],
+    "after": [
+      {
+        "text": "名前から対応する種別と属性が一緒に返ります。未知の種類でもストリームのバイトと辞書を調べられます。"
+      }
+    ]
+  },
+  "concepts": [
+    {
+      "path": "packages/core/src/document/resources/index.ts",
+      "name": "名前から引く",
+      "role": "現在のスコープでストリームまでの参照を解決します。"
+    },
+    {
+      "path": "packages/core/src/document/resources/xobject/index.ts",
+      "name": "種別と属性を読む",
+      "role": "画像とフォームで辞書を読み分けます。"
+    }
+  ],
+  "messages": [
+    {
+      "id": "read-stream",
+      "kind": "qry",
+      "name": "参照先を読み分ける",
+      "code": "PdfXObject.fromStream(stream, resolveRef)",
+      "via": "call",
+      "from": "packages/core/src/document/resources/index.ts",
+      "to": "packages/core/src/document/resources/xobject/index.ts",
+      "payload": "現在のリソース辞書で見つかったストリームと同じ文書の参照解決関数",
+      "returns": "種別ごとの属性と元のストリーム、または参照先のエラー"
+    }
+  ],
+  "flows": [
+    {
+      "id": "lookup",
+      "label": "描画名から属性を取得する",
+      "steps": [
+        "read-stream"
+      ]
+    }
+  ],
+  "commitStories": [
+    {
+      "sha": "2618ea5bd0fac1bb6e9db82ab0fc5e0f5f848507",
+      "phase": "core",
+      "role": "リソースに型付きの取得口を追加",
+      "why": "画像の画素情報とフォームの座標系には共通しない属性が多く、種別を読んだ時点で型を分けると後段が安全に利用できます。",
+      "review": [
+        "未知の名前を保持する分岐と、フォームの座標が揃わないときの回復結果を確認してください。"
+      ]
+    }
+  ],
+  "suites": [
+    {
+      "id": "xobjects",
+      "label": "実バイト列からの名前解決",
+      "file": "packages/core/src/document/resources/__tests__/pdf-resources.xobject.test.ts"
+    }
+  ],
+  "tests": [
+    {
+      "id": "image",
+      "suite": "xobjects",
+      "name": "Do の名前から画像の属性と未復号バイトを取得する",
+      "why": "名前の復元、二段の間接参照、複数フィルタが同時に働く入力を選びました。",
+      "given": "名前の一部が16進表記の描画命令と、間接参照の画像を用意します。",
+      "when": "命令の名前を読み取り画像を取得します。",
+      "then": "幅・高さ・フィルタ・マスクと元の4バイトを取得できます。",
+      "techniques": [
+        "state"
+      ]
+    },
+    {
+      "id": "form",
+      "suite": "xobjects",
+      "name": "Form は境界・変換・固有のリソース辞書を持つ",
+      "why": "単位行列とは異なる変換を使い、指定値と既定値を取り違える実装を検出します。",
+      "given": "対角が逆順の矩形、間接参照の移動量、独自の辞書があるフォームを用意します。",
+      "when": "フォームに対応する名前を読みます。",
+      "then": "境界が正規化され、指定の変換と辞書が返ります。",
+      "techniques": [
+        "boundary"
+      ]
+    },
+    {
+      "id": "broken",
+      "suite": "xobjects",
+      "name": "参照先の構文エラーを呼び出し元へ返す",
+      "why": "名前の不在と参照先の破損を区別できることを確認します。",
+      "given": "フォーム内のリソース参照が壊れた辞書を指しています。",
+      "when": "フォームを取得します。",
+      "then": "辞書の解析で発生した構文エラーが呼び出し元に届きます。",
+      "techniques": [
+        "error"
+      ]
+    }
+  ],
+  "impact": {
+    "title": "画像を展開する前に内容を調べられる",
+    "lead": "写真なら幅・高さやマスク、フォームなら境界と座標変換を読み取れます。",
+    "changed": {
+      "before": [
+        {
+          "text": "呼び出す側が毎回辞書を調べていました。"
+        }
+      ],
+      "after": [
+        {
+          "text": "種類ごとに必要な情報がまとまり、未対応の種類でも元のデータを取り出せます。"
+        }
+      ]
+    }
+  },
+  "primers": [
+    {
+      "kind": "pdf",
+      "id": "do",
+      "label": "Do とリソースのスコープ",
+      "category": "PDF · 外部オブジェクト",
+      "gist": "描画命令の名前は、現在のページなどのリソース辞書で初めて参照先が決まります。",
+      "passages": [
+        {
+          "kind": "declaration",
+          "code": "/Resources << /XObject << /Logo 8 0 R >> >>\n% コンテンツストリーム\n/Logo Do\n% 8番のストリーム辞書の一部\n/Subtype /Form /BBox [0 0 40 20]"
+        },
+        {
+          "kind": "text",
+          "text": "Do は直前の名前を使います。Logo はこのスコープのキーで、8 0 R は8番・世代0のオブジェクトへの参照です。同じ名前を別のページで使えば別の画像を指せます。"
+        },
+        {
+          "kind": "excerpt",
+          "excerpt": {
+            "path": "packages/core/src/document/resources/index.ts",
+            "start": 105,
+            "end": 126,
+            "text": "  async getXObject(\n    resources: PdfResources,\n    name: string,\n    resolveRef: ResolveRef,\n  ): Promise<Result<Option<PdfXObject>, PdfError>> {\n    const result = await PdfResources.lookup(\n      resources,\n      \"XObject\",\n      name,\n      resolveRef,\n    );\n    if (!result.ok) {\n      return result;\n    }\n\n    const target = result.value;\n    if (!target.some || target.value.type !== \"stream\") {\n      return ok(none);\n    }\n\n    return map(await PdfXObject.fromStream(target.value, resolveRef), some);\n  },"
+          }
+        },
+        {
+          "kind": "text",
+          "text": "参照先が Form なら中身は描画命令で、BBox は描画を切り取る境界です。Image なら中身は画素を格納するストリームで、フィルタの適用は後段に委ねます。"
+        },
+        {
+          "kind": "spec",
+          "text": "docs/specs/04_resources_graphics_state.md §3.2。種別が欠落しても元のストリームを返すのは pdfmod の回復方針です。"
+        }
+      ],
+      "occurrences": [
+        {
+          "path": "packages/core/src/document/resources/index.ts",
+          "text": "名前が辞書にない場合と参照先がストリームだった場合の分岐。"
+        }
+      ],
+      "seeAlso": [
+        "union"
+      ]
+    },
+    {
+      "kind": "language",
+      "id": "union",
+      "label": "判別可能なユニオン型",
+      "category": "TypeScript · 型の絞り込み",
+      "gist": "複数の形に共通の目印を持たせ、その値で分岐すると利用できる属性が決まります。",
+      "passages": [
+        {
+          "kind": "text",
+          "text": "画像には画素数、フォームには描画範囲が必要です。両方を同じ任意属性にすると、画像に対してフォームの境界を読めてしまいます。"
+        },
+        {
+          "kind": "excerpt",
+          "excerpt": {
+            "path": "packages/core/src/document/resources/xobject/index.ts",
+            "start": 31,
+            "end": 56,
+            "text": "type Image = {\n  readonly subtype: \"Image\";\n  readonly width: Option<number>;\n  readonly height: Option<number>;\n  readonly bitsPerComponent: Option<ComponentDepth>;\n  readonly colorSpace: Option<PdfName | PdfArray>;\n  readonly filter: Option<PdfName | PdfArray>;\n  readonly sMask: Option<PdfStream>;\n  readonly mask: Option<PdfStream | PdfArray>;\n  readonly imageMask: boolean;\n};\n\ntype Form = {\n  readonly subtype: \"Form\";\n  readonly bbox: Option<PdfRectangle>;\n  readonly matrix: Matrix;\n  readonly resources: Option<PdfDictionary>;\n};\n\n/** 種別に固有の属性と、未復号のストリームを保持する。 */\nexport type PdfXObject = { readonly stream: PdfStream } & (\n  | Image\n  | Form\n  | { readonly subtype: \"PS\" }\n  | { readonly subtype: \"Unknown\"; readonly name: Option<string> }\n);"
+          }
+        },
+        {
+          "kind": "text",
+          "text": "subtype が Image の分岐では width を、Form の分岐では bbox を参照できます。ストリームはどの分岐でも取得できます。"
+        },
+        {
+          "kind": "caution",
+          "text": "Image と分かっても幅が壊れていることはあります。幅の有無は別途 Option で判定します。"
+        }
+      ],
+      "occurrences": [
+        {
+          "path": "packages/core/src/document/resources/xobject/index.ts",
+          "text": "画像、フォーム、PS、未知の4種が同じストリーム型を共有します。"
+        }
+      ],
+      "seeAlso": [
+        "do"
+      ]
+    }
+  ]
+}
