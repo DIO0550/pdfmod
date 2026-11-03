@@ -172,3 +172,21 @@ test.each([
   expect(form.matrix).toEqual([1, 0, 0, 1, 0, 0]);
   expect(form.bbox).toEqual(some([0, 0, 40, 20]));
 });
+
+test("先行オブジェクトに日本語があっても xref から画像に到達する", async () => {
+  const { resources, resolveRef } = setupResources({
+    resources: "<< /XObject 2 0 R >>",
+    objects: [
+      "(日本語の文字列)",
+      "<< /Logo 3 0 R >> % 画像への参照",
+      stream("/Subtype /Image /Width 12"),
+    ],
+  });
+
+  const result = await PdfResources.getXObject(resources, "Logo", resolveRef);
+
+  assert(result.ok && result.value.some);
+  const image = result.value.value;
+  assert(image.subtype === "Image");
+  expect(image.width).toEqual(some(12));
+});

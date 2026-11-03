@@ -19,25 +19,33 @@ export function setupResources(source: {
   readonly resources: string;
   readonly objects?: readonly string[];
 }): { readonly resources: PdfResources; readonly resolveRef: ResolveRef } {
-  const objects = (source.objects ?? []).map(
-    (body, index) => `${index + 1} 0 obj\n${body}\nendobj\n`,
+  const encoder = new TextEncoder();
+  const objects = (source.objects ?? []).map((body, index) =>
+    encoder.encode(`${index + 1} 0 obj\n${body}\nendobj\n`),
   );
-  const entries = objects.map((_, index): [ObjectNumber, XRefEntry] => [
-    ObjectNumber.of(index + 1),
-    {
+  const length = objects.reduce((sum, bytes) => sum + bytes.byteLength, 0);
+  const data = new Uint8Array(length);
+  const entries = new Map<ObjectNumber, XRefEntry>();
+
+  let offset = 0;
+  for (const [index, bytes] of objects.entries()) {
+    entries.set(ObjectNumber.of(index + 1), {
       type: 1,
-      offset: ByteOffset.of(objects.slice(0, index).join("").length),
+      offset: ByteOffset.of(offset),
       generationNumber: GenerationNumber.of(0),
-    },
-  ]);
+    });
+    data.set(bytes, offset);
+    offset += bytes.byteLength;
+  }
+
   const store = ObjectStore.create({
-    data: new TextEncoder().encode(objects.join("")),
-    xref: { entries: new Map(entries), size: objects.length + 1 },
+    data,
+    xref: { entries, size: objects.length + 1 },
   });
   assert(store.ok);
 
   const parsed = ObjectParser.parse(
-    new TextEncoder().encode(source.resources),
+    encoder.encode(source.resources),
     ByteOffset.of(0),
   );
   assert(parsed.ok);
