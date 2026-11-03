@@ -15,11 +15,11 @@ export type ResolveRef = (
 
 export const ResolveRef = {
   /**
-   * 間接参照を解決し、ストリームまたは辞書などの実体オブジェクトを取得する内部ヘルパー。
+   * 直接値はそのまま返し、間接参照は同じ文書のオブジェクトに解決する。
    *
-   * @param value - 対象の PdfValue
+   * @param value - 読み取ったPDF値。辞書にキーがない場合は undefined
    * @param resolveRef - 間接参照解決コールバック
-   * @returns 解決された PdfObject、無効な参照の場合は Option.none、エラー時は PdfError
+   * @returns 直接値または解決先は Ok(Some)。値が未指定か参照番号が不正なら Ok(None)。参照解決の失敗は元の PdfError を返す
    */
   async object(
     value: PdfValue | undefined,
