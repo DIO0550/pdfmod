@@ -15,7 +15,7 @@ import {
   type Option,
   some,
 } from "../../../utils/option/index";
-import { map, ok, type Result } from "../../../utils/result/index";
+import { ok, type Result } from "../../../utils/result/index";
 import { PdfRectangle } from "../../page-tree/resolved-page/index";
 
 const ComponentDepth = {
@@ -28,8 +28,21 @@ const ComponentDepth = {
 type ComponentDepth = (typeof ComponentDepth)[keyof typeof ComponentDepth];
 const ComponentDepths = Object.values(ComponentDepth);
 
-type Image = {
-  readonly subtype: "Image";
+/** /Subtype の判別値。Unknown は欠落・未知の種別を表す。 */
+export const PdfXObjectSubtype = {
+  Image: "Image",
+  Form: "Form",
+  PS: "PS",
+  Unknown: "Unknown",
+} as const;
+
+export type PdfXObjectSubtype =
+  (typeof PdfXObjectSubtype)[keyof typeof PdfXObjectSubtype];
+
+/** ラスタ画像とその未復号ストリーム。 */
+export type PdfImageXObject = {
+  readonly stream: PdfStream;
+  readonly subtype: typeof PdfXObjectSubtype.Image;
   readonly width: Option<number>;
   readonly height: Option<number>;
   readonly bitsPerComponent: Option<ComponentDepth>;
@@ -40,20 +53,34 @@ type Image = {
   readonly imageMask: boolean;
 };
 
-type Form = {
-  readonly subtype: "Form";
+/** 再利用可能な描画命令とフォーム座標系。 */
+export type PdfFormXObject = {
+  readonly stream: PdfStream;
+  readonly subtype: typeof PdfXObjectSubtype.Form;
   readonly bbox: Option<PdfRectangle>;
   readonly matrix: Matrix;
   readonly resources: Option<PdfDictionary>;
 };
 
-/** 種別に固有の属性と、未復号のストリームを保持する。 */
-export type PdfXObject = { readonly stream: PdfStream } & (
-  | Image
-  | Form
-  | { readonly subtype: "PS" }
-  | { readonly subtype: "Unknown"; readonly name: Option<string> }
-);
+/** 非推奨の PostScript XObject。 */
+export type PdfPostScriptXObject = {
+  readonly subtype: typeof PdfXObjectSubtype.PS;
+  readonly stream: PdfStream;
+};
+
+/** 未知の種別名と元のストリーム。種別名が欠落している場合は None。 */
+export type PdfUnknownXObject = {
+  readonly subtype: typeof PdfXObjectSubtype.Unknown;
+  readonly stream: PdfStream;
+  readonly name: Option<string>;
+};
+
+/** 現在のリソース辞書から解決した XObject。 */
+export type PdfXObject =
+  | PdfImageXObject
+  | PdfFormXObject
+  | PdfPostScriptXObject
+  | PdfUnknownXObject;
 
 const ImageKeys = [
   "Width",
@@ -115,11 +142,15 @@ function nameOrArray(value: PdfObject | undefined): Option<PdfName | PdfArray> {
   return valid ? some(value) : none;
 }
 
-const Image = {
-  /** @param fields - 解決済み画像属性
+const PdfImageXObject = {
+  /** @param stream - 画像の元ストリーム
+   * @param fields - 解決済み画像属性
    * @returns ストリーム辞書の画像属性とステンシル指定（省略時は false）
    */
-  fromFields(fields: ReadonlyMap<string, PdfObject>): Image {
+  fromFields(
+    stream: PdfStream,
+    fields: ReadonlyMap<string, PdfObject>,
+  ): PdfImageXObject {
     const bits = positiveInteger(fields.get("BitsPerComponent"));
     const depth = bits.some
       ? ComponentDepths.find((n) => n === bits.value)
@@ -131,7 +162,8 @@ const Image = {
 
     const stencil = fields.get("ImageMask");
     return {
-      subtype: "Image",
+      subtype: PdfXObjectSubtype.Image,
+      stream,
       width: positiveInteger(fields.get("Width")),
       height: positiveInteger(fields.get("Height")),
       bitsPerComponent: fromNullable(depth),
@@ -182,16 +214,18 @@ async function coordinates(
   return ok(some(numbers));
 }
 
-const Form = {
+const PdfFormXObject = {
   /**
+   * @param stream - フォームの元ストリーム
    * @param fields - 解決済みフォーム属性
    * @param resolveRef - 座標の間接参照解決関数
    * @returns 正規化した境界、変換行列、フォーム固有のリソース辞書。参照エラーは Err
    */
   async fromFields(
+    stream: PdfStream,
     fields: ReadonlyMap<string, PdfObject>,
     resolveRef: ResolveRef,
-  ): Promise<Result<Form, PdfError>> {
+  ): Promise<Result<PdfFormXObject, PdfError>> {
     const bbox = await coordinates(
       fields.get("BBox"),
       RECTANGLE_SIZE,
@@ -215,7 +249,8 @@ const Form = {
       Matrix.create(a, b, c, d, e, f),
     );
     return ok({
-      subtype: "Form",
+      subtype: PdfXObjectSubtype.Form,
+      stream,
       bbox: mapOption(bbox.value, ([x1, y1, x2, y2]) =>
         PdfRectangle.normalize([x1, y1, x2, y2]),
       ),
@@ -247,30 +282,34 @@ export const PdfXObject = {
 
     const value = subtype.value;
     if (!value.some || value.value.type !== "name") {
-      return ok({ subtype: "Unknown", name: none, stream });
+      return ok({ subtype: PdfXObjectSubtype.Unknown, name: none, stream });
     }
 
     const name = value.value.value;
-    if (name === "PS") {
-      return ok({ subtype: "PS", stream });
+    if (name === PdfXObjectSubtype.PS) {
+      return ok({ subtype: PdfXObjectSubtype.PS, stream });
     }
 
-    const supported = name === "Image" || name === "Form";
+    const supported =
+      name === PdfXObjectSubtype.Image || name === PdfXObjectSubtype.Form;
     if (!supported) {
-      return ok({ subtype: "Unknown", name: some(name), stream });
+      return ok({
+        subtype: PdfXObjectSubtype.Unknown,
+        name: some(name),
+        stream,
+      });
     }
 
-    const keys = name === "Image" ? ImageKeys : FormKeys;
+    const keys = name === PdfXObjectSubtype.Image ? ImageKeys : FormKeys;
     const fields = await resolveFields(stream.dictionary, keys, resolveRef);
     if (!fields.ok) {
       return fields;
     }
 
-    if (name === "Image") {
-      return ok({ stream, ...Image.fromFields(fields.value) });
+    if (name === PdfXObjectSubtype.Image) {
+      return ok(PdfImageXObject.fromFields(stream, fields.value));
     }
 
-    const form = await Form.fromFields(fields.value, resolveRef);
-    return map(form, (attributes) => ({ stream, ...attributes }));
+    return PdfFormXObject.fromFields(stream, fields.value, resolveRef);
   },
 } as const;
