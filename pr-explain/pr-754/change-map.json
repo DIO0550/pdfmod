@@ -4,7 +4,7 @@
   "headBranch": "feature/666-xobject-subtypes",
   "baseBranch": "main",
   "mergeBase": "867d1e1c539cb6fca13a33b92e8e097f8e8bf134",
-  "head": "2618ea5bd0fac1bb6e9db82ab0fc5e0f5f848507",
+  "head": "2ceb2196afe55e419a9c680d3c718fc4fc895620",
   "groups": [
     {
       "label": "TypeScript · core",
@@ -349,7 +349,7 @@
           "path": "packages/core/src/document/resources/__tests__/pdf-resources.xobject.test.ts",
           "status": "A",
           "oldPath": null,
-          "additions": 174,
+          "additions": 192,
           "deletions": 0,
           "changed": true,
           "target": "packages/core/src/document/resources/index.ts"
@@ -358,7 +358,7 @@
           "path": "packages/core/src/document/resources/__tests__/setup-resources.ts",
           "status": "A",
           "oldPath": null,
-          "additions": 50,
+          "additions": 58,
           "deletions": 0,
           "changed": true,
           "target": "packages/core/src/document/resources/index.ts"
@@ -620,6 +620,10 @@
       },
       {
         "file": "packages/core/src/document/resources/__tests__/pdf-resources.xobject.test.ts",
+        "name": "先行オブジェクトに日本語があっても xref から画像に到達する"
+      },
+      {
+        "file": "packages/core/src/document/resources/__tests__/pdf-resources.xobject.test.ts",
         "name": "参照先の構文エラーを呼び出し元へ返す"
       },
       {
@@ -788,6 +792,46 @@
           "deletions": 3,
           "patch": "@@ -1,7 +1,8 @@\n-import type { Result } from \"../../../utils/result/index\";\n+import { none, type Option, some } from \"../../../utils/option/index\";\n+import { ok, type Result } from \"../../../utils/result/index\";\n import type { PdfError } from \"../../errors/index\";\n-import type { IndirectRef } from \"../indirect-ref/index\";\n-import type { PdfObject } from \"../pdf-types/index\";\n+import { IndirectRef } from \"../indirect-ref/index\";\n+import type { PdfObject, PdfValue } from \"../pdf-types/index\";\n \n /**\n  * 間接参照を解決する関数型。\n@@ -11,3 +12,33 @@ import type { PdfObject } from \"../pdf-types/index\";\n export type ResolveRef = (\n   ref: IndirectRef,\n ) => Promise<Result<PdfObject, PdfError>>;\n+\n+export const ResolveRef = {\n+  /**\n+   * 間接参照を解決し、ストリームまたは辞書などの実体オブジェクトを取得する内部ヘルパー。\n+   *\n+   * @param value - 対象の PdfValue\n+   * @param resolveRef - 間接参照解決コールバック\n+   * @returns 解決された PdfObject、無効な参照の場合は Option.none、エラー時は PdfError\n+   */\n+  async object(\n+    value: PdfValue | undefined,\n+    resolveRef: ResolveRef,\n+  ): Promise<Result<Option<PdfObject>, PdfError>> {\n+    if (value === undefined) {\n+      return ok(none);\n+    }\n+    if (value.type !== \"indirect-ref\") {\n+      return ok(some(value));\n+    }\n+    const refOpt = IndirectRef.from(value);\n+    if (!refOpt.some) {\n+      return ok(none);\n+    }\n+    const resolvedResult = await resolveRef(refOpt.value);\n+    if (!resolvedResult.ok) {\n+      return resolvedResult;\n+    }\n+    return ok(some(resolvedResult.value));\n+  },\n+} as const;",
           "patchLines": 46,
+          "truncated": false
+        }
+      ]
+    },
+    {
+      "sha": "2ceb2196afe55e419a9c680d3c718fc4fc895620",
+      "merge": false,
+      "author": "DIO0550",
+      "date": "2026-11-03T21:24:45+09:00",
+      "subject": "fix(core): リソーステストの xref を実バイト位置で構築する",
+      "body": "",
+      "files": [
+        {
+          "path": "packages/core/src/document/resources/__tests__/pdf-resources.xobject.test.ts",
+          "status": "M",
+          "oldPath": null,
+          "additions": 18,
+          "deletions": 0,
+          "patch": "@@ -172,3 +172,21 @@ test.each([\n   expect(form.matrix).toEqual([1, 0, 0, 1, 0, 0]);\n   expect(form.bbox).toEqual(some([0, 0, 40, 20]));\n });\n+\n+test(\"先行オブジェクトに日本語があっても xref から画像に到達する\", async () => {\n+  const { resources, resolveRef } = setupResources({\n+    resources: \"<< /XObject 2 0 R >>\",\n+    objects: [\n+      \"(日本語の文字列)\",\n+      \"<< /Logo 3 0 R >> % 画像への参照\",\n+      stream(\"/Subtype /Image /Width 12\"),\n+    ],\n+  });\n+\n+  const result = await PdfResources.getXObject(resources, \"Logo\", resolveRef);\n+\n+  assert(result.ok && result.value.some);\n+  const image = result.value.value;\n+  assert(image.subtype === \"Image\");\n+  expect(image.width).toEqual(some(12));\n+});",
+          "patchLines": 22,
+          "truncated": false
+        },
+        {
+          "path": "packages/core/src/document/resources/__tests__/setup-resources.ts",
+          "status": "M",
+          "oldPath": null,
+          "additions": 19,
+          "deletions": 11,
+          "patch": "@@ -19,25 +19,33 @@ export function setupResources(source: {\n   readonly resources: string;\n   readonly objects?: readonly string[];\n }): { readonly resources: PdfResources; readonly resolveRef: ResolveRef } {\n-  const objects = (source.objects ?? []).map(\n-    (body, index) => `${index + 1} 0 obj\\n${body}\\nendobj\\n`,\n+  const encoder = new TextEncoder();\n+  const objects = (source.objects ?? []).map((body, index) =>\n+    encoder.encode(`${index + 1} 0 obj\\n${body}\\nendobj\\n`),\n   );\n-  const entries = objects.map((_, index): [ObjectNumber, XRefEntry] => [\n-    ObjectNumber.of(index + 1),\n-    {\n+  const length = objects.reduce((sum, bytes) => sum + bytes.byteLength, 0);\n+  const data = new Uint8Array(length);\n+  const entries = new Map<ObjectNumber, XRefEntry>();\n+\n+  let offset = 0;\n+  for (const [index, bytes] of objects.entries()) {\n+    entries.set(ObjectNumber.of(index + 1), {\n       type: 1,\n-      offset: ByteOffset.of(objects.slice(0, index).join(\"\").length),\n+      offset: ByteOffset.of(offset),\n       generationNumber: GenerationNumber.of(0),\n-    },\n-  ]);\n+    });\n+    data.set(bytes, offset);\n+    offset += bytes.byteLength;\n+  }\n+\n   const store = ObjectStore.create({\n-    data: new TextEncoder().encode(objects.join(\"\")),\n-    xref: { entries: new Map(entries), size: objects.length + 1 },\n+    data,\n+    xref: { entries, size: objects.length + 1 },\n   });\n   assert(store.ok);\n \n   const parsed = ObjectParser.parse(\n-    new TextEncoder().encode(source.resources),\n+    encoder.encode(source.resources),\n     ByteOffset.of(0),\n   );\n   assert(parsed.ok);",
+          "patchLines": 45,
+          "truncated": false
+        },
+        {
+          "path": "packages/core/src/pdf/types/resolve-ref/index.ts",
+          "status": "M",
+          "oldPath": null,
+          "additions": 3,
+          "deletions": 3,
+          "patch": "@@ -15,11 +15,11 @@ export type ResolveRef = (\n \n export const ResolveRef = {\n   /**\n-   * 間接参照を解決し、ストリームまたは辞書などの実体オブジェクトを取得する内部ヘルパー。\n+   * 直接値はそのまま返し、間接参照は同じ文書のオブジェクトに解決する。\n    *\n-   * @param value - 対象の PdfValue\n+   * @param value - 読み取ったPDF値。辞書にキーがない場合は undefined\n    * @param resolveRef - 間接参照解決コールバック\n-   * @returns 解決された PdfObject、無効な参照の場合は Option.none、エラー時は PdfError\n+   * @returns 直接値または解決先は Ok(Some)。値が未指定か参照番号が不正なら Ok(None)。参照解決の失敗は元の PdfError を返す\n    */\n   async object(\n     value: PdfValue | undefined,",
+          "patchLines": 15,
           "truncated": false
         }
       ]
