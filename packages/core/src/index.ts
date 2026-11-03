@@ -31,9 +31,13 @@ export type {
   ParsedCatalog,
   ParsedDocumentInfo,
   PdfDocumentLoadError,
+  PdfFormXObject,
+  PdfImageXObject,
   PdfPageRectangle,
+  PdfPostScriptXObject,
   PdfRectangle,
   PdfResourceCategory,
+  PdfUnknownXObject,
   PdfXObject,
   ResolvedPage,
   ResolveInheritedOutcome,
@@ -50,6 +54,7 @@ export {
   PdfPage,
   PdfResources,
   PdfTrapped,
+  PdfXObjectSubtype,
 } from "./document/index";
 export { NumberEx } from "./ext/number/index";
 export { StringArrayEx } from "./ext/string-array/index";
