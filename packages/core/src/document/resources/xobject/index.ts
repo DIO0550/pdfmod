@@ -8,6 +8,7 @@ import {
   type PdfStream,
   ResolveRef,
 } from "../../../pdf/types/index";
+import type { ValueOf } from "../../../utils/index";
 import {
   fromNullable,
   map as mapOption,
@@ -25,7 +26,7 @@ const ComponentDepth = {
   Eight: 8,
   Sixteen: 16,
 } as const;
-type ComponentDepth = (typeof ComponentDepth)[keyof typeof ComponentDepth];
+type ComponentDepth = ValueOf<typeof ComponentDepth>;
 const ComponentDepths = Object.values(ComponentDepth);
 
 /** /Subtype の判別値。Unknown は欠落・未知の種別を表す。 */
@@ -36,8 +37,7 @@ export const PdfXObjectSubtype = {
   Unknown: "Unknown",
 } as const;
 
-export type PdfXObjectSubtype =
-  (typeof PdfXObjectSubtype)[keyof typeof PdfXObjectSubtype];
+export type PdfXObjectSubtype = ValueOf<typeof PdfXObjectSubtype>;
 
 /** ラスタ画像とその未復号ストリーム。 */
 export type PdfImageXObject = {
