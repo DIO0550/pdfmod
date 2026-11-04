@@ -4,7 +4,7 @@
   "headBranch": "feature/666-xobject-subtypes",
   "baseBranch": "main",
   "mergeBase": "867d1e1c539cb6fca13a33b92e8e097f8e8bf134",
-  "head": "117d1f4fd65b87cb2c6b9e52fe288ad0e1cb9521",
+  "head": "c53633a6a778d93b152cd14771574b3e3b21b595",
   "groups": [
     {
       "label": "TypeScript · core",
@@ -885,6 +885,26 @@
           "truncated": false
         }
       ]
+    },
+    {
+      "sha": "c53633a6a778d93b152cd14771574b3e3b21b595",
+      "merge": false,
+      "author": "DIO0550",
+      "date": "2026-11-04T22:54:48+09:00",
+      "subject": "refactor(core): XObject の値型を既存の ValueOf で導出する",
+      "body": "",
+      "files": [
+        {
+          "path": "packages/core/src/document/resources/xobject/index.ts",
+          "status": "M",
+          "oldPath": null,
+          "additions": 3,
+          "deletions": 3,
+          "patch": "@@ -8,6 +8,7 @@ import {\n   type PdfStream,\n   ResolveRef,\n } from \"../../../pdf/types/index\";\n+import type { ValueOf } from \"../../../utils/index\";\n import {\n   fromNullable,\n   map as mapOption,\n@@ -25,7 +26,7 @@ const ComponentDepth = {\n   Eight: 8,\n   Sixteen: 16,\n } as const;\n-type ComponentDepth = (typeof ComponentDepth)[keyof typeof ComponentDepth];\n+type ComponentDepth = ValueOf<typeof ComponentDepth>;\n const ComponentDepths = Object.values(ComponentDepth);\n \n /** /Subtype の判別値。Unknown は欠落・未知の種別を表す。 */\n@@ -36,8 +37,7 @@ export const PdfXObjectSubtype = {\n   Unknown: \"Unknown\",\n } as const;\n \n-export type PdfXObjectSubtype =\n-  (typeof PdfXObjectSubtype)[keyof typeof PdfXObjectSubtype];\n+export type PdfXObjectSubtype = ValueOf<typeof PdfXObjectSubtype>;\n \n /** ラスタ画像とその未復号ストリーム。 */\n export type PdfImageXObject = {",
+          "patchLines": 27,
+          "truncated": false
+        }
+      ]
     }
   ],
   "dependencies": [
@@ -1201,6 +1221,11 @@
     {
       "from": "packages/core/src/document/resources/xobject/index.ts",
       "to": "packages/core/src/pdf/types/index.ts",
+      "status": "added"
+    },
+    {
+      "from": "packages/core/src/document/resources/xobject/index.ts",
+      "to": "packages/core/src/utils/index.ts",
       "status": "added"
     },
     {
