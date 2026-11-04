@@ -1,7 +1,7 @@
 {
   "version": 1,
   "pr": 754,
-  "sha": "117d1f4fd65b87cb2c6b9e52fe288ad0e1cb9521",
+  "sha": "c53633a6a778d93b152cd14771574b3e3b21b595",
   "issue": 666,
   "overview": {
     "title": "同じ描画命令から写真と図を見分ける",
@@ -75,6 +75,12 @@
       "phase": "revise",
       "role": "フォームを関数の引数型として公開",
       "why": "種別ごとの型を利用側で書き直さず、画像用とフォーム用の関数の境界にそのまま使えるようにします。"
+    },
+    {
+      "sha": "c53633a6a778d93b152cd14771574b3e3b21b595",
+      "phase": "revise",
+      "role": "既存の ValueOf に型の導出を揃える",
+      "why": "定数オブジェクトの値のユニオンは共通の ValueOf で表現できます。PdfXObjectSubtype と ComponentDepth に適用しました。"
     }
   ],
   "suites": [
@@ -212,7 +218,7 @@
             "path": "packages/core/src/document/resources/xobject/index.ts",
             "start": 31,
             "end": 83,
-            "text": "/** /Subtype の判別値。Unknown は欠落・未知の種別を表す。 */\nexport const PdfXObjectSubtype = {\n  Image: \"Image\",\n  Form: \"Form\",\n  PS: \"PS\",\n  Unknown: \"Unknown\",\n} as const;\n\nexport type PdfXObjectSubtype =\n  (typeof PdfXObjectSubtype)[keyof typeof PdfXObjectSubtype];\n\n/** ラスタ画像とその未復号ストリーム。 */\nexport type PdfImageXObject = {\n  readonly stream: PdfStream;\n  readonly subtype: typeof PdfXObjectSubtype.Image;\n  readonly width: Option<number>;\n  readonly height: Option<number>;\n  readonly bitsPerComponent: Option<ComponentDepth>;\n  readonly colorSpace: Option<PdfName | PdfArray>;\n  readonly filter: Option<PdfName | PdfArray>;\n  readonly sMask: Option<PdfStream>;\n  readonly mask: Option<PdfStream | PdfArray>;\n  readonly imageMask: boolean;\n};\n\n/** 再利用可能な描画命令とフォーム座標系。 */\nexport type PdfFormXObject = {\n  readonly stream: PdfStream;\n  readonly subtype: typeof PdfXObjectSubtype.Form;\n  readonly bbox: Option<PdfRectangle>;\n  readonly matrix: Matrix;\n  readonly resources: Option<PdfDictionary>;\n};\n\n/** 非推奨の PostScript XObject。 */\nexport type PdfPostScriptXObject = {\n  readonly subtype: typeof PdfXObjectSubtype.PS;\n  readonly stream: PdfStream;\n};\n\n/** 未知の種別名と元のストリーム。種別名が欠落している場合は None。 */\nexport type PdfUnknownXObject = {\n  readonly subtype: typeof PdfXObjectSubtype.Unknown;\n  readonly stream: PdfStream;\n  readonly name: Option<string>;\n};\n\n/** 現在のリソース辞書から解決した XObject。 */\nexport type PdfXObject =\n  | PdfImageXObject\n  | PdfFormXObject\n  | PdfPostScriptXObject\n  | PdfUnknownXObject;"
+            "text": "\n/** /Subtype の判別値。Unknown は欠落・未知の種別を表す。 */\nexport const PdfXObjectSubtype = {\n  Image: \"Image\",\n  Form: \"Form\",\n  PS: \"PS\",\n  Unknown: \"Unknown\",\n} as const;\n\nexport type PdfXObjectSubtype = ValueOf<typeof PdfXObjectSubtype>;\n\n/** ラスタ画像とその未復号ストリーム。 */\nexport type PdfImageXObject = {\n  readonly stream: PdfStream;\n  readonly subtype: typeof PdfXObjectSubtype.Image;\n  readonly width: Option<number>;\n  readonly height: Option<number>;\n  readonly bitsPerComponent: Option<ComponentDepth>;\n  readonly colorSpace: Option<PdfName | PdfArray>;\n  readonly filter: Option<PdfName | PdfArray>;\n  readonly sMask: Option<PdfStream>;\n  readonly mask: Option<PdfStream | PdfArray>;\n  readonly imageMask: boolean;\n};\n\n/** 再利用可能な描画命令とフォーム座標系。 */\nexport type PdfFormXObject = {\n  readonly stream: PdfStream;\n  readonly subtype: typeof PdfXObjectSubtype.Form;\n  readonly bbox: Option<PdfRectangle>;\n  readonly matrix: Matrix;\n  readonly resources: Option<PdfDictionary>;\n};\n\n/** 非推奨の PostScript XObject。 */\nexport type PdfPostScriptXObject = {\n  readonly subtype: typeof PdfXObjectSubtype.PS;\n  readonly stream: PdfStream;\n};\n\n/** 未知の種別名と元のストリーム。種別名が欠落している場合は None。 */\nexport type PdfUnknownXObject = {\n  readonly subtype: typeof PdfXObjectSubtype.Unknown;\n  readonly stream: PdfStream;\n  readonly name: Option<string>;\n};\n\n/** 現在のリソース辞書から解決した XObject。 */\nexport type PdfXObject =\n  | PdfImageXObject\n  | PdfFormXObject\n  | PdfPostScriptXObject\n  | PdfUnknownXObject;"
           }
         },
         {
@@ -222,6 +228,10 @@
         {
           "kind": "caution",
           "text": "Image と分かっても幅が壊れていることはあります。幅の有無は別途 Option で判定します。"
+        },
+        {
+          "kind": "text",
+          "text": "ValueOf<T> は T[keyof T] の共通表現です。ValueOf<typeof PdfXObjectSubtype> で、定数オブジェクトに含まれる値のユニオン型を導出します。"
         }
       ],
       "occurrences": [
