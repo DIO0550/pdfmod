@@ -1,7 +1,7 @@
 {
   "version": 1,
   "pr": 754,
-  "sha": "c53633a6a778d93b152cd14771574b3e3b21b595",
+  "sha": "207e679a4d6849d539bd3d9c127acbc5433a5db3",
   "issue": 666,
   "overview": {
     "title": "同じ描画命令から写真と図を見分ける",
@@ -81,6 +81,12 @@
       "phase": "revise",
       "role": "既存の ValueOf に型の導出を揃える",
       "why": "定数オブジェクトの値のユニオンは共通の ValueOf で表現できます。PdfXObjectSubtype と ComponentDepth に適用しました。"
+    },
+    {
+      "sha": "207e679a4d6849d539bd3d9c127acbc5433a5db3",
+      "phase": "revise",
+      "role": "PDFオブジェクトの読み取りを公開APIへ移動",
+      "why": "名前・配列や正の整数の判定はXObject固有ではありません。PdfObjectのコンパニオンへまとめ、他の辞書を読む際にも利用できるようにしました。"
     }
   ],
   "suites": [
@@ -242,6 +248,38 @@
       ],
       "seeAlso": [
         "do"
+      ]
+    },
+    {
+      "kind": "codebase",
+      "id": "object-readers",
+      "label": "値の読み取りを型のそばへ置く",
+      "category": "設計 · コンパニオンオブジェクト",
+      "gist": "型と同名のオブジェクトに、その型の値を扱う関数をまとめます。",
+      "passages": [
+        {
+          "kind": "text",
+          "text": "XObject内に置いていた名前・配列の判定は、他のPDFオブジェクトにも使えます。PdfObjectから公開することで、呼び出す側が同じ判定を書かずに済みます。"
+        },
+        {
+          "kind": "excerpt",
+          "excerpt": {
+            "path": "packages/core/src/pdf/types/pdf-types/index.ts",
+            "start": 222,
+            "end": 243,
+            "text": "/** PDF オブジェクトから、指定の種類に合う値を取り出す。 */\nexport const PdfObject = {\n  /**\n   * 名前または配列のオブジェクトを取り出す。間接参照の解決は行わない。\n   * @param value - 判定対象。辞書のキーがない場合は undefined\n   * @returns 名前・配列なら元のオブジェクトを Some、それ以外・未指定は None\n   */\n  asNameOrArray(value: PdfObject | undefined): Option<PdfName | PdfArray> {\n    const valid = value?.type === \"name\" || value?.type === \"array\";\n    return valid ? some(value) : none;\n  },\n\n  /**\n   * 正の整数オブジェクトから数値を取り出す。\n   * @param value - 判定対象。辞書のキーがない場合は undefined\n   * @returns integer かつ正ならその数値を Some、それ以外・未指定は None\n   */\n  asPositiveInteger(value: PdfObject | undefined): Option<number> {\n    const valid = value?.type === \"integer\" && value.value > 0;\n    return valid ? some(value.value) : none;\n  },\n} as const;"
+          }
+        },
+        {
+          "kind": "text",
+          "text": "XObjectの属性読み取りもPdfObject.asNameOrArrayとPdfObject.asPositiveIntegerを使います。名前・配列では元のオブジェクトを保持し、未指定や異なる種類はNoneを返します。間接参照の解決は呼び出し前に行います。"
+        }
+      ],
+      "occurrences": [
+        {
+          "path": "packages/core/src/document/resources/xobject/index.ts",
+          "text": "画像の色空間・フィルタと幅・高さを共通の読み取りAPIで取り出します。"
+        }
       ]
     }
   ]
