@@ -4,7 +4,7 @@
   "headBranch": "feature/666-xobject-subtypes",
   "baseBranch": "main",
   "mergeBase": "867d1e1c539cb6fca13a33b92e8e097f8e8bf134",
-  "head": "c53633a6a778d93b152cd14771574b3e3b21b595",
+  "head": "207e679a4d6849d539bd3d9c127acbc5433a5db3",
   "groups": [
     {
       "label": "TypeScript · core",
@@ -26,11 +26,51 @@
           "changed": false
         },
         {
+          "path": "packages/core/src/content-stream/marked-content/stack/index.ts",
+          "changed": false
+        },
+        {
           "path": "packages/core/src/content-stream/operand-stack/index.ts",
           "changed": false
         },
         {
           "path": "packages/core/src/content-stream/operator-registry/index.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/graphics-state/d/index.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/graphics-state/line-cap-handler/index.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/graphics-state/line-join-handler/index.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/graphics-state/numeric-pdf-object/index.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/marked-content/bdc/index.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/marked-content/dp/index.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/operand-extractor/index.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/text/tj-array/index.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/text/tr/index.ts",
           "changed": false
         },
         {
@@ -43,6 +83,10 @@
         },
         {
           "path": "packages/core/src/document/catalog/index.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/document/encoding/decode-pdf-string/index.ts",
           "changed": false
         },
         {
@@ -59,6 +103,10 @@
           "changed": false
         },
         {
+          "path": "packages/core/src/document/metadata/document-metadata/index.ts",
+          "changed": false
+        },
+        {
           "path": "packages/core/src/document/metadata/index.ts",
           "changed": false
         },
@@ -67,7 +115,15 @@
           "changed": false
         },
         {
+          "path": "packages/core/src/document/page-tree/dict-reader/index.ts",
+          "changed": false
+        },
+        {
           "path": "packages/core/src/document/page-tree/index.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/document/page-tree/inheritance-resolver/index.ts",
           "changed": false
         },
         {
@@ -107,7 +163,7 @@
           "path": "packages/core/src/document/resources/xobject/index.ts",
           "status": "A",
           "oldPath": null,
-          "additions": 315,
+          "additions": 299,
           "deletions": 0,
           "changed": true,
           "target": null
@@ -128,8 +184,8 @@
           "path": "packages/core/src/index.ts",
           "status": "M",
           "oldPath": null,
-          "additions": 6,
-          "deletions": 0,
+          "additions": 7,
+          "deletions": 1,
           "changed": true,
           "target": null
         },
@@ -166,7 +222,15 @@
           "changed": false
         },
         {
+          "path": "packages/core/src/objects/object-parser/types.ts",
+          "changed": false
+        },
+        {
           "path": "packages/core/src/objects/object-store/entry-readers/inline/index.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/objects/object-store/entry-readers/object-stream/index.ts",
           "changed": false
         },
         {
@@ -174,7 +238,35 @@
           "changed": false
         },
         {
+          "path": "packages/core/src/objects/object-store/types.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/objects/object-stream-extractor/body/index.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/objects/object-stream-extractor/dict/index.ts",
+          "changed": false
+        },
+        {
           "path": "packages/core/src/objects/object-stream-extractor/header/index.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/objects/object-stream-extractor/types.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/pdf/dictionary-reader/index.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/dict-reader/index.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/index.ts",
           "changed": false
         },
         {
@@ -183,6 +275,14 @@
         },
         {
           "path": "packages/core/src/pdf/errors/index.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/pdf/filter/index.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/pdf/filter/lzwdecode/index.ts",
           "changed": false
         },
         {
@@ -224,7 +324,12 @@
         },
         {
           "path": "packages/core/src/pdf/types/pdf-types/index.ts",
-          "changed": false
+          "status": "M",
+          "oldPath": null,
+          "additions": 23,
+          "deletions": 0,
+          "changed": true,
+          "target": null
         },
         {
           "path": "packages/core/src/pdf/types/resolve-ref/index.ts",
@@ -236,7 +341,35 @@
           "target": null
         },
         {
+          "path": "packages/core/src/pdf/types/token/boolean/index.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/pdf/types/token/hex-string/index.ts",
+          "changed": false
+        },
+        {
           "path": "packages/core/src/pdf/types/token/index.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/pdf/types/token/integer/index.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/pdf/types/token/literal-string/index.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/pdf/types/token/name/index.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/pdf/types/token/null/index.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/pdf/types/token/real/index.ts",
           "changed": false
         },
         {
@@ -272,11 +405,19 @@
           "changed": false
         },
         {
+          "path": "packages/core/src/xref/stream/dict/index.ts",
+          "changed": false
+        },
+        {
           "path": "packages/core/src/xref/stream/parse-xref-stream/index.ts",
           "changed": false
         },
         {
           "path": "packages/core/src/xref/stream/parser/index.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/xref/stream/predictor/index.ts",
           "changed": false
         },
         {
@@ -304,7 +445,447 @@
           "changed": false
         },
         {
+          "path": "packages/core/src/content-stream/interpreter/__tests__/interpreter.graphics-state-stack.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/interpreter/__tests__/interpreter.inline-image.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/marked-content/stack/__tests__/stack.basic.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/marked-content/stack/__tests__/stack.name-properties.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/marked-content/stack/__tests__/stack.nested.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/marked-content/stack/__tests__/stack.type.test-d.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operand-stack/__tests__/operand-stack.basic.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operand-stack/__tests__/operand-stack.type.test-d.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/color/cmyk/__tests__/fill.basic.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/color/cmyk/__tests__/fill.error.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/color/cmyk/__tests__/stroke.basic.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/color/cmyk/__tests__/stroke.error.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/color/gray/__tests__/fill.basic.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/color/gray/__tests__/stroke.basic.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/color/rgb/__tests__/fill.basic.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/color/rgb/__tests__/fill.error.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/color/rgb/__tests__/stroke.basic.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/color/rgb/__tests__/stroke.error.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/graphics-state/cm/__tests__/cm.basic.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/graphics-state/d/__tests__/d.basic.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/graphics-state/d/__tests__/d.error.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/graphics-state/d/__tests__/d.solid.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/graphics-state/i/__tests__/i.basic.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/graphics-state/i/__tests__/i.error.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/graphics-state/line-cap-handler/__tests__/line-cap-handler.basic.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/graphics-state/line-join-handler/__tests__/line-join-handler.basic.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/graphics-state/line-width-handler/__tests__/line-width-handler.basic.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/graphics-state/miter-limit-handler/__tests__/miter-limit-handler.basic.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/graphics-state/numeric-pdf-object/__tests__/numeric-pdf-object.basic.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/graphics-state/q-restore/__tests__/q-restore.basic.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/graphics-state/q-restore/__tests__/q-restore.unbalanced.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/graphics-state/q/__tests__/q.basic.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/graphics-state/ri/__tests__/ri.basic.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/graphics-state/ri/__tests__/ri.error.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/marked-content/bdc/__tests__/bdc.dict.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/marked-content/bdc/__tests__/bdc.error.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/marked-content/bdc/__tests__/bdc.name.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/marked-content/bmc/__tests__/bmc.basic.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/marked-content/bmc/__tests__/bmc.error.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/marked-content/dp/__tests__/dp.dict.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/marked-content/dp/__tests__/dp.error.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/marked-content/dp/__tests__/dp.name.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/marked-content/emc/__tests__/emc.basic.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/marked-content/mp/__tests__/mp.basic.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/marked-content/mp/__tests__/mp.error.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/operand-extractor/__tests__/operand-extractor.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/path/c/__tests__/c.basic.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/path/clip-even-odd/__tests__/clip-even-odd.basic.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/path/clip/__tests__/clip.basic.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/path/close-fill-stroke-even-odd/__tests__/close-fill-stroke-even-odd.basic.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/path/close-fill-stroke/__tests__/close-fill-stroke.basic.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/path/close-stroke/__tests__/close-stroke.basic.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/path/close-subpath/__tests__/close-subpath.basic.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/path/end-path/__tests__/end-path.basic.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/path/fill-even-odd/__tests__/fill-even-odd.basic.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/path/fill-stroke-even-odd/__tests__/fill-stroke-even-odd.basic.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/path/fill-stroke/__tests__/fill-stroke.basic.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/path/fill/__tests__/fill.basic.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/path/h/__tests__/h.basic.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/path/l/__tests__/l.basic.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/path/m/__tests__/m.basic.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/path/re/__tests__/re.basic.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/path/stroke/__tests__/stroke.basic.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/path/v/__tests__/v.basic.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/path/v/__tests__/v.error.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/path/y/__tests__/y.basic.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/path/y/__tests__/y.error.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/text/apostrophe/__tests__/apostrophe.basic.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/text/apostrophe/__tests__/apostrophe.error.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/text/bt/__tests__/bt.basic.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/text/bt/__tests__/bt.error.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/text/quote/__tests__/quote.basic.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/text/quote/__tests__/quote.error.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/text/t-star/__tests__/t-star.basic.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/text/t-star/__tests__/t-star.error.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/text/tc/__tests__/tc.basic.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/text/tc/__tests__/tc.error.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/text/td-leading/__tests__/td-leading.basic.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/text/td-leading/__tests__/td-leading.error.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/text/td/__tests__/td.basic.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/text/td/__tests__/td.error.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/text/tf/__tests__/tf.basic.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/text/tf/__tests__/tf.error.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/text/tj-array/__tests__/tj-array.basic.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/text/tj-array/__tests__/tj-array.error.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/text/tj/__tests__/tj.basic.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/text/tj/__tests__/tj.error.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/text/tl/__tests__/tl.basic.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/text/tl/__tests__/tl.error.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/text/tm/__tests__/tm.basic.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/text/tm/__tests__/tm.error.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/text/tr/__tests__/tr.basic.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/text/tr/__tests__/tr.error.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/text/ts/__tests__/ts.basic.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/text/ts/__tests__/ts.error.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/text/tw/__tests__/tw.basic.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/text/tw/__tests__/tw.error.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/text/tz/__tests__/tz.basic.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/text/tz/__tests__/tz.error.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/xobject/do/__tests__/do.basic.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/xobject/do/__tests__/do.error.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/document/catalog/catalog-parser/__tests__/catalog-parser.behavior.test.ts",
+          "changed": false
+        },
+        {
           "path": "packages/core/src/document/catalog/catalog-parser/__tests__/catalog-parser.test.helpers.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/document/encoding/decode-pdf-string/__tests__/decode-pdf-string.decode.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/document/metadata/document-info-parser/__tests__/document-info-parser.behavior.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/document/metadata/document-info-parser/__tests__/document-info-parser.test.helpers.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/document/metadata/document-metadata/__tests__/document-metadata.error.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/document/metadata/document-metadata/__tests__/document-metadata.parse.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/document/page-tree/attr-resolver/__tests__/attr-resolver.behavior.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/document/page-tree/dict-reader/__tests__/dict-reader.read.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/document/page-tree/inheritance-resolver/__tests__/inheritance-resolver.behavior.test.ts",
           "changed": false
         },
         {
@@ -313,6 +894,10 @@
         },
         {
           "path": "packages/core/src/document/page-tree/page-tree-walker/__tests__/page-tree-walker.test.helpers.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/document/page-tree/value-resolver/__tests__/value-resolver.behavior.test.ts",
           "changed": false
         },
         {
@@ -388,7 +973,27 @@
           "changed": false
         },
         {
+          "path": "packages/core/src/objects/object-parser/__tests__/object-parser.parse.test.ts",
+          "changed": false
+        },
+        {
           "path": "packages/core/src/objects/object-parser/buffered-tokenizer/__tests__/buffered-tokenizer.basic.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/objects/object-parser/direct-object/__tests__/direct-object.array.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/objects/object-parser/direct-object/__tests__/direct-object.dict.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/objects/object-parser/stream-object/__tests__/stream-object.extract.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/objects/object-parser/stream-object/__tests__/stream-object.read-length.test.ts",
           "changed": false
         },
         {
@@ -396,7 +1001,31 @@
           "changed": false
         },
         {
+          "path": "packages/core/src/objects/object-store/__tests__/object-store.basic.test.ts",
+          "changed": false
+        },
+        {
           "path": "packages/core/src/objects/object-store/__tests__/object-store.concurrent.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/objects/object-store/__tests__/object-store.edge.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/objects/object-store/__tests__/object-store.extends-error.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/objects/object-store/__tests__/object-store.extends.test.helpers.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/objects/object-store/__tests__/object-store.null-boundary.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/objects/object-store/__tests__/object-store.test.helpers.ts",
           "changed": false
         },
         {
@@ -408,7 +1037,23 @@
           "changed": false
         },
         {
+          "path": "packages/core/src/objects/object-store/entry-readers/object-stream/__tests__/object-stream.basic.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/objects/object-stream-extractor/body/__tests__/object-stream-body.test.helpers.ts",
+          "changed": false
+        },
+        {
           "path": "packages/core/src/objects/object-stream-extractor/body/__tests__/object-stream-body.type-export.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/pdf/dictionary-reader/__tests__/dictionary-reader.type.test-d.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/__tests__/encryption.test.helpers.ts",
           "changed": false
         },
         {
@@ -452,11 +1097,48 @@
           "changed": false
         },
         {
+          "path": "packages/core/src/pdf/filter/__tests__/pdf-filter.lzw-boundary.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/pdf/filter/__tests__/pdf-filter.lzw-validation.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/pdf/filter/__tests__/pdf-filter.parse.test.ts",
+          "changed": false
+        },
+        {
           "path": "packages/core/src/pdf/types/free-object-number/__tests__/free-object-number.type.test-d.ts",
           "changed": false
         },
         {
+          "path": "packages/core/src/pdf/types/indirect-ref/__tests__/indirect-ref.validation.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/pdf/types/pdf-type/__tests__/pdf-type.validate.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/pdf/types/pdf-types/__tests__/pdf-types.pdf-name.test.ts",
+          "changed": false
+        },
+        {
           "path": "packages/core/src/pdf/types/pdf-types/__tests__/pdf-types.pdf-object.test-d.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/pdf/types/pdf-types/__tests__/pdf-types.pdf-object.test.ts",
+          "status": "A",
+          "oldPath": null,
+          "additions": 82,
+          "deletions": 0,
+          "changed": true,
+          "target": "packages/core/src/pdf/types/pdf-types/index.ts"
+        },
+        {
+          "path": "packages/core/src/pdf/types/pdf-types/__tests__/pdf-types.pdf-value.test.ts",
           "changed": false
         },
         {
@@ -505,6 +1187,10 @@
         },
         {
           "path": "packages/core/src/xref/merger/__tests__/merger.xrefstm.test.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/xref/stream/dict/__tests__/xref-stream-dict.test.helpers.ts",
           "changed": false
         },
         {
@@ -633,12 +1319,33 @@
       {
         "file": "packages/core/src/document/resources/__tests__/pdf-resources.xobject.test.ts",
         "name": "未対応の種別や省略でも元ストリームを保持する %s"
+      },
+      {
+        "file": "packages/core/src/pdf/types/pdf-types/__tests__/pdf-types.pdf-object.test.ts",
+        "name": "ストリームは名前・配列・正の整数として扱わない"
+      },
+      {
+        "file": "packages/core/src/pdf/types/pdf-types/__tests__/pdf-types.pdf-object.test.ts",
+        "name": "名前・配列 %s は元のオブジェクトを保持する"
+      },
+      {
+        "file": "packages/core/src/pdf/types/pdf-types/__tests__/pdf-types.pdf-object.test.ts",
+        "name": "名前・配列以外の %s は未設定になる"
+      },
+      {
+        "file": "packages/core/src/pdf/types/pdf-types/__tests__/pdf-types.pdf-object.test.ts",
+        "name": "未指定のオブジェクトはどの変換でも未設定になる"
+      },
+      {
+        "file": "packages/core/src/pdf/types/pdf-types/__tests__/pdf-types.pdf-object.test.ts",
+        "name": "正の整数 %s の読み取りで整数の種類と符号を判別する"
       }
     ],
     "removed": [],
     "files": [
       "packages/core/src/document/resources/__tests__/pdf-resources.font.test.ts",
-      "packages/core/src/document/resources/__tests__/pdf-resources.xobject.test.ts"
+      "packages/core/src/document/resources/__tests__/pdf-resources.xobject.test.ts",
+      "packages/core/src/pdf/types/pdf-types/__tests__/pdf-types.pdf-object.test.ts"
     ]
   },
   "commits": [
@@ -905,6 +1612,56 @@
           "truncated": false
         }
       ]
+    },
+    {
+      "sha": "207e679a4d6849d539bd3d9c127acbc5433a5db3",
+      "merge": false,
+      "author": "DIO0550",
+      "date": "2026-11-05T23:02:19+09:00",
+      "subject": "refactor(core): expose PDF object value readers",
+      "body": "",
+      "files": [
+        {
+          "path": "packages/core/src/document/resources/xobject/index.ts",
+          "status": "M",
+          "oldPath": null,
+          "additions": 6,
+          "deletions": 22,
+          "patch": "@@ -4,7 +4,7 @@ import {\n   type PdfArray,\n   type PdfDictionary,\n   type PdfName,\n-  type PdfObject,\n+  PdfObject,\n   type PdfStream,\n   ResolveRef,\n } from \"../../../pdf/types/index\";\n@@ -126,22 +126,6 @@ async function resolveFields(\n   return ok(fields);\n }\n \n-/** @param value - 辞書エントリの解決値\n- * @returns 正の整数ならその値。それ以外は None\n- */\n-function positiveInteger(value: PdfObject | undefined): Option<number> {\n-  const valid = value?.type === \"integer\" && value.value > 0;\n-  return valid ? some(value.value) : none;\n-}\n-\n-/** @param value - 色空間またはフィルタの解決値\n- * @returns 名前または配列なら元のPDF値。それ以外は None\n- */\n-function nameOrArray(value: PdfObject | undefined): Option<PdfName | PdfArray> {\n-  const valid = value?.type === \"name\" || value?.type === \"array\";\n-  return valid ? some(value) : none;\n-}\n-\n const PdfImageXObject = {\n   /** @param stream - 画像の元ストリーム\n    * @param fields - 解決済み画像属性\n@@ -151,7 +135,7 @@ const PdfImageXObject = {\n     stream: PdfStream,\n     fields: ReadonlyMap<string, PdfObject>,\n   ): PdfImageXObject {\n-    const bits = positiveInteger(fields.get(\"BitsPerComponent\"));\n+    const bits = PdfObject.asPositiveInteger(fields.get(\"BitsPerComponent\"));\n     const depth = bits.some\n       ? ComponentDepths.find((n) => n === bits.value)\n       : undefined;\n@@ -164,11 +148,11 @@ const PdfImageXObject = {\n     return {\n       subtype: PdfXObjectSubtype.Image,\n       stream,\n-      width: positiveInteger(fields.get(\"Width\")),\n-      height: positiveInteger(fields.get(\"Height\")),\n+      width: PdfObject.asPositiveInteger(fields.get(\"Width\")),\n+      height: PdfObject.asPositiveInteger(fields.get(\"Height\")),\n       bitsPerComponent: fromNullable(depth),\n-      colorSpace: nameOrArray(fields.get(\"ColorSpace\")),\n-      filter: nameOrArray(fields.get(\"Filter\")),\n+      colorSpace: PdfObject.asNameOrArray(fields.get(\"ColorSpace\")),\n+      filter: PdfObject.asNameOrArray(fields.get(\"Filter\")),\n       sMask: sMask?.type === \"stream\" ? some(sMask) : none,\n       mask: validMask ? some(mask) : none,\n       imageMask: stencil?.type === \"boolean\" && stencil.value,",
+          "patchLines": 57,
+          "truncated": false
+        },
+        {
+          "path": "packages/core/src/index.ts",
+          "status": "M",
+          "oldPath": null,
+          "additions": 1,
+          "deletions": 1,
+          "patch": "@@ -88,7 +88,6 @@ export type {\n   PdfInteger,\n   PdfName,\n   PdfNull,\n-  PdfObject,\n   PdfOperatorIllegalStateError,\n   PdfOperatorOperandMissingError,\n   PdfOperatorOperandTypeMismatchError,\n@@ -130,6 +129,7 @@ export {\n   KeyLengths,\n   ObjectNumber,\n   Operator,\n+  PdfObject,\n   PdfVersion,\n   Permissions,\n   StandardAlgorithm,",
+          "patchLines": 16,
+          "truncated": false
+        },
+        {
+          "path": "packages/core/src/pdf/types/pdf-types/__tests__/pdf-types.pdf-object.test.ts",
+          "status": "A",
+          "oldPath": null,
+          "additions": 82,
+          "deletions": 0,
+          "patch": "@@ -0,0 +1,82 @@\n+import { assert, expect, expectTypeOf, test } from \"vitest\";\n+import {\n+  ByteOffset,\n+  ObjectParser,\n+  type PdfArray,\n+  type PdfName,\n+  PdfObject,\n+} from \"../../../../index\";\n+import { none, type Option, some } from \"../../../../utils/option/index\";\n+\n+test.each([\n+  \"/DeviceRGB\",\n+  \"[/ASCII85Decode /DCTDecode]\",\n+  \"[]\",\n+])(\"名前・配列 %s は元のオブジェクトを保持する\", (source) => {\n+  const parsed = ObjectParser.parse(\n+    new TextEncoder().encode(source),\n+    ByteOffset.of(0),\n+  );\n+  assert(parsed.ok);\n+\n+  const result = PdfObject.asNameOrArray(parsed.value);\n+\n+  expectTypeOf(result).toEqualTypeOf<Option<PdfName | PdfArray>>();\n+  assert(result.some);\n+  expect(result.value).toBe(parsed.value);\n+});\n+\n+test.each([\n+  \"null\",\n+  \"true\",\n+  \"42\",\n+  \"3.5\",\n+  \"(text)\",\n+  \"<< >>\",\n+  \"1 0 R\",\n+])(\"名前・配列以外の %s は未設定になる\", (source) => {\n+  const parsed = ObjectParser.parse(\n+    new TextEncoder().encode(source),\n+    ByteOffset.of(0),\n+  );\n+  assert(parsed.ok);\n+\n+  expect(PdfObject.asNameOrArray(parsed.value)).toEqual(none);\n+});\n+\n+test.each([\n+  [\"1\", some(1)],\n+  [\"42\", some(42)],\n+  [\"0\", none],\n+  [\"-1\", none],\n+  [\"1.0\", none],\n+  [\"/Name\", none],\n+  [\"[]\", none],\n+  [\"null\", none],\n+])(\"正の整数 %s の読み取りで整数の種類と符号を判別する\", (source, expected) => {\n+  const parsed = ObjectParser.parse(\n+    new TextEncoder().encode(source),\n+    ByteOffset.of(0),\n+  );\n+  assert(parsed.ok);\n+\n+  expect(PdfObject.asPositiveInteger(parsed.value)).toEqual(expected);\n+});\n+\n+test(\"未指定のオブジェクトはどの変換でも未設定になる\", () => {\n+  expect(PdfObject.asNameOrArray(undefined)).toEqual(none);\n+  expect(PdfObject.asPositiveInteger(undefined)).toEqual(none);\n+});\n+\n+test(\"ストリームは名前・配列・正の整数として扱わない\", async () => {\n+  const parsed = await ObjectParser.parseIndirectObject(\n+    new TextEncoder().encode(\n+      \"1 0 obj\\n<< /Length 4 >>\\nstream\\nDATA\\nendstream\\nendobj\",\n+    ),\n+    ByteOffset.of(0),\n+  );\n+  assert(parsed.ok);\n+\n+  expect(PdfObject.asNameOrArray(parsed.value.body)).toEqual(none);\n+  expect(PdfObject.asPositiveInteger(parsed.value.body)).toEqual(none);\n+});",
+          "patchLines": 83,
+          "truncated": false
+        },
+        {
+          "path": "packages/core/src/pdf/types/pdf-types/index.ts",
+          "status": "M",
+          "oldPath": null,
+          "additions": 23,
+          "deletions": 0,
+          "patch": "@@ -219,6 +219,29 @@ export const PdfValue = {\n  */\n export type PdfObject = PdfValue | PdfStream;\n \n+/** PDF オブジェクトから、指定の種類に合う値を取り出す。 */\n+export const PdfObject = {\n+  /**\n+   * 名前または配列のオブジェクトを取り出す。間接参照の解決は行わない。\n+   * @param value - 判定対象。辞書のキーがない場合は undefined\n+   * @returns 名前・配列なら元のオブジェクトを Some、それ以外・未指定は None\n+   */\n+  asNameOrArray(value: PdfObject | undefined): Option<PdfName | PdfArray> {\n+    const valid = value?.type === \"name\" || value?.type === \"array\";\n+    return valid ? some(value) : none;\n+  },\n+\n+  /**\n+   * 正の整数オブジェクトから数値を取り出す。\n+   * @param value - 判定対象。辞書のキーがない場合は undefined\n+   * @returns integer かつ正ならその数値を Some、それ以外・未指定は None\n+   */\n+  asPositiveInteger(value: PdfObject | undefined): Option<number> {\n+    const valid = value?.type === \"integer\" && value.value > 0;\n+    return valid ? some(value.value) : none;\n+  },\n+} as const;\n+\n /**\n  * 間接オブジェクト (ISO 32000 7.3.10)。\n  * `N G obj ... endobj` の定義全体を表す。",
+          "patchLines": 30,
+          "truncated": false
+        }
+      ]
     }
   ],
   "dependencies": [
@@ -929,13 +1686,598 @@
       "status": "kept"
     },
     {
+      "from": "packages/core/src/content-stream/interpreter/__tests__/interpreter.graphics-state-stack.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/interpreter/__tests__/interpreter.inline-image.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/marked-content/stack/__tests__/stack.basic.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/marked-content/stack/__tests__/stack.name-properties.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/marked-content/stack/__tests__/stack.nested.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/marked-content/stack/__tests__/stack.type.test-d.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/marked-content/stack/index.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operand-stack/__tests__/operand-stack.basic.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operand-stack/__tests__/operand-stack.type.test-d.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operand-stack/index.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/color/cmyk/__tests__/fill.basic.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/color/cmyk/__tests__/fill.error.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/color/cmyk/__tests__/stroke.basic.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/color/cmyk/__tests__/stroke.error.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/color/gray/__tests__/fill.basic.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/color/gray/__tests__/stroke.basic.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/color/rgb/__tests__/fill.basic.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/color/rgb/__tests__/fill.error.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/color/rgb/__tests__/stroke.basic.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/color/rgb/__tests__/stroke.error.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/graphics-state/cm/__tests__/cm.basic.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/graphics-state/d/__tests__/d.basic.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/graphics-state/d/__tests__/d.error.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/graphics-state/d/__tests__/d.solid.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/graphics-state/d/index.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/graphics-state/i/__tests__/i.basic.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/graphics-state/i/__tests__/i.error.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/graphics-state/line-cap-handler/__tests__/line-cap-handler.basic.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/graphics-state/line-cap-handler/index.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/graphics-state/line-join-handler/__tests__/line-join-handler.basic.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/graphics-state/line-join-handler/index.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/graphics-state/line-width-handler/__tests__/line-width-handler.basic.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/graphics-state/miter-limit-handler/__tests__/miter-limit-handler.basic.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/graphics-state/numeric-pdf-object/__tests__/numeric-pdf-object.basic.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/graphics-state/numeric-pdf-object/index.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/graphics-state/q-restore/__tests__/q-restore.basic.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/graphics-state/q-restore/__tests__/q-restore.unbalanced.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/graphics-state/q/__tests__/q.basic.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/graphics-state/ri/__tests__/ri.basic.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/graphics-state/ri/__tests__/ri.error.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/marked-content/bdc/__tests__/bdc.dict.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/marked-content/bdc/__tests__/bdc.error.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/marked-content/bdc/__tests__/bdc.name.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/marked-content/bdc/index.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/marked-content/bmc/__tests__/bmc.basic.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/marked-content/bmc/__tests__/bmc.error.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/marked-content/dp/__tests__/dp.dict.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/marked-content/dp/__tests__/dp.error.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/marked-content/dp/__tests__/dp.name.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/marked-content/dp/index.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/marked-content/emc/__tests__/emc.basic.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/marked-content/mp/__tests__/mp.basic.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/marked-content/mp/__tests__/mp.error.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/operand-extractor/__tests__/operand-extractor.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/operand-extractor/index.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/path/c/__tests__/c.basic.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/path/clip-even-odd/__tests__/clip-even-odd.basic.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/path/clip/__tests__/clip.basic.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/path/close-fill-stroke-even-odd/__tests__/close-fill-stroke-even-odd.basic.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/path/close-fill-stroke/__tests__/close-fill-stroke.basic.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/path/close-stroke/__tests__/close-stroke.basic.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/path/close-subpath/__tests__/close-subpath.basic.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/path/end-path/__tests__/end-path.basic.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/path/fill-even-odd/__tests__/fill-even-odd.basic.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/path/fill-stroke-even-odd/__tests__/fill-stroke-even-odd.basic.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/path/fill-stroke/__tests__/fill-stroke.basic.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/path/fill/__tests__/fill.basic.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/path/h/__tests__/h.basic.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/path/l/__tests__/l.basic.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/path/m/__tests__/m.basic.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/path/re/__tests__/re.basic.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/path/stroke/__tests__/stroke.basic.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/path/v/__tests__/v.basic.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/path/v/__tests__/v.error.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/path/y/__tests__/y.basic.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/path/y/__tests__/y.error.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/text/apostrophe/__tests__/apostrophe.basic.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/text/apostrophe/__tests__/apostrophe.error.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/text/bt/__tests__/bt.basic.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/text/bt/__tests__/bt.error.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/text/quote/__tests__/quote.basic.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/text/quote/__tests__/quote.error.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/text/t-star/__tests__/t-star.basic.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/text/t-star/__tests__/t-star.error.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/text/tc/__tests__/tc.basic.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/text/tc/__tests__/tc.error.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/text/td-leading/__tests__/td-leading.basic.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/text/td-leading/__tests__/td-leading.error.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/text/td/__tests__/td.basic.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/text/td/__tests__/td.error.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/text/tf/__tests__/tf.basic.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/text/tf/__tests__/tf.error.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/text/tj-array/__tests__/tj-array.basic.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/text/tj-array/__tests__/tj-array.error.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/text/tj-array/index.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/text/tj/__tests__/tj.basic.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/text/tj/__tests__/tj.error.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/text/tl/__tests__/tl.basic.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/text/tl/__tests__/tl.error.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/text/tm/__tests__/tm.basic.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/text/tm/__tests__/tm.error.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/text/tr/__tests__/tr.basic.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/text/tr/__tests__/tr.error.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/text/tr/index.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/text/ts/__tests__/ts.basic.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/text/ts/__tests__/ts.error.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/text/tw/__tests__/tw.basic.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/text/tw/__tests__/tw.error.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/text/tz/__tests__/tz.basic.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/text/tz/__tests__/tz.error.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/xobject/do/__tests__/do.basic.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/xobject/do/__tests__/do.error.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/document/catalog/catalog-parser/__tests__/catalog-parser.behavior.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/document/catalog/catalog-parser/__tests__/catalog-parser.test.helpers.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
       "from": "packages/core/src/document/catalog/catalog-parser/__tests__/catalog-parser.test.helpers.ts",
       "to": "packages/core/src/pdf/types/resolve-ref/index.ts",
       "status": "kept"
     },
     {
       "from": "packages/core/src/document/catalog/catalog-parser/index.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/document/catalog/catalog-parser/index.ts",
       "to": "packages/core/src/pdf/types/resolve-ref/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/document/encoding/decode-pdf-string/__tests__/decode-pdf-string.decode.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/document/encoding/decode-pdf-string/index.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
       "status": "kept"
     },
     {
@@ -979,13 +2321,78 @@
       "status": "added"
     },
     {
+      "from": "packages/core/src/document/metadata/document-info-parser/__tests__/document-info-parser.behavior.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/document/metadata/document-info-parser/__tests__/document-info-parser.test.helpers.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/document/metadata/document-info-parser/index.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
       "from": "packages/core/src/document/metadata/document-info-parser/index.ts",
       "to": "packages/core/src/pdf/types/resolve-ref/index.ts",
       "status": "kept"
     },
     {
+      "from": "packages/core/src/document/metadata/document-metadata/__tests__/document-metadata.error.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/document/metadata/document-metadata/__tests__/document-metadata.parse.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/document/metadata/document-metadata/index.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/document/page-tree/attr-resolver/__tests__/attr-resolver.behavior.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
       "from": "packages/core/src/document/page-tree/attr-resolver/index.ts",
       "to": "packages/core/src/document/resources/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/document/page-tree/attr-resolver/index.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/document/page-tree/dict-reader/__tests__/dict-reader.read.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/document/page-tree/dict-reader/index.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/document/page-tree/inheritance-resolver/__tests__/inheritance-resolver.behavior.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/document/page-tree/inheritance-resolver/index.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/document/page-tree/page-tree-walker/__tests__/page-tree-walker.behavior.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
       "status": "kept"
     },
     {
@@ -995,7 +2402,17 @@
     },
     {
       "from": "packages/core/src/document/page-tree/page-tree-walker/__tests__/page-tree-walker.test.helpers.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/document/page-tree/page-tree-walker/__tests__/page-tree-walker.test.helpers.ts",
       "to": "packages/core/src/pdf/types/resolve-ref/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/document/page-tree/page-tree-walker/index.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
       "status": "kept"
     },
     {
@@ -1006,6 +2423,21 @@
     {
       "from": "packages/core/src/document/page-tree/resolved-page/index.ts",
       "to": "packages/core/src/document/resources/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/document/page-tree/resolved-page/index.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/document/page-tree/value-resolver/__tests__/value-resolver.behavior.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/document/page-tree/value-resolver/index.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
       "status": "kept"
     },
     {
@@ -1046,6 +2478,11 @@
     {
       "from": "packages/core/src/document/resources/__tests__/pdf-resources.behavior.test.ts",
       "to": "packages/core/src/document/resources/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/document/resources/__tests__/pdf-resources.behavior.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
       "status": "kept"
     },
     {
@@ -1360,7 +2797,17 @@
     },
     {
       "from": "packages/core/src/objects/object-parser/__tests__/object-parser.indirect.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/objects/object-parser/__tests__/object-parser.indirect.test.ts",
       "to": "packages/core/src/pdf/types/resolve-ref/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/objects/object-parser/__tests__/object-parser.parse.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
       "status": "kept"
     },
     {
@@ -1374,13 +2821,33 @@
       "status": "kept"
     },
     {
+      "from": "packages/core/src/objects/object-parser/direct-object/__tests__/direct-object.array.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/objects/object-parser/direct-object/__tests__/direct-object.dict.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
       "from": "packages/core/src/objects/object-parser/direct-object/index.ts",
       "to": "packages/core/src/pdf/types/index.ts",
       "status": "kept"
     },
     {
+      "from": "packages/core/src/objects/object-parser/direct-object/index.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
       "from": "packages/core/src/objects/object-parser/index.ts",
       "to": "packages/core/src/pdf/types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/objects/object-parser/index.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
       "status": "kept"
     },
     {
@@ -1394,8 +2861,23 @@
       "status": "kept"
     },
     {
+      "from": "packages/core/src/objects/object-parser/stream-object/__tests__/stream-object.extract.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/objects/object-parser/stream-object/__tests__/stream-object.read-length.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
       "from": "packages/core/src/objects/object-parser/stream-object/__tests__/stream-object.resolve-length.test.ts",
       "to": "packages/core/src/pdf/types/resolve-ref/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/objects/object-parser/stream-object/index.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
       "status": "kept"
     },
     {
@@ -1404,8 +2886,48 @@
       "status": "kept"
     },
     {
+      "from": "packages/core/src/objects/object-parser/types.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/objects/object-store/__tests__/object-store.basic.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/objects/object-store/__tests__/object-store.concurrent.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
       "from": "packages/core/src/objects/object-store/__tests__/object-store.concurrent.test.ts",
       "to": "packages/core/src/pdf/types/resolve-ref/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/objects/object-store/__tests__/object-store.edge.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/objects/object-store/__tests__/object-store.extends-error.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/objects/object-store/__tests__/object-store.extends.test.helpers.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/objects/object-store/__tests__/object-store.null-boundary.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/objects/object-store/__tests__/object-store.test.helpers.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
       "status": "kept"
     },
     {
@@ -1415,7 +2937,17 @@
     },
     {
       "from": "packages/core/src/objects/object-store/entry-readers/inline/__tests__/inline.basic.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/objects/object-store/entry-readers/inline/__tests__/inline.basic.test.ts",
       "to": "packages/core/src/pdf/types/resolve-ref/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/objects/object-store/entry-readers/inline/index.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
       "status": "kept"
     },
     {
@@ -1424,8 +2956,33 @@
       "status": "kept"
     },
     {
+      "from": "packages/core/src/objects/object-store/entry-readers/object-stream/__tests__/object-stream.basic.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/objects/object-store/entry-readers/object-stream/index.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/objects/object-store/index.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
       "from": "packages/core/src/objects/object-store/index.ts",
       "to": "packages/core/src/pdf/types/resolve-ref/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/objects/object-store/types.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/objects/object-stream-extractor/body/__tests__/object-stream-body.test.helpers.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
       "status": "kept"
     },
     {
@@ -1434,13 +2991,53 @@
       "status": "kept"
     },
     {
+      "from": "packages/core/src/objects/object-stream-extractor/body/index.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/objects/object-stream-extractor/dict/index.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
       "from": "packages/core/src/objects/object-stream-extractor/header/index.ts",
       "to": "packages/core/src/pdf/types/index.ts",
       "status": "kept"
     },
     {
+      "from": "packages/core/src/objects/object-stream-extractor/types.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/pdf/dictionary-reader/__tests__/dictionary-reader.type.test-d.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/pdf/dictionary-reader/index.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/pdf/encryption/__tests__/encryption.test.helpers.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
       "from": "packages/core/src/pdf/encryption/__tests__/encryption.type.test-d.ts",
       "to": "packages/core/src/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/pdf/encryption/dict-reader/index.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/pdf/encryption/index.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
       "status": "kept"
     },
     {
@@ -1491,6 +3088,31 @@
     {
       "from": "packages/core/src/pdf/errors/warning/__tests__/warning.type.test.ts",
       "to": "packages/core/src/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/pdf/filter/__tests__/pdf-filter.lzw-boundary.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/pdf/filter/__tests__/pdf-filter.lzw-validation.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/pdf/filter/__tests__/pdf-filter.parse.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/pdf/filter/index.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/pdf/filter/lzwdecode/index.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
       "status": "kept"
     },
     {
@@ -1549,13 +3171,88 @@
       "status": "kept"
     },
     {
+      "from": "packages/core/src/pdf/types/indirect-ref/__tests__/indirect-ref.validation.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/pdf/types/indirect-ref/index.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/pdf/types/pdf-type/__tests__/pdf-type.validate.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/pdf/types/pdf-type/index.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/pdf/types/pdf-types/__tests__/pdf-types.pdf-name.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
       "from": "packages/core/src/pdf/types/pdf-types/__tests__/pdf-types.pdf-object.test-d.ts",
       "to": "packages/core/src/index.ts",
       "status": "kept"
     },
     {
+      "from": "packages/core/src/pdf/types/pdf-types/__tests__/pdf-types.pdf-object.test.ts",
+      "to": "packages/core/src/index.ts",
+      "status": "added"
+    },
+    {
+      "from": "packages/core/src/pdf/types/pdf-types/__tests__/pdf-types.pdf-object.test.ts",
+      "to": "packages/core/src/utils/option/index.ts",
+      "status": "added"
+    },
+    {
+      "from": "packages/core/src/pdf/types/pdf-types/__tests__/pdf-types.pdf-value.test.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
       "from": "packages/core/src/pdf/types/pdf-types/__tests__/pdf-types.type-export.test-d.ts",
       "to": "packages/core/src/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "to": "packages/core/src/pdf/types/byte-offset/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "to": "packages/core/src/pdf/types/free-object-number/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "to": "packages/core/src/pdf/types/generation-number/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "to": "packages/core/src/pdf/types/indirect-ref/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "to": "packages/core/src/pdf/types/object-number/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "to": "packages/core/src/utils/option/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/pdf/types/resolve-ref/__tests__/resolve-ref.type.test-d.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
       "status": "kept"
     },
     {
@@ -1591,6 +3288,46 @@
     {
       "from": "packages/core/src/pdf/types/token/__tests__/token.type.test-d.ts",
       "to": "packages/core/src/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/pdf/types/token/boolean/index.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/pdf/types/token/hex-string/index.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/pdf/types/token/index.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/pdf/types/token/integer/index.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/pdf/types/token/literal-string/index.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/pdf/types/token/name/index.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/pdf/types/token/null/index.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/pdf/types/token/real/index.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
       "status": "kept"
     },
     {
@@ -1654,13 +3391,33 @@
       "status": "kept"
     },
     {
+      "from": "packages/core/src/xref/stream/dict/__tests__/xref-stream-dict.test.helpers.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/xref/stream/dict/index.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
       "from": "packages/core/src/xref/stream/parse-xref-stream/index.ts",
       "to": "packages/core/src/pdf/types/index.ts",
       "status": "kept"
     },
     {
+      "from": "packages/core/src/xref/stream/parse-xref-stream/index.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
+      "status": "kept"
+    },
+    {
       "from": "packages/core/src/xref/stream/parser/index.ts",
       "to": "packages/core/src/pdf/types/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/xref/stream/predictor/index.ts",
+      "to": "packages/core/src/pdf/types/pdf-types/index.ts",
       "status": "kept"
     },
     {
