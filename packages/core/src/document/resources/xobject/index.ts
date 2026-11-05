@@ -4,7 +4,7 @@ import {
   type PdfArray,
   type PdfDictionary,
   type PdfName,
-  type PdfObject,
+  PdfObject,
   type PdfStream,
   ResolveRef,
 } from "../../../pdf/types/index";
@@ -126,22 +126,6 @@ async function resolveFields(
   return ok(fields);
 }
 
-/** @param value - 辞書エントリの解決値
- * @returns 正の整数ならその値。それ以外は None
- */
-function positiveInteger(value: PdfObject | undefined): Option<number> {
-  const valid = value?.type === "integer" && value.value > 0;
-  return valid ? some(value.value) : none;
-}
-
-/** @param value - 色空間またはフィルタの解決値
- * @returns 名前または配列なら元のPDF値。それ以外は None
- */
-function nameOrArray(value: PdfObject | undefined): Option<PdfName | PdfArray> {
-  const valid = value?.type === "name" || value?.type === "array";
-  return valid ? some(value) : none;
-}
-
 const PdfImageXObject = {
   /** @param stream - 画像の元ストリーム
    * @param fields - 解決済み画像属性
@@ -151,7 +135,7 @@ const PdfImageXObject = {
     stream: PdfStream,
     fields: ReadonlyMap<string, PdfObject>,
   ): PdfImageXObject {
-    const bits = positiveInteger(fields.get("BitsPerComponent"));
+    const bits = PdfObject.asPositiveInteger(fields.get("BitsPerComponent"));
     const depth = bits.some
       ? ComponentDepths.find((n) => n === bits.value)
       : undefined;
@@ -164,11 +148,11 @@ const PdfImageXObject = {
     return {
       subtype: PdfXObjectSubtype.Image,
       stream,
-      width: positiveInteger(fields.get("Width")),
-      height: positiveInteger(fields.get("Height")),
+      width: PdfObject.asPositiveInteger(fields.get("Width")),
+      height: PdfObject.asPositiveInteger(fields.get("Height")),
       bitsPerComponent: fromNullable(depth),
-      colorSpace: nameOrArray(fields.get("ColorSpace")),
-      filter: nameOrArray(fields.get("Filter")),
+      colorSpace: PdfObject.asNameOrArray(fields.get("ColorSpace")),
+      filter: PdfObject.asNameOrArray(fields.get("Filter")),
       sMask: sMask?.type === "stream" ? some(sMask) : none,
       mask: validMask ? some(mask) : none,
       imageMask: stencil?.type === "boolean" && stencil.value,
