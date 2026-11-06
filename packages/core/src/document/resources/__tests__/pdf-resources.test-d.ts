@@ -1,4 +1,12 @@
 import { assertType, expectTypeOf, test } from "vitest";
+import type {
+  PdfFormXObject,
+  PdfImageXObject,
+  PdfPostScriptXObject,
+  PdfUnknownXObject,
+  PdfXObject,
+  PdfXObjectSubtype,
+} from "../../../index";
 import type { PdfError } from "../../../pdf/errors/index";
 import type {
   PdfDictionary,
@@ -55,6 +63,26 @@ test("PdfResources.lookup の戻り値型の推論チェック", () => {
   >();
 
   expectTypeOf(
+    PdfResources.getXObject(resources, "Logo", resolveRef),
+  ).toEqualTypeOf<Promise<Result<Option<PdfXObject>, PdfError>>>();
+
+  expectTypeOf(
     PdfResources.hasCategory(resources, "Font"),
   ).toEqualTypeOf<boolean>();
+});
+
+test("公開された種別で各 XObject の型に絞り込める", () => {
+  expectTypeOf<PdfXObject["subtype"]>().toEqualTypeOf<PdfXObjectSubtype>();
+  expectTypeOf<
+    Extract<PdfXObject, { subtype: typeof PdfXObjectSubtype.Image }>
+  >().toEqualTypeOf<PdfImageXObject>();
+  expectTypeOf<
+    Extract<PdfXObject, { subtype: typeof PdfXObjectSubtype.Form }>
+  >().toEqualTypeOf<PdfFormXObject>();
+  expectTypeOf<
+    Extract<PdfXObject, { subtype: typeof PdfXObjectSubtype.PS }>
+  >().toEqualTypeOf<PdfPostScriptXObject>();
+  expectTypeOf<
+    Extract<PdfXObject, { subtype: typeof PdfXObjectSubtype.Unknown }>
+  >().toEqualTypeOf<PdfUnknownXObject>();
 });

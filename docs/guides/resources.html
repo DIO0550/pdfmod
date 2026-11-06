@@ -164,7 +164,8 @@
       <a href="#flow"><span>04</span>処理の流れ</a>
       <a href="#examples"><span>05</span>具体例で確かめる</a>
       <a href="#font"><span>06</span>Tfからフォント辞書へ</a>
-      <a href="#implementation"><span>07</span>実装と対応範囲</a>
+      <a href="#xobject"><span>07</span>Doから画像・フォームへ</a>
+      <a href="#implementation"><span>08</span>実装と対応範囲</a>
     </nav>
   </aside>
   <main id="top"><div class="wrap">
@@ -390,8 +391,34 @@ return ok(some(dictionary));</code></pre>
       <div class="note"><strong>辞書の取得とフォントの解釈は別の段階です。</strong>このAPIは辞書の内容を保持して返します。<code>/Subtype</code> の妥当性、文字コードの変換、グリフ幅、埋め込みフォントの読み込みはここでは扱いません。また、解決結果をテキスト状態へ重複保存しないため、フォント切替後に古い辞書が残ることもありません。</div>
     </section>
 
+    <section class="section" id="xobject">
+      <div class="section-heading"><span class="number">07</span><h2>Doから画像・フォームへ</h2></div>
+      <p><code>Do</code> は、名前で指定した外部オブジェクト（XObject）を描画する命令です。名前は作成者が自由に付けられます。たとえば <code>/Logo</code> が写真か、文字や線で組み立てた図かは、参照先の <code>/Subtype</code> で決まります。</p>
+      <pre><code><span class="comment">% PDFの抜粋。ページのリソース辞書</span>
+<span class="key">/Resources</span> &lt;&lt; <span class="key">/XObject</span> &lt;&lt; <span class="key">/Logo</span> <span class="value">8 0 R</span> &gt;&gt; &gt;&gt;
+<span class="comment">% ページの描画命令</span>
+<span class="key">/Logo</span> <span class="value">Do</span>
+
+<span class="comment">% 8番のオブジェクト。3バイトでRGBの1画素を表す</span>
+<span class="value">8 0 obj</span>
+&lt;&lt; <span class="key">/Type</span> /XObject <span class="key">/Subtype</span> <span class="value">/Image</span>
+   <span class="key">/Width</span> 1 <span class="key">/Height</span> 1 <span class="key">/ColorSpace</span> /DeviceRGB
+   <span class="key">/BitsPerComponent</span> 8 <span class="key">/Length</span> 3 &gt;&gt;
+stream
+RGB
+endstream
+endobj</code></pre>
+      <p><code>8 0 R</code> はオブジェクト番号8、世代番号0への参照です。この例で <code>RGB</code> は3個の文字コードからなる実データです。順に赤・緑・青の強度（82、71、66）として読めます。<code>/Filter</code> が付いた画像では、画素を得る前に指定のフィルタを適用します。取得APIではフィルタと元のバイト列の両方を保持します。</p>
+      <div class="table-wrap"><table><thead><tr><th>ストリームの種別</th><th>辞書から読み取れること</th></tr></thead><tbody>
+        <tr><td>Image</td><td>幅・高さ、色空間、成分のビット数、フィルタ。<code>/ImageMask true</code> は描画色を置く場所を指定するステンシルです。<code>/SMask</code> は濃淡を持つマスク、<code>/Mask</code> はマスク画像または透明にする色の範囲を指定します。</td></tr>
+        <tr><td>Form</td><td>本文は繰り返し実行できる描画命令です。<code>/BBox [0 0 40 20]</code> はフォーム座標で描画を切り取る境界、<code>/Matrix [1 0 0 1 10 5]</code> は原点を (10, 5) へ移す変換です。行列を省略すると座標はそのままです。内部で使う名前はフォーム自身の <code>/Resources</code> に定義できます。</td></tr>
+        <tr><td>PS・未知</td><td>非推奨のPostScriptは独立した種別です。未知の名前、欠落、型の違う値でも元ストリームを取得できます。</td></tr>
+      </tbody></table></div>
+      <div class="note"><strong>pdfmodで不完全なPDFを読むとき</strong>名前の参照先がストリームでなければ未解決です。Formの境界に数値が4個揃わない場合は境界だけが未設定になり、ほかの属性は読めます。参照先の構文を解析できないときは、そのエラーを返します。</div>
+    </section>
+
     <section class="section" id="implementation">
-      <div class="section-heading"><span class="number">07</span><h2>実装と対応範囲</h2></div>
+      <div class="section-heading"><span class="number">08</span><h2>実装と対応範囲</h2></div>
       <p>TypeScript API（<code>@pdfmod/core</code>）におけるリソースの利用例です。以下の抜粋では、<code>page</code> は読み込み済みのページ、<code>resolveRef</code> はその文書の間接参照解決関数とします。<code>Result</code> の <code>ok</code> で成功を、<code>Option</code> の <code>some</code> で値の存在を確認します。</p>
       <pre><code>import { PdfResources } from "@pdfmod/core";
 
@@ -421,6 +448,7 @@ if (PdfResources.hasCategory(resources, "Font")) {
           <tr><td><code>PdfResources.from(dict?)</code></td><td>辞書から <code>PdfResources</code> を安全に生成（引数なし時は空辞書）。</td></tr>
           <tr><td><code>PdfResources.hasCategory(res, cat)</code></td><td>カテゴリの存在判定。<code>/ProcSet</code> の場合は常に <code>false</code>。</td></tr>
           <tr><td><code>PdfResources.getCategory(res, cat, resolveRef)</code></td><td>カテゴリ辞書を非同期で遅延解決し、<code>Result&lt;Option&lt;PdfDictionary&gt;, PdfError&gt;</code> を返却。</td></tr>
+          <tr><td><code>PdfResources.getXObject(res, name, resolveRef)</code></td><td>Do のローカル名からストリームを取得し、<code>subtype</code> で Image、Form、PS、Unknown に分岐できます。</td></tr>
           <tr><td><code>PdfResources.getFont(res, name, resolveRef)</code></td><td>Fontカテゴリから辞書だけを取得。戻り値は <code>Result&lt;Option&lt;PdfDictionary&gt;, PdfError&gt;</code>。</td></tr>
           <tr><td><code>PdfResources.lookup(res, cat, name, resolveRef)</code></td><td>カテゴリと個別エントリを非同期で2段階遅延解決し、<code>Result&lt;Option&lt;PdfObject&gt;, PdfError&gt;</code> を返却（<code>PdfObject</code> はストリームを含む）。</td></tr>
         </tbody>

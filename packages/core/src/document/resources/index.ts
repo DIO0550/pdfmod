@@ -1,13 +1,9 @@
 import type { PdfError } from "../../pdf/errors/index";
-import type {
-  PdfDictionary,
-  PdfObject,
-  PdfValue,
-  ResolveRef,
-} from "../../pdf/types/index";
-import { IndirectRef } from "../../pdf/types/index";
+import type { PdfDictionary, PdfObject, PdfValue } from "../../pdf/types/index";
+import { ResolveRef } from "../../pdf/types/index";
 import { none, type Option, some } from "../../utils/option/index";
-import { ok, type Result } from "../../utils/result/index";
+import { map, ok, type Result } from "../../utils/result/index";
+import { PdfXObject } from "./xobject/index";
 
 /**
  * ISO 32000-1 Table 33 で定義されている標準リソースカテゴリ名の配列。
@@ -32,31 +28,6 @@ export type PdfResourceCategory = (typeof PDF_RESOURCE_CATEGORIES)[number];
  */
 export interface PdfResources {
   readonly dictionary: PdfDictionary;
-}
-
-/**
- * 間接参照を解決し、ストリームまたは辞書などの実体オブジェクトを取得する内部ヘルパー。
- *
- * @param value - 対象の PdfValue
- * @param resolveRef - 間接参照解決コールバック
- * @returns 解決された PdfObject、無効な参照の場合は Option.none、エラー時は PdfError
- */
-async function resolveObject(
-  value: PdfValue,
-  resolveRef: ResolveRef,
-): Promise<Result<Option<PdfObject>, PdfError>> {
-  if (value.type !== "indirect-ref") {
-    return ok(some(value));
-  }
-  const refOpt = IndirectRef.from(value);
-  if (!refOpt.some) {
-    return ok(none);
-  }
-  const resolvedResult = await resolveRef(refOpt.value);
-  if (!resolvedResult.ok) {
-    return resolvedResult;
-  }
-  return ok(some(resolvedResult.value));
 }
 
 /**
@@ -125,6 +96,36 @@ export const PdfResources = {
   },
 
   /**
+   * Do のローカル名を現在の /XObject 辞書で解決し、ストリームの種別を読む。
+   * @param resources - 現在のリソーススコープ
+   * @param name - Do の名前オペランド（先頭のスラッシュを除く）
+   * @param resolveRef - 同じ文書の間接参照解決関数
+   * @returns 名前がない場合とストリーム以外は None、参照解決の失敗は Err
+   */
+  async getXObject(
+    resources: PdfResources,
+    name: string,
+    resolveRef: ResolveRef,
+  ): Promise<Result<Option<PdfXObject>, PdfError>> {
+    const result = await PdfResources.lookup(
+      resources,
+      "XObject",
+      name,
+      resolveRef,
+    );
+    if (!result.ok) {
+      return result;
+    }
+
+    const target = result.value;
+    if (!target.some || target.value.type !== "stream") {
+      return ok(none);
+    }
+
+    return map(await PdfXObject.fromStream(target.value, resolveRef), some);
+  },
+
+  /**
    * 指定されたカテゴリが存在するか判定する。
    * カテゴリが `/ProcSet` の場合は非推奨のため常に false を返す。
    *
@@ -160,7 +161,7 @@ export const PdfResources = {
     if (!catValue) {
       return ok(none);
     }
-    const resolvedResult = await resolveObject(catValue, resolveRef);
+    const resolvedResult = await ResolveRef.object(catValue, resolveRef);
     if (!resolvedResult.ok) {
       return resolvedResult;
     }
@@ -205,6 +206,6 @@ export const PdfResources = {
     if (!entryValue) {
       return ok(none);
     }
-    return resolveObject(entryValue, resolveRef);
+    return ResolveRef.object(entryValue, resolveRef);
   },
 } as const;

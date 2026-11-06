@@ -31,9 +31,14 @@ export type {
   ParsedCatalog,
   ParsedDocumentInfo,
   PdfDocumentLoadError,
+  PdfFormXObject,
+  PdfImageXObject,
   PdfPageRectangle,
+  PdfPostScriptXObject,
   PdfRectangle,
   PdfResourceCategory,
+  PdfUnknownXObject,
+  PdfXObject,
   ResolvedPage,
   ResolveInheritedOutcome,
   WalkPageTreeResult,
@@ -49,6 +54,7 @@ export {
   PdfPage,
   PdfResources,
   PdfTrapped,
+  PdfXObjectSubtype,
 } from "./document/index";
 export { NumberEx } from "./ext/number/index";
 export { StringArrayEx } from "./ext/string-array/index";
@@ -82,7 +88,6 @@ export type {
   PdfInteger,
   PdfName,
   PdfNull,
-  PdfObject,
   PdfOperatorIllegalStateError,
   PdfOperatorOperandMissingError,
   PdfOperatorOperandTypeMismatchError,
@@ -124,6 +129,7 @@ export {
   KeyLengths,
   ObjectNumber,
   Operator,
+  PdfObject,
   PdfVersion,
   Permissions,
   StandardAlgorithm,

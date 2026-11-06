@@ -219,6 +219,29 @@ export const PdfValue = {
  */
 export type PdfObject = PdfValue | PdfStream;
 
+/** PDF オブジェクトから、指定の種類に合う値を取り出す。 */
+export const PdfObject = {
+  /**
+   * 名前または配列のオブジェクトを取り出す。間接参照の解決は行わない。
+   * @param value - 判定対象。辞書のキーがない場合は undefined
+   * @returns 名前・配列なら元のオブジェクトを Some、それ以外・未指定は None
+   */
+  asNameOrArray(value: PdfObject | undefined): Option<PdfName | PdfArray> {
+    const valid = value?.type === "name" || value?.type === "array";
+    return valid ? some(value) : none;
+  },
+
+  /**
+   * 正の整数オブジェクトから数値を取り出す。
+   * @param value - 判定対象。辞書のキーがない場合は undefined
+   * @returns integer かつ正ならその数値を Some、それ以外・未指定は None
+   */
+  asPositiveInteger(value: PdfObject | undefined): Option<number> {
+    const valid = value?.type === "integer" && value.value > 0;
+    return valid ? some(value.value) : none;
+  },
+} as const;
+
 /**
  * 間接オブジェクト (ISO 32000 7.3.10)。
  * `N G obj ... endobj` の定義全体を表す。
