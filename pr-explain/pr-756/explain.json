@@ -1,0 +1,408 @@
+{
+  "version": 1,
+  "pr": 756,
+  "sha": "719f018b54b6315d60b5f45bd2034695da8395ae",
+  "issue": 668,
+  "overview": {
+    "title": "リソースの色空間を選び、色の成分数を検証する",
+    "lead": "コンテンツストリーム内のローカル名から色空間を解決し、その色空間が要求する数の成分を受理する。リソース準備、状態への選択、成分数の検証の順で読む。",
+    "before": [
+      {
+        "text": "状態はデバイス色空間3種だけを表現し、cs / CS / sc / SC / scn / SCN は未登録だった。ローカル名の指定から成分数を求められなかった。"
+      }
+    ],
+    "after": [
+      {
+        "text": "現在のスコープの色空間を事前解決し、全11ファミリを表現する。選択後の成分数の過不足を拒否し、未知の定義は警告して成分数不明として保持する。"
+      }
+    ],
+    "highlights": [
+      {
+        "title": "解決結果をスコープ単位で保持する",
+        "text": "カテゴリの失敗は準備時、個別定義の失敗は選択時に返す。別ページの同名リソースと混ぜない。",
+        "go": {
+          "kind": "file",
+          "path": "packages/core/src/content-stream/color-space-resources/index.ts"
+        }
+      },
+      {
+        "title": "色空間が成分数を決める",
+        "text": "Indexedは基底がRGBでも添字1個。Patternの最後の名前は数値成分に含めない。",
+        "go": {
+          "kind": "file",
+          "path": "packages/core/src/content-stream/graphics-state/color-space/index.ts"
+        }
+      }
+    ]
+  },
+  "concepts": [
+    {
+      "path": "packages/core/src/content-stream/color-space-resources/index.ts",
+      "name": "色空間リソースの準備",
+      "role": "カテゴリと各定義の間接参照を解決し、名前ごとの成功・失敗・警告を保持する。"
+    },
+    {
+      "path": "packages/core/src/content-stream/operators/color/selection/index.ts",
+      "name": "色空間の選択と色の指定",
+      "role": "現在の塗り・輪郭へ色空間を選択し、数値成分と末尾のパターン名を検証する。"
+    },
+    {
+      "path": "packages/core/src/content-stream/graphics-state/color-space/index.ts",
+      "name": "色空間の族と成分数",
+      "role": "族に応じた属性を型で表し、既知の成分数または不明を返す。"
+    }
+  ],
+  "messages": [
+    {
+      "id": "prepared",
+      "from": "packages/core/src/content-stream/operators/color/selection/index.ts",
+      "to": "packages/core/src/content-stream/color-space-resources/index.ts",
+      "kind": "qry",
+      "name": "選択した名前の解決結果を取得",
+      "code": "resources.spaces.get(name.value)",
+      "via": "state",
+      "payload": "現在のスコープ内のローカル名",
+      "returns": "色空間と警告、または事前解決で保持したエラー",
+      "status": "added"
+    },
+    {
+      "id": "count",
+      "from": "packages/core/src/content-stream/operators/color/selection/index.ts",
+      "to": "packages/core/src/content-stream/graphics-state/color-space/index.ts",
+      "kind": "qry",
+      "name": "現在の色空間の成分数を取得",
+      "code": "ColorSpace.componentCount(space)",
+      "via": "call",
+      "payload": "塗りまたは輪郭で選択中の色空間",
+      "returns": "既知の数ならSome、未知ならNone",
+      "status": "added"
+    }
+  ],
+  "flows": [
+    {
+      "id": "color",
+      "label": "色空間を選んで成分数を検証する",
+      "steps": [
+        "prepared",
+        "count"
+      ]
+    }
+  ],
+  "commitStories": [
+    {
+      "sha": "719f018b54b6315d60b5f45bd2034695da8395ae",
+      "phase": "core",
+      "role": "色空間の解決・型表現・命令・テスト・仕様解説を追加",
+      "why": "色指定の妥当性は選択中の色空間に依存するため、ローカル名の解決と色空間の状態保持を命令の個数検証へ接続する必要がある。",
+      "flows": [
+        "color"
+      ],
+      "review": [
+        "ICCBasedの /N は1・3・4だけを受理する。",
+        "未知の色空間へ切り替えたとき、以前の成分数を再利用しない。",
+        "色空間選択時の初期色とq/Qによる復元を確認する。"
+      ]
+    }
+  ],
+  "suites": [
+    {
+      "id": "integration",
+      "label": "色空間選択と状態の連携",
+      "file": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.integration.test.ts"
+    },
+    {
+      "id": "families",
+      "label": "色空間ファミリと間接参照",
+      "file": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.basic.test.ts"
+    },
+    {
+      "id": "errors",
+      "label": "個数・型・未知の定義",
+      "file": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.error.test.ts"
+    }
+  ],
+  "tests": [
+    {
+      "id": "rgb",
+      "suite": "integration",
+      "name": "リソースのRGB色空間を選択して塗りの色を変更する",
+      "techniques": [
+        "state",
+        "regression"
+      ],
+      "why": "名前が解決できても後続の色指定へ接続できなければ要求を満たさないため。",
+      "given": "ローカル名CS1がRGBに対応するリソース辞書",
+      "when": "CS1を選び、0.2・0.4・0.6の3成分を指定",
+      "then": "塗りの色空間とRGB値が更新され、警告は出ない",
+      "excerpt": {
+        "path": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.integration.test.ts",
+        "start": 9,
+        "end": 22,
+        "text": "test(\"リソースのRGB色空間を選択して塗りの色を変更する\", async () => {\n  const result = await executeColorSpace({\n    resources: \"<< /ColorSpace << /CS1 /DeviceRGB >> >>\",\n    content: \"/CS1 cs .2 .4 .6 sc\",\n  });\n  assert(result.ok);\n  const state = GraphicsStateStack.current(\n    result.value.context.graphicsStateStack,\n  );\n\n  expect(state.fillColorSpace).toEqual(ColorSpace.deviceRGB());\n  expect(state.fillColor).toEqual(Color.rgb(0.2, 0.4, 0.6));\n  expect(result.value.warnings).toEqual([]);\n});"
+      },
+      "targets": [
+        "packages/core/src/content-stream/color-space-resources/index.ts",
+        "packages/core/src/content-stream/operators/color/selection/index.ts"
+      ]
+    },
+    {
+      "id": "restore",
+      "suite": "integration",
+      "name": "CS と SCN は輪郭だけを変更し、q/Q は色空間と色を復元する",
+      "techniques": [
+        "state"
+      ],
+      "why": "塗りと輪郭を混同する変更や保存復元時の色空間の欠落を検出するため。",
+      "given": "塗りがグレー、輪郭が2成分の特色である状態",
+      "when": "qの内側で輪郭をRGBへ変更してQで戻す",
+      "then": "輪郭の特色と2成分が復元され、塗りのグレーは維持される",
+      "excerpt": {
+        "path": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.integration.test.ts",
+        "start": 24,
+        "end": 42,
+        "text": "test(\"CS と SCN は輪郭だけを変更し、q/Q は色空間と色を復元する\", async () => {\n  const result = await executeColorSpace({\n    resources:\n      \"<< /ColorSpace << /Ink [/DeviceN [/Cyan /Magenta] /DeviceCMYK << /FunctionType 2 >>] >> >>\",\n    content: \".6 g /Ink CS .2 .8 SCN q /DeviceRGB CS .1 .2 .3 SC Q\",\n  });\n  assert(result.ok);\n  const state = GraphicsStateStack.current(\n    result.value.context.graphicsStateStack,\n  );\n\n  expect(state.strokeColorSpace).toMatchObject({ family: \"DeviceN\" });\n  expect(state.strokeColor).toMatchObject({\n    kind: \"components\",\n    components: [0.2, 0.8],\n  });\n  expect(state.fillColor).toEqual(Color.gray(0.6));\n  expect(result.value.warnings).toEqual([]);\n});"
+      },
+      "targets": [
+        "packages/core/src/content-stream/operators/color/selection/index.ts",
+        "packages/core/src/content-stream/graphics-state/color-space/index.ts"
+      ]
+    },
+    {
+      "id": "icc",
+      "suite": "families",
+      "name": "ICCBased はプロファイルの間接参照 /N=%i を使う",
+      "techniques": [
+        "equivalence",
+        "boundary"
+      ],
+      "why": "固定値ではなくプロファイルのNから成分数を決め、各段階の間接参照を通ることを確認するため。",
+      "given": "カテゴリ・定義・プロファイル・Nの各段が間接参照で、Nが1・3・4のいずれか",
+      "when": "ICC色空間を選び、その数の成分を指定",
+      "then": "Nと同じ成分数となり警告なく受理する",
+      "excerpt": {
+        "path": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.basic.test.ts",
+        "start": 35,
+        "end": 58,
+        "text": "test.each([\n  1, 3, 4,\n])(\"ICCBased はプロファイルの間接参照 /N=%i を使う\", async (count) => {\n  const result = await executeColorSpace({\n    resources: \"<< /ColorSpace 1 0 R >>\",\n    objects: [\n      \"<< /ICC 2 0 R >>\",\n      \"[/ICCBased 3 0 R]\",\n      \"<< /N 4 0 R /Length 0 >>\\nstream\\n\\nendstream\",\n      String(count),\n    ],\n    content: `/ICC cs ${Array.from({ length: count }, () => \".5\").join(\" \")} scn`,\n  });\n  assert(result.ok);\n  const state = GraphicsStateStack.current(\n    result.value.context.graphicsStateStack,\n  );\n\n  expect(ColorSpace.componentCount(state.fillColorSpace)).toEqual({\n    some: true,\n    value: count,\n  });\n  expect(result.value.warnings).toEqual([]);\n});"
+      },
+      "targets": [
+        "packages/core/src/content-stream/color-space-resources/index.ts",
+        "packages/core/src/content-stream/graphics-state/color-space/index.ts"
+      ]
+    },
+    {
+      "id": "mismatch",
+      "suite": "errors",
+      "name": "%s は現在の色空間と成分数の過不足を検出する",
+      "techniques": [
+        "error",
+        "boundary"
+      ],
+      "why": "各色指定命令が色空間の必要数を検証することを確認するため。",
+      "given": "RGBを塗りまたは輪郭に選択し、数値が2個",
+      "when": "sc / SC / scn / SCNで指定",
+      "then": "必要3・実際2を含む個数不一致のエラーを返す",
+      "excerpt": {
+        "path": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.error.test.ts",
+        "start": 7,
+        "end": 27,
+        "text": "test.each([\n  [\"sc\", \"cs\"],\n  [\"SC\", \"CS\"],\n  [\"scn\", \"cs\"],\n  [\"SCN\", \"CS\"],\n])(\"%s は現在の色空間と成分数の過不足を検出する\", async (operatorName, selection) => {\n  const result = await executeColorSpace({\n    resources: \"<< >>\",\n    content: `/DeviceRGB ${selection} .1 .2 ${operatorName}`,\n  });\n\n  expect(result).toMatchObject({\n    ok: false,\n    error: {\n      code: \"OPERATOR_OPERAND_COUNT_MISMATCH\",\n      operatorName,\n      required: 3,\n      actual: 2,\n    },\n  });\n});"
+      },
+      "targets": [
+        "packages/core/src/content-stream/operators/color/selection/index.ts"
+      ]
+    },
+    {
+      "id": "unknown",
+      "suite": "errors",
+      "name": "未知の族 %s は選択位置に警告し、成分数を不明にする",
+      "techniques": [
+        "error",
+        "state"
+      ],
+      "why": "直前のCMYKの4成分を誤って未知の色空間へ引き継がないことを確認するため。",
+      "given": "CMYKを選択した後に未知の族のリソースを選ぶ",
+      "when": "未知の族へ切り替えて2個の数値を指定",
+      "then": "切り替えた命令の位置に警告を出し、成分数不明で値を保持する",
+      "excerpt": {
+        "path": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.error.test.ts",
+        "start": 61,
+        "end": 80,
+        "text": "test.each([\n  \"/Mystery\",\n  \"[/Mystery 1 2]\",\n])(\"未知の族 %s は選択位置に警告し、成分数を不明にする\", async (definition) => {\n  const result = await executeColorSpace({\n    resources: `<< /ColorSpace << /Odd ${definition} >> >>`,\n    content: \"/DeviceCMYK cs /Odd cs .2 .4 sc\",\n  });\n  assert(result.ok);\n\n  expect(\n    ColorSpace.componentCount(\n      GraphicsStateStack.current(result.value.context.graphicsStateStack)\n        .fillColorSpace,\n    ),\n  ).toEqual({ some: false });\n  expect(result.value.warnings).toMatchObject([\n    { code: \"COLOR_SPACE_UNSUPPORTED\", offset: 20 },\n  ]);\n});"
+      },
+      "targets": [
+        "packages/core/src/content-stream/color-space-resources/index.ts",
+        "packages/core/src/content-stream/operators/color/selection/index.ts",
+        "packages/core/src/content-stream/graphics-state/color-space/index.ts"
+      ]
+    }
+  ],
+  "impact": {
+    "title": "色空間に合った数の色成分を確認できる",
+    "lead": "PDFに記録された色の指定が、選んだ色の表し方と一致しているかを読み取り時に確認する。",
+    "changed": {
+      "before": [
+        {
+          "text": "ページ内の名前で選んだ色の表し方から、必要な成分数を決められなかった。"
+        }
+      ],
+      "after": [
+        {
+          "text": "RGBの色なら3成分、印刷のCMYKなら4成分、パレットの添字なら1成分として検証できる。"
+        }
+      ]
+    },
+    "added": [
+      {
+        "label": "未知の色の表し方",
+        "before": [],
+        "after": [
+          {
+            "text": "警告を受け取り、個数を確定できない状態として読み続けられる。"
+          }
+        ],
+        "tests": [
+          "unknown"
+        ]
+      }
+    ],
+    "kept": [
+      {
+        "text": "グレー・RGB・CMYKの専用命令と、描画状態の保存・復元を引き続き利用できる。",
+        "tests": [
+          "restore"
+        ]
+      }
+    ]
+  },
+  "primers": [
+    {
+      "kind": "language",
+      "id": "union",
+      "category": "TypeScript · 型表現",
+      "label": "判別可能な共用体型",
+      "gist": "族を示す値と、その族に必要な属性を一緒に持つ型。",
+      "passages": [
+        {
+          "kind": "text",
+          "text": "すべてを文字列にすると、ICCの成分数やパレットの基底をどこへ置くかが曖昧になる。共用体型ならfamilyで分岐し、その族にある属性を読み取れる。"
+        },
+        {
+          "kind": "excerpt",
+          "excerpt": {
+            "path": "packages/core/src/content-stream/graphics-state/color-space/index.ts",
+            "start": 20,
+            "end": 42,
+            "text": "export type ColorSpace =\n  | DeviceColorSpace\n  | {\n      readonly family: \"CalGray\" | \"CalRGB\" | \"Lab\" | \"Separation\";\n      readonly definition: PdfArray;\n    }\n  | {\n      readonly family: \"ICCBased\";\n      readonly profile: PdfStream;\n      readonly components: IccComponentCount;\n    }\n  | {\n      readonly family: \"Indexed\";\n      readonly base: ColorSpace;\n      readonly definition: PdfArray;\n    }\n  | {\n      readonly family: \"DeviceN\";\n      readonly names: readonly string[];\n      readonly definition: PdfArray;\n    }\n  | { readonly family: \"Pattern\"; readonly base: Option<ColorSpace> }\n  | { readonly family: \"Unknown\"; readonly name: string };"
+          }
+        },
+        {
+          "kind": "text",
+          "text": "このPRではICCBasedにプロファイルと1・3・4の成分数、DeviceNに名前配列、Indexedに基底を持たせる。既存のデバイス色空間は互換性のためブランド付き文字列を維持する。"
+        },
+        {
+          "kind": "caution",
+          "text": "型だけで不正なPDF入力を正しくできるわけではない。読み取り時にNと名前配列を検証し、未知の族は独立した状態として表す。"
+        }
+      ],
+      "occurrences": [
+        {
+          "path": "packages/core/src/content-stream/graphics-state/color-space/index.ts",
+          "text": "色空間の族と属性を定義する"
+        }
+      ]
+    },
+    {
+      "kind": "pdf",
+      "id": "pdf-colors",
+      "category": "PDF · 色空間と成分",
+      "label": "名前による選択とパレットの添字",
+      "gist": "csは塗りの色空間を選び、scはその色空間に必要な数の数値を指定する。",
+      "passages": [
+        {
+          "kind": "declaration",
+          "code": "% PDFの抜粋。完全な文書ではありません。\n/Resources << /ColorSpace <<\n  /Paint /DeviceRGB\n  /Palette [/Indexed /DeviceRGB 1 <000000FFFFFF>]\n>> >>\n/Paint cs 0.1 0.2 0.3 sc\n/Palette cs 1 sc"
+        },
+        {
+          "kind": "text",
+          "text": "PaintとPaletteは現在のページやフォーム内のローカル名。RGBでは赤・緑・青の3成分が必要だが、Indexedは基底がRGBでもパレットの添字1個。1は最大添字で、16進文字列は黒と白の2色分の値を表す。"
+        },
+        {
+          "kind": "excerpt",
+          "excerpt": {
+            "path": "packages/core/src/content-stream/graphics-state/color-space/index.ts",
+            "start": 106,
+            "end": 136,
+            "text": "  componentCount(space: ColorSpace): Option<number> {\n    if (typeof space === \"string\") {\n      switch (space) {\n        case \"DeviceGray\":\n          return some(DeviceComponentCounts.Gray);\n        case \"DeviceRGB\":\n          return some(DeviceComponentCounts.RGB);\n        case \"DeviceCMYK\":\n          return some(DeviceComponentCounts.CMYK);\n      }\n    }\n\n    switch (space.family) {\n      case \"CalGray\":\n      case \"Separation\":\n      case \"Indexed\":\n        return some(1);\n      case \"CalRGB\":\n      case \"Lab\":\n        return some(DeviceComponentCounts.RGB);\n      case \"ICCBased\":\n        return some(space.components);\n      case \"DeviceN\":\n        return some(space.names.length);\n      case \"Pattern\":\n        return space.base.some\n          ? ColorSpace.componentCount(space.base.value)\n          : some(0);\n      case \"Unknown\":\n        return none;\n    }"
+          }
+        },
+        {
+          "kind": "spec",
+          "text": "docs/specs/04_resources_graphics_state.md §3.4、ISO 32000 §8.6。ICCBasedはN、DeviceNは色材の名前配列で数を決める。Patternはscn / SCNを使い、最後のパターン名を数値成分に数えない。"
+        },
+        {
+          "kind": "caution",
+          "text": "未知の族を警告して成分数不明にするのはpdfmodの回復方針。ここでは色値の保持と個数検証までを扱い、ICC変換・パレット展開・特色関数の評価・パターン描画は行わない。"
+        }
+      ],
+      "occurrences": [
+        {
+          "path": "packages/core/src/content-stream/graphics-state/color-space/index.ts",
+          "text": "族ごとの成分数を決定する"
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/color/selection/index.ts",
+          "text": "現在の色空間に従って色命令を検証する"
+        }
+      ],
+      "seeAlso": [
+        "prepared-scope"
+      ]
+    },
+    {
+      "kind": "codebase",
+      "id": "prepared-scope",
+      "category": "設計 · 同期実行と非同期参照",
+      "label": "事前解決とエラーの遅延伝播",
+      "gist": "非同期で必要な参照を解決し、同期命令の実行時に名前ごとの結果を参照する。",
+      "passages": [
+        {
+          "kind": "text",
+          "text": "PDFの参照取得は非同期だが、既存インタプリタの命令は同期。命令ごとに非同期化すると実行API全体に変更が及ぶため、現在のリソーススコープを先に準備する。"
+        },
+        {
+          "kind": "excerpt",
+          "excerpt": {
+            "path": "packages/core/src/content-stream/color-space-resources/index.ts",
+            "start": 45,
+            "end": 74,
+            "text": "  async fromResources(\n    resources: PdfResources,\n    resolveRef: ResolveRef,\n  ): Promise<Result<ColorSpaceResources, PdfError>> {\n    const category = await PdfResources.getCategory(\n      resources,\n      \"ColorSpace\",\n      resolveRef,\n    );\n    if (!category.ok) {\n      return category;\n    }\n\n    if (!category.value.some) {\n      return ok(ColorSpaceResources.empty());\n    }\n\n    const dictionary = category.value.value;\n    const spaces = new Map<string, Result<ColorSpaceDefinition, PdfError>>();\n    for (const [name, value] of dictionary.entries) {\n      spaces.set(\n        name,\n        await ColorSpaceDefinition.read(value, resolveRef, {\n          dictionary,\n          ancestors: new Set(),\n        }),\n      );\n    }\n\n    return ok({ spaces });"
+          }
+        },
+        {
+          "kind": "text",
+          "text": "カテゴリの解決失敗は準備を止める。一方、各名前の結果は成功でも失敗でもMapへ保存し、その名前のcs / CSが実行されたときだけエラーを返す。未使用の壊れた定義で別の色指定を止めない。"
+        },
+        {
+          "kind": "caution",
+          "text": "別ページやフォームの同名リソースを共有してはいけない。呼び出し側はスコープごとに準備した結果をレジストリへ渡す。参照解決の失敗を警告へ置き換えて隠さない。"
+        }
+      ],
+      "occurrences": [
+        {
+          "path": "packages/core/src/content-stream/color-space-resources/index.ts",
+          "text": "名前ごとの解決結果を保持する"
+        }
+      ],
+      "tests": [
+        "rgb",
+        "icc",
+        "unknown"
+      ],
+      "flows": [
+        "color"
+      ],
+      "status": "added"
+    }
+  ]
+}
