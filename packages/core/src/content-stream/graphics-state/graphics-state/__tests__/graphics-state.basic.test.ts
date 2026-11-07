@@ -19,6 +19,10 @@ import { PathSegment } from "../../path-segment";
 test("createはPDF仕様準拠のデフォルト値を返す", () => {
   const state = GraphicsState.create();
   expect(state).toEqual({
+    strokeAlpha: 1,
+    fillAlpha: 1,
+    blendMode: "Normal",
+    softMask: { type: "None" },
     ctm: Matrix.identity(),
     lineWidth: 1.0,
     lineCap: LineCap.create(0),

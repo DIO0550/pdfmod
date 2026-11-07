@@ -1,6 +1,7 @@
 import type { Brand } from "../../../utils/brand/index";
 import type { Option } from "../../../utils/option/index";
-import { none } from "../../../utils/option/index";
+import { map, none, some } from "../../../utils/option/index";
+import { TextFont } from "../text-font/index";
 import { TextRenderingMode } from "../text-rendering-mode";
 
 declare const TextStateBrand: unique symbol;
@@ -10,7 +11,8 @@ type TextStateFields = {
   readonly wordSpace: number; // Tw, default 0
   readonly horizontalScaling: number; // Tz, default 100 (= 100%)
   readonly leading: number; // TL, default 0
-  readonly fontName: Option<string>; // Tf font name, default none
+  readonly font: Option<TextFont>;
+  readonly fontName: Option<string>; // font から導出する互換アクセサ
   readonly fontSize: number; // Tf font size, default 0
   readonly renderingMode: TextRenderingMode; // Tr, default FILL (0)
   readonly rise: number; // Ts, default 0
@@ -23,7 +25,7 @@ type TextStateFields = {
  */
 export type TextState = Brand<TextStateFields, typeof TextStateBrand>;
 
-type TextStatePartial = Partial<TextStateFields>;
+type TextStatePartial = Partial<Omit<TextStateFields, "font">>;
 
 export const TextState = {
   /**
@@ -40,12 +42,17 @@ export const TextState = {
    * @returns デフォルト値で初期化された TextState
    */
   create(): TextState {
+    const font: Option<TextFont> = none;
+
     return {
       charSpace: 0,
       wordSpace: 0,
       horizontalScaling: 100,
       leading: 0,
-      fontName: none,
+      font,
+      get fontName() {
+        return TextFont.nameOf(font);
+      },
       fontSize: 0,
       renderingMode: TextRenderingMode.create(TextRenderingMode.FILL),
       rise: 0,
@@ -61,6 +68,11 @@ export const TextState = {
    * @returns 浅いマージで生成された新しい TextState
    */
   update(state: TextState, partial: TextStatePartial): TextState {
+    const font =
+      partial.fontName === undefined
+        ? state.font
+        : map(partial.fontName, (name): TextFont => ({ type: "name", name }));
+
     return {
       charSpace:
         partial.charSpace !== undefined ? partial.charSpace : state.charSpace,
@@ -71,8 +83,10 @@ export const TextState = {
           ? partial.horizontalScaling
           : state.horizontalScaling,
       leading: partial.leading !== undefined ? partial.leading : state.leading,
-      fontName:
-        partial.fontName !== undefined ? partial.fontName : state.fontName,
+      font,
+      get fontName() {
+        return TextFont.nameOf(font);
+      },
       fontSize:
         partial.fontSize !== undefined ? partial.fontSize : state.fontSize,
       renderingMode:
@@ -81,5 +95,24 @@ export const TextState = {
           : state.renderingMode,
       rise: partial.rise !== undefined ? partial.rise : state.rise,
     } as unknown as TextState;
+  },
+  /**
+   * フォント指定とサイズを同じテキスト状態へ適用する。
+   * @param state - 更新前のテキスト状態
+   * @param selection - 名前または辞書とフォントサイズ
+   * @returns 他のテキストパラメータを保持した新しい状態
+   */
+  withFont(
+    state: TextState,
+    selection: { readonly font: TextFont; readonly size: number },
+  ): TextState {
+    return {
+      ...state,
+      font: some(selection.font),
+      fontSize: selection.size,
+      get fontName() {
+        return TextFont.nameOf(this.font);
+      },
+    };
   },
 } as const;

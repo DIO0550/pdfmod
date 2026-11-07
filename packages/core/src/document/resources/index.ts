@@ -96,6 +96,34 @@ export const PdfResources = {
   },
 
   /**
+   * /ExtGState のローカル名から拡張状態辞書を取得する。
+   * @param resources - 現在のリソーススコープ
+   * @param name - gs の名前オペランド
+   * @param resolveRef - 同じ文書の参照解決関数
+   * @returns 不在・辞書以外なら None、参照解決の失敗なら Err
+   */
+  async getExtGState(
+    resources: PdfResources,
+    name: string,
+    resolveRef: ResolveRef,
+  ): Promise<Result<Option<PdfDictionary>, PdfError>> {
+    const result = await PdfResources.lookup(
+      resources,
+      "ExtGState",
+      name,
+      resolveRef,
+    );
+
+    if (!result.ok) {
+      return result;
+    }
+
+    const target = result.value;
+    const dictionary = target.some && target.value.type === "dictionary";
+    return ok(dictionary ? some(target.value) : none);
+  },
+
+  /**
    * Do のローカル名を現在の /XObject 辞書で解決し、ストリームの種別を読む。
    * @param resources - 現在のリソーススコープ
    * @param name - Do の名前オペランド（先頭のスラッシュを除く）
