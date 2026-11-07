@@ -1396,6 +1396,41 @@ const cases = [
     expected: ["p", null, "sample", [{ tab: "codebase", index: 0, label: "実装" }]],
   },
   {
+    label: "PDF の宣言例は名前・小数・参照・構文・命令を色分けし、本文と改行を保持する",
+    actual: () => {
+      const code = "/Resources << /ExtGState << /GS1 10 0 R >> >>\n10 0 obj\n<< /LW 3 /CA .8 /ca .4 /BM /Multiply >>\nendobj\nq\n/GS1 gs\nQ";
+      const primer = primerOf({ kind: "pdf", passages: [{ kind: "declaration", code }] });
+      const rows = tabTopicsOf({ primers: [primer] }, "pdf")[0].passages[0].lines;
+      const tokens = rows.map((row) => row.tokens);
+      return [rows.map((row) => row.tokens.map((token) => token.value).join("")).join("\n") === code,
+        [[0, "/Resources"], [0, "<<"], [0, "R"], [1, "obj"], [2, ".8"], [2, "/ca"], [2, "/Multiply"], [3, "endobj"], [4, "q"], [5, "gs"], [6, "Q"]].map(([line, word]) => colorIn(tokens, line, word))];
+    },
+    expected: [true, ["tok-key", "tok-kw", "tok-kw", "tok-kw", "tok-num", "tok-key", "tok-key", "tok-kw", "tok-fn", "tok-fn", "tok-fn"]],
+  },
+  {
+    label: "PDF の色分けは名前の記号、符号付き小数、真偽値、コメントを区別する",
+    actual: () => {
+      const tokens = lineTokensOf("a.pdf", ["/A#20B +.5 -2. 0 true false null % /Name 9 q"]);
+      return ["/A#20B", "+.5", "-2.", "0", "true", "false", "null", "% /Name 9 q"].map((word) => colorIn(tokens, 0, word));
+    },
+    expected: ["tok-key", "tok-num", "tok-num", "tok-num", "tok-kw", "tok-kw", "tok-kw", "tok-com"],
+  },
+  {
+    label: "PDF の文字列は改行・括弧の入れ子・エスケープ・HTMLに見える本文を文字列のまま扱う",
+    actual: () => {
+      const lines = ["(outer (inner", "end) \\) /Name <img onerror=x>) Tj", "<4142", "43> /Next"];
+      const tokens = lineTokensOf("a.pdf", lines);
+      return [tokens.map((line) => line.map((token) => token.value).join("")),
+        [colorIn(tokens, 0, lines[0]), colorIn(tokens, 1, lines[1].slice(0, -3)), colorIn(tokens, 1, "Tj"), colorIn(tokens, 2, "<4142"), colorIn(tokens, 3, "43>"), colorIn(tokens, 3, "/Next")]];
+    },
+    expected: [["(outer (inner", "end) \\) /Name <img onerror=x>) Tj", "<4142", "43> /Next"], ["tok-str", "tok-str", "tok-fn", "tok-str", "tok-str", "tok-key"]],
+  },
+  {
+    label: "PDF 以外の宣言に PDF の色分けを適用しない",
+    actual: () => tabTopicsOf({ primers: [primerOf({ passages: [{ kind: "declaration", code: "const value = 1;" }] })] }, "language")[0].passages[0].lines,
+    expected: null,
+  },
+  {
     label: "出てくる場所の行の範囲を省けば null、shas を省けば届く先は無い",
     actual: () => tabTopicsOf({ primers: [primerOf()] }, "language")[0].occurrences,
     expected: [{ path: "a.ts", lineRange: null, text: "ここ", destinations: [] }],

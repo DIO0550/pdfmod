@@ -1,10 +1,12 @@
 import type { PdfError } from "../../../../pdf/errors/index";
 import type { Result } from "../../../../utils/result/index";
-import { flatMap, ok } from "../../../../utils/result/index";
+import { flatMap } from "../../../../utils/result/index";
+import { ExtGStateResources } from "../../../ext-gstate/index";
 import type { OperatorHandler } from "../../../operator-registry/index";
 import { OperatorRegistry } from "../../../operator-registry/index";
 import { cmHandler } from "../cm";
 import { dHandler } from "../d";
+import { GsOperator } from "../gs/index";
 import { flatnessHandler } from "../i";
 import { lineCapHandler } from "../line-cap-handler";
 import { lineJoinHandler } from "../line-join-handler";
@@ -48,13 +50,15 @@ const GRAPHICS_STATE_OPERATORS: ReadonlyArray<
  * 短絡し、後続 operator の register は呼ばれない。
  *
  * @param registry - 登録元 registry
+ * @param extGStates - 実行対象スコープの解決済み拡張状態
  * @returns 全 operator が登録された新しい registry、または重複登録時の PdfError
  */
 export const registerGraphicsStateOperators = (
   registry: OperatorRegistry,
+  extGStates: ExtGStateResources = ExtGStateResources.empty(),
 ): Result<OperatorRegistry, PdfError> =>
   GRAPHICS_STATE_OPERATORS.reduce<Result<OperatorRegistry, PdfError>>(
     (acc, [name, handler]) =>
       flatMap(acc, (r) => OperatorRegistry.register(r, name, handler)),
-    ok(registry),
+    OperatorRegistry.register(registry, "gs", GsOperator.create(extGStates)),
   );

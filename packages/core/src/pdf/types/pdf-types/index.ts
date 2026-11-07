@@ -222,6 +222,20 @@ export type PdfObject = PdfValue | PdfStream;
 /** PDF オブジェクトから、指定の種類に合う値を取り出す。 */
 export const PdfObject = {
   /**
+   * 整数・実数から有限な数値を取り出す。
+   * @param value - 判定対象のオブジェクト
+   * @returns 数値以外・非有限値なら None
+   */
+  asFiniteNumber(value: PdfObject): Option<number> {
+    const numeric = value.type === "integer" || value.type === "real";
+    if (!numeric) {
+      return none;
+    }
+
+    return Number.isFinite(value.value) ? some(value.value) : none;
+  },
+
+  /**
    * 名前または配列のオブジェクトを取り出す。間接参照の解決は行わない。
    * @param value - 判定対象。辞書のキーがない場合は undefined
    * @returns 名前・配列なら元のオブジェクトを Some、それ以外・未指定は None

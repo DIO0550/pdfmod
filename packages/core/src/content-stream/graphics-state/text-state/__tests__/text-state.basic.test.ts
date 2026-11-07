@@ -9,6 +9,7 @@ test("createはPDF §9.3 デフォルト値を返す", () => {
     wordSpace: 0,
     horizontalScaling: 100,
     leading: 0,
+    font: none,
     fontName: none,
     fontSize: 0,
     renderingMode: TextRenderingMode.create(TextRenderingMode.FILL),
@@ -43,7 +44,6 @@ test.each([
   ["wordSpace", { wordSpace: 5 }],
   ["horizontalScaling", { horizontalScaling: 90 }],
   ["leading", { leading: 12 }],
-  ["fontName", { fontName: some("F1") }],
   ["fontSize", { fontSize: 14 }],
   [
     "renderingMode",
@@ -60,4 +60,16 @@ test("updateはundefinedの明示指定で既存フィールドを壊さない",
   const state = TextState.update(TextState.create(), { charSpace: 7 });
   const updated = TextState.update(state, { charSpace: undefined });
   expect(updated.charSpace).toBe(7);
+});
+
+test("名前の更新は単一のフォント選択を置き換え、他の値を保持する", () => {
+  const state = TextState.create();
+
+  const updated = TextState.update(state, { fontName: some("F1") });
+
+  expect(updated).toEqual({
+    ...state,
+    font: some({ type: "name", name: "F1" }),
+    fontName: some("F1"),
+  });
 });

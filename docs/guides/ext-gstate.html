@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>拡張グラフィックス状態 — PDF仕様解説</title><style>
+    :root {
+      --ink: #182f3c;
+      --muted: #526b76;
+      --paper: #f5f7f5;
+      --line: #d7e2e1;
+      --teal: #067666;
+      --mint: #e6f4ef;
+      --blue: #265bb3;
+      --sky: #eaf1ff;
+      --amber: #956000;
+      --sand: #fff4db;
+      --red: #ae3b42;
+      --rose: #fff0ee;
+      --nav-width: 250px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; scroll-padding-top: 24px; }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font: 18px/1.85 -apple-system, BlinkMacSystemFont,
+        "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
+    }
+    a { color: var(--blue); overflow-wrap: anywhere; }
+    button { font: inherit; cursor: pointer; touch-action: manipulation; }
+    a:focus-visible, button:focus-visible, summary:focus-visible {
+      outline: 3px solid #dd8c1f;
+      outline-offset: 4px;
+    }
+    aside {
+      position: fixed;
+      inset: 0 auto 0 0;
+      width: var(--nav-width);
+      overflow: auto;
+      background: #102e39;
+      color: white;
+      padding: 30px 23px;
+    }
+    .brand { font-size: 13px; font-weight: 750; letter-spacing: .14em; color: #8dddd0; }
+    .nav-title { font-size: 23px; line-height: 1.6; margin: 25px 0; overflow-wrap: anywhere; }
+    nav a {
+      display: block;
+      color: #d1e0e3;
+      padding: 10px;
+      margin: 5px 0;
+      border-radius: 7px;
+      font-size: 14px;
+      line-height: 1.6;
+      text-decoration: none;
+    }
+    nav a:hover, nav a[aria-current] { background: #204952; color: white; }
+    nav span { color: #8dddd0; font-size: 11px; margin-right: 9px; }
+    main { margin-left: var(--nav-width); padding: 55px 48px 60px; }
+    .wrap { max-width: 980px; margin: auto; }
+    .hero { border-bottom: 1px solid var(--line); padding: 12px 0 35px; }
+    .eyebrow { font-size: 13px; color: var(--teal); letter-spacing: .12em; font-weight: 800; }
+    h1 { font-size: clamp(32px, 4vw, 50px); line-height: 1.4; margin: 15px 0 22px; }
+    h2 { font-size: 28px; line-height: 1.5; margin: 0; }
+    h3 { font-size: 21px; margin: 20px 0 12px; }
+    p { margin: 14px 0; }
+    .lead { font-size: 20px; color: var(--muted); }
+    .meta { font-size: 13px; color: var(--muted); }
+    .section { padding: 48px 0 8px; scroll-margin-top: 24px; }
+    .section-heading { display: flex; align-items: flex-start; gap: 17px; margin-bottom: 21px; }
+    .number { border-top: 3px solid var(--teal); color: var(--teal); font-weight: 800; font-size: 15px; min-width: 33px; line-height: 2.6; }
+    code { font: .88em/1.8 ui-monospace, SFMono-Regular, Consolas, monospace; background: #e9eeee; padding: 2px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+    pre { background: #142f3b; color: #eaf5f6; padding: 24px; border-radius: 12px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 15px; line-height: 1.85; }
+    pre code { font-size: inherit; background: none; padding: 0; color: inherit; }
+    .key { color: #89e0ce; }
+    .value { color: #ffd688; }
+    .comment { color: #a3bdc5; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .grid > * { min-width: 0; }
+    .card { border: 1px solid var(--line); background: white; border-radius: 13px; padding: 24px; margin: 22px 0; }
+    .card-label { font-size: 13px; color: var(--muted); font-weight: 750; letter-spacing: .07em; margin-bottom: 16px; }
+    .note { border-left: 4px solid var(--teal); border-radius: 0 9px 9px 0; padding: 17px 21px; background: var(--mint); font-size: 16px; margin: 22px 0; }
+    .note strong { display: block; color: var(--teal); }
+    .note.warning { border-color: #c28c27; background: var(--sand); }
+    .note.warning strong { color: var(--amber); }
+    .note.error { border-color: var(--red); background: var(--rose); }
+    .note.error strong { color: var(--red); }
+    .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; margin: 22px 0; }
+    table { border-collapse: collapse; width: 100%; background: white; font-size: 15px; line-height: 1.7; }
+    th, td { text-align: left; vertical-align: top; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+    th { background: #eaf0ef; font-size: 13px; }
+    tr:last-child td { border-bottom: 0; }
+    .flow { max-width: 700px; margin: 0 auto; }
+    .flow-box { padding: 18px; text-align: center; border: 1px solid var(--line); border-radius: 10px; background: #f7f9f8; overflow-wrap: anywhere; }
+    .flow-box strong { display: block; }
+    .flow-box.primary { border-color: var(--teal); background: var(--mint); }
+    .flow-box.secondary { border-color: #adc3ea; background: var(--sky); }
+    .flow-arrow { text-align: center; font-size: 14px; color: var(--muted); padding: 12px 0; }
+    .branches { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    .branches > div { min-width: 0; }
+    .flow-caption { font-size: 14px; color: var(--muted); margin-top: 17px; }
+    .steps { padding-left: 25px; }
+    .steps li { margin: 14px 0; padding-left: 7px; }
+    .steps p { font-size: 16px; color: var(--muted); margin: 5px 0; }
+    .example-controls { display: flex; gap: 9px; flex-wrap: wrap; }
+    .example-controls button { font-size: 14px; padding: 8px 15px; background: white; color: var(--ink); border: 1px solid var(--line); border-radius: 7px; }
+    .example-controls button[aria-pressed="true"] { background: var(--teal); color: white; border-color: var(--teal); }
+    [hidden] { display: none !important; }
+    details { background: white; border: 1px solid var(--line); border-radius: 9px; padding: 15px 20px; margin: 18px 0; }
+    summary { cursor: pointer; font-weight: 700; }
+    footer { border-top: 1px solid var(--line); margin-top: 45px; padding-top: 24px; font-size: 14px; color: var(--muted); }
+    footer li { margin: 9px 0; }
+    @media (max-width: 1000px) {
+      :root { --nav-width: 210px; }
+      main { padding: 38px 28px; }
+      aside { padding: 27px 17px; }
+    }
+    @media (max-width: 760px) {
+      body { font-size: 17px; }
+      aside { position: static; width: auto; padding: 17px 20px; }
+      .nav-title { display: none; }
+      nav { display: flex; gap: 6px; overflow-x: auto; padding: 8px 0 3px; }
+      nav a { white-space: nowrap; font-size: 12px; margin: 0; padding: 6px 9px; }
+      main { margin: 0; padding: 25px 20px 45px; }
+      h1 { font-size: 34px; }
+      h2 { font-size: 25px; }
+      .lead { font-size: 18px; }
+      .grid, .branches { grid-template-columns: 1fr; }
+      .card { padding: 18px; }
+      pre { font-size: 13px; padding: 18px; }
+      th, td { padding: 11px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+    }
+    @media print {
+      aside, .example-controls { display: none !important; }
+      main { margin: 0; padding: 0; }
+      body { background: white; font-size: 11pt; }
+      h1 { font-size: 28pt; }
+      h2 { font-size: 20pt; }
+      .section { padding-top: 24px; }
+      .card, pre, .note, .flow-box { break-inside: avoid; }
+      pre { background: #eef2f4; color: #182f3c; }
+      .key { color: var(--teal); }
+      .value { color: var(--amber); }
+      .comment { color: var(--muted); }
+      .table-wrap { overflow: visible; }
+      [data-example-panel][hidden] { display: block !important; }
+      a { color: inherit; }
+    }
+
+    .reading { font-size: 19px; }
+    .reading pre, .reading table { font-size: .9em; }
+    .reading .lead, .reading .note { font-size: 1em; }
+    .reading th { font-size: .95em; }
+    .size-controls { position: sticky; top: 0; background: #f5f7f5; padding: 12px 0; z-index: 2; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    .size-controls label { padding: 6px 12px; background: white; border: 1px solid #9caeb2; border-radius: 7px; cursor: pointer; }
+    main:has(#size-large:checked) .reading { font-size: 22px; }
+    main:has(#size-largest:checked) .reading { font-size: 25px; }
+    .op { color: #d4b3ff; font-weight: bold; }
+    .reading h2 { font-size: 1.5em; }
+    .reading h3 { font-size: 1.1em; }
+    @media print { .size-controls { display: none; } .reading { font-size: 11pt !important; } .op { color: #6437a2; } }
+</style></head><body>
+<aside aria-label="目次"><div class="brand">PDFMOD / FIELD NOTES</div><div class="nav-title">拡張グラフィックス状態</div>
+<nav><a href="#overview">01　何をまとめる辞書か</a><a href="#syntax">02　PDF記述を読む</a><a href="#parameters">03　パラメータと型</a><a href="#font">04　フォント指定の違い</a><a href="#scope">05　保存と復元</a><a href="#recovery">06　警告と回復</a><a href="#implementation">07　実装の使い方</a></nav></aside>
+<main id="top"><div class="wrap">
+<div class="size-controls" role="group" aria-label="文字サイズ"><strong>文字サイズ</strong><label><input id="size-normal" type="radio" name="size" checked> 標準</label><label><input id="size-large" type="radio" name="size"> 大</label><label><input id="size-largest" type="radio" name="size"> 特大</label></div>
+<div class="reading">
+<header class="hero"><div class="eyebrow">RESOURCES / GRAPHICS STATE</div><h1>描画の設定を、<br>ひとつの名前で切り替える。</h1><p class="lead"><code>/GS1 gs</code> は、リソース辞書にある設定を現在の描画状態へ適用します。線の太さも透明度も、以降の描画が使う同じ状態に入ります。</p></header>
+<section class="section" id="overview"><h2>01　何をまとめる辞書か</h2><p><strong>グラフィックス状態</strong>は、これから描く線・文字・塗りの設定です。PDFは各図形に設定をすべて書き直すのではなく、命令を読んだ順に状態を更新します。たとえば <code>3 w</code> を実行すると、以降の線の太さは3になります。</p><p><strong>ExtGState</strong>（拡張グラフィックス状態）は、複数の設定をまとめた辞書です。<code>gs</code> は辞書の全体を別の状態として積む命令ではありません。<strong>辞書に書かれた項目だけ</strong>を、現在の状態へ上書きします。</p><div class="note"><strong>省略は「既定値へ戻す」ではない</strong>現在の線幅が5で、適用する辞書に <code>/ca .4</code> だけがあれば、線幅5を保ったまま塗りの不透明度だけが0.4になります。</div></section>
+<section class="section" id="syntax"><h2>02　PDF記述を読む</h2><p>以下はPDF全体ではなく、リソース辞書・間接オブジェクト・コンテンツストリームの抜粋です。</p>
+<pre><code><span class="comment">% ページのリソース辞書</span>
+<span class="key">/Resources</span> &lt;&lt;
+  <span class="key">/ExtGState</span> &lt;&lt; <span class="key">/GS1</span> <span class="value">10 0 R</span> &gt;&gt;
+&gt;&gt;
+
+<span class="value">10 0</span> obj
+&lt;&lt; <span class="key">/Type /ExtGState</span>
+   <span class="key">/LW</span> <span class="value">3</span> <span class="key">/CA</span> <span class="value">0.8</span> <span class="key">/ca</span> <span class="value">0.4</span>
+   <span class="key">/BM /Multiply</span>
+&gt;&gt;
+endobj
+
+<span class="comment">% コンテンツストリーム</span>
+<span class="key">/GS1</span> <span class="op">gs</span>
+<span class="value">20 20 100 60</span> <span class="op">re</span>
+<span class="op">B</span></code></pre>
+<p><code>/GS1</code> は現在のリソース内だけで意味を持つ名前です。<code>10 0 R</code> はオブジェクト番号10・世代番号0への参照です。<code>gs</code> はこの名前を取り出し、<code>/Resources → /ExtGState → /GS1</code> の順に辞書へ到達します。<code>re</code> は矩形のパスを作り、<code>B</code> は塗りと輪郭の描画を指示します。</p><p><code>/CA</code> は輪郭の不透明度、<code>/ca</code> は塗りの不透明度です。大文字・小文字は区別されます。不透明度0は透明、1は不透明です。</p></section>
+<section class="section" id="parameters"><h2>03　パラメータと型</h2><div class="table-wrap"><table><thead><tr><th>キー</th><th>PDFの値</th><th>現在の状態での役割</th></tr></thead><tbody>
+<tr><td><code>/LW</code></td><td>数値</td><td>線幅。<code>w</code> と同じ値を更新</td></tr><tr><td><code>/LC</code></td><td>整数 0 / 1 / 2</td><td>線端。順に平端・丸端・突出した四角端</td></tr><tr><td><code>/LJ</code></td><td>整数 0 / 1 / 2</td><td>線接合。順にマイター・丸・面取り</td></tr><tr><td><code>/ML</code></td><td>数値</td><td>マイター限界。<code>M</code> と同じ値を更新</td></tr><tr><td><code>/D</code></td><td><code>[[2 3] 1]</code></td><td>描画長2・空白長3を繰り返し、開始位置を1ずらす</td></tr><tr><td><code>/CA /ca</code></td><td>0〜1</td><td>輪郭／塗りの不透明度</td></tr><tr><td><code>/BM</code></td><td>名前 または 名前の配列</td><td>背景と描画色を混ぜる方式</td></tr><tr><td><code>/SMask</code></td><td>辞書 または <code>/None</code></td><td>位置ごとの透明度を与えるマスク、または解除</td></tr><tr><td><code>/Font</code></td><td><code>[font_ref size]</code></td><td>フォント辞書とサイズ</td></tr></tbody></table></div>
+<p>ブレンドモードは、たとえば <code>/Normal</code>（通常）、<code>/Multiply</code>（乗算）、<code>/Screen</code>（スクリーン）です。配列 <code>[/Future /Multiply /Screen]</code> は優先順位を表し、最初に対応できるモードを使います。この実装では <code>Multiply</code> が選ばれます。対応できる名前のない配列は <code>Normal</code> になります。</p><div class="note warning"><strong>状態の保持と、実際の描画は別</strong>この実装は透明度・ブレンドモード・ソフトマスクを状態として保持します。ピクセルの合成、透明グループの描画、ソフトマスク辞書の内部検証は実装範囲外です。線幅・マイター・破線の値域検証も既存の専用オペレータと同様に今後の範囲です。</div></section>
+<section class="section" id="font"><h2>04　フォント指定の違い</h2><div class="grid"><div class="card"><h3>命令で指定する場合</h3><pre><code><span class="key">/F1</span> <span class="value">12</span> <span class="op">Tf</span></code></pre><p><code>F1</code> はリソースの <code>/Font</code> 内を引くための名前です。テキスト状態は名前指定を保持します。</p></div><div class="card"><h3>拡張状態で指定する場合</h3><pre><code><span class="key">/Font</span> [<span class="value">6 0 R 12</span>]</code></pre><p>配列の先頭はフォント辞書への参照です。<code>/F1</code> ではありません。参照を解決して、辞書とサイズ12を保持します。</p></div></div>
+<p>TypeScriptでは、名前指定と辞書指定を判別可能なユニオンとして表します。<code>type</code> を見れば、次に読める値が <code>name</code> か <code>dictionary</code> かが決まります。</p><pre><code><span class="op">type</span> TextFont =
+  | { <span class="key">readonly type</span>: <span class="value">"name"</span>; <span class="key">readonly name</span>: string }
+  | { <span class="key">readonly type</span>: <span class="value">"dictionary"</span>; <span class="key">readonly dictionary</span>: PdfDictionary };</code></pre><p>どちらの指定も、同じ <code>TextState.withFont</code> を通ります。<code>gs</code> の後に <code>Tf</code> が来れば名前指定へ置き換わり、以前の辞書と新しい名前が併存することはありません。文字間隔や行送りなどは保持します。既存の <code>fontName</code> は <code>font</code> から求める読み取り用アクセサで、辞書指定では <code>None</code> を返します。</p></section>
+<section class="section" id="scope"><h2>05　保存と復元</h2><p><code>q</code> は現在のグラフィックス状態を保存し、<code>Q</code> は直前に保存した状態を復元します。拡張状態も同じ状態に入るため、専用の「拡張状態スタック」は必要ありません。</p><pre><code><span class="value">5</span> <span class="op">w</span>
+<span class="op">q</span>
+  <span class="key">/GS1</span> <span class="op">gs</span>   <span class="comment">% LW=3, ca=0.4</span>
+  <span class="op">q</span>
+    <span class="value">9</span> <span class="op">w</span>
+  <span class="op">Q</span>
+<span class="op">Q</span></code></pre><div class="table-wrap"><table><thead><tr><th>実行したところ</th><th>現在の線幅</th><th>塗りの不透明度</th></tr></thead><tbody><tr><td>最初の <code>5 w</code></td><td>5</td><td>1</td></tr><tr><td><code>/GS1 gs</code></td><td>3</td><td>0.4</td></tr><tr><td><code>9 w</code></td><td>9</td><td>0.4</td></tr><tr><td>内側の <code>Q</code></td><td>3</td><td>0.4</td></tr><tr><td>外側の <code>Q</code></td><td>5</td><td>1</td></tr></tbody></table></div></section>
+<section class="section" id="recovery"><h2>06　警告と回復</h2><p>以下はpdfmodの回復方針です。仕様上不正な値を推奨するものではありません。</p><div class="table-wrap"><table><thead><tr><th>入力</th><th>結果</th></tr></thead><tbody><tr><td><code>&lt;&lt; /LW 3 /Unknown true /ca .4 &gt;&gt;</code></td><td>未知キーを警告し、線幅3・不透明度0.4を適用</td></tr><tr><td><code>&lt;&lt; /CA 2 /LW 3 &gt;&gt;</code></td><td>範囲外の不透明度だけを警告して無視。以前の不透明度を保持し、線幅3を適用</td></tr><tr><td><code>/Missing gs</code></td><td>名前の不在を警告。状態を保持して次の命令へ進む</td></tr><tr><td>選択した辞書の参照先が構文エラー</td><td>原因のエラーをそのまま返す。未解決警告とは区別</td></tr><tr><td>未使用の名前の参照先が構文エラー</td><td>名前ごとにエラーを保持。別の正常な名前の実行は可能</td></tr></tbody></table></div><p>警告には <code>gs</code> 命令のバイト位置が付きます。同じ辞書を再度適用した場合は、その命令位置で再び警告します。後続の専用オペレータで警告が重複することはありません。</p></section>
+<section class="section" id="implementation"><h2>07　実装の使い方</h2><p>間接参照の解決は非同期、コンテンツストリームの実行は同期です。最初に現在のスコープの拡張状態を解決し、既定のレジストリを組み立てます。</p><pre><code><span class="op">const</span> prepared = <span class="op">await</span> ExtGStateResources.fromResources(
+  resources, resolveRef,
+);
+<span class="op">if</span> (!prepared.ok) {
+  <span class="op">return</span> prepared;
+}
+
+<span class="op">const</span> registry = OperatorRegistry.createDefault(prepared.value);
+<span class="op">if</span> (!registry.ok) {
+  <span class="op">return</span> registry;
+}
+
+<span class="op">return</span> ContentStreamInterpreter.execute({
+  data: contentBytes,
+  registry: registry.value,
+});</code></pre><p><code>Result</code> は成功の値と失敗の理由を分ける型です。<code>ok</code> を確認した後でだけ、成功値 <code>value</code> を使えます。準備時はカテゴリ全体を解決しますが、各名前の参照エラーはその名前を使うまで実行エラーになりません。ページやフォームのスコープが変わるときは、そのスコープ用に準備し直してください。</p><p><code>registerGraphicsStateOperators(registry, prepared.value)</code> で、グラフィックス関係だけを登録する方法もあります。<code>/OP</code>、<code>/RI</code> など今回扱わない辞書キーは未対応警告になります。<code>/Type</code> は描画パラメータではないため読み飛ばします。</p></section>
+<footer>このページの例は説明用です。PDF全体の読み込みや描画処理を実行するデモではありません。</footer>
+</div></div></main>
+</body></html>
