@@ -3,6 +3,7 @@ import { OperatorRegistry } from "../../../../operator-registry/index";
 import { registerGraphicsStateOperators } from "../index";
 
 test.each([
+  ["gs"],
   ["cm"],
   ["w"],
   ["J"],

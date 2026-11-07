@@ -48,7 +48,11 @@ type InterpreterDoneResult = {
 };
 
 type InterpreterStep =
-  | { readonly type: "continue"; readonly context: OperatorHandlerContext }
+  | {
+      readonly type: "continue";
+      readonly context: OperatorHandlerContext;
+      readonly warnings?: readonly PdfWarning[];
+    }
   | { readonly type: "done"; readonly result: InterpreterDoneResult };
 
 /**
@@ -89,7 +93,6 @@ export const ContentStreamInterpreter = {
         tokenizer,
         registry,
         context,
-        warnings,
       });
       if (!step.ok) {
         return err(step.error);
@@ -100,6 +103,10 @@ export const ContentStreamInterpreter = {
           context: step.value.result.context,
           warnings,
         });
+      }
+
+      for (const warning of step.value.warnings ?? []) {
+        warnings.push(warning);
       }
 
       context = step.value.context;
@@ -117,7 +124,6 @@ export const ContentStreamInterpreter = {
  * @param options.tokenizer - 配列・辞書リテラルの読み取りに使う tokenizer（reader へ委譲）
  * @param options.registry - operator handler 登録簿
  * @param options.context - 現在 context
- * @param options.warnings - 警告蓄積バッファ
  * @returns 次 step、または処理エラー
  */
 function executeToken(options: {
@@ -125,7 +131,6 @@ function executeToken(options: {
   readonly tokenizer: ContentStreamTokenizer;
   readonly registry: OperatorRegistry;
   readonly context: OperatorHandlerContext;
-  readonly warnings: PdfWarning[];
 }): Result<InterpreterStep, PdfError> {
   if (options.token.type === TokenType.EOF) {
     const unterminated = MarkedContentStack.pop(
@@ -150,7 +155,6 @@ function executeToken(options: {
       token: options.token,
       registry: options.registry,
       context: options.context,
-      warnings: options.warnings,
     });
   }
 
@@ -195,27 +199,30 @@ function executeToken(options: {
  * 登録済みoperator handlerを呼び出す。未登録operatorはUNKNOWN_OPERATOR warningを
  * emitし、operand stackをclearして継続する。
  *
- * @param options - operator token、registry、現在context、warnings バッファ
+ * @param options - operator token、registry、現在context
  * @returns 次step、またはhandlerエラー
  */
 function dispatchOperator(options: {
   readonly token: Operator;
   readonly registry: OperatorRegistry;
   readonly context: OperatorHandlerContext;
-  readonly warnings: PdfWarning[];
 }): Result<InterpreterStep, PdfError> {
   const handler = OperatorRegistry.lookup(
     options.registry,
     options.token.value,
   );
   if (!handler.some) {
-    options.warnings.push({
+    const warning: PdfWarning = {
       code: "UNKNOWN_OPERATOR",
       message: `Unknown operator: ${options.token.value}`,
       offset: options.token.offset,
-    });
+    };
     OperandStack.clear(options.context.operandStack);
-    return ok({ type: "continue", context: options.context });
+    return ok({
+      type: "continue",
+      context: options.context,
+      warnings: [warning],
+    });
   }
 
   const handled = handler.value(options.context);
@@ -223,7 +230,15 @@ function dispatchOperator(options: {
     return err(handled.error);
   }
 
-  return ok({ type: "continue", context: handled.value });
+  const { warnings = [], ...context } = handled.value;
+  return ok({
+    type: "continue",
+    context,
+    warnings: warnings.map((warning) => ({
+      ...warning,
+      offset: options.token.offset,
+    })),
+  });
 }
 
 /**

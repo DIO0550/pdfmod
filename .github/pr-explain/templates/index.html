@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-OoaqBkFOU+8JOgbP/dVQ4mrRYTMU75iS/xx1Zz6Fchk='; style-src 'unsafe-inline'; font-src 'none'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-AeWd3vTxXm3Rub6rtWodh+e4emc9Mg7BG4E3ciWpZPM='; style-src 'unsafe-inline'; font-src 'none'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>PR 解説</title>
 <style>
@@ -729,6 +729,7 @@ button.change-item:hover { background: var(--track); }
 .primer-legend > span { display: flex; align-items: center; gap: 6px; }
 .topic-toc-divider { margin: 10px 20px 4px; font-size: calc(10.5px * var(--text-scale)); font-weight: 600; letter-spacing: .06em; color: var(--ink-3); }
 .primer-declaration { margin: 0; padding: 12px 16px; border-radius: 10px; background: var(--sunken); font-family: var(--mono); font-size: calc(13px * var(--text-scale)); line-height: 1.7; overflow-x: auto; white-space: pre; }
+.primer-declaration .tok-key { color: var(--tok-var); }
 .primer-parameters { overflow-x: auto; }
 .primer-parameters table { width: 100%; border-collapse: collapse; font-size: calc(13px * var(--text-scale)); }
 .primer-parameters th { text-align: left; font-size: calc(11px * var(--text-scale)); font-weight: 600; color: var(--ink-3); letter-spacing: .04em; padding: 6px 10px; border-bottom: 1px solid var(--line-strong); }
@@ -794,7 +795,7 @@ button.change-item:hover { background: var(--track); }
 
   /**
    * コードの色分け。キーワード・文字列・コメント・数値・関数呼び出しに加え、JS / TS / Python / Swift は型と変数、YAML はキー、シェルは変数、
-   * Swift は属性・マクロ・条件付きコンパイルの @ と # を含む名前、
+   * Swift は属性・マクロ・条件付きコンパイルの @ と # を含む名前、PDF は名前・数値・構文・命令・文字列・コメント、
    * HTML はタグと属性名、CSS は at ルール・プロパティ・カスタムプロパティに色を付ける簡易なもの。HTML の script / style 要素と、
    * シェルの JS・TS・PY・JSON のヒアドキュメントの中は、その言語で読む。HTML と `.tsx` / `.jsx` の JSX は、タグ(JSX のフラグメントを
    * 含む)をキーワード、属性名を値の有無によらずキー、属性の値の文字列を文字列にする。JSX の本文は色なしで、`{…}` の中は JS / TS で
@@ -810,6 +811,7 @@ button.change-item:hover { background: var(--track); }
     const JsGrammar = { comment: "//", block: ["/*", "*/"], strings: ['"', "'", "`"], keywords: words(JsWords), identifier: JsIdentifier, identifiers: true, objectKeys: true };
     const TsGrammar = { ...JsGrammar, keywords: words(`${JsWords} ${TsWords}`) };
     const Grammars = {
+      pdf: { pdf: true },
       python: { comment: "#", hashAnywhere: true, strings: ['"""', "'''", '"', "'"], keywords: words("def class return if elif else for while in not and or is None True False import from as with try except finally raise lambda yield pass continue break assert del async await global nonlocal"), identifiers: true, prefixes: /[rRbBfFuU]{1,2}(?=["'])/y, types: words("dict list tuple set frozenset str int float bool bytes object") },
       js: JsGrammar,
       jsx: { ...JsGrammar, jsx: true },
@@ -822,7 +824,7 @@ button.change-item:hover { background: var(--track); }
       html: { block: ["<!--", "-->"], strings: ['"', "'"], tags: true, keywords: words("") },
       css: { block: ["/*", "*/"], strings: ['"', "'"], css: true, keywords: words("") },
     };
-    const LanguageByExtension = { py: "python", js: "js", mjs: "js", jsx: "jsx", ts: "ts", tsx: "tsx", swift: "swift", rs: "rust", json: "js", sh: "shell", bash: "shell", yml: "yaml", yaml: "yaml", html: "html", css: "css" };
+    const LanguageByExtension = { pdf: "pdf", py: "python", js: "js", mjs: "js", jsx: "jsx", ts: "ts", tsx: "tsx", swift: "swift", rs: "rust", json: "js", sh: "shell", bash: "shell", yml: "yaml", yaml: "yaml", html: "html", css: "css" };
     /** 中を別の言語で読む埋め込み。HTML の要素名(小文字)とシェルのヒアドキュメントの区切りの語から、中の言語を引く。 */
     const Embeddings = Object.freeze({ elements: Object.freeze({ script: "js", style: "css" }), heredocs: Object.freeze({ JS: "js", TS: "ts", PY: "python", JSON: "js" }) });
     const NumberLiteral = /\d+(?:\.\d+)?/y;
@@ -874,7 +876,7 @@ button.change-item:hover { background: var(--track); }
      */
     const ExpressionFollows = new Set(["", "(", "[", "{", ",", "=", ">", "?", ":", "&", "|"]);
 
-    /** 字句。`opens` は閉じずに行が終わった文字列・コメントの閉じ記号で、次の行の頭から続ける。 */
+    /** 字句。`opens` は未完の文字列・コメントの閉じ記号（PDFのリテラル文字列は括弧の深さ）で、次の行へ持ち越す。 */
     const Token = (cls, value, opens = null) => ({ cls, value, opens });
 
     /**
@@ -1114,8 +1116,46 @@ button.change-item:hover { background: var(--track); }
       return wordAt(cursor, grammar);
     };
 
+    /** PDF のリテラル文字列。括弧の入れ子とエスケープを読み、未完なら深さを次の行へ渡す。 */
+    const pdfStringAt = (cursor, depth = 0) => {
+      let end = cursor.at;
+      while (end < cursor.text.length) {
+        const char = cursor.text[end];
+        end += 1;
+        if (char === "\\") {
+          end = Math.min(end + 1, cursor.text.length);
+          continue;
+        }
+        if (char === "(") depth += 1;
+        if (char === ")") depth -= 1;
+        if (depth === 0) return Token("tok-str", cursor.text.slice(cursor.at, end));
+      }
+      return Token("tok-str", cursor.text.slice(cursor.at), depth);
+    };
+
+    /** PDF 記述例の字句。構文の妥当性やストリームのバイナリデータは検証しない。 */
+    const pdfTokenAt = (cursor) => {
+      const rest = restOfLine(cursor);
+      if (rest.startsWith("%")) return Token("tok-com", rest);
+      if (rest.startsWith("(")) return pdfStringAt(cursor);
+      const name = matchAt(/\/[^\s\x00()[\]<>\/%]*/y, cursor);
+      if (name) return Token("tok-key", name);
+      const delimiter = matchAt(/<<|>>|[\[\]]/y, cursor);
+      if (delimiter) return Token("tok-kw", delimiter);
+      if (rest.startsWith("<")) {
+        const end = rest.indexOf(">");
+        return end < 0 ? Token("tok-str", rest, ">") : Token("tok-str", rest.slice(0, end + 1));
+      }
+      const word = matchAt(/[^\s\x00()[\]<>\/%]+/y, cursor);
+      if (!word) return null;
+      if (/^[+-]?(?:\d+\.?\d*|\.\d+)$/.test(word)) return Token("tok-num", word);
+      const keyword = /^(?:obj|endobj|stream|endstream|xref|trailer|startxref|R|true|false|null)$/.test(word);
+      return Token(keyword ? "tok-kw" : "tok-fn", word);
+    };
+
     /** 持ち越しの続き(前の行で閉じなかった文字列・コメント)を、閉じ記号まで 1 字句にする。 */
     const continuationOf = (cursor, open) => {
+      if (typeof open.close === "number") return pdfStringAt(cursor, open.close);
       const close = cursor.text.indexOf(open.close, cursor.at);
       if (close < 0) return Token(open.cls, cursor.text.slice(cursor.at), open.close);
       return Token(open.cls, cursor.text.slice(cursor.at, close + open.close.length));
@@ -1175,6 +1215,7 @@ button.change-item:hover { background: var(--track); }
 
     /** 文法と段ごとの、字句を読む関数。 */
     const tokenReaderOf = (grammar, bracket) => {
+      if (grammar.pdf === true) return pdfTokenAt;
       if (grammar.tags === true) return htmlTokenAt;
       const readsJsx = grammar.jsx === true && isTagLevel(bracket);
       return readsJsx ? jsxTokenAt : tokenAt;
@@ -1906,7 +1947,7 @@ button.change-item:hover { background: var(--track); }
     });
 
     /** 段を描く形にそろえる。知らない kind の段は外す。 */
-    const passagesOf = (passage, resolve) => {
+    const passagesOf = (passage, resolve, primerKind) => {
       if (Object.hasOwn(Vocabulary.remarkKinds, passage.kind)) {
         const remark = Vocabulary.remarkKinds[passage.kind];
         return [{ kind: "remark", remark: passage.kind, label: remark.label, pieces: resolve(passage.text) }];
@@ -1915,7 +1956,7 @@ button.change-item:hover { background: var(--track); }
         case "text":
           return [{ kind: "text", pieces: resolve(passage.text) }];
         case "declaration":
-          return [{ kind: "declaration", code: passage.code }];
+          return [{ kind: "declaration", code: passage.code, lines: primerKind === PrimerKinds.Pdf ? ExcerptRows.create({ path: "example.pdf", text: passage.code, start: 1 }) : null }];
         case "parameters":
           return [{ kind: "parameters", parameters: listOf(passage.parameters).map((parameter) => ({ name: parameter.name, type: parameter.type, pieces: resolve(parameter.text), note: parameter.note ?? null })) }];
         case "excerpt":
@@ -1945,7 +1986,7 @@ button.change-item:hover { background: var(--track); }
         category: primer.category,
         label: primer.label,
         gist: resolve(marked.gist),
-        passages: listOf(marked.passages).flatMap((passage) => passagesOf(passage, resolve)),
+        passages: listOf(marked.passages).flatMap((passage) => passagesOf(passage, resolve, primer.kind)),
         occurrences: listOf(primer.occurrences).map((occurrence) => occurrenceOf(occurrence, reachOf)),
         seeAlso: valuesIn(positionAt, primer.seeAlso),
         terms: valuesIn(termAt, TermMarks.termIdsOf(marked)),
@@ -5974,7 +6015,7 @@ button.change-item:hover { background: var(--track); }
         case "text":
           return [marked("p", { class: "topic-text" }, passage.pieces)];
         case "declaration":
-          return [el("pre", { class: "primer-declaration", text: passage.code })];
+          return [el("pre", { class: "primer-declaration" }, passage.lines === null ? [passage.code] : passage.lines.flatMap((line, index) => [...(index === 0 ? [] : ["\n"]), codeTextOf(line.tokens)]))];
         case "parameters":
           return [el("div", { class: "primer-parameters" }, [el("table", {}, [
             el("thead", {}, [el("tr", {}, ["引数", "型", "何を表すか"].map((text) => el("th", { text })))]),
