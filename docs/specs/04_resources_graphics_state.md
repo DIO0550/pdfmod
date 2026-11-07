@@ -207,6 +207,31 @@ Q                     % グラフィックスステート復元
 | 特殊 | `/Separation` | 特色（スポットカラー） |
 | 特殊 | `/DeviceN` | 複数の特色を組み合わせた色空間 |
 
+#### 成分数とコンテンツストリームでの選択
+
+| 色空間 | 数値成分数 |
+|:-------|:-----------|
+| DeviceGray / CalGray / Separation / Indexed | 1 |
+| DeviceRGB / CalRGB / Lab | 3 |
+| DeviceCMYK | 4 |
+| ICCBased | プロファイルストリームの `/N`（1・3・4） |
+| DeviceN | 色材名の配列の長さ |
+| Pattern | 着色パターンは0、非着色パターンは基底色空間の成分数。パターン名は別に必要 |
+
+- `cs` は塗り、`CS` は輪郭の色空間を選択し、その色空間の初期色に切り替える。デバイス色は黒、Separation / DeviceN は全成分1、ほかの数値成分は0を初期値とする。Labの成分範囲へのクリップはこの解決層では扱わない。
+- `sc` / `SC` / `scn` / `SCN` は現在の色空間に必要な数の数値成分を受け取る。Pattern は `scn` / `SCN` を使い、数値成分の後ろにパターン名を指定する。
+- `Indexed` の基底がRGBでも、オペランドはRGB値3個ではなくパレットの添字1個。基底色空間の定義は別途解決して保持する。
+
+#### pdfmod の準備・回復方針
+
+- 同期インタプリタの実行前に `ColorSpaceResources.fromResources(resources, resolveRef)` で現在のスコープを解決し、`OperatorRegistry.createDefault(extGStates, colorSpaces)` または `registerColorOperators(registry, colorSpaces)` へ渡す。
+- `/Resources` 自体の継承・間接参照解決は既存のページ属性解決を使う。色空間の準備では `/ColorSpace` カテゴリ・各定義・配列の族名・ICCBasedプロファイルと `/N`・DeviceN名前配列と各名前・Indexed / Pattern基底の間接参照を解決する。CIE色空間のパラメータ辞書も解決する。
+- カテゴリの参照解決エラーは準備時に返す。個別定義のエラーは保持し、その名前を `cs` / `CS` で選択するときに原因をそのまま返す。同名でも別のページ・フォームのスコープと共有しない。
+- 未知の族は `COLOR_SPACE_UNSUPPORTED`、成分数を確定するための値の不正・欠落や循環は `COLOR_SPACE_INVALID`、不在の名前は `COLOR_SPACE_NOT_FOUND` を選択した命令の位置で報告する。再帰は32段を上限とし、上限でも不明な定義として回復する。
+- 不明な色空間は以前の成分数を引き継がず、成分数不明として保持する。その後の色命令は数値型を検証して保持するが、個数の一致は検証しない。Indexed は基底が不明でも添字は1成分である。
+- 既知の成分数の過不足は `OPERATOR_OPERAND_COUNT_MISMATCH`、型の不一致は `OPERATOR_OPERAND_TYPE_MISMATCH`。Pattern に `sc` / `SC` を使う場合は `OPERATOR_ILLEGAL_STATE` を返す。
+- 色空間と色値は `q` / `Q` の保存・復元対象。ここで扱うのは族・成分数・色値の保持までであり、ICCプロファイル変換、CIEパラメータの数値検証、パレット展開、特色の関数評価、パターンの取得・描画は後段の処理とする。
+
 ### 3.5 /Pattern（パターン辞書）
 
 タイリングパターンやシェーディングパターンを定義する。
