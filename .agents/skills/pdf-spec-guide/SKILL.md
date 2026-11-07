@@ -45,6 +45,7 @@ cp .agents/skills/pdf-spec-guide/assets/guide-template.html docs/guides/new-topi
 - 仕様に合う正常例・省略や境界の例・エラー例を示す。操作例が理解に役立つ場合は入力を切り替えられるようにし、説明用デモと実パーサの実行を区別する。
 - 操作例を複製するときはパネルのIDとボタンの `aria-controls` を一意にする。不要なら操作領域ごと削除する。
 - APIとの対応は理解を助ける範囲で載せ、対応済みと未対応の範囲を区別する。既存解説では説明・具体例・対応範囲を実装と一緒に更新する。
+- PDF記述例は名前（`/Resources` など）・数値・参照とオブジェクト構文・命令・文字列・コメントを構文ごとに色分けする。背景色だけでは色分け済みとしない。`docs/guides/` では静的な `span` とCSSを使い、色付け用のJavaScriptやCDNを追加しない。PR解説のPDF例は `kind: "pdf"` の節の `declaration` に置き、固定テンプレートの色分けを確認する。
 - 見出し・強調・色分け・補足を使う。文字は読みやすい大きさにし、図のラベルと矢印を重ねない。
 - HTMLは単体で開けるようにCSS・JavaScript・図を内包し、外部フォント・CDNへの依存を追加しない。
 - 検索結果や外部ページのHTML・JavaScript・CSS・SVGをコピーして埋め込まない。必要な説明と図は検証した事実から作り直す。引用や入力値はエスケープし、動的な文字列表示には `textContent` を使う。未信頼データを `innerHTML` / `insertAdjacentHTML` / `document.write` に渡さない。
@@ -57,7 +58,7 @@ cp .agents/skills/pdf-spec-guide/assets/guide-template.html docs/guides/new-topi
 - **ブラウザで開く前に**、完成HTMLと変更差分を読み、全JavaScriptの目的・入力元・出力先を確認する。検索語の不一致だけで安全と判断しない。
 - 別の読み取り専用サブエージェントにもHTMLをデータとして監査させる。`script`（外部src/インライン）、`on*` 属性、`javascript:` URL、iframe/object/embed、SVGのスクリプト・イベント、CSSの `url()` / `@import`、meta refresh、外部送信先を確認する。JSでは `fetch` / XHR / WebSocket / sendBeacon、`eval` / Function / 動的import、文字列からのコード実行、HTMLへの未信頼入力を確認する。監査役にはHTMLの実行や編集をさせない。
 - 不審・用途不明な処理があれば除去または安全な実装へ置き換えて再確認する。監査役を使えない場合は親が全コードを確認し、独立監査は未実施と明示する。静的確認で安全性を完全保証したと表現しない。
-- リンク、IDの重複、目次、JavaScript構文、操作例の結果を確認する。
+- リンク、IDの重複、目次、JavaScript構文、操作例の結果を確認する。PDF例の名前・小数・命令が別の色で表示され、コピーした本文が元の記述と一致することも確認する。
 - ブラウザでPCと小画面の表示を確認する。文字・矢印の重なりやはみ出し、キーボード操作、印刷表示も確認する。
 - JavaScript無効時と印刷時にも具体例を読める状態を保つ。
 - ブラウザなどが使えない場合は、確認できた範囲と未確認事項を作業報告に分けて記載する。静的確認を実画面の確認と呼ばない。
