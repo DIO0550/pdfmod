@@ -80,3 +80,21 @@ test("ストリームは名前・配列・正の整数として扱わない", as
   expect(PdfObject.asNameOrArray(parsed.value.body)).toEqual(none);
   expect(PdfObject.asPositiveInteger(parsed.value.body)).toEqual(none);
 });
+
+test.each([
+  { type: "integer", value: 3 },
+  { type: "real", value: 0.5 },
+] as const)("有限な $type を数値へ変換する", (object) => {
+  expect(PdfObject.asFiniteNumber(object)).toEqual({
+    some: true,
+    value: object.value,
+  });
+});
+
+test.each([
+  { type: "real", value: Number.NaN },
+  { type: "real", value: Number.POSITIVE_INFINITY },
+  { type: "name", value: "3" },
+] as const)("非有限値・数値以外は有限な数値として受理しない: $type $value", (object) => {
+  expect(PdfObject.asFiniteNumber(object)).toEqual({ some: false });
+});

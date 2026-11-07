@@ -10,7 +10,8 @@ const ALL_BUILTIN_OPERATORS = [
   "rg",
   "K",
   "k",
-  // Graphics State (10)
+  // Graphics State (11)
+  "gs",
   "cm",
   "w",
   "J",

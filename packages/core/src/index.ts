@@ -1,3 +1,15 @@
+export {
+  ExtGState,
+  type ExtGStateParameter,
+  ExtGStateResources,
+} from "./content-stream/ext-gstate/index";
+export { Alpha } from "./content-stream/graphics-state/alpha/index";
+export {
+  BlendMode,
+  BlendModes,
+} from "./content-stream/graphics-state/blend-mode/index";
+export { SoftMask } from "./content-stream/graphics-state/soft-mask/index";
+export { TextFont } from "./content-stream/graphics-state/text-font/index";
 /**
  * `@pdfmod/core` — PDF処理エンジン。
  * ISO 32000-1:2008 (PDF 1.7) およびISO 32000-2:2020 (PDF 2.0) 準拠のPDF字句解析・構造解析を提供する。

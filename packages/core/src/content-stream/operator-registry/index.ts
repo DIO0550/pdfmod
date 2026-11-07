@@ -1,8 +1,10 @@
 import type { PdfError } from "../../pdf/errors/index";
+import type { PdfWarning } from "../../pdf/errors/warning/index";
 import type { Option } from "../../utils/option/index";
 import { none, some } from "../../utils/option/index";
 import type { Result } from "../../utils/result/index";
 import { err, flatMap, ok } from "../../utils/result/index";
+import { ExtGStateResources } from "../ext-gstate/index";
 import type { GraphicsStateStack } from "../graphics-state/stack";
 import type { MarkedContentStack } from "../marked-content/stack";
 import type { OperandStack } from "../operand-stack/index";
@@ -14,6 +16,7 @@ import { rgHandler } from "../operators/color/rgb/fill";
 import { RGHandler } from "../operators/color/rgb/stroke";
 import { cmHandler } from "../operators/graphics-state/cm/index";
 import { dHandler } from "../operators/graphics-state/d/index";
+import { GsOperator } from "../operators/graphics-state/gs/index";
 import { flatnessHandler } from "../operators/graphics-state/i/index";
 import { lineCapHandler } from "../operators/graphics-state/line-cap-handler/index";
 import { lineJoinHandler } from "../operators/graphics-state/line-join-handler/index";
@@ -81,7 +84,10 @@ export type OperatorHandlerContext = {
  */
 export type OperatorHandler = (
   context: OperatorHandlerContext,
-) => Result<OperatorHandlerContext, PdfError>;
+) => Result<
+  OperatorHandlerContext & { readonly warnings?: readonly PdfWarning[] },
+  PdfError
+>;
 
 /**
  * operator 名から実行ハンドラを引く registry。
@@ -219,13 +225,20 @@ export const OperatorRegistry = {
   /**
    * 全ビルトインオペレータが登録されたデフォルトの `OperatorRegistry` を生成する。
    *
+   * @param extGStates - 実行対象スコープの解決済み拡張状態
    * @returns 全ビルトインオペレータ登録済みの OperatorRegistry、または重複登録時の PdfError
    */
-  createDefault(): Result<OperatorRegistry, PdfError> {
+  createDefault(
+    extGStates: ExtGStateResources = ExtGStateResources.empty(),
+  ): Result<OperatorRegistry, PdfError> {
     return BUILTIN_OPERATORS.reduce<Result<OperatorRegistry, PdfError>>(
       (acc, [name, handler]) =>
         flatMap(acc, (r) => OperatorRegistry.register(r, name, handler)),
-      ok(OperatorRegistry.create()),
+      OperatorRegistry.register(
+        OperatorRegistry.create(),
+        "gs",
+        GsOperator.create(extGStates),
+      ),
     );
   },
 } as const;

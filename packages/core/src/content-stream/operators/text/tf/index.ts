@@ -1,4 +1,3 @@
-import { some } from "../../../../utils/option/index";
 import { err, ok } from "../../../../utils/result/index";
 import {
   GraphicsState,
@@ -52,9 +51,9 @@ export const tfHandler: OperatorHandler = (context: OperatorHandlerContext) => {
   const fontName = fontResult.value;
 
   const current = GraphicsStateStack.current(context.graphicsStateStack);
-  const nextTextState = TextState.update(current.textState, {
-    fontName: some(fontName),
-    fontSize: sizeValue,
+  const nextTextState = TextState.withFont(current.textState, {
+    font: { type: "name", name: fontName },
+    size: sizeValue,
   });
   const next = GraphicsState.update(current, { textState: nextTextState });
   const graphicsStateStack = GraphicsStateStack.replaceCurrent(

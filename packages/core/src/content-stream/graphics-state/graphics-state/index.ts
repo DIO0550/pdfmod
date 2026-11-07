@@ -1,5 +1,7 @@
 import type { Brand } from "../../../utils/brand/index";
 import { none, type Option } from "../../../utils/option/index";
+import { Alpha } from "../alpha/index";
+import { type BlendMode, BlendModes } from "../blend-mode/index";
 import type { ClippingRule } from "../clipping-rule";
 import { Color } from "../color";
 import { ColorSpace } from "../color-space";
@@ -9,12 +11,17 @@ import { LineCap } from "../line-cap";
 import { LineJoin } from "../line-join";
 import { Matrix } from "../matrix";
 import { RenderingIntent } from "../rendering-intent";
+import { SoftMask } from "../soft-mask/index";
 import { TextObject } from "../text-object";
 import { TextState } from "../text-state";
 
 declare const GraphicsStateBrand: unique symbol;
 
 type GraphicsStateFields = {
+  readonly strokeAlpha: Alpha;
+  readonly fillAlpha: Alpha;
+  readonly blendMode: BlendMode;
+  readonly softMask: SoftMask;
   readonly ctm: Matrix;
   readonly lineWidth: number;
   readonly lineCap: LineCap;
@@ -68,6 +75,10 @@ export const GraphicsState = {
    */
   create(): GraphicsState {
     return {
+      strokeAlpha: Alpha.opaque(),
+      fillAlpha: Alpha.opaque(),
+      blendMode: BlendModes.Normal,
+      softMask: SoftMask.none(),
       ctm: Matrix.identity(),
       lineWidth: 1.0,
       lineCap: LineCap.create(0),
@@ -97,6 +108,10 @@ export const GraphicsState = {
    */
   update(state: GraphicsState, partial: GraphicsStatePartial): GraphicsState {
     return {
+      strokeAlpha: partial.strokeAlpha ?? state.strokeAlpha,
+      fillAlpha: partial.fillAlpha ?? state.fillAlpha,
+      blendMode: partial.blendMode ?? state.blendMode,
+      softMask: partial.softMask ?? state.softMask,
       ctm: partial.ctm !== undefined ? partial.ctm : state.ctm,
       lineWidth:
         partial.lineWidth !== undefined ? partial.lineWidth : state.lineWidth,
