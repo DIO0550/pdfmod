@@ -1,3 +1,4 @@
+export { ColorSpaceResources } from "./content-stream/color-space-resources/index";
 export {
   ExtGState,
   type ExtGStateParameter,
@@ -18,6 +19,8 @@ export { TextFont } from "./content-stream/graphics-state/text-font/index";
  */
 
 export {
+  Color,
+  ColorSpace,
   GraphicsState,
   GraphicsStateStack,
 } from "./content-stream/graphics-state/index";
@@ -101,6 +104,7 @@ export type {
   PdfName,
   PdfNull,
   PdfOperatorIllegalStateError,
+  PdfOperatorOperandCountMismatchError,
   PdfOperatorOperandMissingError,
   PdfOperatorOperandTypeMismatchError,
   PdfOperatorOperandValueOutOfRangeError,

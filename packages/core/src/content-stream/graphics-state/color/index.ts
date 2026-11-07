@@ -1,3 +1,4 @@
+import { none, type Option } from "../../../utils/option/index";
 import { ColorSpace } from "../color-space";
 
 /**
@@ -30,13 +31,73 @@ export type CmykColor = {
 };
 
 /**
- * PDF spec §8.6 のデバイス色値。
- * DeviceGray / DeviceRGB / DeviceCMYK を discriminated union で表現する。
- * 値域 (0.0〜1.0) の検証はここでは行わない (Issue #208 仕様)。
+ * PDF §8.6 の色値。デバイス色は各チャンネル、それ以外は色空間と数値成分を保持する。
+ * 値域のクリップや他の色空間への変換は行わない。
  */
-export type Color = GrayColor | RgbColor | CmykColor;
+export type Color =
+  | GrayColor
+  | RgbColor
+  | CmykColor
+  | {
+      readonly kind: "components";
+      readonly colorSpace: ColorSpace;
+      readonly components: readonly number[];
+      readonly pattern: Option<string>;
+    };
 
 export const Color = {
+  /**
+   * 色空間選択時の初期色を作る（ISO 32000 §8.6）。
+   * @param space - 選択する色空間
+   * @returns デバイス色は黒、特色は全成分1、その他は全成分0
+   */
+  initial(space: ColorSpace): Color {
+    if (space === ColorSpace.deviceCMYK()) {
+      return Color.cmyk(0, 0, 0, 1);
+    }
+
+    const count = ColorSpace.componentCount(space);
+    const tint =
+      typeof space !== "string" &&
+      (space.family === "Separation" || space.family === "DeviceN");
+    return Color.fromComponents(
+      space,
+      Array.from({ length: count.some ? count.value : 0 }, () =>
+        tint ? 1 : 0,
+      ),
+    );
+  },
+  /**
+   * 選択した色空間の成分を保持する。デバイス色は既存の表現へ変換する。
+   * @param space - 選択した色空間
+   * @param components - 記述順の数値成分
+   * @param pattern - scn / SCN のパターン名
+   * @returns 色空間に対応する色値
+   */
+  fromComponents(
+    space: ColorSpace,
+    components: readonly number[],
+    pattern: Option<string> = none,
+  ): Color {
+    const [first, second, third, fourth] = components;
+    if (typeof space === "string") {
+      switch (space) {
+        case "DeviceGray":
+          return Color.gray(first);
+        case "DeviceRGB":
+          return Color.rgb(first, second, third);
+        case "DeviceCMYK":
+          return Color.cmyk(first, second, third, fourth);
+      }
+    }
+
+    return {
+      kind: "components",
+      colorSpace: space,
+      components: [...components],
+      pattern,
+    };
+  },
   /**
    * DeviceGray 値を生成する。
    *
@@ -91,6 +152,8 @@ export const Color = {
         return ColorSpace.deviceRGB();
       case "cmyk":
         return ColorSpace.deviceCMYK();
+      case "components":
+        return color.colorSpace;
     }
   },
 } as const;

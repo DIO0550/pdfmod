@@ -60,6 +60,7 @@ export type PdfErrorCode =
   | "TYPE_MISMATCH"
   | "OPERATOR_ALREADY_REGISTERED"
   | "OPERATOR_OPERAND_MISSING"
+  | "OPERATOR_OPERAND_COUNT_MISMATCH"
   | "OPERATOR_OPERAND_TYPE_MISMATCH"
   | "OPERATOR_OPERAND_VALUE_OUT_OF_RANGE"
   | "OPERATOR_PATH_NO_CURRENT_POINT"
@@ -316,6 +317,15 @@ export interface PdfInlineImageRequiredKeyMissingError {
   readonly offset: ByteOffset;
 }
 
+/** 現在の色空間が要求する個数と色命令のオペランド数の不一致。 */
+export interface PdfOperatorOperandCountMismatchError {
+  readonly code: "OPERATOR_OPERAND_COUNT_MISMATCH";
+  readonly message: string;
+  readonly operatorName: string;
+  readonly required: number;
+  readonly actual: number;
+}
+
 /**
  * 全致命的PDFエラーの判別共用体型。
  * パースエラー、循環参照エラー、型不一致エラー、operator registry エラー、
@@ -341,6 +351,7 @@ export type PdfError =
   | PdfTypeMismatchError
   | PdfOperatorRegistryError
   | PdfOperatorOperandMissingError
+  | PdfOperatorOperandCountMismatchError
   | PdfOperatorOperandTypeMismatchError
   | PdfOperatorOperandValueOutOfRangeError
   | PdfOperatorPathNoCurrentPointError
