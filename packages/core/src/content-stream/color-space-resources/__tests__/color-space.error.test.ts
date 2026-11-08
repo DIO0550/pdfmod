@@ -59,7 +59,7 @@ test("成分数が一致しても数値以外の成分を拒否する", async ()
 });
 
 test.each([
-  "/Mystery",
+  "[/Future 1]",
   "[/Mystery 1 2]",
 ])("未知の族 %s は選択位置に警告し、成分数を不明にする", async (definition) => {
   const result = await executeColorSpace({
