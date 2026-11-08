@@ -227,7 +227,7 @@ Q                     % グラフィックスステート復元
 - 同期インタプリタの実行前に `ColorSpaceResources.fromResources(resources, resolveRef)` で現在のスコープを解決し、`OperatorRegistry.createDefault(extGStates, colorSpaces)` または `registerColorOperators(registry, colorSpaces)` へ渡す。
 - `/Resources` 自体の継承・間接参照解決は既存のページ属性解決を使う。色空間の準備では `/ColorSpace` カテゴリ・各定義・配列の族名・ICCBasedプロファイルと `/N`・DeviceN名前配列と各名前・Indexed / Pattern基底の間接参照を解決する。CIE色空間のパラメータ辞書も解決する。
 - カテゴリの参照解決エラーは準備時に返す。個別定義のエラーは保持し、その名前を `cs` / `CS` で選択するときに原因をそのまま返す。同名でも別のページ・フォームのスコープと共有しない。
-- 未知の族は `COLOR_SPACE_UNSUPPORTED`、成分数を確定するための値の不正・欠落や循環は `COLOR_SPACE_INVALID`、不在の名前は `COLOR_SPACE_NOT_FOUND` を選択した命令の位置で報告する。再帰は32段を上限とし、上限でも不明な定義として回復する。
+- 色空間配列の先頭にある未知の族は `COLOR_SPACE_UNSUPPORTED`、成分数を確定するための値の不正・欠落や循環は `COLOR_SPACE_INVALID` を報告する。不在の名前は、`cs` / `CS` で直接指定した場合も、定義内の別名や基底色空間から参照した場合も `COLOR_SPACE_NOT_FOUND` とする。いずれも選択した命令の位置で報告する。再帰は32段を上限とし、上限でも不明な定義として回復する。
 - 不明な色空間は以前の成分数を引き継がず、成分数不明として保持する。その後の色命令は数値型を検証して保持するが、個数の一致は検証しない。Indexed は基底が不明でも添字は1成分である。
 - 既知の成分数の過不足は `OPERATOR_OPERAND_COUNT_MISMATCH`、型の不一致は `OPERATOR_OPERAND_TYPE_MISMATCH`。Pattern に `sc` / `SC` を使う場合は `OPERATOR_ILLEGAL_STATE` を返す。
 - 色空間と色値は `q` / `Q` の保存・復元対象。ここで扱うのは族・成分数・色値の保持までであり、ICCプロファイル変換、CIEパラメータの数値検証、パレット展開、特色の関数評価、パターンの取得・描画は後段の処理とする。

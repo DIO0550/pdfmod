@@ -448,7 +448,7 @@ endobj</code></pre>
       <h3>間接参照とPattern</h3>
       <p>カテゴリ辞書・各定義・ICCBasedのプロファイルや <code>/N</code>・DeviceNの名前配列・IndexedやPatternの基底は間接参照でも解決します。着色パターンは <code>/Pattern cs /P1 scn</code>、非着色パターンは基底色の成分も必要です。たとえば <code>[/Pattern /DeviceRGB]</code> を選んだ後は <code>0.1 0.2 0.3 /P1 scn</code> と書きます。名前は数値成分数に含めません。</p>
       <h3>不一致・未知の定義を読むとき</h3>
-      <p>RGBを選んだ後の <code>0.1 0.2 sc</code> は成分が1個不足するためエラーです。余分な成分もエラーになります。未知の族はpdfmodが選択位置に警告を出し、成分数不明として保持します。その後の数値は型を確認して保存しますが、個数は検証しません。名前がない場合も以前の成分数で検証を続けません。参照先の構文解析エラーは警告へ置き換えず返します。</p>
+      <p>RGBを選んだ後の <code>0.1 0.2 sc</code> は成分が1個不足するためエラーです。余分な成分もエラーになります。色空間配列の先頭に未知の族がある場合は、選択位置に <code>COLOR_SPACE_UNSUPPORTED</code> の警告を出し、成分数不明として保持します。その後の数値は型を確認して保存しますが、個数は検証しません。名前が見つからない場合は、直接の指定でも定義内の別名・基底からの参照でも <code>COLOR_SPACE_NOT_FOUND</code> を報告し、以前の成分数で検証を続けません。基底が不明なIndexedでも、添字の成分数は1です。参照先の構文解析エラーは警告へ置き換えず返します。</p>
       <div class="note"><strong>実行前の準備と実装の範囲</strong><code>ColorSpaceResources.fromResources(resources, resolveRef)</code> で現在のスコープを準備し、<code>OperatorRegistry.createDefault(extGStates, colorSpaces)</code> の第2引数へ渡します。各定義は事前に解決し、成功・失敗を名前ごとに保持します。カテゴリのエラーは準備時に返し、個々の定義のエラーはその名前の選択時まで返しません。族と成分数を読み色値を保持するところまでを扱い、ICC変換・パレット展開・特色の関数評価・パターン描画は後段の処理です。</div>
     </section>
 

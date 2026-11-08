@@ -119,7 +119,12 @@ export const ColorSpaceDefinition = {
       const local = scope.dictionary.entries.get(object.value);
       return local
         ? ColorSpaceDefinition.read(local, resolveRef, next)
-        : ok(ColorSpaceDefinition.unresolved(object.value));
+        : ok(
+            ColorSpaceDefinition.unresolved(
+              object.value,
+              "COLOR_SPACE_NOT_FOUND",
+            ),
+          );
     }
 
     if (object.type !== "array") {
