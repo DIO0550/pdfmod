@@ -104,6 +104,596 @@
         "ICCBasedの /N は1・3・4だけを受理する。",
         "未知の色空間へ切り替えたとき、以前の成分数を再利用しない。",
         "色空間選択時の初期色とq/Qによる復元を確認する。"
+      ],
+      "notes": [
+        {
+          "path": "packages/core/src/content-stream/color-space-resources/index.ts",
+          "side": "new",
+          "start": 15,
+          "end": 31,
+          "text": "解決結果を名前→Resultの読み取り専用Mapで保持する。色空間の族と警告を一緒に持たせ、個々の失敗を選択時まで残す。ancestorsは現在の参照経路で、共有定義を循環と取り違えずに再帰を止めるために使う。"
+        },
+        {
+          "path": "packages/core/src/content-stream/color-space-resources/index.ts",
+          "side": "new",
+          "start": 35,
+          "end": 36,
+          "text": "リソースを渡さない既存の呼び出しには空のMapを返す。組み込み色空間だけを使う従来の実行経路も、この既定値で続けて動く。"
+        },
+        {
+          "path": "packages/core/src/content-stream/color-space-resources/index.ts",
+          "side": "new",
+          "start": 45,
+          "end": 60,
+          "text": "実行前に現在のResourcesからColorSpaceカテゴリを非同期に取得する。カテゴリを解析できなければ元のErrを返し、カテゴリ自体がなければ空のスコープとして成功させる。同期インタプリタ内へ参照解決を持ち込まないための準備段階。"
+        },
+        {
+          "path": "packages/core/src/content-stream/color-space-resources/index.ts",
+          "side": "new",
+          "start": 62,
+          "end": 74,
+          "text": "辞書の各名前をreadで解決し、成功・警告・失敗をその名前のMapへ保存する。壊れた定義があってもここでは全体を失敗させず、その名前がcs/CSで選ばれたときにだけ失敗を返す。"
+        },
+        {
+          "path": "packages/core/src/content-stream/color-space-resources/index.ts",
+          "side": "new",
+          "start": 86,
+          "end": 100,
+          "text": "直接値と間接参照をResolveRef.objectで同じ形へそろえる。参照先の構文解析エラーはErrのまま返し、値そのものが欠けている場合はCOLOR_SPACE_INVALIDを持つUnknownへ回復する。"
+        },
+        {
+          "path": "packages/core/src/content-stream/color-space-resources/index.ts",
+          "side": "new",
+          "start": 102,
+          "end": 112,
+          "text": "同じオブジェクトが現在の経路に再登場した場合、または経路が32段に達した場合に再帰を止める。新しいSetへ現在の値を加えて次へ渡すため、別の枝から同じ定義を読むことまでは禁止しない。"
+        },
+        {
+          "path": "packages/core/src/content-stream/color-space-resources/index.ts",
+          "side": "new",
+          "start": 113,
+          "end": 122,
+          "text": "名前ならまずDeviceGray/RGB/CMYKとPatternを判定し、次にローカル辞書の別名を再帰的に引く。この初回実装では別名の参照先不在も既定のUNSUPPORTEDへ流れていたため、次の修正コミットでNOT_FOUNDへ訂正している。"
+        },
+        {
+          "path": "packages/core/src/content-stream/color-space-resources/index.ts",
+          "side": "new",
+          "start": 125,
+          "end": 131,
+          "text": "名前以外は色空間配列だけを受け付ける。整数や辞書などの不正な形はINVALID付きUnknownとし、配列は族別の読み取りへ渡す。分からない定義へ以前の成分数を流用しない。"
+        },
+        {
+          "path": "packages/core/src/content-stream/color-space-resources/index.ts",
+          "side": "new",
+          "start": 146,
+          "end": 162,
+          "text": "配列の先頭も間接参照を解決して族名を読む。名前がなければINVALIDで回復し、名前がある場合には後続パラメータが不正だったときに返すUnknownを先に用意する。"
+        },
+        {
+          "path": "packages/core/src/content-stream/color-space-resources/index.ts",
+          "side": "new",
+          "start": 163,
+          "end": 189,
+          "text": "配列形式のDevice系は名前の読み取りへ戻す。CalGray/CalRGB/Labでは第2要素の参照を解決し、辞書なら定義を保持する。ここでは成分数に必要な族を認識する段階で、WhitePointなどの数値検証や色変換は実施しない。"
+        },
+        {
+          "path": "packages/core/src/content-stream/color-space-resources/index.ts",
+          "side": "new",
+          "start": 191,
+          "end": 208,
+          "text": "Separationは1成分の特色として元の定義を保持する。ICCBasedは第2要素を参照解決し、ICCプロファイルがストリームでなければINVALIDとする。特色の変換関数評価やICCの色変換は後段に残す。"
+        },
+        {
+          "path": "packages/core/src/content-stream/color-space-resources/index.ts",
+          "side": "new",
+          "start": 210,
+          "end": 234,
+          "text": "ICCプロファイル辞書のNも参照解決し、整数1・3・4だけを成分数として採用する。Nが欠ける、不正な型、許容外の数なら成分数を推測せずINVALIDへ回復する。"
+        },
+        {
+          "path": "packages/core/src/content-stream/color-space-resources/index.ts",
+          "side": "new",
+          "start": 236,
+          "end": 255,
+          "text": "Indexed/Patternの基底をreadで再帰的に解決する。単独Patternは基底なしで0数値成分、基底付きPatternは基底の成分数になる。Indexedは基底を保持しても命令が受け取るのは添字1個で、基底の警告も選択位置へ伝える。"
+        },
+        {
+          "path": "packages/core/src/content-stream/color-space-resources/index.ts",
+          "side": "new",
+          "start": 257,
+          "end": 290,
+          "text": "DeviceNの名前配列と各要素をそれぞれ参照解決する。すべて名前で、少なくとも1個ある場合だけ配列を保持し、その長さを成分数に使う。途中の解析失敗はErr、名前以外や空配列はINVALIDへ分ける。"
+        },
+        {
+          "path": "packages/core/src/content-stream/color-space-resources/index.ts",
+          "side": "new",
+          "start": 293,
+          "end": 315,
+          "text": "未対応の配列族と、欠落・循環などの回復結果をUnknown＋警告として統一する。Unknownには識別名を残し、成分数を不明にする。警告コードは呼び出し元が指定でき、未対応の族ではUNSUPPORTEDを既定にする。"
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/color/selection/index.ts",
+          "side": "new",
+          "start": 30,
+          "end": 40,
+          "text": "cs/CSを塗り/輪郭の色空間選択へ、sc/SC/scn/SCNを各対象の色指定へ登録する。解決済みResourcesは選択ハンドラのクロージャへ渡し、ページ・フォームごとの名前のスコープを保つ。"
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/color/selection/index.ts",
+          "side": "new",
+          "start": 49,
+          "end": 60,
+          "text": "cs/CSはオペランドがちょうど1個か確認してからPDF名を取り出す。数の過不足と、整数など名前以外の入力を別のエラーとして返し、不正な選択で状態を更新しない。"
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/color/selection/index.ts",
+          "side": "new",
+          "start": 62,
+          "end": 74,
+          "text": "組み込み名を先に判定し、それ以外は準備済みMapから取得する。Mapに名前がなければNOT_FOUND付きUnknownへ回復し、保存されていた定義の解析エラーならその原因を返す。"
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/color/selection/index.ts",
+          "side": "new",
+          "start": 76,
+          "end": 81,
+          "text": "選択に成功したら対象の色空間だけでなく色値もColor.initialで初期化する。準備時の警告をこの実行結果へ載せ、インタプリタが選択命令の位置を付けられるようにする。"
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/color/selection/index.ts",
+          "side": "new",
+          "start": 95,
+          "end": 114,
+          "text": "色指定では現在の塗り/輪郭の色空間を読み、Patternならscn/SCNだけを許可する。末尾のパターン名を先に取り出し、数値成分と名前を混同して個数を数えないようにする。"
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/color/selection/index.ts",
+          "side": "new",
+          "start": 116,
+          "end": 131,
+          "text": "既知の色空間では必要成分数と残りのオペランド数を照合し、過不足を拒否する。Unknownでは個数を推測せず残り全部を読み取るが、どの成分も数値であることは共通して検査する。"
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/color/selection/index.ts",
+          "side": "new",
+          "start": 133,
+          "end": 140,
+          "text": "PDFの記述順で得た数値成分と任意のパターン名から色値を作り、選択中の色空間と一緒に保存する。ここでは色変換やパターン描画をせず、命令が指定した値を保持する。"
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/color/selection/index.ts",
+          "side": "new",
+          "start": 151,
+          "end": 165,
+          "text": "OperandStackの実際の深さを必要数と比較し、違う場合に命令名・required・actual付きのCOUNT_MISMATCHを返す。Noneなら処理を続けられ、呼び出し側はエラーから不足と過剰の両方を判断できる。"
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/color/selection/index.ts",
+          "side": "new",
+          "start": 175,
+          "end": 193,
+          "text": "対象がfillなら塗りだけ、strokeなら輪郭だけを不変更新する。スタックの現在値を差し替えるので、もう一方の色やq/Qで保存済みの状態を上書きしない。"
+        },
+        {
+          "path": "packages/core/src/content-stream/graphics-state/color-space/index.ts",
+          "side": "new",
+          "start": 6,
+          "end": 42,
+          "text": "従来のDevice系の文字列表現を残し、ICCBased・Indexed・DeviceN・Pattern・Unknownなどを族で区別する共用体へ広げる。各族に必要なプロファイル・基底・名前配列だけを保持し、不明な定義はUnknownで表す。"
+        },
+        {
+          "path": "packages/core/src/content-stream/graphics-state/color-space/index.ts",
+          "side": "new",
+          "start": 50,
+          "end": 55,
+          "text": "プロファイルのNを1・3・4のいずれかへ絞る。許容外はNoneとして、ICCBasedの定義読み取りが警告へ回復できるようにする。"
+        },
+        {
+          "path": "packages/core/src/content-stream/graphics-state/color-space/index.ts",
+          "side": "new",
+          "start": 86,
+          "end": 98,
+          "text": "単独名で選べるDevice3種とPatternを認識する。ローカル名の辞書探索はここでは行わず、Noneを受けた選択処理が現在のResourcesを引く。"
+        },
+        {
+          "path": "packages/core/src/content-stream/graphics-state/color-space/index.ts",
+          "side": "new",
+          "start": 106,
+          "end": 136,
+          "text": "族ごとの数値成分数を返す。Indexed/Separationは1、ICCBasedはN、DeviceNは名前数、Patternは基底の数または0。Unknownや不明なPattern基底はNoneを返し、誤った個数検証を防ぐ。"
+        },
+        {
+          "path": "packages/core/src/content-stream/graphics-state/color/index.ts",
+          "side": "new",
+          "start": 1,
+          "end": 2,
+          "text": "Pattern名の有無と色空間を扱うためにOptionとColorSpaceを取り込む。色値の生成と初期値の決定を同じColorモジュールへ集約する。"
+        },
+        {
+          "path": "packages/core/src/content-stream/graphics-state/color/index.ts",
+          "side": "new",
+          "start": 37,
+          "end": 46,
+          "text": "Device系の既存色値に加え、色空間・数値配列・Pattern名を持つcomponents表現を追加する。非Device系をRGBへ変換したことにせず、元の指定を保持できる。"
+        },
+        {
+          "path": "packages/core/src/content-stream/graphics-state/color/index.ts",
+          "side": "new",
+          "start": 54,
+          "end": 68,
+          "text": "色空間の切替時に初期色を作る。DeviceCMYKは黒の[0,0,0,1]、Separation/DeviceNは各1、それ以外は各0にする。Unknownでは成分数を決めず空配列とし、前の色を引き継がない。"
+        },
+        {
+          "path": "packages/core/src/content-stream/graphics-state/color/index.ts",
+          "side": "new",
+          "start": 77,
+          "end": 99,
+          "text": "数値配列をDevice系なら従来のgray/rgb/cmyk形式へ変換し、それ以外は配列をコピーして保持する。これにより既存APIの色表現を維持しつつPattern名も失わない。"
+        },
+        {
+          "path": "packages/core/src/content-stream/graphics-state/color/index.ts",
+          "side": "new",
+          "start": 155,
+          "end": 156,
+          "text": "components形式の色からは保存していたColorSpaceを返す。非Device系の色値から色空間を求める場合も、元の族や基底が保持される。"
+        },
+        {
+          "path": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.basic.test.ts",
+          "side": "new",
+          "start": 5,
+          "end": 33,
+          "text": "9種類の定義から色空間を選び、必要個数の数値でscを実行する。成分数が族ごとに期待値と一致し、正常系で警告を出さないことを検証する。"
+        },
+        {
+          "path": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.basic.test.ts",
+          "side": "new",
+          "start": 35,
+          "end": 58,
+          "text": "カテゴリ→定義→ICCストリーム→Nをすべて間接参照にし、N=1/3/4を検証する。辞書の浅い参照だけを解決して成功したように見える実装を防ぐ。"
+        },
+        {
+          "path": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.basic.test.ts",
+          "side": "new",
+          "start": 60,
+          "end": 78,
+          "text": "Indexedの基底・族名・パラメータも参照にし、基底がCalRGBと分かっても添字の必要数は1であることを確認する。"
+        },
+        {
+          "path": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.basic.test.ts",
+          "side": "new",
+          "start": 80,
+          "end": 93,
+          "text": "DeviceNの名前配列と配列内の名前を別々の参照にし、解決した3つの名前が順番どおり残ることを確かめる。"
+        },
+        {
+          "path": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.basic.test.ts",
+          "side": "new",
+          "start": 95,
+          "end": 114,
+          "text": "着色PatternとRGB基底のPatternで、末尾/P1を数値に数えず、0成分または3成分と名前を別に保存することを確認する。"
+        },
+        {
+          "path": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.boundary.test.ts",
+          "side": "new",
+          "start": 5,
+          "end": 21,
+          "text": "RGB選択の後に不在名を選び、NOT_FOUNDと成分数不明への切替を検証する。以前の3成分を引き継いで2成分を誤って拒否する退行を防ぐ。"
+        },
+        {
+          "path": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.boundary.test.ts",
+          "side": "new",
+          "start": 23,
+          "end": 40,
+          "text": "cs/CSに整数を渡し、名前型の不一致を両方の対象で確認する。"
+        },
+        {
+          "path": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.boundary.test.ts",
+          "side": "new",
+          "start": 42,
+          "end": 53,
+          "text": "ICCのNを欠落させ、推測した成分数で続けずINVALIDを報告する境界を確認する。"
+        },
+        {
+          "path": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.boundary.test.ts",
+          "side": "new",
+          "start": 55,
+          "end": 74,
+          "text": "同じ壊れた定義を未選択/選択で比較する。未使用なら実行成功し、選択したときだけ元の解析エラーを返す遅延失敗の契約を検証する。"
+        },
+        {
+          "path": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.boundary.test.ts",
+          "side": "new",
+          "start": 76,
+          "end": 86,
+          "text": "Patternにscを使うとILLEGAL_STATEになることを確認する。Pattern名を取れる拡張命令だけを許す分岐のテスト。"
+        },
+        {
+          "path": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.boundary.test.ts",
+          "side": "new",
+          "start": 88,
+          "end": 98,
+          "text": "RGB基底のPatternへ数値2個と/P1を渡し、名前を除いた必要3/実際2のエラーを検証する。"
+        },
+        {
+          "path": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.boundary.test.ts",
+          "side": "new",
+          "start": 100,
+          "end": 114,
+          "text": "空配列・数値・nullを族名として渡し、未対応族ではなく不正な定義としてINVALIDへ回復することを確認する。"
+        },
+        {
+          "path": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.boundary.test.ts",
+          "side": "new",
+          "start": 116,
+          "end": 127,
+          "text": "CIEパラメータ辞書の参照先を壊し、Unknown警告に隠さず選択時に構文解析エラーを返すことを確認する。"
+        },
+        {
+          "path": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.error.test.ts",
+          "side": "new",
+          "start": 7,
+          "end": 27,
+          "text": "sc/SC/scn/SCNへRGBの成分を2個だけ渡し、どの命令でも必要3/実際2のエラーになることを検証する。"
+        },
+        {
+          "path": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.error.test.ts",
+          "side": "new",
+          "start": 29,
+          "end": 42,
+          "text": "RGBの成分が4個と0個の場合も拒否し、不足だけでなく過剰・全欠落の境界を押さえる。"
+        },
+        {
+          "path": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.error.test.ts",
+          "side": "new",
+          "start": 44,
+          "end": 59,
+          "text": "個数が3でも途中が名前なら型の不一致になることを検証し、個数チェックだけで不正な色を保存しないようにする。"
+        },
+        {
+          "path": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.error.test.ts",
+          "side": "new",
+          "start": 61,
+          "end": 80,
+          "text": "Unknownへの切替、成分数不明、選択命令位置の警告を検証する初回ケース。この時点では単独/Mysteryを未知の族と扱っていたが、次の修正で不在名と分け、未知の配列族だけをここへ残している。"
+        },
+        {
+          "path": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.error.test.ts",
+          "side": "new",
+          "start": 82,
+          "end": 106,
+          "text": "ICCのNに0・2・負数・実数・名前・nullを与え、すべてINVALID＋成分数不明となることを確認する。"
+        },
+        {
+          "path": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.error.test.ts",
+          "side": "new",
+          "start": 108,
+          "end": 119,
+          "text": "Patternの基底が自分自身を参照する入力で、無限再帰せずINVALIDへ回復することを検証する。"
+        },
+        {
+          "path": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.error.test.ts",
+          "side": "new",
+          "start": 121,
+          "end": 132,
+          "text": "ColorSpaceカテゴリ自体の参照先を壊し、個別名の選択前でも準備段階で元の構文解析エラーを返すことを確認する。"
+        },
+        {
+          "path": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.integration.test.ts",
+          "side": "new",
+          "start": 9,
+          "end": 22,
+          "text": "実際のPDF命令列/CS1 cs .2 .4 .6 scを実行し、名前解決から塗り色のRGB保存までを一緒に検証する。"
+        },
+        {
+          "path": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.integration.test.ts",
+          "side": "new",
+          "start": 24,
+          "end": 42,
+          "text": "CS/SCNが輪郭だけを変え、q/Qが色空間と色値を対で復元することを確認する。既存の塗り0.6が残ることも検証する。"
+        },
+        {
+          "path": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.integration.test.ts",
+          "side": "new",
+          "start": 44,
+          "end": 55,
+          "text": "赤のRGBからCMYKへ選択を変えた際に、前の赤ではなく初期の黒[0,0,0,1]となることを確認する。"
+        },
+        {
+          "path": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.integration.test.ts",
+          "side": "new",
+          "start": 57,
+          "end": 73,
+          "text": "同じCS1名をRGBとGrayの別スコープで実行し、RGBでは3成分で成功、Grayでは必要1として拒否することを確認する。名前解決結果のスコープ間共有を防ぐ。"
+        },
+        {
+          "path": "packages/core/src/content-stream/color-space-resources/__tests__/setup-color-space.ts",
+          "side": "new",
+          "start": 15,
+          "end": 27,
+          "text": "文字列で書いたリソースと参照先から本物のResolverを作り、色空間を準備して既定レジストリへ渡す。ハンドラや参照解決をモックに置き換えず結合動作を検証する共通準備。"
+        },
+        {
+          "path": "packages/core/src/content-stream/color-space-resources/__tests__/setup-color-space.ts",
+          "side": "new",
+          "start": 29,
+          "end": 32,
+          "text": "PDF命令列を実バイトへ変換して同期インタプリタで実行し、状態・警告・失敗をそのまま各テストへ返す。"
+        },
+        {
+          "path": "packages/core/src/content-stream/graphics-state/color-space/__tests__/color-space.type.test-d.ts",
+          "side": "new",
+          "start": 1,
+          "end": 12,
+          "text": "ICCBasedのcomponentsに2を入れた値をコンパイル時に拒否する型テスト。Nが1・3・4に絞られた後の状態だけをColorSpaceとして公開する制約を確認する。"
+        },
+        {
+          "path": "packages/core/src/content-stream/operator-registry/index.ts",
+          "side": "new",
+          "start": 7,
+          "end": 7,
+          "text": "既定レジストリが準備済みColorSpaceResourcesを受け取れるように依存を追加する。"
+        },
+        {
+          "path": "packages/core/src/content-stream/operator-registry/index.ts",
+          "side": "new",
+          "start": 18,
+          "end": 18,
+          "text": "色空間依存の6命令を作るColorSpaceOperatorsを取り込み、既存のDevice色命令と同じレジストリへ登録する。"
+        },
+        {
+          "path": "packages/core/src/content-stream/operator-registry/index.ts",
+          "side": "new",
+          "start": 231,
+          "end": 244,
+          "text": "createDefaultに省略可能な第2引数colorSpacesを追加し、ハンドラ生成へ渡す。既存の第1引数ExtGStateと既定呼び出しの互換性を保ちながら、実行ごとのResourcesを注入できるようにする。"
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/color/color-operators/index.ts",
+          "side": "new",
+          "start": 4,
+          "end": 4,
+          "text": "個別に色命令を登録するAPIからも準備済み色空間を受け取れるように、ColorSpaceResourcesを取り込む。"
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/color/color-operators/index.ts",
+          "side": "new",
+          "start": 13,
+          "end": 13,
+          "text": "個別登録経路でも同じ選択/色指定ハンドラを使い、既定レジストリ経路との挙動のずれを防ぐ。"
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/color/color-operators/index.ts",
+          "side": "new",
+          "start": 35,
+          "end": 49,
+          "text": "registerColorOperatorsへ省略可能なResources引数を加え、従来の命令一覧とcs/CS/sc/SC/scn/SCNをまとめて登録する。reduceとflatMapで既存の重複登録エラーをそのまま返す。"
+        },
+        {
+          "path": "packages/core/src/index.ts",
+          "side": "new",
+          "start": 1,
+          "end": 1,
+          "text": "ColorSpaceResourcesをパッケージの公開入口から公開し、利用側が現在のResourcesを準備できるようにする。"
+        },
+        {
+          "path": "packages/core/src/index.ts",
+          "side": "new",
+          "start": 22,
+          "end": 23,
+          "text": "ColorとColorSpaceの生成・成分数取得を公開し、利用側が新しい色値を解釈できるようにする。"
+        },
+        {
+          "path": "packages/core/src/index.ts",
+          "side": "new",
+          "start": 107,
+          "end": 107,
+          "text": "成分数不一致のエラー型を公開入口にも追加し、呼び出し側がrequired/actualを型付きで扱えるようにする。"
+        },
+        {
+          "path": "packages/core/src/pdf/errors/error/index.ts",
+          "side": "new",
+          "start": 63,
+          "end": 63,
+          "text": "個数不一致の識別コードを追加し、オペランド欠落や型不一致から区別できるようにする。"
+        },
+        {
+          "path": "packages/core/src/pdf/errors/error/index.ts",
+          "side": "new",
+          "start": 320,
+          "end": 327,
+          "text": "COUNT_MISMATCHのエラーに命令名・必要数・実際数を持たせる。RGBに2個などの失敗を、メッセージ文字列の解析なしで判断できる。"
+        },
+        {
+          "path": "packages/core/src/pdf/errors/error/index.ts",
+          "side": "new",
+          "start": 354,
+          "end": 354,
+          "text": "新しいエラーをPdfErrorの判別共用体へ加え、インタプリタの既存Result経路から返せるようにする。"
+        },
+        {
+          "path": "packages/core/src/pdf/errors/index.ts",
+          "side": "new",
+          "start": 12,
+          "end": 12,
+          "text": "エラー集約モジュールから個数不一致型を再公開し、内部構造へ直接依存せずにimportできるようにする。"
+        },
+        {
+          "path": "packages/core/src/pdf/errors/warning/index.ts",
+          "side": "new",
+          "start": 35,
+          "end": 37,
+          "text": "名前の不在・定義の不正・未対応の族を別々の警告コードにする。処理を継続した場合も、呼び出し側が原因を区別できるようにする。"
+        },
+        {
+          "path": "docs/guides/README.md",
+          "side": "new",
+          "start": 14,
+          "end": 14,
+          "text": "恒久解説の一覧へ色空間選択と成分数検証を追記し、Issue #668と実装への入口を示す。"
+        },
+        {
+          "path": "docs/guides/resources.html",
+          "side": "new",
+          "start": 79,
+          "end": 79,
+          "text": "画面上のPDF例でcs/SCなどの命令を名前や数値と違う色にし、何が操作なのかを読み取れるようにする。"
+        },
+        {
+          "path": "docs/guides/resources.html",
+          "side": "new",
+          "start": 150,
+          "end": 150,
+          "text": "印刷時にも命令の色を紙面向けの紫へ切り替え、名前・数値との区別を維持する。"
+        },
+        {
+          "path": "docs/guides/resources.html",
+          "side": "new",
+          "start": 170,
+          "end": 171,
+          "text": "目次に色空間の節へのリンクを加え、後続の実装範囲の番号を繰り下げる。"
+        },
+        {
+          "path": "docs/guides/resources.html",
+          "side": "new",
+          "start": 423,
+          "end": 440,
+          "text": "Resources辞書→cs/CS→sc/SCのPDF例と、族別の成分数表を追加する。Indexedは基底RGBでも添字1個であることや、選択時の初期色とq/Qの保存対象を説明する。"
+        },
+        {
+          "path": "docs/guides/resources.html",
+          "side": "new",
+          "start": 449,
+          "end": 452,
+          "text": "間接参照とPattern名の扱い、成分数の不一致・Unknownの回復、事前準備APIと実装範囲を説明する。名前不在の詳しい区別は次の修正コミットで追記している。"
+        },
+        {
+          "path": "docs/guides/resources.html",
+          "side": "new",
+          "start": 456,
+          "end": 456,
+          "text": "新しい仕様節の追加に合わせ、既存の実装対応範囲の節番号を09へ更新する。"
+        },
+        {
+          "path": "docs/guides/resources.html",
+          "side": "new",
+          "start": 494,
+          "end": 494,
+          "text": "実装範囲に色空間の名前解決・成分数検証を追加し、色変換やPattern描画まで実装済みと誤解しないよう境界を明記する。"
+        },
+        {
+          "path": "docs/specs/04_resources_graphics_state.md",
+          "side": "new",
+          "start": 210,
+          "end": 223,
+          "text": "cs/CSとsc系命令を追加し、族ごとの数値成分数を仕様表へ記録する。Pattern名は数値成分へ数えず、Indexedの添字は常に1成分と定義する。"
+        },
+        {
+          "path": "docs/specs/04_resources_graphics_state.md",
+          "side": "new",
+          "start": 225,
+          "end": 233,
+          "text": "同期実行前の準備、現在のResourcesスコープ、参照解決と遅延失敗、警告と致命的エラーの区別を仕様化する。ICC変換・特色関数評価・Pattern描画などの未実装範囲も明記する。"
+        }
       ]
     },
     {
@@ -131,7 +721,56 @@
           "side": "new",
           "start": 119,
           "end": 128,
-          "text": "ローカル名の探索で値がなければ、名前不在のコードを明示して返す。"
+          "text": "別名や基底の名前を辞書で引いた結果が不在なら、unresolvedへCOLOR_SPACE_NOT_FOUNDを明示的に渡す。従来の既定UNSUPPORTEDは未知の配列族専用に残す。これで直接のcs指定と定義内の名前参照が同じ欠落理由を返す。"
+        },
+        {
+          "path": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.error.test.ts",
+          "side": "new",
+          "start": 62,
+          "end": 62,
+          "text": "単独/Mysteryは辞書内の参照先不在なので、未知の配列族[/Future1]へテスト入力を置き換える。UNSUPPORTEDのテストが不在名の挙動まで固定してしまうのを防ぐ。"
+        },
+        {
+          "path": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.names.test.ts",
+          "side": "new",
+          "start": 9,
+          "end": 48,
+          "text": "直接の別名・間接参照を挟む別名・連鎖する別名を同じ命令列で実行する。すべてNOT_FOUND、欠落した名前Missing、選択位置7、成分数不明となることを検証し、解決経路による警告のずれを防ぐ。"
+        },
+        {
+          "path": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.names.test.ts",
+          "side": "new",
+          "start": 50,
+          "end": 64,
+          "text": "輪郭側のCS/SCでも別名の参照先不在をNOT_FOUNDとして報告し、UnknownがstrokeColorSpaceへ保存されることを確認する。塗り側だけ直る退行を防ぐ。"
+        },
+        {
+          "path": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.names.test.ts",
+          "side": "new",
+          "start": 66,
+          "end": 79,
+          "text": "Alias→Target→DeviceRGBが存在する正常系では、警告なしにRGBと3成分の色値を保存できることを確認する。欠落の修正で正常な別名の再帰解決を壊さないための対照ケース。"
+        },
+        {
+          "path": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.names.test.ts",
+          "side": "new",
+          "start": 81,
+          "end": 100,
+          "text": "Indexedの基底名が欠ける場合もNOT_FOUNDを伝えるが、Indexed自体は添字1成分のまま成功することを検証する。基底Unknownと、その色空間が受け取る成分数を混同しないようにする。"
+        },
+        {
+          "path": "docs/guides/resources.html",
+          "side": "new",
+          "start": 451,
+          "end": 451,
+          "text": "未知の配列族はUNSUPPORTED、不在の名前は参照経路によらずNOT_FOUND、と解説を具体化する。Indexedは不明な基底でも添字1個という回復動作も追記する。"
+        },
+        {
+          "path": "docs/specs/04_resources_graphics_state.md",
+          "side": "new",
+          "start": 230,
+          "end": 230,
+          "text": "直接選択だけでなく、定義内の別名・基底経由でも不在名はNOT_FOUNDとする契約を明記する。実装・テスト・恒久解説で同じ分類を使う。"
         }
       ]
     }
