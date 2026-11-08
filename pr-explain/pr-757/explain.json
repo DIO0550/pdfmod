@@ -1,0 +1,544 @@
+{
+  "version": 1,
+  "pr": 757,
+  "sha": "43388f52bd41fd91515c1000ddb3722c104eaab7",
+  "overview": {
+    "title": "変更の経緯から、各処理の説明漏れを見つける",
+    "lead": "コミット全体の要約だけで公開できていた穴を埋める。作成手順に処理別の説明を求め、実Git差分と行注釈をローカル生成・公開の両方で照合する。",
+    "before": [
+      {
+        "text": "コミット要約があれば、コード注釈のない変更も公開できた。"
+      }
+    ],
+    "after": [
+      {
+        "text": "各コミット・変更ファイル・表示差分に有効な行注釈がなければ拒否し、既存の出力を保つ。"
+      },
+      {
+        "text": "本文は処理ごとの入力・変更内容・結果・理由を説明し、全コミットをブラウザで確認する。"
+      }
+    ]
+  },
+  "concepts": [
+    {
+      "path": ".github/scripts/check-pr-story.py",
+      "name": "差分と説明の照合",
+      "role": "注釈が表示される変更行と、コミット・ファイル・差分ごとの説明の有無を検査する。"
+    },
+    {
+      "path": ".github/scripts/build-pr-explain-local.py",
+      "name": "ローカル検証",
+      "role": "一時出力の説明と地図を検査し、成功時だけプレビューを更新する。"
+    },
+    {
+      "path": ".github/scripts/pr-explain-pages.sh",
+      "name": "公開の境界",
+      "role": "公開先の最新地図との照合を済ませてから説明をコピー・pushする。"
+    },
+    {
+      "path": "docs/development/pr-explain.md",
+      "name": "説明の作成手順",
+      "role": "機械が判断できない処理単位の意味と、ブラウザでの確認方法を定める。"
+    },
+    {
+      "path": "harness/tests/test_pr_story.py",
+      "name": "実Gitによる回帰テスト",
+      "role": "説明漏れと付け先の誤りをCLI経由で検証する。"
+    }
+  ],
+  "commitStories": [
+    {
+      "sha": "43388f52bd41fd91515c1000ddb3722c104eaab7",
+      "phase": "hard",
+      "role": "処理ごとの行注釈を作成ルールと公開前検査で必須にする",
+      "why": "コミットの意図だけでは、そのコードが何をしているかを追えない。機械で検出できる説明の欠落・配置を拒否し、内容の十分さは作成手順と実表示確認で担保する。",
+      "review": [
+        "別々のhunkを1件の注釈で説明済みにしない。",
+        "説明検査に落ちたときは、既存のローカル出力・公開物を変更しない。",
+        "削除・改名・バイナリと古い解説も、必要な説明を持つ場合は受け付ける。"
+      ],
+      "notes": [
+        {
+          "path": ".github/scripts/check-pr-story.py",
+          "start": 10,
+          "end": 22,
+          "text": "unified diffの@@から変更前/後の開始行を読み、hunkごとに番号の集合を用意する。注釈の行が実際の差分へ結び付いているかを調べる土台で、ソース本文を実行しない。"
+        },
+        {
+          "path": ".github/scripts/check-pr-story.py",
+          "start": 24,
+          "end": 36,
+          "text": "追加は変更後だけ、削除は変更前だけ、文脈は両方の行番号を進める。空白だけの変更も変更行に含め、本文のない改行表示は番号に数えない。表示された変更行と文脈行を別々に記録する。"
+        },
+        {
+          "path": ".github/scripts/check-pr-story.py",
+          "start": 39,
+          "end": 40,
+          "text": "注釈のsideとstart/endを変更行番号へ照合する。文脈にしか重ならない注釈を、処理の変更を説明したものとして数えないための判定。"
+        },
+        {
+          "path": ".github/scripts/check-pr-story.py",
+          "start": 43,
+          "end": 46,
+          "text": "ビューアと同じく、文脈行も含めて最初に重なるhunkへ注釈を割り当てる。1つの長い注釈で複数hunkを説明済みにすると、後のhunkには文章が表示されないため、同じ配置規則を使う。"
+        },
+        {
+          "path": ".github/scripts/check-pr-story.py",
+          "start": 51,
+          "end": 60,
+          "text": "注釈のstart/endが正の整数で順序どおり、範囲が80行以内、本文が空白だけでないこと、sideがold/newであることを検査する。ファイル全体を巨大な1注釈にまとめる入力を抑える。"
+        },
+        {
+          "path": ".github/scripts/check-pr-story.py",
+          "start": 61,
+          "end": 70,
+          "text": "削除ファイルは旧側へ付け、テキストなら削除前の行数も超えないようにする。バイナリと内容不変の改名には行差分がないため、本文と基本範囲を検査してファイルの説明として受け付ける。"
+        },
+        {
+          "path": ".github/scripts/check-pr-story.py",
+          "start": 71,
+          "end": 74,
+          "text": "表示される最初のhunkで実際の変更行に重なるか確認する。範囲が外れている場合や文脈だけを指した場合は、sideと行番号の修正を求める診断を返す。"
+        },
+        {
+          "path": ".github/scripts/check-pr-story.py",
+          "start": 79,
+          "end": 87,
+          "text": "コミット説明の存在とrole/whyの本文を検査し、notesを配列として読む。コミット内にないファイルへの注釈も拒否し、説明が別のコミットや古いパスへ残っている誤りを見つける。"
+        },
+        {
+          "path": ".github/scripts/check-pr-story.py",
+          "start": 88,
+          "end": 98,
+          "text": "各ファイルの注釈を行範囲まで検証してから、全ファイルと全hunkに有効な説明があるか確かめる。1ファイルの先頭に注釈があっても、離れた変更箇所が無説明ならSHA・パス・@@付きで拒否する。"
+        },
+        {
+          "path": ".github/scripts/check-pr-story.py",
+          "start": 103,
+          "end": 113,
+          "text": "解説と地図のPR番号・コミット一覧・対象SHAを照合する。変更のない同一base/headだけはコミット説明不要とし、それ以外の地図にないSHAは受け付けない。"
+        },
+        {
+          "path": ".github/scripts/check-pr-story.py",
+          "start": 114,
+          "end": 122,
+          "text": "地図の古い順のコミット一覧から解説SHAまでを検査し、マージコミットは除く。後から追加されたコミットの説明を古い解説へ要求せず、解説時点の説明漏れだけを調べる。"
+        },
+        {
+          "path": ".github/scripts/check-pr-story.py",
+          "start": 125,
+          "end": 142,
+          "text": "CLIで解説と地図をJSONとして読み、検査違反を共通の診断接頭辞と終了値1で返す。壊れたJSONやキー不足もトレースバックにせず、入力形式のエラーとして通知する。正常時は0なので既存のシェル/ローカル生成から呼べる。"
+        },
+        {
+          "path": ".github/scripts/build-pr-explain-local.py",
+          "start": 41,
+          "end": 44,
+          "text": "JSONとコード抜粋の基本検査、実Git地図の生成が済んでから新しい説明検査を呼ぶ。出力フォルダの作成・コピーより前に失敗を返すため、説明漏れでも既存プレビューを上書きしない。地図のみの生成経路は従来どおり使える。"
+        },
+        {
+          "path": ".github/scripts/pr-explain-pages.sh",
+          "start": 14,
+          "end": 15,
+          "text": "公開器の契約に行注釈の検査を追記する。説明の不足を通信の一時失敗と区別し、既存公開物を保持して直ちに終了することを示す。"
+        },
+        {
+          "path": ".github/scripts/pr-explain-pages.sh",
+          "start": 124,
+          "end": 130,
+          "text": "gh-pagesから対象PRの最新地図を取得後、その地図と検査済み解説を照合する。失敗は内部値4で返し、explain.jsonのコピーとpushへ進ませない。地図がない場合の従来の終了値3は保つ。"
+        },
+        {
+          "path": ".github/scripts/pr-explain-pages.sh",
+          "start": 187,
+          "end": 187,
+          "text": "説明検査の内部値4を公開CLIの失敗1へ変換し、取り直しのループから直ちに抜ける。同じ説明を5回再試行しても直らないため、通信エラーの再試行とは分ける。"
+        },
+        {
+          "path": ".github/scripts/pr-explain-pages-cases.sh",
+          "start": 41,
+          "end": 41,
+          "text": "ローカルのセッション用リポジトリへ新しい検査器もコピーする。実際の公開スクリプトから検査器が呼ばれる経路をテストできるようにする。"
+        },
+        {
+          "path": ".github/scripts/pr-explain-pages-cases.sh",
+          "start": 62,
+          "end": 77,
+          "text": "正常入力にコミット説明とpackage.jsonの行注釈を追加し、注釈なしの異常入力を別に用意する。地図には実際のSHAと対応する追加行を持たせ、古い解説のケースも同じ説明時点を残す。"
+        },
+        {
+          "path": ".github/scripts/pr-explain-pages-cases.sh",
+          "start": 92,
+          "end": 98,
+          "text": "bare remoteへ置く初期地図を、検査可能なコミット・差分付きのJSONに差し替える。別PRにはheadだけが後へ進んだ地図を用意し、古い解説の公開を引き続き検証する。"
+        },
+        {
+          "path": ".github/scripts/pr-explain-pages-cases.sh",
+          "start": 151,
+          "end": 151,
+          "text": "正常公開で地図が書き換わらないことを、新しい地図の全内容と比較して確認する。説明の公開は引き続きexplain.jsonだけを更新する。"
+        },
+        {
+          "path": ".github/scripts/pr-explain-pages-cases.sh",
+          "start": 165,
+          "end": 168,
+          "text": "注釈のない解説を実際の公開器へ渡し、失敗1・story診断・再試行なし・remoteのSHA不変・既存解説の保持を確認する。検査器単体だけでなく公開境界での退行を防ぐ。"
+        },
+        {
+          "path": ".github/pr-explain/templates/explain.json",
+          "start": 19,
+          "end": 35,
+          "text": "最初にコピーする見本へcommitStoriesとnotesを追加する。仮のSHA・パス・行と明示した上で、各処理の入力・分岐・返す値・理由を実コードに合わせて書くよう促す。コミット概要だけの見本から始めないための変更。"
+        },
+        {
+          "path": "AGENTS.md",
+          "start": 43,
+          "end": 43,
+          "text": "今後の実装担当が必ず読む入口へ、各処理を差分行のnotesで説明し、全コミットをブラウザ確認する要件を追加する。詳細な作成手順へつながる短い常設ルールにする。"
+        },
+        {
+          "path": "docs/development/pr-explain.md",
+          "start": 48,
+          "end": 48,
+          "text": "commitStoriesの説明を、コミット意図だけから処理別の行注釈まで含む定義へ改める。"
+        },
+        {
+          "path": "docs/development/pr-explain.md",
+          "start": 69,
+          "end": 92,
+          "text": "各関数・分岐・状態更新・受け渡しに、入力→変更→結果→理由を書く手順とJSON例を追加する。新規ファイルにも複数の処理注釈、テストには前提と期待結果を求める。"
+        },
+        {
+          "path": "docs/development/pr-explain.md",
+          "start": 94,
+          "end": 102,
+          "text": "注釈はそのコミットの行、削除は旧側、改名は新パスという規則を明記する。80行制限と差分間の分割、非テキスト変更の扱いも示し、意味の十分さと省略されたコードは人が確認する限界を明記する。"
+        },
+        {
+          "path": "docs/development/pr-explain.md",
+          "start": 115,
+          "end": 115,
+          "text": "5画面を開くだけでなく、経緯タブで全コミットを選んで各ファイルの注釈と強調行を見ることを確認項目へ追加する。"
+        },
+        {
+          "path": "docs/development/pr-explain.md",
+          "start": 129,
+          "end": 129,
+          "text": "story診断に示されたSHA・パス・差分へ説明を補い、再検証する対処を説明する。失敗で既存ページが壊れないことも伝える。"
+        },
+        {
+          "path": "docs/development/pr-explain.md",
+          "start": 147,
+          "end": 147,
+          "text": "実Gitで注釈を検査し、ローカル/公開の既存出力を保持する回帰テストもあることを検査範囲へ追記する。"
+        },
+        {
+          "path": "harness/tests/test_pr_explain.py",
+          "start": 48,
+          "end": 58,
+          "text": "任意の現在HEADに依存するテストを、before→afterだけを変えた小さな実Gitリポジトリへ置き換える。説明が必要な差分とSHAを固定し、将来の実装コミットの大きさに影響されずローカル生成を検証する。"
+        },
+        {
+          "path": "harness/tests/test_pr_explain.py",
+          "start": 62,
+          "end": 79,
+          "text": "新しい入力と地図で3ファイル生成に成功した後、commitStoriesを除いた入力も試す。story検査の失敗と既存indexの保持を確認し、従来の不正JSON拒否や地図のみの生成も保つ。"
+        },
+        {
+          "path": "harness/tests/test_pr_story.py",
+          "start": 12,
+          "end": 43,
+          "text": "一時Gitリポジトリに離れた2変更・追加・削除・内容不変の改名・バイナリ・空白変更を作り、さらに後続コミットを加える。実際の地図生成器へ渡すので、手製patchだけを使った検査の取り違えを避ける。"
+        },
+        {
+          "path": "harness/tests/test_pr_story.py",
+          "start": 44,
+          "end": 65,
+          "text": "それぞれの差分に対応する正しい行注釈と、後続コミットの説明を用意する。旧側の削除行、新パスの改名、行差分のないバイナリも正常入力へ含め、品質検査が正しい入力を拒否しないことを確認する。"
+        },
+        {
+          "path": "harness/tests/test_pr_story.py",
+          "start": 68,
+          "end": 81,
+          "text": "公開と同じJSONファイルをCLIへ渡す共通関数と、全変更種別が通過する正常系を用意する。内部関数の返す集合ではなく、入力から終了値までの振る舞いを検証する。"
+        },
+        {
+          "path": "harness/tests/test_pr_story.py",
+          "start": 83,
+          "end": 89,
+          "text": "後続コミットの説明を丸ごと消し、commitStoriesと対象SHAを示して拒否することを確認する。"
+        },
+        {
+          "path": "harness/tests/test_pr_story.py",
+          "start": 91,
+          "end": 97,
+          "text": "特定ファイルの注釈だけを除き、他の説明が残っていてもファイル名付きで拒否することを確認する。"
+        },
+        {
+          "path": "harness/tests/test_pr_story.py",
+          "start": 99,
+          "end": 105,
+          "text": "同じファイルの離れた2つ目の注釈だけを消し、ファイルに1件説明があるだけでは合格しないことを確認する。"
+        },
+        {
+          "path": "harness/tests/test_pr_story.py",
+          "start": 107,
+          "end": 112,
+          "text": "注釈を変更されていない文脈行へずらし、範囲がファイル内にあっても変更行を指さなければ拒否することを確認する。"
+        },
+        {
+          "path": "harness/tests/test_pr_story.py",
+          "start": 114,
+          "end": 121,
+          "text": "1つの注釈を2hunkにまたがる範囲へ広げても、ビューアは最初にしか置かないため2つ目は未説明として拒否することを確認する。"
+        },
+        {
+          "path": "harness/tests/test_pr_story.py",
+          "start": 123,
+          "end": 128,
+          "text": "コミット外のファイル名へ注釈を付け替え、説明の付け先が違う誤りを検出する。"
+        },
+        {
+          "path": "harness/tests/test_pr_story.py",
+          "start": 130,
+          "end": 135,
+          "text": "空白・改行・タブだけの本文を与え、キーが存在するだけでは説明として受け付けないことを確認する。"
+        },
+        {
+          "path": "harness/tests/test_pr_story.py",
+          "start": 137,
+          "end": 142,
+          "text": "81行の巨大な注釈を与え、80行以内へ分割するよう拒否する境界を確認する。"
+        },
+        {
+          "path": "harness/tests/test_pr_story.py",
+          "start": 144,
+          "end": 149,
+          "text": "地図に後続コミットがあっても、古い解説SHAまでの説明が揃っていれば通ることを確認する。古い説明の公開が不必要に壊れないための対照。"
+        },
+        {
+          "path": "harness/tests/test_pr_story.py",
+          "start": 151,
+          "end": 156,
+          "text": "削除ファイルの注釈を新側へ付け替え、存在しない変更後の行を指す誤りを拒否する。"
+        },
+        {
+          "path": "harness/tests/test_pr_story.py",
+          "start": 158,
+          "end": 163,
+          "text": "地図に含まれないSHAの解説を与え、違う時点の差分へ注釈を照合して合格にしないことを確認する。"
+        },
+        {
+          "path": "harness/tests/test_pr_story.py",
+          "start": 165,
+          "end": 171,
+          "text": "コミット一覧のない地図を与え、未検査で通過させず、利用者にトレースバックを出さない形式エラーとなることを確認する。"
+        }
+      ]
+    }
+  ],
+  "suites": [
+    {
+      "id": "story",
+      "label": "説明と実差分の対応",
+      "file": "harness/tests/test_pr_story.py"
+    },
+    {
+      "id": "local",
+      "label": "ローカル生成と公開の境界",
+      "file": "harness/tests/test_pr_explain.py"
+    }
+  ],
+  "tests": [
+    {
+      "id": "hunks",
+      "suite": "story",
+      "name": "test_rejects_an_unexplained_hunk_even_when_the_same_file_has_another_note",
+      "techniques": [
+        "regression",
+        "error"
+      ],
+      "why": "ファイル単位の存在確認だけでは後半の処理が無説明で残るため。",
+      "given": "1ファイルに離れた2か所の変更がある。",
+      "when": "2つ目の注釈だけを除いて検査する。",
+      "then": "終了値1でパスと@@の診断が出る。",
+      "excerpt": {
+        "path": "harness/tests/test_pr_story.py",
+        "start": 99,
+        "end": 105,
+        "text": "    def test_rejects_an_unexplained_hunk_even_when_the_same_file_has_another_note(self):\n        with story_fixture() as (folder, change_map, explanation):\n            explanation[\"commitStories\"][0][\"notes\"].pop(1)\n            result = check_story(folder, change_map, explanation)\n            self.assertEqual(result.returncode, 1)\n            self.assertIn(\"a.ts\", result.stdout)\n            self.assertIn(\"@@\", result.stdout)"
+      }
+    },
+    {
+      "id": "wide",
+      "suite": "story",
+      "name": "test_one_wide_note_does_not_explain_two_separately_displayed_hunks",
+      "techniques": [
+        "regression",
+        "error"
+      ],
+      "why": "ビューアの配置と検査の数え方を一致させるため。",
+      "given": "離れた2hunkがある。",
+      "when": "1件の注釈を両方へ広げ、2つ目の注釈を除く。",
+      "then": "2つ目のhunkが未説明として拒否される。",
+      "excerpt": {
+        "path": "harness/tests/test_pr_story.py",
+        "start": 114,
+        "end": 121,
+        "text": "    def test_one_wide_note_does_not_explain_two_separately_displayed_hunks(self):\n        with story_fixture() as (folder, change_map, explanation):\n            notes = explanation[\"commitStories\"][0][\"notes\"]\n            notes[0][\"end\"] = 22\n            notes.pop(1)\n            result = check_story(folder, change_map, explanation)\n            self.assertEqual(result.returncode, 1)\n            self.assertIn(\"@@ -19,4 +19,4 @@\", result.stdout)"
+      }
+    },
+    {
+      "id": "stale",
+      "suite": "story",
+      "name": "test_stale_explanation_checks_only_commits_at_its_own_snapshot",
+      "techniques": [
+        "regression",
+        "error"
+      ],
+      "why": "古い解説に新しいコミットの説明を要求しないため。",
+      "given": "後続コミットが地図へ追加済み。",
+      "when": "解説は前のSHAとその時点の説明へ戻す。",
+      "then": "その時点までの説明が揃っていれば成功する。",
+      "excerpt": {
+        "path": "harness/tests/test_pr_story.py",
+        "start": 144,
+        "end": 149,
+        "text": "    def test_stale_explanation_checks_only_commits_at_its_own_snapshot(self):\n        with story_fixture() as (folder, change_map, explanation):\n            explanation[\"sha\"] = explanation[\"commitStories\"][0][\"sha\"]\n            explanation[\"commitStories\"].pop()\n            result = check_story(folder, change_map, explanation)\n            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)"
+      }
+    },
+    {
+      "id": "output",
+      "suite": "local",
+      "name": "test_local_build_has_checked_explanation_and_rejects_repository_output",
+      "techniques": [
+        "regression",
+        "error"
+      ],
+      "why": "検査失敗で既存のプレビューが壊れないことを確かめるため。",
+      "given": "有効な説明で生成したプレビューがある。",
+      "when": "コミット説明を削除して再生成する。",
+      "then": "story検査で失敗し、既存indexは変わらない。",
+      "excerpt": {
+        "path": "harness/tests/test_pr_explain.py",
+        "start": 69,
+        "end": 79,
+        "text": "            self.assertEqual(run(*command[:-1], str(repo / \"generated\")).returncode, 2)\n            stories = explanation.pop(\"commitStories\")\n            source.write_text(json.dumps(explanation), encoding=\"utf-8\")\n            (output / \"index.html\").write_text(\"unchanged\", encoding=\"utf-8\")\n            result = run(*command, \"--explain\", str(source))\n            self.assertEqual(result.returncode, 1)\n            self.assertIn(\"[pr-explain-story]\", result.stdout)\n            self.assertEqual((output / \"index.html\").read_text(), \"unchanged\")\n            explanation[\"commitStories\"] = stories\n            explanation[\"unknown\"] = True\n            source.write_text(json.dumps(explanation), encoding=\"utf-8\")"
+      }
+    }
+  ],
+  "impact": {
+    "title": "コードの変更理由を追える解説へ",
+    "lead": "処理の説明が抜けた解説は更新前に差し戻され、前の解説を引き続き読める。"
+  },
+  "primers": [
+    {
+      "id": "diff",
+      "kind": "language",
+      "category": "PR解説 · 検証",
+      "label": "unified diffの行番号",
+      "gist": "@@は変更前と変更後の開始行を表す。+は追加、-は削除、空白は文脈行。",
+      "passages": [
+        {
+          "kind": "text",
+          "text": "Pythonの正規表現で@@の開始位置を読み、追加ではnewだけ、削除ではoldだけを進める。両側の番号を混ぜると、旧側へ付けた削除注釈や、追加でずれた行を正しく検査できない。"
+        },
+        {
+          "kind": "excerpt",
+          "excerpt": {
+            "path": ".github/scripts/check-pr-story.py",
+            "start": 14,
+            "end": 36,
+            "text": "def changed_hunks(patch: str) -> list[dict]:\n    \"\"\"表示用patchから、hunkごとの変更行と文脈行の番号を両側について返す。\"\"\"\n    hunks = []\n    old = new = 0\n    for raw in patch.splitlines():\n        header = HUNK.match(raw)\n        if header:\n            old, new = map(int, header.groups())\n            hunks.append({\"header\": raw, \"old\": set(), \"new\": set(), \"oldLines\": set(), \"newLines\": set()})\n            continue\n        if not hunks or not raw or raw[0] not in \" +-\":\n            continue\n        sign = raw[0]\n        if sign != \"+\":\n            hunks[-1][\"oldLines\"].add(old)\n        if sign != \"-\":\n            hunks[-1][\"newLines\"].add(new)\n        if sign in \"+-\":\n            hunks[-1][\"new\" if sign == \"+\" else \"old\"].add(new if sign == \"+\" else old)\n        old += sign != \"+\"\n        new += sign != \"-\"\n    return hunks\n"
+          }
+        },
+        {
+          "kind": "caution",
+          "text": "この地図には最大2000行の表示差分だけがある。機械は表示範囲の注釈を確認し、省略された処理の意味や本文の十分さは人が確認する。"
+        }
+      ],
+      "occurrences": [
+        {
+          "path": ".github/scripts/check-pr-story.py",
+          "lineRange": {
+            "start": 14,
+            "end": 36
+          },
+          "text": "このPRで導入した検査と、実行順序を確認する。"
+        }
+      ]
+    },
+    {
+      "id": "placement",
+      "kind": "codebase",
+      "category": "PR解説 · 検証",
+      "label": "ビューアと同じ注釈の配置",
+      "gist": "表示される最初のhunkだけを、その注釈の説明先として数える。",
+      "passages": [
+        {
+          "kind": "text",
+          "text": "注釈の範囲は文脈行にも重なることがある。ビューアが最初に置くhunkを選び、そのhunk内の変更行にも重なるか確かめる。2つのhunkを横断する1注釈で後者まで説明済みにしない。"
+        },
+        {
+          "kind": "excerpt",
+          "excerpt": {
+            "path": ".github/scripts/check-pr-story.py",
+            "start": 39,
+            "end": 46,
+            "text": "    return any(note[\"start\"] <= line <= note[\"end\"] for line in hunk[note.get(\"side\", \"new\")])\n\n\ndef placed_hunk(note: dict, hunks: list[dict]) -> dict | None:\n    \"\"\"ビューアと同じく、文脈行も含めて最初に重なるhunkへ注釈を置く。\"\"\"\n    side = note.get(\"side\", \"new\") + \"Lines\"\n    return next((hunk for hunk in hunks if any(note[\"start\"] <= line <= note[\"end\"] for line in hunk[side])), None)\n"
+          }
+        },
+        {
+          "kind": "caution",
+          "text": "本文を自動生成する検査ではない。各関数・分岐・状態更新について、入力・変更内容・結果・理由を別途書く。"
+        }
+      ],
+      "occurrences": [
+        {
+          "path": ".github/scripts/check-pr-story.py",
+          "lineRange": {
+            "start": 39,
+            "end": 46
+          },
+          "text": "このPRで導入した検査と、実行順序を確認する。"
+        }
+      ]
+    },
+    {
+      "id": "publish",
+      "kind": "codebase",
+      "category": "PR解説 · 検証",
+      "label": "検査してから公開物を変える",
+      "gist": "最新の公開先地図と照合してから、説明のコピーへ進む。",
+      "passages": [
+        {
+          "kind": "text",
+          "text": "基本のJSON/コード抜粋検査後、公開先の地図が取得できた段階で行注釈を照合する。失敗は内部値4で戻し、呼び出し元が終了値1へ変換してpushを止める。"
+        },
+        {
+          "kind": "excerpt",
+          "excerpt": {
+            "path": ".github/scripts/pr-explain-pages.sh",
+            "start": 124,
+            "end": 131,
+            "text": "# モードごとに `$folder` を書き換える。3 は地図なし、4 は行注釈の検査違反(公開終了コード1へ変換)。\napply_change() {\n  local site=\"$work/site\"\n  case \"$mode\" in\n    put-explain)\n      [ -f \"$site/$folder/change-map.json\" ] || return 3\n      python3 \"$scripts_dir/check-pr-story.py\" \"$work/explain.json\" \"$site/$folder/change-map.json\" || return 4\n      cp \"$work/explain.json\" \"$site/$folder/explain.json\""
+          }
+        },
+        {
+          "kind": "caution",
+          "text": "手順を強制するのはこのローカル生成器と公開器を使った経路。内容の意味を保証するものではなく、既存の古い解説を自動で書き直すものでもない。"
+        }
+      ],
+      "occurrences": [
+        {
+          "path": ".github/scripts/pr-explain-pages.sh",
+          "lineRange": {
+            "start": 124,
+            "end": 131
+          },
+          "text": "このPRで導入した検査と、実行順序を確認する。"
+        }
+      ]
+    }
+  ]
+}
