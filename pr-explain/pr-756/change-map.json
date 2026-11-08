@@ -4,7 +4,7 @@
   "headBranch": "feature/668-color-space-resources",
   "baseBranch": "main",
   "mergeBase": "15eb3d78e1cf97fb1b5756f8f412b1345228d6ec",
-  "head": "719f018b54b6315d60b5f45bd2034695da8395ae",
+  "head": "fc05fbbf661d2a6f97c8043f71f1d919f0b0e91e",
   "groups": [
     {
       "label": "TypeScript · core",
@@ -13,7 +13,7 @@
           "path": "packages/core/src/content-stream/color-space-resources/index.ts",
           "status": "A",
           "oldPath": null,
-          "additions": 316,
+          "additions": 321,
           "deletions": 0,
           "changed": true,
           "target": null
@@ -743,6 +743,15 @@
           "status": "A",
           "oldPath": null,
           "additions": 73,
+          "deletions": 0,
+          "changed": true,
+          "target": "packages/core/src/content-stream/color-space-resources/index.ts"
+        },
+        {
+          "path": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.names.test.ts",
+          "status": "A",
+          "oldPath": null,
+          "additions": 100,
           "deletions": 0,
           "changed": true,
           "target": "packages/core/src/content-stream/color-space-resources/index.ts"
@@ -1666,6 +1675,22 @@
       {
         "file": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.integration.test.ts",
         "name": "色空間の選択は前の色を新しい色空間の初期色へ切り替える"
+      },
+      {
+        "file": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.names.test.ts",
+        "name": "$label の参照先がない場合は名前不在を警告する"
+      },
+      {
+        "file": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.names.test.ts",
+        "name": "Indexedの基底名が見つからなくても添字の成分数は1のままになる"
+      },
+      {
+        "file": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.names.test.ts",
+        "name": "別名の参照先が存在すれば警告なく色空間を選択できる"
+      },
+      {
+        "file": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.names.test.ts",
+        "name": "輪郭色空間の別名の参照先がない場合も名前不在を警告する"
       }
     ],
     "removed": [],
@@ -1673,7 +1698,8 @@
       "packages/core/src/content-stream/color-space-resources/__tests__/color-space.basic.test.ts",
       "packages/core/src/content-stream/color-space-resources/__tests__/color-space.boundary.test.ts",
       "packages/core/src/content-stream/color-space-resources/__tests__/color-space.error.test.ts",
-      "packages/core/src/content-stream/color-space-resources/__tests__/color-space.integration.test.ts"
+      "packages/core/src/content-stream/color-space-resources/__tests__/color-space.integration.test.ts",
+      "packages/core/src/content-stream/color-space-resources/__tests__/color-space.names.test.ts"
     ]
   },
   "commits": [
@@ -1898,6 +1924,72 @@
           "truncated": false
         }
       ]
+    },
+    {
+      "sha": "fc05fbbf661d2a6f97c8043f71f1d919f0b0e91e",
+      "merge": false,
+      "author": "土居 孝史",
+      "date": "2026-11-08T00:17:01Z",
+      "subject": "♻️ [Refactoring]: 未存在の色空間参照の警告を統一",
+      "body": "",
+      "files": [
+        {
+          "path": "docs/guides/resources.html",
+          "status": "M",
+          "oldPath": null,
+          "additions": 1,
+          "deletions": 1,
+          "patch": "@@ -448,7 +448,7 @@ endobj</code></pre>\n       <h3>間接参照とPattern</h3>\n       <p>カテゴリ辞書・各定義・ICCBasedのプロファイルや <code>/N</code>・DeviceNの名前配列・IndexedやPatternの基底は間接参照でも解決します。着色パターンは <code>/Pattern cs /P1 scn</code>、非着色パターンは基底色の成分も必要です。たとえば <code>[/Pattern /DeviceRGB]</code> を選んだ後は <code>0.1 0.2 0.3 /P1 scn</code> と書きます。名前は数値成分数に含めません。</p>\n       <h3>不一致・未知の定義を読むとき</h3>\n-      <p>RGBを選んだ後の <code>0.1 0.2 sc</code> は成分が1個不足するためエラーです。余分な成分もエラーになります。未知の族はpdfmodが選択位置に警告を出し、成分数不明として保持します。その後の数値は型を確認して保存しますが、個数は検証しません。名前がない場合も以前の成分数で検証を続けません。参照先の構文解析エラーは警告へ置き換えず返します。</p>\n+      <p>RGBを選んだ後の <code>0.1 0.2 sc</code> は成分が1個不足するためエラーです。余分な成分もエラーになります。色空間配列の先頭に未知の族がある場合は、選択位置に <code>COLOR_SPACE_UNSUPPORTED</code> の警告を出し、成分数不明として保持します。その後の数値は型を確認して保存しますが、個数は検証しません。名前が見つからない場合は、直接の指定でも定義内の別名・基底からの参照でも <code>COLOR_SPACE_NOT_FOUND</code> を報告し、以前の成分数で検証を続けません。基底が不明なIndexedでも、添字の成分数は1です。参照先の構文解析エラーは警告へ置き換えず返します。</p>\n       <div class=\"note\"><strong>実行前の準備と実装の範囲</strong><code>ColorSpaceResources.fromResources(resources, resolveRef)</code> で現在のスコープを準備し、<code>OperatorRegistry.createDefault(extGStates, colorSpaces)</code> の第2引数へ渡します。各定義は事前に解決し、成功・失敗を名前ごとに保持します。カテゴリのエラーは準備時に返し、個々の定義のエラーはその名前の選択時まで返しません。族と成分数を読み色値を保持するところまでを扱い、ICC変換・パレット展開・特色の関数評価・パターン描画は後段の処理です。</div>\n     </section>\n ",
+          "patchLines": 9,
+          "truncated": false,
+          "hunkOpeningLines": [
+            {
+              "old": null,
+              "new": null
+            }
+          ]
+        },
+        {
+          "path": "docs/specs/04_resources_graphics_state.md",
+          "status": "M",
+          "oldPath": null,
+          "additions": 1,
+          "deletions": 1,
+          "patch": "@@ -227,7 +227,7 @@ Q                     % グラフィックスステート復元\n - 同期インタプリタの実行前に `ColorSpaceResources.fromResources(resources, resolveRef)` で現在のスコープを解決し、`OperatorRegistry.createDefault(extGStates, colorSpaces)` または `registerColorOperators(registry, colorSpaces)` へ渡す。\n - `/Resources` 自体の継承・間接参照解決は既存のページ属性解決を使う。色空間の準備では `/ColorSpace` カテゴリ・各定義・配列の族名・ICCBasedプロファイルと `/N`・DeviceN名前配列と各名前・Indexed / Pattern基底の間接参照を解決する。CIE色空間のパラメータ辞書も解決する。\n - カテゴリの参照解決エラーは準備時に返す。個別定義のエラーは保持し、その名前を `cs` / `CS` で選択するときに原因をそのまま返す。同名でも別のページ・フォームのスコープと共有しない。\n-- 未知の族は `COLOR_SPACE_UNSUPPORTED`、成分数を確定するための値の不正・欠落や循環は `COLOR_SPACE_INVALID`、不在の名前は `COLOR_SPACE_NOT_FOUND` を選択した命令の位置で報告する。再帰は32段を上限とし、上限でも不明な定義として回復する。\n+- 色空間配列の先頭にある未知の族は `COLOR_SPACE_UNSUPPORTED`、成分数を確定するための値の不正・欠落や循環は `COLOR_SPACE_INVALID` を報告する。不在の名前は、`cs` / `CS` で直接指定した場合も、定義内の別名や基底色空間から参照した場合も `COLOR_SPACE_NOT_FOUND` とする。いずれも選択した命令の位置で報告する。再帰は32段を上限とし、上限でも不明な定義として回復する。\n - 不明な色空間は以前の成分数を引き継がず、成分数不明として保持する。その後の色命令は数値型を検証して保持するが、個数の一致は検証しない。Indexed は基底が不明でも添字は1成分である。\n - 既知の成分数の過不足は `OPERATOR_OPERAND_COUNT_MISMATCH`、型の不一致は `OPERATOR_OPERAND_TYPE_MISMATCH`。Pattern に `sc` / `SC` を使う場合は `OPERATOR_ILLEGAL_STATE` を返す。\n - 色空間と色値は `q` / `Q` の保存・復元対象。ここで扱うのは族・成分数・色値の保持までであり、ICCプロファイル変換、CIEパラメータの数値検証、パレット展開、特色の関数評価、パターンの取得・描画は後段の処理とする。",
+          "patchLines": 9,
+          "truncated": false
+        },
+        {
+          "path": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.error.test.ts",
+          "status": "M",
+          "oldPath": null,
+          "additions": 1,
+          "deletions": 1,
+          "patch": "@@ -59,7 +59,7 @@ test(\"成分数が一致しても数値以外の成分を拒否する\", async ()\n });\n \n test.each([\n-  \"/Mystery\",\n+  \"[/Future 1]\",\n   \"[/Mystery 1 2]\",\n ])(\"未知の族 %s は選択位置に警告し、成分数を不明にする\", async (definition) => {\n   const result = await executeColorSpace({",
+          "patchLines": 9,
+          "truncated": false
+        },
+        {
+          "path": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.names.test.ts",
+          "status": "A",
+          "oldPath": null,
+          "additions": 100,
+          "deletions": 0,
+          "patch": "@@ -0,0 +1,100 @@\n+import { assert, expect, test } from \"vitest\";\n+import {\n+  Color,\n+  ColorSpace,\n+  GraphicsStateStack,\n+} from \"../../graphics-state/index\";\n+import { executeColorSpace } from \"./setup-color-space\";\n+\n+test.each([\n+  {\n+    label: \"直接の別名\",\n+    resources: \"<< /ColorSpace << /Alias /Missing >> >>\",\n+    objects: [],\n+  },\n+  {\n+    label: \"間接参照の別名\",\n+    resources: \"<< /ColorSpace << /Alias 1 0 R >> >>\",\n+    objects: [\"/Missing\"],\n+  },\n+  {\n+    label: \"連鎖する別名\",\n+    resources: \"<< /ColorSpace << /Alias /Next /Next /Missing >> >>\",\n+    objects: [],\n+  },\n+])(\"$label の参照先がない場合は名前不在を警告する\", async ({\n+  resources,\n+  objects,\n+}) => {\n+  const result = await executeColorSpace({\n+    resources,\n+    objects,\n+    content: \"/Alias cs .2 .4 sc\",\n+  });\n+  assert(result.ok);\n+  const space = GraphicsStateStack.current(\n+    result.value.context.graphicsStateStack,\n+  ).fillColorSpace;\n+\n+  expect(result.value.warnings).toEqual([\n+    {\n+      code: \"COLOR_SPACE_NOT_FOUND\",\n+      message: \"Unresolved color space: /Missing\",\n+      offset: 7,\n+    },\n+  ]);\n+  expect(space).toEqual({ family: \"Unknown\", name: \"Missing\" });\n+  expect(ColorSpace.componentCount(space)).toEqual({ some: false });\n+});\n+\n+test(\"輪郭色空間の別名の参照先がない場合も名前不在を警告する\", async () => {\n+  const result = await executeColorSpace({\n+    resources: \"<< /ColorSpace << /Alias /Missing >> >>\",\n+    content: \"/Alias CS .2 .4 SC\",\n+  });\n+  assert(result.ok);\n+\n+  expect(result.value.warnings).toMatchObject([\n+    { code: \"COLOR_SPACE_NOT_FOUND\", offset: 7 },\n+  ]);\n+  expect(\n+    GraphicsStateStack.current(result.value.context.graphicsStateStack)\n+      .strokeColorSpace,\n+  ).toEqual({ family: \"Unknown\", name: \"Missing\" });\n+});\n+\n+test(\"別名の参照先が存在すれば警告なく色空間を選択できる\", async () => {\n+  const result = await executeColorSpace({\n+    resources: \"<< /ColorSpace << /Alias /Target /Target /DeviceRGB >> >>\",\n+    content: \"/Alias cs .2 .4 .6 sc\",\n+  });\n+  assert(result.ok);\n+  const state = GraphicsStateStack.current(\n+    result.value.context.graphicsStateStack,\n+  );\n+\n+  expect(state.fillColorSpace).toEqual(ColorSpace.deviceRGB());\n+  expect(state.fillColor).toEqual(Color.rgb(0.2, 0.4, 0.6));\n+  expect(result.value.warnings).toEqual([]);\n+});\n+\n+test(\"Indexedの基底名が見つからなくても添字の成分数は1のままになる\", async () => {\n+  const result = await executeColorSpace({\n+    resources:\n+      \"<< /ColorSpace << /Palette [/Indexed /Missing 1 <000000FFFFFF>] >> >>\",\n+    content: \"/Palette cs 1 sc\",\n+  });\n+  assert(result.ok);\n+  const space = GraphicsStateStack.current(\n+    result.value.context.graphicsStateStack,\n+  ).fillColorSpace;\n+\n+  expect(result.value.warnings).toMatchObject([\n+    {\n+      code: \"COLOR_SPACE_NOT_FOUND\",\n+      message: \"Unresolved color space: /Missing\",\n+      offset: 9,\n+    },\n+  ]);\n+  expect(ColorSpace.componentCount(space)).toEqual({ some: true, value: 1 });\n+});",
+          "patchLines": 101,
+          "truncated": false
+        },
+        {
+          "path": "packages/core/src/content-stream/color-space-resources/index.ts",
+          "status": "M",
+          "oldPath": null,
+          "additions": 6,
+          "deletions": 1,
+          "patch": "@@ -119,7 +119,12 @@ export const ColorSpaceDefinition = {\n       const local = scope.dictionary.entries.get(object.value);\n       return local\n         ? ColorSpaceDefinition.read(local, resolveRef, next)\n-        : ok(ColorSpaceDefinition.unresolved(object.value));\n+        : ok(\n+            ColorSpaceDefinition.unresolved(\n+              object.value,\n+              \"COLOR_SPACE_NOT_FOUND\",\n+            ),\n+          );\n     }\n \n     if (object.type !== \"array\") {",
+          "patchLines": 14,
+          "truncated": false
+        }
+      ]
     }
   ],
   "dependencies": [
@@ -1963,6 +2055,16 @@
     },
     {
       "from": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.integration.test.ts",
+      "to": "packages/core/src/content-stream/graphics-state/index.ts",
+      "status": "added"
+    },
+    {
+      "from": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.names.test.ts",
+      "to": "packages/core/src/content-stream/color-space-resources/__tests__/setup-color-space.ts",
+      "status": "added"
+    },
+    {
+      "from": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.names.test.ts",
       "to": "packages/core/src/content-stream/graphics-state/index.ts",
       "status": "added"
     },
