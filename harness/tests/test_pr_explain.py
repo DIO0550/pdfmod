@@ -45,19 +45,36 @@ class PrExplainRegressionCases(unittest.TestCase):
     def test_local_build_has_checked_explanation_and_rejects_repository_output(self):
         with tempfile.TemporaryDirectory() as work:
             work = Path(work)
-            sha = run("git", "rev-parse", "HEAD").stdout.strip()
-            explanation = {"version": 1, "pr": 123, "sha": sha, "overview": {"title": "題", "lead": "要約", "before": [], "after": [{"text": "後"}]}}
+            repo = work / "repo"
+            shutil.copytree(ROOT / ".github", repo / ".github")
+            for args in (("init", "-q", "-b", "main"), ("config", "user.name", "local-tests"), ("config", "user.email", "local-tests@example.com")):
+                run("git", *args, cwd=repo).check_returncode()
+            (repo / "input.txt").write_text("before\n")
+            run("git", "add", ".", cwd=repo).check_returncode()
+            run("git", "commit", "-qm", "base", cwd=repo).check_returncode()
+            (repo / "input.txt").write_text("after\n")
+            run("git", "commit", "-qam", "change result", cwd=repo).check_returncode()
+            sha = run("git", "rev-parse", "HEAD", cwd=repo).stdout.strip()
+            explanation = {"version": 1, "pr": 123, "sha": sha, "overview": {"title": "題", "lead": "要約", "before": [], "after": [{"text": "後"}]}, "commitStories": [{"sha": sha, "phase": "core", "role": "返す値を更新", "why": "新しい出力へ合わせる。", "notes": [{"path": "input.txt", "start": 1, "end": 1, "text": "出力をbeforeからafterへ変更し、新しい結果を呼び出し側へ渡す。"}]}]}
             source = work / "input.json"
             source.write_text(json.dumps(explanation), encoding="utf-8")
             output = work / "html"
-            command = ["python3", str(SCRIPTS / "build-pr-explain-local.py"), "--base", "HEAD~1", "--head", "HEAD", "--pr", "123", "--head-branch", "topic", "--base-branch", "main", "--out", str(output)]
+            command = ["python3", str(repo / ".github/scripts/build-pr-explain-local.py"), "--base", "HEAD~1", "--head", "HEAD", "--pr", "123", "--head-branch", "topic", "--base-branch", "main", "--out", str(output)]
             result = run(*command, "--explain", str(source))
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual({file.name for file in output.iterdir()}, {"index.html", "explain.json", "change-map.json"})
             self.assertEqual(json.loads((output / "explain.json").read_text())["sha"], sha)
             self.assertEqual(run(*command).returncode, 0)
             self.assertFalse((output / "explain.json").exists())
-            self.assertEqual(run(*command[:-1], str(ROOT / "generated")).returncode, 2)
+            self.assertEqual(run(*command[:-1], str(repo / "generated")).returncode, 2)
+            stories = explanation.pop("commitStories")
+            source.write_text(json.dumps(explanation), encoding="utf-8")
+            (output / "index.html").write_text("unchanged", encoding="utf-8")
+            result = run(*command, "--explain", str(source))
+            self.assertEqual(result.returncode, 1)
+            self.assertIn("[pr-explain-story]", result.stdout)
+            self.assertEqual((output / "index.html").read_text(), "unchanged")
+            explanation["commitStories"] = stories
             explanation["unknown"] = True
             source.write_text(json.dumps(explanation), encoding="utf-8")
             (output / "index.html").write_text("unchanged", encoding="utf-8")

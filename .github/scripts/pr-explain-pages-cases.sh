@@ -38,7 +38,7 @@ source "$repo_root/.github/scripts/lib/cases-report.sh"
 session="$work/session"
 git init --quiet -b topic "$session"
 mkdir -p "$session/.github/scripts/lib"
-cp "$scripts_dir/pr-explain-pages.sh" "$scripts_dir/build-pr-explain.py" "$scripts_dir/check-pr-explain-template.py" "$session/.github/scripts/"
+cp "$scripts_dir/pr-explain-pages.sh" "$scripts_dir/build-pr-explain.py" "$scripts_dir/check-pr-explain-template.py" "$scripts_dir/check-pr-story.py" "$session/.github/scripts/"
 cp "$scripts_dir/lib/embedded_regions.py" "$session/.github/scripts/lib/"
 printf '{"name": "session"}\n' > "$session/package.json"
 git -C "$session" add -A && git -C "$session" commit --quiet -m pushed
@@ -59,17 +59,22 @@ work, head, unpushed = sys.argv[1:4]
 explain = {
     "version": 1, "pr": 1, "sha": head,
     "overview": {"title": "書いた解説", "lead": "要約", "before": [], "after": [{"text": "後"}]},
+    "commitStories": [{"sha": head, "phase": "core", "role": "パッケージの識別名を設定", "why": "作業コピーを区別するため。", "notes": [{"path": "package.json", "start": 1, "end": 1, "text": "nameをsessionに設定し、パッケージの識別名として使う。"}]}],
     "suites": [{"id": "s", "label": "置き場", "file": "package.json"}],
     "tests": [{"id": "t", "suite": "s", "name": "n", "techniques": ["state"], "why": "w", "given": "g", "when": "w", "then": "t",
                "excerpt": {"path": "package.json", "start": 1, "end": 1}}],
 }
 write = lambda name, value: open(f"{work}/{name}", "w", encoding="utf-8").write(json.dumps(value, ensure_ascii=False))
 write("explain.json", explain)
+write("unexplained.json", {**explain, "commitStories": []})
 write("broken.json", {**explain, "version": 2})
 write("explain-7.json", {**explain, "pr": 7})
 write("explain-2.json", {**explain, "pr": 2})
 write("unpushed.json", {**explain, "sha": unpushed})
 write("map.json", {"version": 2, "head": "new"})
+seed_map = {"version": 2, "pr": 1, "head": head, "commits": [{"sha": head, "files": [{"path": "package.json", "status": "A", "patch": '@@ -0,0 +1 @@\n+{"name": "session"}'}]}]}
+write("seed-map.json", seed_map)
+write("stale-map.json", {**seed_map, "pr": 2, "head": "0000000"})
 PY
 broken_template="$work/broken-template.html"
 sed 's/<script>/<script> /' "$template" > "$broken_template"
@@ -84,13 +89,13 @@ fresh_origin() {
   git init --quiet -b gh-pages "$work/seed"
   mkdir -p "$work/seed/pr-explain/pr-1" "$work/seed/pr-explain/pr-12" "$work/seed/pr-preview/pr-1"
   echo old > "$work/seed/pr-explain/pr-1/index.html"
-  printf '{"version": 2, "head": "%s"}\n' "$head" > "$work/seed/pr-explain/pr-1/change-map.json"
+  cp "$work/seed-map.json" "$work/seed/pr-explain/pr-1/change-map.json"
   echo '{"old": "explain"}' > "$work/seed/pr-explain/pr-1/explain.json"
   echo behavior > "$work/seed/pr-explain/pr-1/behavior.html"
   mkdir -p "$work/seed/pr-explain/pr-1/assets"
   echo asset > "$work/seed/pr-explain/pr-1/assets/x.css"
   mkdir -p "$work/seed/pr-explain/pr-2"
-  echo '{"version": 2, "head": "0000000"}' > "$work/seed/pr-explain/pr-2/change-map.json"
+  cp "$work/stale-map.json" "$work/seed/pr-explain/pr-2/change-map.json"
   echo twelve > "$work/seed/pr-explain/pr-12/index.html"
   echo '{"head": "twelve"}' > "$work/seed/pr-explain/pr-12/change-map.json"
   echo storybook > "$work/seed/pr-preview/pr-1/index.html"
@@ -143,7 +148,7 @@ placed_by_builder() {
 
 fresh_origin seeded
 errors="$(bash "$pages" put-explain 1 "$work/explain.json" 2>&1 >/dev/null)"; status=$?
-expect "put-explain は explain.json を置き、index.html と change-map.json に触らない" '[ "$status" -eq 0 ] && placed_by_builder && [ "$(on_pages pr-explain/pr-1/index.html)" = old ] && [ "$(on_pages pr-explain/pr-1/change-map.json)" = "{\"version\": 2, \"head\": \"$head\"}" ]'
+expect "put-explain は explain.json を置き、index.html と change-map.json に触らない" '[ "$status" -eq 0 ] && placed_by_builder && [ "$(on_pages pr-explain/pr-1/index.html)" = old ] && [ "$(on_pages pr-explain/pr-1/change-map.json)" = "$(cat "$work/seed-map.json")" ]'
 expect "put-explain が置くのは、検査が抜粋の中身を足して書き出したもの" 'placed_by_builder'
 expect "put-explain は他の PR のフォルダに触らない" '[ "$(on_pages pr-explain/pr-12/index.html)" = twelve ]'
 expect "put-explain は pr-preview に触らない" '[ "$(on_pages pr-preview/pr-1/index.html)" = storybook ]'
@@ -156,6 +161,11 @@ fresh_origin seeded
 before="$(tip)"
 output="$(bash "$pages" put-explain 1 "$work/broken.json" 2>&1)"; status=$?
 expect "検査に落ちる解説は、取り直しへ進まずに push しない" '[ "$status" -eq 1 ] && [ "$(tip)" = "$before" ] && [[ "$output" == *"[pr-explain-shape]"* ]] && [[ "$output" != *"反映に失敗"* ]]'
+
+fresh_origin seeded
+before="$(tip)"
+output="$(bash "$pages" put-explain 1 "$work/unexplained.json" 2>&1)"; status=$?
+expect "行注釈のない解説は既存ページを保持し、再試行せず拒否する" '[ "$status" -eq 1 ] && [ "$(tip)" = "$before" ] && [[ "$output" == *"[pr-explain-story]"* ]] && [[ "$output" != *"反映に失敗"* ]] && [ "$(on_pages pr-explain/pr-1/explain.json)" = "{\"old\": \"explain\"}" ]'
 
 fresh_origin seeded
 before="$(tip)"
