@@ -1,0 +1,472 @@
+{
+  "version": 2,
+  "pr": 757,
+  "headBranch": "fix/pr-story-explanations",
+  "baseBranch": "main",
+  "mergeBase": "15eb3d78e1cf97fb1b5756f8f412b1345228d6ec",
+  "head": "43388f52bd41fd91515c1000ddb3722c104eaab7",
+  "groups": [
+    {
+      "label": "TypeScript · core",
+      "files": [
+        {
+          "path": "packages/core/src/document/resources/index.ts",
+          "changed": false
+        }
+      ]
+    },
+    {
+      "label": "Rust",
+      "files": [
+        {
+          "path": "rust/crates/core/src/error.rs",
+          "changed": false
+        }
+      ]
+    },
+    {
+      "label": "仕様・設計",
+      "files": [
+        {
+          "path": "docs/development/pr-explain.md",
+          "status": "M",
+          "oldPath": null,
+          "additions": 39,
+          "deletions": 1,
+          "changed": true,
+          "target": null
+        }
+      ]
+    },
+    {
+      "label": "CI・開発支援",
+      "files": [
+        {
+          "path": ".github/pr-explain/templates/explain.json",
+          "status": "M",
+          "oldPath": null,
+          "additions": 17,
+          "deletions": 0,
+          "changed": true,
+          "target": null
+        },
+        {
+          "path": ".github/pr-explain/templates/index.html",
+          "changed": false
+        },
+        {
+          "path": ".github/scripts/build-pr-change-map.py",
+          "changed": false
+        },
+        {
+          "path": ".github/scripts/build-pr-explain-local.py",
+          "status": "M",
+          "oldPath": null,
+          "additions": 4,
+          "deletions": 0,
+          "changed": true,
+          "target": null
+        },
+        {
+          "path": ".github/scripts/build-pr-explain.py",
+          "changed": false
+        },
+        {
+          "path": ".github/scripts/check-pr-explain-template.py",
+          "changed": false
+        },
+        {
+          "path": ".github/scripts/check-pr-story.py",
+          "status": "A",
+          "oldPath": null,
+          "additions": 142,
+          "deletions": 0,
+          "changed": true,
+          "target": null
+        },
+        {
+          "path": ".github/scripts/lib/cases-report.sh",
+          "changed": false
+        },
+        {
+          "path": ".github/scripts/lib/embedded_regions.py",
+          "changed": false
+        },
+        {
+          "path": ".github/scripts/pr-explain-pages-cases.sh",
+          "status": "M",
+          "oldPath": null,
+          "additions": 14,
+          "deletions": 4,
+          "changed": true,
+          "target": null
+        },
+        {
+          "path": ".github/scripts/pr-explain-pages.sh",
+          "status": "M",
+          "oldPath": null,
+          "additions": 5,
+          "deletions": 1,
+          "changed": true,
+          "target": null
+        },
+        {
+          "path": ".github/workflows/pr-explain.yml",
+          "changed": false
+        },
+        {
+          "path": "AGENTS.md",
+          "status": "M",
+          "oldPath": null,
+          "additions": 1,
+          "deletions": 0,
+          "changed": true,
+          "target": null
+        },
+        {
+          "path": "harness/tests/test_pr_explain.py",
+          "status": "M",
+          "oldPath": null,
+          "additions": 21,
+          "deletions": 4,
+          "changed": true,
+          "target": null
+        },
+        {
+          "path": "harness/tests/test_pr_story.py",
+          "status": "A",
+          "oldPath": null,
+          "additions": 175,
+          "deletions": 0,
+          "changed": true,
+          "target": null
+        }
+      ]
+    },
+    {
+      "label": "設定・その他",
+      "files": [
+        {
+          "path": "package.json",
+          "changed": false
+        }
+      ]
+    }
+  ],
+  "tests": {
+    "added": [
+      {
+        "file": "harness/tests/test_pr_story.py",
+        "name": "test_accepts_explanations_for_each_commit_hunk_added_and_deleted_file"
+      },
+      {
+        "file": "harness/tests/test_pr_story.py",
+        "name": "test_one_wide_note_does_not_explain_two_separately_displayed_hunks"
+      },
+      {
+        "file": "harness/tests/test_pr_story.py",
+        "name": "test_rejects_a_deleted_file_note_on_the_new_side"
+      },
+      {
+        "file": "harness/tests/test_pr_story.py",
+        "name": "test_rejects_a_missing_commit_story"
+      },
+      {
+        "file": "harness/tests/test_pr_story.py",
+        "name": "test_rejects_a_missing_file_explanation"
+      },
+      {
+        "file": "harness/tests/test_pr_story.py",
+        "name": "test_rejects_a_note_for_a_file_outside_the_commit"
+      },
+      {
+        "file": "harness/tests/test_pr_story.py",
+        "name": "test_rejects_a_note_only_on_unchanged_context"
+      },
+      {
+        "file": "harness/tests/test_pr_story.py",
+        "name": "test_rejects_a_whitespace_only_explanation"
+      },
+      {
+        "file": "harness/tests/test_pr_story.py",
+        "name": "test_rejects_an_annotation_range_that_bundles_too_much_code"
+      },
+      {
+        "file": "harness/tests/test_pr_story.py",
+        "name": "test_rejects_an_explanation_for_a_commit_outside_the_map"
+      },
+      {
+        "file": "harness/tests/test_pr_story.py",
+        "name": "test_rejects_an_incomplete_map_without_a_traceback"
+      },
+      {
+        "file": "harness/tests/test_pr_story.py",
+        "name": "test_rejects_an_unexplained_hunk_even_when_the_same_file_has_another_note"
+      },
+      {
+        "file": "harness/tests/test_pr_story.py",
+        "name": "test_stale_explanation_checks_only_commits_at_its_own_snapshot"
+      }
+    ],
+    "removed": [],
+    "files": [
+      "harness/tests/test_pr_explain.py",
+      "harness/tests/test_pr_story.py"
+    ]
+  },
+  "commits": [
+    {
+      "sha": "43388f52bd41fd91515c1000ddb3722c104eaab7",
+      "merge": false,
+      "author": "土居 孝史",
+      "date": "2026-11-08T13:10:04Z",
+      "subject": "fix(pr-explain): require code annotations for change stories",
+      "body": "",
+      "files": [
+        {
+          "path": ".github/pr-explain/templates/explain.json",
+          "status": "M",
+          "oldPath": null,
+          "additions": 17,
+          "deletions": 0,
+          "patch": "@@ -16,6 +16,23 @@\n       }\n     ]\n   },\n+  \"commitStories\": [\n+    {\n+      \"sha\": \"0123456789abcdef0123456789abcdef01234567\",\n+      \"phase\": \"core\",\n+      \"role\": \"解析結果を成功と失敗に分けて返す（行番号は仮指定）\",\n+      \"why\": \"不正な入力を呼び出し側が通常の成功と区別して扱うため。各コミットと全変更ファイルに、処理ごとの注釈を用意する。\",\n+      \"notes\": [\n+        {\n+          \"path\": \"rust/crates/core/src/error.rs\",\n+          \"side\": \"new\",\n+          \"start\": 1,\n+          \"end\": 4,\n+          \"text\": \"書式見本。ここで受け取る入力、変えた分岐や処理、返す値、その理由を実コードに即して書く。別の関数・状態更新・受け渡しには別の注釈を付ける。\"\n+        }\n+      ]\n+    }\n+  ],\n   \"impact\": {\n     \"title\": \"読み込めないPDFの理由を区別できる\",\n     \"lead\": \"利用者が確認できる結果を、具体的な入力とともに説明する。\"",
+          "patchLines": 24,
+          "truncated": false
+        },
+        {
+          "path": ".github/scripts/build-pr-explain-local.py",
+          "status": "M",
+          "oldPath": null,
+          "additions": 4,
+          "deletions": 0,
+          "patch": "@@ -38,6 +38,10 @@ def main() -> int:\n             result = subprocess.run(command, cwd=root, env=env, stdout=stream)\n         if result.returncode:\n             return result.returncode\n+        if args.explain:\n+            result = subprocess.run([\"python3\", str(scripts / \"check-pr-story.py\"), str(work / \"explain.json\"), str(work / \"change-map.json\")], cwd=root, env=env)\n+            if result.returncode:\n+                return result.returncode\n         output.mkdir(parents=True, exist_ok=True)\n         shutil.copyfile(template, output / \"index.html\")\n         shutil.copyfile(work / \"change-map.json\", output / \"change-map.json\")",
+          "patchLines": 11,
+          "truncated": false
+        },
+        {
+          "path": ".github/scripts/check-pr-story.py",
+          "status": "A",
+          "oldPath": null,
+          "additions": 142,
+          "deletions": 0,
+          "patch": "@@ -0,0 +1,142 @@\n+#!/usr/bin/env python3\n+\"\"\"変更の経緯の説明漏れと、差分に結び付かない行注釈を公開前に検出する。\"\"\"\n+\n+import argparse\n+import json\n+from pathlib import Path\n+import re\n+\n+\n+HUNK = re.compile(r\"^@@ -(\\d+)(?:,\\d+)? \\+(\\d+)(?:,\\d+)? @@\")\n+MAX_NOTE_LINES = 80\n+\n+\n+def changed_hunks(patch: str) -> list[dict]:\n+    \"\"\"表示用patchから、hunkごとの変更行と文脈行の番号を両側について返す。\"\"\"\n+    hunks = []\n+    old = new = 0\n+    for raw in patch.splitlines():\n+        header = HUNK.match(raw)\n+        if header:\n+            old, new = map(int, header.groups())\n+            hunks.append({\"header\": raw, \"old\": set(), \"new\": set(), \"oldLines\": set(), \"newLines\": set()})\n+            continue\n+        if not hunks or not raw or raw[0] not in \" +-\":\n+            continue\n+        sign = raw[0]\n+        if sign != \"+\":\n+            hunks[-1][\"oldLines\"].add(old)\n+        if sign != \"-\":\n+            hunks[-1][\"newLines\"].add(new)\n+        if sign in \"+-\":\n+            hunks[-1][\"new\" if sign == \"+\" else \"old\"].add(new if sign == \"+\" else old)\n+        old += sign != \"+\"\n+        new += sign != \"-\"\n+    return hunks\n+\n+\n+def intersects(note: dict, hunk: dict) -> bool:\n+    return any(note[\"start\"] <= line <= note[\"end\"] for line in hunk[note.get(\"side\", \"new\")])\n+\n+\n+def placed_hunk(note: dict, hunks: list[dict]) -> dict | None:\n+    \"\"\"ビューアと同じく、文脈行も含めて最初に重なるhunkへ注釈を置く。\"\"\"\n+    side = note.get(\"side\", \"new\") + \"Lines\"\n+    return next((hunk for hunk in hunks if any(note[\"start\"] <= line <= note[\"end\"] for line in hunk[side])), None)\n+\n+\n+def note_errors(note: dict, file: dict, hunks: list[dict]) -> list[str]:\n+    \"\"\"行注釈の範囲・本文・表示される変更行との対応を検査する。\"\"\"\n+    start, end = note.get(\"start\"), note.get(\"end\")\n+    if type(start) is not int or type(end) is not int or start < 1 or end < start:\n+        return [\"注釈のstart/endは1始まりの順序付けた整数にする\"]\n+    if end - start + 1 > MAX_NOTE_LINES:\n+        return [f\"注釈は処理単位に分け、範囲を{MAX_NOTE_LINES}行以内にする\"]\n+    if not isinstance(note.get(\"text\"), str) or not note[\"text\"].strip():\n+        return [\"注釈の本文が空白です。処理の変更内容と理由を書く\"]\n+    if note.get(\"side\", \"new\") not in (\"old\", \"new\"):\n+        return [\"注釈のsideはoldまたはnewにする\"]\n+    if file.get(\"status\") == \"D\":\n+        lines = file.get(\"deletions\")\n+        outside = isinstance(lines, int) and end > lines\n+        if note.get(\"side\", \"new\") != \"old\" or outside:\n+            return [\"削除ファイルの注釈は変更前の存在する行へside: oldで付ける\"]\n+        return []\n+    # バイナリ・内容不変のrenameは行差分がない。本文と範囲は検査し、ファイルの説明として残す。\n+    if file.get(\"patch\") in (None, \"\"):\n+        return []\n+    placement = placed_hunk(note, hunks)\n+    if placement is None or not intersects(note, placement):\n+        return [\"注釈が表示差分の変更行に重なっていません。対象のsideと行番号を確認する\"]\n+    return []\n+\n+\n+def commit_errors(commit: dict, story: dict | None) -> list[str]:\n+    \"\"\"コミットの意図、各ファイルの注釈、表示される各hunkの説明を確認する。\"\"\"\n+    if story is None:\n+        return [\"commitStoriesにこのコミットの処理ごとの解説がありません\"]\n+    errors = [f\"commitStories.{key}が空白です\" for key in (\"role\", \"why\") if not isinstance(story.get(key), str) or not story[key].strip()]\n+    files = {file[\"path\"]: file for file in commit[\"files\"]}\n+    notes = story.get(\"notes\", [])\n+    if not isinstance(notes, list) or any(not isinstance(note, dict) for note in notes):\n+        return errors + [\"commitStories.notesは注釈の配列にする\"]\n+    errors += [f\"{note.get('path')}: このコミットにないファイルへの注釈です\" for note in notes if note.get(\"path\") not in files]\n+    for path, file in files.items():\n+        own_notes = [note for note in notes if note.get(\"path\") == path]\n+        hunks = changed_hunks(file.get(\"patch\") or \"\")\n+        valid = []\n+        for note in own_notes:\n+            violations = note_errors(note, file, hunks)\n+            errors += [f\"{path}: {error}\" for error in violations]\n+            if not violations:\n+                valid.append(note)\n+        if not valid:\n+            errors.append(f\"{path}: このファイルの変更を説明する注釈がありません\")\n+        for hunk in hunks:\n+            if (hunk[\"old\"] or hunk[\"new\"]) and not any(placed_hunk(note, hunks) is hunk for note in valid):\n+                errors.append(f\"{path} {hunk['header']}: 変更行に対応する注釈がありません\")\n+    return errors\n+\n+\n+def collect_errors(explain: dict, change_map: dict) -> list[str]:\n+    \"\"\"古い解説はそのSHAまでを検査し、後から追加されたコミットには説明を要求しない。\"\"\"\n+    if explain.get(\"pr\") != change_map.get(\"pr\"):\n+        return [\"解説と地図のPR番号が一致しません\"]\n+    commits = change_map.get(\"commits\")\n+    if not isinstance(commits, list):\n+        return [\"地図にcommitsの配列がありません。変更の地図を生成し直す\"]\n+    shas = [commit[\"sha\"] for commit in commits]\n+    sha = explain.get(\"sha\")\n+    if sha not in shas:\n+        if not commits and sha == change_map.get(\"head\") == change_map.get(\"mergeBase\"):\n+            return []\n+        return [\"解説のshaが地図のコミットにありません。解説と地図の時点を確認する\"]\n+    stories = explain.get(\"commitStories\", [])\n+    if not isinstance(stories, list):\n+        return [\"commitStoriesはコミット解説の配列にする\"]\n+    by_sha = {story[\"sha\"]: story for story in stories}\n+    errors = []\n+    for commit in commits[:shas.index(sha) + 1]:\n+        if not commit.get(\"merge\", False):\n+            errors += [f\"{commit['sha'][:7]}: {error}\" for error in commit_errors(commit, by_sha.get(commit[\"sha\"]))]\n+    return errors\n+\n+\n+def main() -> int:\n+    parser = argparse.ArgumentParser(description=__doc__)\n+    parser.add_argument(\"explain\", type=Path)\n+    parser.add_argument(\"change_map\", type=Path)\n+    args = parser.parse_args()\n+    try:\n+        explain = json.loads(args.explain.read_text(encoding=\"utf-8\"))\n+        change_map = json.loads(args.change_map.read_text(encoding=\"utf-8\"))\n+        errors = collect_errors(explain, change_map)\n+    except (OSError, ValueError, KeyError, TypeError, AttributeError) as error:\n+        errors = [f\"解説または地図の形式を確認する: {error}\"]\n+    for error in errors:\n+        print(f\"[pr-explain-story] {error}\")\n+    return 1 if errors else 0\n+\n+\n+if __name__ == \"__main__\":\n+    raise SystemExit(main())",
+          "patchLines": 143,
+          "truncated": false
+        },
+        {
+          "path": ".github/scripts/pr-explain-pages-cases.sh",
+          "status": "M",
+          "oldPath": null,
+          "additions": 14,
+          "deletions": 4,
+          "patch": "@@ -38,7 +38,7 @@ source \"$repo_root/.github/scripts/lib/cases-report.sh\"\n session=\"$work/session\"\n git init --quiet -b topic \"$session\"\n mkdir -p \"$session/.github/scripts/lib\"\n-cp \"$scripts_dir/pr-explain-pages.sh\" \"$scripts_dir/build-pr-explain.py\" \"$scripts_dir/check-pr-explain-template.py\" \"$session/.github/scripts/\"\n+cp \"$scripts_dir/pr-explain-pages.sh\" \"$scripts_dir/build-pr-explain.py\" \"$scripts_dir/check-pr-explain-template.py\" \"$scripts_dir/check-pr-story.py\" \"$session/.github/scripts/\"\n cp \"$scripts_dir/lib/embedded_regions.py\" \"$session/.github/scripts/lib/\"\n printf '{\"name\": \"session\"}\\n' > \"$session/package.json\"\n git -C \"$session\" add -A && git -C \"$session\" commit --quiet -m pushed\n@@ -59,17 +59,22 @@ work, head, unpushed = sys.argv[1:4]\n explain = {\n     \"version\": 1, \"pr\": 1, \"sha\": head,\n     \"overview\": {\"title\": \"書いた解説\", \"lead\": \"要約\", \"before\": [], \"after\": [{\"text\": \"後\"}]},\n+    \"commitStories\": [{\"sha\": head, \"phase\": \"core\", \"role\": \"パッケージの識別名を設定\", \"why\": \"作業コピーを区別するため。\", \"notes\": [{\"path\": \"package.json\", \"start\": 1, \"end\": 1, \"text\": \"nameをsessionに設定し、パッケージの識別名として使う。\"}]}],\n     \"suites\": [{\"id\": \"s\", \"label\": \"置き場\", \"file\": \"package.json\"}],\n     \"tests\": [{\"id\": \"t\", \"suite\": \"s\", \"name\": \"n\", \"techniques\": [\"state\"], \"why\": \"w\", \"given\": \"g\", \"when\": \"w\", \"then\": \"t\",\n                \"excerpt\": {\"path\": \"package.json\", \"start\": 1, \"end\": 1}}],\n }\n write = lambda name, value: open(f\"{work}/{name}\", \"w\", encoding=\"utf-8\").write(json.dumps(value, ensure_ascii=False))\n write(\"explain.json\", explain)\n+write(\"unexplained.json\", {**explain, \"commitStories\": []})\n write(\"broken.json\", {**explain, \"version\": 2})\n write(\"explain-7.json\", {**explain, \"pr\": 7})\n write(\"explain-2.json\", {**explain, \"pr\": 2})\n write(\"unpushed.json\", {**explain, \"sha\": unpushed})\n write(\"map.json\", {\"version\": 2, \"head\": \"new\"})\n+seed_map = {\"version\": 2, \"pr\": 1, \"head\": head, \"commits\": [{\"sha\": head, \"files\": [{\"path\": \"package.json\", \"status\": \"A\", \"patch\": '@@ -0,0 +1 @@\\n+{\"name\": \"session\"}'}]}]}\n+write(\"seed-map.json\", seed_map)\n+write(\"stale-map.json\", {**seed_map, \"pr\": 2, \"head\": \"0000000\"})\n PY\n broken_template=\"$work/broken-template.html\"\n sed 's/<script>/<script> /' \"$template\" > \"$broken_template\"\n@@ -84,13 +89,13 @@ fresh_origin() {\n   git init --quiet -b gh-pages \"$work/seed\"\n   mkdir -p \"$work/seed/pr-explain/pr-1\" \"$work/seed/pr-explain/pr-12\" \"$work/seed/pr-preview/pr-1\"\n   echo old > \"$work/seed/pr-explain/pr-1/index.html\"\n-  printf '{\"version\": 2, \"head\": \"%s\"}\\n' \"$head\" > \"$work/seed/pr-explain/pr-1/change-map.json\"\n+  cp \"$work/seed-map.json\" \"$work/seed/pr-explain/pr-1/change-map.json\"\n   echo '{\"old\": \"explain\"}' > \"$work/seed/pr-explain/pr-1/explain.json\"\n   echo behavior > \"$work/seed/pr-explain/pr-1/behavior.html\"\n   mkdir -p \"$work/seed/pr-explain/pr-1/assets\"\n   echo asset > \"$work/seed/pr-explain/pr-1/assets/x.css\"\n   mkdir -p \"$work/seed/pr-explain/pr-2\"\n-  echo '{\"version\": 2, \"head\": \"0000000\"}' > \"$work/seed/pr-explain/pr-2/change-map.json\"\n+  cp \"$work/stale-map.json\" \"$work/seed/pr-explain/pr-2/change-map.json\"\n   echo twelve > \"$work/seed/pr-explain/pr-12/index.html\"\n   echo '{\"head\": \"twelve\"}' > \"$work/seed/pr-explain/pr-12/change-map.json\"\n   echo storybook > \"$work/seed/pr-preview/pr-1/index.html\"\n@@ -143,7 +148,7 @@ placed_by_builder() {\n \n fresh_origin seeded\n errors=\"$(bash \"$pages\" put-explain 1 \"$work/explain.json\" 2>&1 >/dev/null)\"; status=$?\n-expect \"put-explain は explain.json を置き、index.html と change-map.json に触らない\" '[ \"$status\" -eq 0 ] && placed_by_builder && [ \"$(on_pages pr-explain/pr-1/index.html)\" = old ] && [ \"$(on_pages pr-explain/pr-1/change-map.json)\" = \"{\\\"version\\\": 2, \\\"head\\\": \\\"$head\\\"}\" ]'\n+expect \"put-explain は explain.json を置き、index.html と change-map.json に触らない\" '[ \"$status\" -eq 0 ] && placed_by_builder && [ \"$(on_pages pr-explain/pr-1/index.html)\" = old ] && [ \"$(on_pages pr-explain/pr-1/change-map.json)\" = \"$(cat \"$work/seed-map.json\")\" ]'\n expect \"put-explain が置くのは、検査が抜粋の中身を足して書き出したもの\" 'placed_by_builder'\n expect \"put-explain は他の PR のフォルダに触らない\" '[ \"$(on_pages pr-explain/pr-12/index.html)\" = twelve ]'\n expect \"put-explain は pr-preview に触らない\" '[ \"$(on_pages pr-preview/pr-1/index.html)\" = storybook ]'\n@@ -157,6 +162,11 @@ before=\"$(tip)\"\n output=\"$(bash \"$pages\" put-explain 1 \"$work/broken.json\" 2>&1)\"; status=$?\n expect \"検査に落ちる解説は、取り直しへ進まずに push しない\" '[ \"$status\" -eq 1 ] && [ \"$(tip)\" = \"$before\" ] && [[ \"$output\" == *\"[pr-explain-shape]\"* ]] && [[ \"$output\" != *\"反映に失敗\"* ]]'\n \n+fresh_origin seeded\n+before=\"$(tip)\"\n+output=\"$(bash \"$pages\" put-explain 1 \"$work/unexplained.json\" 2>&1)\"; status=$?\n+expect \"行注釈のない解説は既存ページを保持し、再試行せず拒否する\" '[ \"$status\" -eq 1 ] && [ \"$(tip)\" = \"$before\" ] && [[ \"$output\" == *\"[pr-explain-story]\"* ]] && [[ \"$output\" != *\"反映に失敗\"* ]] && [ \"$(on_pages pr-explain/pr-1/explain.json)\" = \"{\\\"old\\\": \\\"explain\\\"}\" ]'\n+\n fresh_origin seeded\n before=\"$(tip)\"\n output=\"$(bash \"$pages\" put-explain 1 \"$work/unpushed.json\" 2>&1)\"; status=$?",
+          "patchLines": 69,
+          "truncated": false,
+          "hunkOpeningLines": [
+            {
+              "old": null,
+              "new": null
+            },
+            {
+              "old": "python3 - \"$work\" \"$head\" \"$unpushed\" <<'PY'",
+              "new": "python3 - \"$work\" \"$head\" \"$unpushed\" <<'PY'"
+            },
+            {
+              "old": null,
+              "new": null
+            },
+            {
+              "old": null,
+              "new": null
+            },
+            {
+              "old": null,
+              "new": null
+            }
+          ]
+        },
+        {
+          "path": ".github/scripts/pr-explain-pages.sh",
+          "status": "M",
+          "oldPath": null,
+          "additions": 5,
+          "deletions": 1,
+          "patch": "@@ -11,6 +11,8 @@\n #\n # - `put-explain` は `build-pr-explain.py` が検査して書き出したもの(抜粋の中身を足したもの)を\n #   `explain.json` として置く。違反があれば push しない。触るのはこの 1 ファイルだけ\n+# - 地図を取得後、`check-pr-story.py` で各コミット・ファイル・表示差分への行注釈も検査する。\n+#   説明漏れ・行の不一致は既存の公開物を更新せず終了する(通信失敗として再試行しない)\n # - `put-explain` は、解説の sha がリモートの追跡ブランチ(`git branch -r --contains`)に無ければ置かない。\n #   抜粋はその sha の中身から読むので、push していないコミットの中身を公開しないため\n # - `put-explain` は `change-map.json` が無いフォルダへは置かない。Actions が作る前と、PR が閉じて\n@@ -119,12 +121,13 @@ remove_others() {\n   done\n }\n \n-# モードごとに `$folder` を書き換える。返す 3 は先頭の終了コードの 3 と同じ。\n+# モードごとに `$folder` を書き換える。3 は地図なし、4 は行注釈の検査違反(公開終了コード1へ変換)。\n apply_change() {\n   local site=\"$work/site\"\n   case \"$mode\" in\n     put-explain)\n       [ -f \"$site/$folder/change-map.json\" ] || return 3\n+      python3 \"$scripts_dir/check-pr-story.py\" \"$work/explain.json\" \"$site/$folder/change-map.json\" || return 4\n       cp \"$work/explain.json\" \"$site/$folder/explain.json\"\n       ;;\n     put-map)\n@@ -181,6 +184,7 @@ for attempt in $(seq 1 \"$max_attempts\"); do\n     apply_change \"$@\"\n     applied=$?\n     [ \"$applied\" -eq 3 ] && { echo \"$folder/change-map.json がありません\" >&2; exit 3; }\n+    [ \"$applied\" -eq 4 ] && exit 1\n     [ \"$applied\" -eq 0 ] && commit_and_push && notify_stale && exit 0\n   fi\n   echo \"gh-pages への反映に失敗しました($attempt 回目)。取り直してやり直します\" >&2",
+          "patchLines": 32,
+          "truncated": false,
+          "hunkOpeningLines": [
+            {
+              "old": null,
+              "new": null
+            },
+            {
+              "old": null,
+              "new": null
+            },
+            {
+              "old": null,
+              "new": null
+            }
+          ]
+        },
+        {
+          "path": "AGENTS.md",
+          "status": "M",
+          "oldPath": null,
+          "additions": 1,
+          "deletions": 0,
+          "patch": "@@ -40,6 +40,7 @@ PDF機能の実装・仕様に関わる振る舞いの変更時は、[pdf-spec-g\n PR作成・振る舞いが変わるpush・reopen時は [PR解説の作成手順](docs/development/pr-explain.md) に従い、\n コード抜粋付きの `explain.json` を作成・検証する。Actionsは差分の地図を生成し、Pages公開成功後にPRへリンクを載せる。\n 文章の解説は自動生成されない。検証後に公開手順を実行し、公開CIの結果を確認する。\n+「変更の経緯」はコミット要約だけで済ませず、各処理の入力・変更内容・結果・理由を差分行の `notes` で説明する。全コミット・変更ファイル・各差分の注釈を検査し、ブラウザで処理ごとの説明を確認する。\n これはPDF仕様の `docs/guides/` の解説とは別であり、生成物はPRブランチへコミットしない。\n \n ## 開発スキル",
+          "patchLines": 8,
+          "truncated": false
+        },
+        {
+          "path": "docs/development/pr-explain.md",
+          "status": "M",
+          "oldPath": null,
+          "additions": 39,
+          "deletions": 1,
+          "patch": "@@ -45,7 +45,7 @@ git rev-parse HEAD\n | --- | --- |\n | `overview` | 具体的な問題、変更前後の振る舞い、読む順序 |\n | `concepts` / `messages` / `flows` | 各ファイルの責務、データの受け渡し、処理の順序 |\n-| `commitStories` | 各コミットの意図、変更が必要だった理由、レビュー箇所 |\n+| `commitStories` | 各コミットの意図・理由と、処理ごとの変更内容を差分行へ結び付ける `notes` |\n | `suites` / `tests` | 実際のテスト名、前提・操作・期待結果、境界値を選んだ理由 |\n | `impact` | 利用者から見た変更前後、条件ごとの結果。実装の識別子は持ち込まない |\n | `primers` | 言語機能 (`language`)、PDF の仕組み (`pdf`)、このコードベースの設計 (`codebase`) の説明 |\n@@ -66,6 +66,41 @@ HTMLタグをJSONへ埋め込まず、生のPDF記述を `code` に書く。公\n validator が指定SHAのGit objectから本文を読み、行番号と中身を固定する。\n 実行していないテストを合格と書かない。宣言名の一覧はテスト実行結果ではない。\n \n+### 「変更の経緯」の行注釈\n+\n+コミットの要約や「ファイルを追加した」だけで終えず、各処理について **入力・変更内容・結果・理由** を説明する。\n+`commitStories` を各実装コミットに用意し、`notes` でそのコミット時点の差分行に結び付ける。\n+関数の追加、条件分岐、状態更新、呼び出し先への受け渡しは、それぞれの役割が読める単位に分ける。\n+新規ファイルも1件の大きな注釈で済ませず、処理ごとに書く。テストは前提と期待結果、文書や設定は変更の意味を書く。\n+\n+```json\n+{\n+  \"sha\": \"そのコミットの完全なSHA\",\n+  \"phase\": \"core\",\n+  \"role\": \"色空間の名前をリソース辞書から解決する\",\n+  \"why\": \"CS命令の名前から、後続の色指定に必要な成分数を得るため。\",\n+  \"notes\": [\n+    {\n+      \"path\": \"packages/core/src/content-stream/color-space-resources/index.ts\",\n+      \"side\": \"new\",\n+      \"start\": 119,\n+      \"end\": 128,\n+      \"text\": \"辞書に名前がない場合はCOLOR_SPACE_NOT_FOUNDを返す。定義がある未対応形式と区別し、呼び出し側が参照先の欠落を判断できるようにする。\"\n+    }\n+  ]\n+}\n+```\n+\n+この例のSHA・行は実際のコミットに置き換える。修正後のHEADの行番号を過去コミットへ流用しない。\n+`side` は変更後なら `new`（省略時も同じ）、削除箇所なら `old`。renameでも `path` は変更後のパスを使う。\n+1注釈は最大80行とし、変更された行を含める。別々に表示される差分へまたがる注釈は最初の差分にしか表示されないため、分けて書く。\n+バイナリ・内容不変のrename・地図が行差分を表示しない削除ファイルにも、変更の意味を記した注釈を用意する。\n+削除ファイルは変更前の存在する行へ `old` で付ける。バイナリ・内容不変のrenameはファイル単位の注釈として表示する。\n+\n+ローカル生成と `put-explain` は `check-pr-story.py` で、実装コミット、変更ファイル、表示差分ごとの注釈の欠落、空白の本文、行範囲の誤りを拒否する。\n+本文の意味や、1つの差分内の複数処理を十分に説明したかは自動判定できない。公開前に全コミットを開き、各処理の説明とコードの対応を確認する。\n+2000行で省略された差分はGitHubでも確認し、表示範囲の注釈に省略部分の処理と参照先を補う。\n+\n ## ローカルで検証する\n \n ```bash\n@@ -77,6 +112,7 @@ python3 -m http.server 8000 --directory /tmp/pdfmod-pr-123\n ```\n \n `http://localhost:8000/#map` を開き、`#story` / `#test` / `#impact` / `#primer` も確認する。\n+`#story` では概要だけで済ませず、コミットを1つずつ選び、全変更ファイルの注釈と対応行の強調表示を確認する。\n JSONの取得が必要なので `file://` では開かない。`--explain` を省くと地図のみを作り、以前の解説は出力先から消す。\n 検査に失敗した場合、既存の出力は更新しない。\n \n@@ -90,6 +126,7 @@ bash .github/scripts/pr-explain-pages.sh put-explain 123 /tmp/pdfmod-explain.jso\n \n `origin` にpushできる認証が必要。解説のSHAがリモート追跡ブランチにない場合は拒否するため、push・fetchを済ませる。\n 終了コード3は地図未配置または削除済み。PRが開いていて生成CIが成功しているか確認する。\n+`[pr-explain-story]` で拒否された場合は、表示されたコミット・パス・差分へ説明を補って再検証する。既存の公開物は更新されない。\n 解説と地図のSHAが異なる場合は古い解説として帯を表示する。変更後は最新SHAで書き直す。\n \n GitHub Actions方式では、`gh-pages` へのpushで `PR Explain Deploy` が起動する。`GITHUB_TOKEN` のpushでは別のpush workflowが起動しないため、\n@@ -107,6 +144,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s harness/tests -p 'test\n \n `PR Explain Check` で同じ検査を行う。実Git差分、改名、抜粋と参照の検証、CSP、5画面の描画ロジック、\n ローカルbare remoteへの配置・削除・競合時の再試行、公開後コメントを検査する。Node.jsがなければ描画・コメント検査はskipする。\n+行注釈の検査は実Git差分で追加・削除・離れた変更箇所・古い解説を確認し、説明漏れが既存のローカル出力や公開物を上書きしないことも検査する。\n \n - Vitestの静的な `test` / `it` の名前と、Rustの `#[test]` 関数（インラインを含む）、Pythonの `test_` 関数を拾う。\n   テストの動的生成、別名import、マクロ展開、条件付きコンパイル、同名宣言の区別、実行件数や合否は判定しない。",
+          "patchLines": 75,
+          "truncated": false
+        },
+        {
+          "path": "harness/tests/test_pr_explain.py",
+          "status": "M",
+          "oldPath": null,
+          "additions": 21,
+          "deletions": 4,
+          "patch": "@@ -45,19 +45,36 @@ class PrExplainRegressionCases(unittest.TestCase):\n     def test_local_build_has_checked_explanation_and_rejects_repository_output(self):\n         with tempfile.TemporaryDirectory() as work:\n             work = Path(work)\n-            sha = run(\"git\", \"rev-parse\", \"HEAD\").stdout.strip()\n-            explanation = {\"version\": 1, \"pr\": 123, \"sha\": sha, \"overview\": {\"title\": \"題\", \"lead\": \"要約\", \"before\": [], \"after\": [{\"text\": \"後\"}]}}\n+            repo = work / \"repo\"\n+            shutil.copytree(ROOT / \".github\", repo / \".github\")\n+            for args in ((\"init\", \"-q\", \"-b\", \"main\"), (\"config\", \"user.name\", \"local-tests\"), (\"config\", \"user.email\", \"local-tests@example.com\")):\n+                run(\"git\", *args, cwd=repo).check_returncode()\n+            (repo / \"input.txt\").write_text(\"before\\n\")\n+            run(\"git\", \"add\", \".\", cwd=repo).check_returncode()\n+            run(\"git\", \"commit\", \"-qm\", \"base\", cwd=repo).check_returncode()\n+            (repo / \"input.txt\").write_text(\"after\\n\")\n+            run(\"git\", \"commit\", \"-qam\", \"change result\", cwd=repo).check_returncode()\n+            sha = run(\"git\", \"rev-parse\", \"HEAD\", cwd=repo).stdout.strip()\n+            explanation = {\"version\": 1, \"pr\": 123, \"sha\": sha, \"overview\": {\"title\": \"題\", \"lead\": \"要約\", \"before\": [], \"after\": [{\"text\": \"後\"}]}, \"commitStories\": [{\"sha\": sha, \"phase\": \"core\", \"role\": \"返す値を更新\", \"why\": \"新しい出力へ合わせる。\", \"notes\": [{\"path\": \"input.txt\", \"start\": 1, \"end\": 1, \"text\": \"出力をbeforeからafterへ変更し、新しい結果を呼び出し側へ渡す。\"}]}]}\n             source = work / \"input.json\"\n             source.write_text(json.dumps(explanation), encoding=\"utf-8\")\n             output = work / \"html\"\n-            command = [\"python3\", str(SCRIPTS / \"build-pr-explain-local.py\"), \"--base\", \"HEAD~1\", \"--head\", \"HEAD\", \"--pr\", \"123\", \"--head-branch\", \"topic\", \"--base-branch\", \"main\", \"--out\", str(output)]\n+            command = [\"python3\", str(repo / \".github/scripts/build-pr-explain-local.py\"), \"--base\", \"HEAD~1\", \"--head\", \"HEAD\", \"--pr\", \"123\", \"--head-branch\", \"topic\", \"--base-branch\", \"main\", \"--out\", str(output)]\n             result = run(*command, \"--explain\", str(source))\n             self.assertEqual(result.returncode, 0, result.stderr)\n             self.assertEqual({file.name for file in output.iterdir()}, {\"index.html\", \"explain.json\", \"change-map.json\"})\n             self.assertEqual(json.loads((output / \"explain.json\").read_text())[\"sha\"], sha)\n             self.assertEqual(run(*command).returncode, 0)\n             self.assertFalse((output / \"explain.json\").exists())\n-            self.assertEqual(run(*command[:-1], str(ROOT / \"generated\")).returncode, 2)\n+            self.assertEqual(run(*command[:-1], str(repo / \"generated\")).returncode, 2)\n+            stories = explanation.pop(\"commitStories\")\n+            source.write_text(json.dumps(explanation), encoding=\"utf-8\")\n+            (output / \"index.html\").write_text(\"unchanged\", encoding=\"utf-8\")\n+            result = run(*command, \"--explain\", str(source))\n+            self.assertEqual(result.returncode, 1)\n+            self.assertIn(\"[pr-explain-story]\", result.stdout)\n+            self.assertEqual((output / \"index.html\").read_text(), \"unchanged\")\n+            explanation[\"commitStories\"] = stories\n             explanation[\"unknown\"] = True\n             source.write_text(json.dumps(explanation), encoding=\"utf-8\")\n             (output / \"index.html\").write_text(\"unchanged\", encoding=\"utf-8\")",
+          "patchLines": 41,
+          "truncated": false
+        },
+        {
+          "path": "harness/tests/test_pr_story.py",
+          "status": "A",
+          "oldPath": null,
+          "additions": 175,
+          "deletions": 0,
+          "patch": "@@ -0,0 +1,175 @@\n+\"\"\"変更の経緯の説明を、実Git差分と公開用入力で検査する。\"\"\"\n+\n+from contextlib import contextmanager\n+import json\n+from pathlib import Path\n+import tempfile\n+import unittest\n+\n+from test_pr_explain import SCRIPTS, run\n+\n+\n+@contextmanager\n+def story_fixture():\n+    \"\"\"離れた2か所の変更・追加・削除・後続コミットを持つ地図と解説を作る。\"\"\"\n+    with tempfile.TemporaryDirectory() as folder:\n+        folder = Path(folder)\n+        repo = folder / \"repo\"\n+        repo.mkdir()\n+        run(\"git\", \"init\", \"-q\", \"-b\", \"main\", cwd=repo).check_returncode()\n+        run(\"git\", \"config\", \"user.name\", \"story-tests\", cwd=repo).check_returncode()\n+        run(\"git\", \"config\", \"user.email\", \"story-tests@example.com\", cwd=repo).check_returncode()\n+        middle = \"\".join(f\"const unchanged{i} = {i};\\n\" for i in range(20))\n+        first = \"export function first() { return 1; }\\n\"\n+        second = \"export function second() { return 2; }\\n\"\n+        (repo / \"a.ts\").write_text(first + middle + second)\n+        (repo / \"removed.ts\").write_text(\"export const legacy = true;\\n\")\n+        (repo / \"before.txt\").write_text(\"same content\\n\")\n+        (repo / \"image.bin\").write_bytes(b\"\\x00before\")\n+        (repo / \"removed.bin\").write_bytes(b\"\\x00legacy\")\n+        (repo / \"blank.txt\").write_text(\" \\n\")\n+        run(\"git\", \"add\", \".\", cwd=repo).check_returncode()\n+        run(\"git\", \"commit\", \"-qm\", \"base\", cwd=repo).check_returncode()\n+        base = run(\"git\", \"rev-parse\", \"HEAD\", cwd=repo).stdout.strip()\n+        (repo / \"a.ts\").write_text(first.replace(\"return 1\", \"return 3\") + middle + second.replace(\"return 2\", \"return 4\"))\n+        (repo / \"b.ts\").write_text(\"export const enabled = true;\\n\")\n+        (repo / \"removed.ts\").unlink()\n+        (repo / \"before.txt\").rename(repo / \"after.txt\")\n+        (repo / \"image.bin\").write_bytes(b\"\\x00after\")\n+        (repo / \"removed.bin\").unlink()\n+        (repo / \"blank.txt\").write_text(\"\\n\")\n+        run(\"git\", \"add\", \".\", cwd=repo).check_returncode()\n+        run(\"git\", \"commit\", \"-qm\", \"change processing\", cwd=repo).check_returncode()\n+        first_sha = run(\"git\", \"rev-parse\", \"HEAD\", cwd=repo).stdout.strip()\n+        (repo / \"b.ts\").write_text(\"export const enabled = false;\\n\")\n+        run(\"git\", \"add\", \".\", cwd=repo).check_returncode()\n+        run(\"git\", \"commit\", \"-qm\", \"disable\", cwd=repo).check_returncode()\n+        head = run(\"git\", \"rev-parse\", \"HEAD\", cwd=repo).stdout.strip()\n+        built = run(\"python3\", str(SCRIPTS / \"build-pr-change-map.py\"), \"--base\", base, \"--head\", head, \"--pr\", \"123\", \"--head-branch\", \"topic\", \"--base-branch\", \"main\", cwd=repo)\n+        if built.returncode:\n+            raise AssertionError(built.stderr)\n+        notes = [\n+            {\"path\": \"a.ts\", \"start\": 1, \"end\": 1, \"text\": \"先頭の処理が返す値を1から3へ変え、選択結果を切り替える。\"},\n+            {\"path\": \"a.ts\", \"side\": \"old\", \"start\": 22, \"end\": 22, \"text\": \"末尾の処理の旧値2を削除し、新しい値4へ置き換える。\"},\n+            {\"path\": \"b.ts\", \"start\": 1, \"end\": 1, \"text\": \"利用可否の初期値を追加し、呼び出し側が機能を選択できるようにする。\"},\n+            {\"path\": \"removed.ts\", \"side\": \"old\", \"start\": 1, \"end\": 1, \"text\": \"旧フラグをファイルごと取り除き、二重の設定をなくす。\"},\n+            {\"path\": \"after.txt\", \"start\": 1, \"end\": 1, \"text\": \"内容を保ったままファイル名を変更し、新しい参照先へ合わせる。\"},\n+            {\"path\": \"image.bin\", \"start\": 1, \"end\": 1, \"text\": \"画像データを更新し、新しい表示内容に差し替える。\"},\n+            {\"path\": \"removed.bin\", \"side\": \"old\", \"start\": 1, \"end\": 1, \"text\": \"使用しなくなった画像データを取り除く。\"},\n+            {\"path\": \"blank.txt\", \"start\": 1, \"end\": 1, \"text\": \"空行の空白文字を除去し、出力形式をそろえる。\"},\n+        ]\n+        explanation = {\"version\": 1, \"pr\": 123, \"sha\": head, \"commitStories\": [\n+            {\"sha\": first_sha, \"role\": \"返す値と利用可否を変更\", \"why\": \"新しい選択結果へ合わせるため。\", \"notes\": notes},\n+            {\"sha\": head, \"role\": \"機能の初期状態を無効化\", \"why\": \"明示的に選択した場合だけ使うため。\", \"notes\": [{\"path\": \"b.ts\", \"start\": 1, \"end\": 1, \"text\": \"既定のtrueをfalseへ変え、自動的な機能の有効化を止める。\"}]},\n+        ]}\n+        yield folder, json.loads(built.stdout), explanation\n+\n+\n+def check_story(folder, change_map, explanation):\n+    \"\"\"公開用JSONをCLIへ渡し、入力の検査結果を返す。\"\"\"\n+    source = folder / \"explain.json\"\n+    source.write_text(json.dumps(explanation, ensure_ascii=False))\n+    map_file = folder / \"change-map.json\"\n+    map_file.write_text(json.dumps(change_map, ensure_ascii=False))\n+    return run(\"python3\", str(SCRIPTS / \"check-pr-story.py\"), str(source), str(map_file))\n+\n+\n+class PrStoryTests(unittest.TestCase):\n+    def test_accepts_explanations_for_each_commit_hunk_added_and_deleted_file(self):\n+        with story_fixture() as (folder, change_map, explanation):\n+            result = check_story(folder, change_map, explanation)\n+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)\n+\n+    def test_rejects_a_missing_commit_story(self):\n+        with story_fixture() as (folder, change_map, explanation):\n+            explanation[\"commitStories\"].pop()\n+            result = check_story(folder, change_map, explanation)\n+            self.assertEqual(result.returncode, 1)\n+            self.assertIn(\"commitStories\", result.stdout)\n+            self.assertIn(change_map[\"head\"][:7], result.stdout)\n+\n+    def test_rejects_a_missing_file_explanation(self):\n+        with story_fixture() as (folder, change_map, explanation):\n+            explanation[\"commitStories\"][0][\"notes\"] = [note for note in explanation[\"commitStories\"][0][\"notes\"] if note[\"path\"] != \"b.ts\"]\n+            result = check_story(folder, change_map, explanation)\n+            self.assertEqual(result.returncode, 1)\n+            self.assertIn(\"b.ts\", result.stdout)\n+            self.assertIn(\"注釈\", result.stdout)\n+\n+    def test_rejects_an_unexplained_hunk_even_when_the_same_file_has_another_note(self):\n+        with story_fixture() as (folder, change_map, explanation):\n+            explanation[\"commitStories\"][0][\"notes\"].pop(1)\n+            result = check_story(folder, change_map, explanation)\n+            self.assertEqual(result.returncode, 1)\n+            self.assertIn(\"a.ts\", result.stdout)\n+            self.assertIn(\"@@\", result.stdout)\n+\n+    def test_rejects_a_note_only_on_unchanged_context(self):\n+        with story_fixture() as (folder, change_map, explanation):\n+            explanation[\"commitStories\"][0][\"notes\"][0].update(start=2, end=2)\n+            result = check_story(folder, change_map, explanation)\n+            self.assertEqual(result.returncode, 1)\n+            self.assertIn(\"変更行\", result.stdout)\n+\n+    def test_one_wide_note_does_not_explain_two_separately_displayed_hunks(self):\n+        with story_fixture() as (folder, change_map, explanation):\n+            notes = explanation[\"commitStories\"][0][\"notes\"]\n+            notes[0][\"end\"] = 22\n+            notes.pop(1)\n+            result = check_story(folder, change_map, explanation)\n+            self.assertEqual(result.returncode, 1)\n+            self.assertIn(\"@@ -19,4 +19,4 @@\", result.stdout)\n+\n+    def test_rejects_a_note_for_a_file_outside_the_commit(self):\n+        with story_fixture() as (folder, change_map, explanation):\n+            explanation[\"commitStories\"][0][\"notes\"][0][\"path\"] = \"other.ts\"\n+            result = check_story(folder, change_map, explanation)\n+            self.assertEqual(result.returncode, 1)\n+            self.assertIn(\"other.ts\", result.stdout)\n+\n+    def test_rejects_a_whitespace_only_explanation(self):\n+        with story_fixture() as (folder, change_map, explanation):\n+            explanation[\"commitStories\"][0][\"notes\"][0][\"text\"] = \" \\n\\t\"\n+            result = check_story(folder, change_map, explanation)\n+            self.assertEqual(result.returncode, 1)\n+            self.assertIn(\"空白\", result.stdout)\n+\n+    def test_rejects_an_annotation_range_that_bundles_too_much_code(self):\n+        with story_fixture() as (folder, change_map, explanation):\n+            explanation[\"commitStories\"][0][\"notes\"][0].update(start=1, end=81)\n+            result = check_story(folder, change_map, explanation)\n+            self.assertEqual(result.returncode, 1)\n+            self.assertIn(\"80\", result.stdout)\n+\n+    def test_stale_explanation_checks_only_commits_at_its_own_snapshot(self):\n+        with story_fixture() as (folder, change_map, explanation):\n+            explanation[\"sha\"] = explanation[\"commitStories\"][0][\"sha\"]\n+            explanation[\"commitStories\"].pop()\n+            result = check_story(folder, change_map, explanation)\n+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)\n+\n+    def test_rejects_a_deleted_file_note_on_the_new_side(self):\n+        with story_fixture() as (folder, change_map, explanation):\n+            explanation[\"commitStories\"][0][\"notes\"][3][\"side\"] = \"new\"\n+            result = check_story(folder, change_map, explanation)\n+            self.assertEqual(result.returncode, 1)\n+            self.assertIn(\"変更前\", result.stdout)\n+\n+    def test_rejects_an_explanation_for_a_commit_outside_the_map(self):\n+        with story_fixture() as (folder, change_map, explanation):\n+            explanation[\"sha\"] = \"0\" * 40\n+            result = check_story(folder, change_map, explanation)\n+            self.assertEqual(result.returncode, 1)\n+            self.assertIn(\"sha\", result.stdout)\n+\n+    def test_rejects_an_incomplete_map_without_a_traceback(self):\n+        with story_fixture() as (folder, change_map, explanation):\n+            del change_map[\"commits\"]\n+            result = check_story(folder, change_map, explanation)\n+            self.assertEqual(result.returncode, 1)\n+            self.assertIn(\"commits\", result.stdout)\n+            self.assertNotIn(\"Traceback\", result.stderr)\n+\n+\n+if __name__ == \"__main__\":\n+    unittest.main()",
+          "patchLines": 176,
+          "truncated": false
+        }
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "from": ".github/pr-explain/templates/explain.json",
+      "to": "packages/core/src/document/resources/index.ts",
+      "status": "kept"
+    },
+    {
+      "from": ".github/pr-explain/templates/explain.json",
+      "to": "rust/crates/core/src/error.rs",
+      "status": "kept"
+    },
+    {
+      "from": ".github/pr-explain/templates/index.html",
+      "to": ".github/pr-explain/templates/explain.json",
+      "status": "kept"
+    },
+    {
+      "from": ".github/scripts/build-pr-change-map.py",
+      "to": "AGENTS.md",
+      "status": "kept"
+    },
+    {
+      "from": ".github/scripts/build-pr-explain-local.py",
+      "to": ".github/pr-explain/templates/index.html",
+      "status": "kept"
+    },
+    {
+      "from": ".github/scripts/build-pr-explain-local.py",
+      "to": ".github/scripts/build-pr-change-map.py",
+      "status": "kept"
+    },
+    {
+      "from": ".github/scripts/build-pr-explain-local.py",
+      "to": ".github/scripts/build-pr-explain.py",
+      "status": "kept"
+    },
+    {
+      "from": ".github/scripts/build-pr-explain-local.py",
+      "to": ".github/scripts/check-pr-explain-template.py",
+      "status": "kept"
+    },
+    {
+      "from": ".github/scripts/build-pr-explain-local.py",
+      "to": ".github/scripts/check-pr-story.py",
+      "status": "added"
+    },
+    {
+      "from": ".github/scripts/pr-explain-pages-cases.sh",
+      "to": ".github/pr-explain/templates/index.html",
+      "status": "kept"
+    },
+    {
+      "from": ".github/scripts/pr-explain-pages-cases.sh",
+      "to": ".github/scripts/build-pr-explain.py",
+      "status": "kept"
+    },
+    {
+      "from": ".github/scripts/pr-explain-pages-cases.sh",
+      "to": ".github/scripts/check-pr-explain-template.py",
+      "status": "kept"
+    },
+    {
+      "from": ".github/scripts/pr-explain-pages-cases.sh",
+      "to": ".github/scripts/check-pr-story.py",
+      "status": "added"
+    },
+    {
+      "from": ".github/scripts/pr-explain-pages-cases.sh",
+      "to": ".github/scripts/lib/cases-report.sh",
+      "status": "kept"
+    },
+    {
+      "from": ".github/scripts/pr-explain-pages-cases.sh",
+      "to": ".github/scripts/lib/embedded_regions.py",
+      "status": "kept"
+    },
+    {
+      "from": ".github/scripts/pr-explain-pages-cases.sh",
+      "to": ".github/scripts/pr-explain-pages.sh",
+      "status": "kept"
+    },
+    {
+      "from": ".github/scripts/pr-explain-pages-cases.sh",
+      "to": "package.json",
+      "status": "kept"
+    },
+    {
+      "from": ".github/scripts/pr-explain-pages.sh",
+      "to": ".github/scripts/build-pr-explain.py",
+      "status": "kept"
+    },
+    {
+      "from": ".github/scripts/pr-explain-pages.sh",
+      "to": ".github/scripts/check-pr-explain-template.py",
+      "status": "kept"
+    },
+    {
+      "from": ".github/scripts/pr-explain-pages.sh",
+      "to": ".github/scripts/check-pr-story.py",
+      "status": "added"
+    },
+    {
+      "from": ".github/workflows/pr-explain.yml",
+      "to": ".github/scripts/pr-explain-pages.sh",
+      "status": "kept"
+    },
+    {
+      "from": "harness/tests/test_pr_explain.py",
+      "to": ".github/scripts/build-pr-explain-local.py",
+      "status": "added"
+    },
+    {
+      "from": "harness/tests/test_pr_story.py",
+      "to": "harness/tests/test_pr_explain.py",
+      "status": "added"
+    }
+  ]
+}
