@@ -1,7 +1,7 @@
 {
   "version": 1,
   "pr": 756,
-  "sha": "719f018b54b6315d60b5f45bd2034695da8395ae",
+  "sha": "fc05fbbf661d2a6f97c8043f71f1d919f0b0e91e",
   "issue": 668,
   "overview": {
     "title": "リソースの色空間を選び、色の成分数を検証する",
@@ -14,6 +14,9 @@
     "after": [
       {
         "text": "現在のスコープの色空間を事前解決し、全11ファミリを表現する。選択後の成分数の過不足を拒否し、未知の定義は警告して成分数不明として保持する。"
+      },
+      {
+        "text": "定義内の別名や基底色空間の名前が見つからない場合も、直接指定と同じ名前不在の警告を返す。未知ファミリは配列先頭の族として区別する。"
       }
     ],
     "highlights": [
@@ -102,6 +105,35 @@
         "未知の色空間へ切り替えたとき、以前の成分数を再利用しない。",
         "色空間選択時の初期色とq/Qによる復元を確認する。"
       ]
+    },
+    {
+      "sha": "fc05fbbf661d2a6f97c8043f71f1d919f0b0e91e",
+      "phase": "revise",
+      "role": "レビュー指摘に従い未存在名の警告を統一",
+      "why": "定義内のローカル名が見つからない場合も名前不在であり、未知の色空間ファミリとは区別する必要がある。",
+      "review": [
+        "直接・間接参照・連鎖する別名、輪郭色、Indexed基底の未存在名を回帰テストで確認。",
+        "配列先頭の未知ファミリは引き続き未対応の警告になる。"
+      ],
+      "before": [
+        {
+          "text": "定義内の未存在名はCOLOR_SPACE_UNSUPPORTEDになっていた。"
+        }
+      ],
+      "after": [
+        {
+          "text": "定義内の未存在名はCOLOR_SPACE_NOT_FOUNDへ統一し、成分数不明の回復動作は保持する。"
+        }
+      ],
+      "notes": [
+        {
+          "path": "packages/core/src/content-stream/color-space-resources/index.ts",
+          "side": "new",
+          "start": 119,
+          "end": 128,
+          "text": "ローカル名の探索で値がなければ、名前不在のコードを明示して返す。"
+        }
+      ]
     }
   ],
   "suites": [
@@ -119,6 +151,11 @@
       "id": "errors",
       "label": "個数・型・未知の定義",
       "file": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.error.test.ts"
+    },
+    {
+      "id": "aliases",
+      "label": "別名と基底の名前解決",
+      "file": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.names.test.ts"
     }
   ],
   "tests": [
@@ -228,13 +265,36 @@
         "path": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.error.test.ts",
         "start": 61,
         "end": 80,
-        "text": "test.each([\n  \"/Mystery\",\n  \"[/Mystery 1 2]\",\n])(\"未知の族 %s は選択位置に警告し、成分数を不明にする\", async (definition) => {\n  const result = await executeColorSpace({\n    resources: `<< /ColorSpace << /Odd ${definition} >> >>`,\n    content: \"/DeviceCMYK cs /Odd cs .2 .4 sc\",\n  });\n  assert(result.ok);\n\n  expect(\n    ColorSpace.componentCount(\n      GraphicsStateStack.current(result.value.context.graphicsStateStack)\n        .fillColorSpace,\n    ),\n  ).toEqual({ some: false });\n  expect(result.value.warnings).toMatchObject([\n    { code: \"COLOR_SPACE_UNSUPPORTED\", offset: 20 },\n  ]);\n});"
+        "text": "test.each([\n  \"[/Future 1]\",\n  \"[/Mystery 1 2]\",\n])(\"未知の族 %s は選択位置に警告し、成分数を不明にする\", async (definition) => {\n  const result = await executeColorSpace({\n    resources: `<< /ColorSpace << /Odd ${definition} >> >>`,\n    content: \"/DeviceCMYK cs /Odd cs .2 .4 sc\",\n  });\n  assert(result.ok);\n\n  expect(\n    ColorSpace.componentCount(\n      GraphicsStateStack.current(result.value.context.graphicsStateStack)\n        .fillColorSpace,\n    ),\n  ).toEqual({ some: false });\n  expect(result.value.warnings).toMatchObject([\n    { code: \"COLOR_SPACE_UNSUPPORTED\", offset: 20 },\n  ]);\n});"
       },
       "targets": [
         "packages/core/src/content-stream/color-space-resources/index.ts",
         "packages/core/src/content-stream/operators/color/selection/index.ts",
         "packages/core/src/content-stream/graphics-state/color-space/index.ts"
       ]
+    },
+    {
+      "id": "alias-missing",
+      "suite": "aliases",
+      "name": "$label の参照先がない場合は名前不在を警告する",
+      "techniques": [
+        "regression",
+        "error"
+      ],
+      "why": "直接・間接・連鎖の3経路で、同じ名前不在が未対応ファミリへ誤分類されないことを固定する。",
+      "given": "別名Aliasの参照先Missingが現在の辞書に存在しない",
+      "when": "Aliasを選択して2成分を指定する",
+      "then": "Missingを示す名前不在の警告を選択位置で返し、成分数不明として読み続ける",
+      "excerpt": {
+        "path": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.names.test.ts",
+        "start": 9,
+        "end": 49,
+        "text": "test.each([\n  {\n    label: \"直接の別名\",\n    resources: \"<< /ColorSpace << /Alias /Missing >> >>\",\n    objects: [],\n  },\n  {\n    label: \"間接参照の別名\",\n    resources: \"<< /ColorSpace << /Alias 1 0 R >> >>\",\n    objects: [\"/Missing\"],\n  },\n  {\n    label: \"連鎖する別名\",\n    resources: \"<< /ColorSpace << /Alias /Next /Next /Missing >> >>\",\n    objects: [],\n  },\n])(\"$label の参照先がない場合は名前不在を警告する\", async ({\n  resources,\n  objects,\n}) => {\n  const result = await executeColorSpace({\n    resources,\n    objects,\n    content: \"/Alias cs .2 .4 sc\",\n  });\n  assert(result.ok);\n  const space = GraphicsStateStack.current(\n    result.value.context.graphicsStateStack,\n  ).fillColorSpace;\n\n  expect(result.value.warnings).toEqual([\n    {\n      code: \"COLOR_SPACE_NOT_FOUND\",\n      message: \"Unresolved color space: /Missing\",\n      offset: 7,\n    },\n  ]);\n  expect(space).toEqual({ family: \"Unknown\", name: \"Missing\" });\n  expect(ColorSpace.componentCount(space)).toEqual({ some: false });\n});\n"
+      },
+      "targets": [
+        "packages/core/src/content-stream/color-space-resources/index.ts"
+      ],
+      "commit": "fc05fbbf661d2a6f97c8043f71f1d919f0b0e91e"
     }
   ],
   "impact": {
@@ -263,6 +323,22 @@
         ],
         "tests": [
           "unknown"
+        ]
+      },
+      {
+        "label": "定義内からの未存在名の参照",
+        "before": [
+          {
+            "text": "名前が見つからない場合も、未対応の色の表し方として警告されていた。"
+          }
+        ],
+        "after": [
+          {
+            "text": "直接の指定と同様に、名前が見つからないという警告で区別できる。"
+          }
+        ],
+        "tests": [
+          "alias-missing"
         ]
       }
     ],
@@ -403,6 +479,49 @@
         "color"
       ],
       "status": "added"
+    },
+    {
+      "kind": "codebase",
+      "id": "missing-alias",
+      "category": "回復方針 · 不在と未対応",
+      "label": "名前不在と未知ファミリの区別",
+      "gist": "名前の探索失敗と、配列先頭の族が未対応であることを別の警告で表す。",
+      "passages": [
+        {
+          "kind": "text",
+          "text": "同じ未知の状態へ回復しても、呼び出し側が受け取る原因は異なる。名前が辞書にないならCOLOR_SPACE_NOT_FOUND、配列先頭の族が未知ならCOLOR_SPACE_UNSUPPORTEDとする。"
+        },
+        {
+          "kind": "excerpt",
+          "excerpt": {
+            "path": "packages/core/src/content-stream/color-space-resources/index.ts",
+            "start": 111,
+            "end": 128,
+            "text": "\n    const next = { ...scope, ancestors: new Set([...scope.ancestors, object]) };\n    if (object.type === \"name\") {\n      const builtin = ColorSpace.fromName(object.value);\n      if (builtin.some) {\n        return ok({ colorSpace: builtin.value, warnings: [] });\n      }\n\n      const local = scope.dictionary.entries.get(object.value);\n      return local\n        ? ColorSpaceDefinition.read(local, resolveRef, next)\n        : ok(\n            ColorSpaceDefinition.unresolved(\n              object.value,\n              \"COLOR_SPACE_NOT_FOUND\",\n            ),\n          );\n    }"
+          }
+        },
+        {
+          "kind": "text",
+          "text": "直接名だけでなく、定義内の別名とIndexedの基底名にも同じ名前解決規則を適用する。Indexedの基底が不明でも添字は1成分である。"
+        },
+        {
+          "kind": "caution",
+          "text": "この分類と成分数不明で継続する動作はpdfmodの回復方針。参照先の構文解析エラーを名前不在へ置き換えず、そのまま伝播する。"
+        }
+      ],
+      "occurrences": [
+        {
+          "path": "packages/core/src/content-stream/color-space-resources/index.ts",
+          "text": "定義内の未存在名の警告コードを決める"
+        }
+      ],
+      "status": "changed",
+      "tests": [
+        "alias-missing"
+      ],
+      "seeAlso": [
+        "prepared-scope"
+      ]
     }
   ]
 }
