@@ -11,6 +11,8 @@
 #
 # - `put-explain` は `build-pr-explain.py` が検査して書き出したもの(抜粋の中身を足したもの)を
 #   `explain.json` として置く。違反があれば push しない。触るのはこの 1 ファイルだけ
+# - 地図を取得後、`check-pr-story.py` で各コミット・ファイル・表示差分への行注釈も検査する。
+#   説明漏れ・行の不一致は既存の公開物を更新せず終了する(通信失敗として再試行しない)
 # - `put-explain` は、解説の sha がリモートの追跡ブランチ(`git branch -r --contains`)に無ければ置かない。
 #   抜粋はその sha の中身から読むので、push していないコミットの中身を公開しないため
 # - `put-explain` は `change-map.json` が無いフォルダへは置かない。Actions が作る前と、PR が閉じて
@@ -119,12 +121,13 @@ remove_others() {
   done
 }
 
-# モードごとに `$folder` を書き換える。返す 3 は先頭の終了コードの 3 と同じ。
+# モードごとに `$folder` を書き換える。3 は地図なし、4 は行注釈の検査違反(公開終了コード1へ変換)。
 apply_change() {
   local site="$work/site"
   case "$mode" in
     put-explain)
       [ -f "$site/$folder/change-map.json" ] || return 3
+      python3 "$scripts_dir/check-pr-story.py" "$work/explain.json" "$site/$folder/change-map.json" || return 4
       cp "$work/explain.json" "$site/$folder/explain.json"
       ;;
     put-map)
@@ -181,6 +184,7 @@ for attempt in $(seq 1 "$max_attempts"); do
     apply_change "$@"
     applied=$?
     [ "$applied" -eq 3 ] && { echo "$folder/change-map.json がありません" >&2; exit 3; }
+    [ "$applied" -eq 4 ] && exit 1
     [ "$applied" -eq 0 ] && commit_and_push && notify_stale && exit 0
   fi
   echo "gh-pages への反映に失敗しました($attempt 回目)。取り直してやり直します" >&2
