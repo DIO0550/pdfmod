@@ -1,11 +1,11 @@
 {
   "version": 1,
   "pr": 756,
-  "sha": "fc05fbbf661d2a6f97c8043f71f1d919f0b0e91e",
+  "sha": "53811fc721762770f696f8641ac575116b75a30a",
   "issue": 668,
   "overview": {
     "title": "リソースの色空間を選び、色の成分数を検証する",
-    "lead": "コンテンツストリーム内のローカル名から色空間を解決し、その色空間が要求する数の成分を受理する。リソース準備、状態への選択、成分数の検証の順で読む。",
+    "lead": "コンテンツストリーム内のローカル名から色空間を解決し、その色空間が要求する数の成分を受理する。リソース準備、状態への選択、成分数の検証の順で読む。 色空間の性質と命令の組合せ規則はドメインに置き、ハンドラは検査結果に従ってオペランドを読む。",
     "before": [
       {
         "text": "状態はデバイス色空間3種だけを表現し、cs / CS / sc / SC / scn / SCN は未登録だった。ローカル名の指定から成分数を求められなかった。"
@@ -35,6 +35,14 @@
           "kind": "file",
           "path": "packages/core/src/content-stream/graphics-state/color-space/index.ts"
         }
+      },
+      {
+        "title": "色空間と命令の適合性をドメインで判断する",
+        "text": "Patternにsc/SCを使えない規則をハンドラから分離し、エラーを値として返す。",
+        "go": {
+          "kind": "file",
+          "path": "packages/core/src/content-stream/color-operation/index.ts"
+        }
       }
     ]
   },
@@ -47,12 +55,17 @@
     {
       "path": "packages/core/src/content-stream/operators/color/selection/index.ts",
       "name": "色空間の選択と色の指定",
-      "role": "現在の塗り・輪郭へ色空間を選択し、数値成分と末尾のパターン名を検証する。"
+      "role": "塗り・輪郭の色空間を選び、ドメインの判定結果に従って名前と数値を読み、状態へ保存する。"
     },
     {
       "path": "packages/core/src/content-stream/graphics-state/color-space/index.ts",
       "name": "色空間の族と成分数",
       "role": "族に応じた属性を型で表し、既知の成分数または不明を返す。"
+    },
+    {
+      "path": "packages/core/src/content-stream/color-operation/index.ts",
+      "name": "色空間と命令の適合性",
+      "role": "色空間と色指定命令の組を表し、その組合せが不正ならエラーを返す。スタックや実行コンテキストには依存しない。"
     }
   ],
   "messages": [
@@ -79,6 +92,18 @@
       "payload": "塗りまたは輪郭で選択中の色空間",
       "returns": "既知の数ならSome、未知ならNone",
       "status": "added"
+    },
+    {
+      "id": "color-compatibility",
+      "from": "packages/core/src/content-stream/operators/color/selection/index.ts",
+      "to": "packages/core/src/content-stream/color-operation/index.ts",
+      "kind": "qry",
+      "name": "色空間に命令を使用できるかを判断",
+      "code": "ColorOperation.operatorError({ colorSpace: space, operatorName })",
+      "via": "call",
+      "payload": "選択中の色空間とsc / SC / scn / SCNのいずれか",
+      "returns": "Patternにsc/SCならSome(OPERATOR_ILLEGAL_STATE)、それ以外はNone",
+      "status": "added"
     }
   ],
   "flows": [
@@ -87,6 +112,7 @@
       "label": "色空間を選んで成分数を検証する",
       "steps": [
         "prepared",
+        "color-compatibility",
         "count"
       ]
     }
@@ -773,6 +799,134 @@
           "text": "直接選択だけでなく、定義内の別名・基底経由でも不在名はNOT_FOUNDとする契約を明記する。実装・テスト・恒久解説で同じ分類を使う。"
         }
       ]
+    },
+    {
+      "sha": "53811fc721762770f696f8641ac575116b75a30a",
+      "phase": "revise",
+      "role": "色指定の組合せ規則をドメインへ移し、ハンドラを実行手順に絞る",
+      "why": "Pattern判定・拡張命令の比較・不正状態の条件がハンドラに集まり、コードの役割を読むために条件式を分解する必要があった。色空間の性質はColorSpace、色空間と命令の組合せはColorOperationに置く。PDF入力への結果は維持する。",
+      "flows": [
+        "color"
+      ],
+      "review": [
+        "ドメインはOperandStackやOperatorHandlerContextへ依存しない。",
+        "Patternの通常命令は従来と同じエラーを、オペランドを読む前に返す。",
+        "パターン名をOption<string>へそろえ、後段でtypeofの再判定をしない。"
+      ],
+      "notes": [
+        {
+          "path": "packages/core/src/content-stream/color-operation/index.ts",
+          "side": "new",
+          "start": 6,
+          "end": 17,
+          "text": "色指定命令の語彙をsc/SC/scn/SCNへ閉じ、色空間と命令名の組をColorOperationとして表す。「この組合せを使用できるか」は片方の値だけでは決まらないため、組を受け取るドメインへ帰属させる。"
+        },
+        {
+          "path": "packages/core/src/content-stream/color-operation/index.ts",
+          "side": "new",
+          "start": 25,
+          "end": 32,
+          "text": "拡張命令かどうかとPattern色空間かどうかをここで照合する。以前はハンドラがtypeof・family・命令名を同時に比較していたが、その知識をこの規則へ集約する。"
+        },
+        {
+          "path": "packages/core/src/content-stream/color-operation/index.ts",
+          "side": "new",
+          "start": 33,
+          "end": 39,
+          "text": "Patternにsc/SCを使う組合せなら、従来と同じ不正状態エラーをSomeで返す。それ以外はNoneとし、呼び出し側は規則を再実装せずエラーの有無で分岐できる。エラーコード・命令名・メッセージは変えない。"
+        },
+        {
+          "path": "packages/core/src/content-stream/graphics-state/color-space/index.ts",
+          "side": "new",
+          "start": 45,
+          "end": 52,
+          "text": "Patternかどうかという色空間自身の性質をisPatternへ移す。Device系の文字列か、family付きの値かという内部表現を、呼び出し側が毎回判定しなくて済む。基底の有無によらずPatternを認識する。"
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/color/selection/index.ts",
+          "side": "new",
+          "start": 3,
+          "end": 4,
+          "text": "判定を担うColorOperationと、成功値をOptionへ変換するResult.mapを取り込む。ハンドラからドメインの内部へ逆向きの依存を作らず、結果を受け取って実行を続ける。"
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/color/selection/index.ts",
+          "side": "new",
+          "start": 92,
+          "end": 105,
+          "text": "命令名の型もドメインの語彙を参照し、選択中の色空間と命令をoperatorErrorへ渡す。ハンドラはSomeなら同じエラーを返すだけになり、複数の条件式やエラーの組立てを持たなくなる。"
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/color/selection/index.ts",
+          "side": "new",
+          "start": 108,
+          "end": 115,
+          "text": "Patternなら末尾の名前を読み、成功した文字列だけをmapでSomeへ包む。それ以外はOk(None)。名前の型不一致や欠落は従来どおりErrのまま伝播し、どちらの成功経路もOption<string>へそろえる。"
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/color/selection/index.ts",
+          "side": "new",
+          "start": 135,
+          "end": 138,
+          "text": "ここへ来るパターン名は既にOption<string>なので、文字列かどうかをtypeofで調べ直す処理を削除する。読み取った数値と名前をそのままColor.fromComponentsへ渡し、塗り・輪郭の更新動作を保つ。"
+        },
+        {
+          "path": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.basic.test.ts",
+          "side": "old",
+          "start": 95,
+          "end": 114,
+          "text": "Patternの成分・名前保持のテストを専用のpatternファイルへ移す。既存の着色/非着色の観点を保ち、移動先で輪郭側SCNも追加してドメイン分離の退行を確認する。"
+        },
+        {
+          "path": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.boundary.test.ts",
+          "side": "new",
+          "start": 76,
+          "end": 90,
+          "text": "従来の「Patternにscを使うと不正状態」を、sc/SCの塗り・輪郭と、基底なし/RGB基底の4通りへ広げる。実際のPDF命令列を使い、名前の読み取りエラーより先に同じILLEGAL_STATEを返すことを確かめる。"
+        },
+        {
+          "path": "packages/core/src/content-stream/color-operation/__tests__/color-operation.validation.test.ts",
+          "side": "new",
+          "start": 6,
+          "end": 23,
+          "text": "新しいドメインの公開APIへPatternとsc/SCを渡し、命令名を含む元のILLEGAL_STATEが返ることを検証する。ハンドラに依存せず、組合せ規則がドメイン単独で判断できることを固定する。"
+        },
+        {
+          "path": "packages/core/src/content-stream/color-operation/__tests__/color-operation.validation.test.ts",
+          "side": "new",
+          "start": 25,
+          "end": 35,
+          "text": "Patternとscn/SCNの正常な組ではエラーがないことを確認する。Patternをすべて拒否するだけの実装では通らない対照ケース。"
+        },
+        {
+          "path": "packages/core/src/content-stream/color-operation/__tests__/color-operation.validation.test.ts",
+          "side": "new",
+          "start": 37,
+          "end": 49,
+          "text": "RGBでは通常命令も拡張命令も使えることを確認する。Pattern専用の制限を非Patternの色空間へ誤って広げないための検証。"
+        },
+        {
+          "path": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.pattern.test.ts",
+          "side": "new",
+          "start": 5,
+          "end": 21,
+          "text": "基底なしPatternについて、塗りcs/scnと輪郭CS/SCNの入力を用意する。数値は0個、末尾の/P1は名前として保持するケースを両方の対象で確認する。"
+        },
+        {
+          "path": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.pattern.test.ts",
+          "side": "new",
+          "start": 22,
+          "end": 37,
+          "text": "RGB基底付きPatternも塗り・輪郭へ用意する。3つの数値と/P1を指定し、基底なしと同じ結果を返すだけでは通らない対照ケースにする。"
+        },
+        {
+          "path": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.pattern.test.ts",
+          "side": "new",
+          "start": 46,
+          "end": 59,
+          "text": "リソース準備からインタプリタ実行まで実物を通し、選択した対象の色に数値配列とパターン名が別々に残ることを確認する。文字列/Optionの判定を整理しても名前が消えず、正常入力で警告を出さないことを確かめる。"
+        }
+      ]
     }
   ],
   "suites": [
@@ -795,6 +949,21 @@
       "id": "aliases",
       "label": "別名と基底の名前解決",
       "file": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.names.test.ts"
+    },
+    {
+      "id": "color-operation",
+      "label": "色空間と命令の組合せ",
+      "file": "packages/core/src/content-stream/color-operation/__tests__/color-operation.validation.test.ts"
+    },
+    {
+      "id": "pattern",
+      "label": "Patternの数値と名前の保持",
+      "file": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.pattern.test.ts"
+    },
+    {
+      "id": "pattern-errors",
+      "label": "Patternに使えない命令",
+      "file": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.boundary.test.ts"
     }
   ],
   "tests": [
@@ -934,6 +1103,86 @@
         "packages/core/src/content-stream/color-space-resources/index.ts"
       ],
       "commit": "fc05fbbf661d2a6f97c8043f71f1d919f0b0e91e"
+    },
+    {
+      "id": "pattern-operation",
+      "suite": "color-operation",
+      "name": "Pattern色空間に%sで色を指定すると不正な命令になる",
+      "techniques": [
+        "regression",
+        "equivalence"
+      ],
+      "why": "命令との組合せ規則をドメインに固定するため。",
+      "given": "Patternとsc/SCのいずれか。",
+      "when": "ColorOperation.operatorErrorへ渡す。",
+      "then": "同じ命令名とILLEGAL_STATEを持つSomeを返す。",
+      "commit": "53811fc721762770f696f8641ac575116b75a30a",
+      "excerpt": {
+        "path": "packages/core/src/content-stream/color-operation/__tests__/color-operation.validation.test.ts",
+        "start": 6,
+        "end": 23,
+        "text": "test.each([\n  \"sc\",\n  \"SC\",\n] as const)(\"Pattern色空間に%sで色を指定すると不正な命令になる\", (operatorName) => {\n  const error = ColorOperation.operatorError({\n    colorSpace: { family: \"Pattern\", base: none },\n    operatorName,\n  });\n\n  expect(error).toEqual({\n    some: true,\n    value: {\n      code: \"OPERATOR_ILLEGAL_STATE\",\n      operatorName,\n      message: \"Pattern colors require scn or SCN\",\n    },\n  });\n});"
+      }
+    },
+    {
+      "id": "rgb-operation",
+      "suite": "color-operation",
+      "name": "RGB色空間に%sで色を指定できる",
+      "techniques": [
+        "regression",
+        "equivalence"
+      ],
+      "why": "Patternの制限を通常の色指定へ広げないため。",
+      "given": "DeviceRGBと4種類の色指定命令。",
+      "when": "組合せをドメインで判定する。",
+      "then": "どれもNoneとなる。",
+      "commit": "53811fc721762770f696f8641ac575116b75a30a",
+      "excerpt": {
+        "path": "packages/core/src/content-stream/color-operation/__tests__/color-operation.validation.test.ts",
+        "start": 37,
+        "end": 49,
+        "text": "test.each([\n  \"sc\",\n  \"SC\",\n  \"scn\",\n  \"SCN\",\n] as const)(\"RGB色空間に%sで色を指定できる\", (operatorName) => {\n  const error = ColorOperation.operatorError({\n    colorSpace: ColorSpace.deviceRGB(),\n    operatorName,\n  });\n\n  expect(error).toEqual(none);\n});"
+      }
+    },
+    {
+      "id": "pattern-values",
+      "suite": "pattern",
+      "name": "$definition の$operatorNameはパターン名を数値成分に数えない",
+      "techniques": [
+        "regression",
+        "equivalence"
+      ],
+      "why": "名前をOptionへそろえるリファクタリングで色値の保持を変えないため。",
+      "given": "基底なし/ありPatternと塗り/輪郭の4ケース。",
+      "when": "実際のPDF命令を実行する。",
+      "then": "0個/3個の成分とP1がそれぞれ保持され、警告がない。",
+      "commit": "53811fc721762770f696f8641ac575116b75a30a",
+      "excerpt": {
+        "path": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.pattern.test.ts",
+        "start": 38,
+        "end": 60,
+        "text": "] as const)(\"$definition の$operatorNameはパターン名を数値成分に数えない\", async ({\n  definition,\n  operands,\n  components,\n  selection,\n  operatorName,\n  target,\n}) => {\n  const result = await executeColorSpace({\n    resources: `<< /ColorSpace << /Pat ${definition} >> >>`,\n    content: `/Pat ${selection} ${operands} ${operatorName}`,\n  });\n  assert(result.ok);\n\n  expect(\n    GraphicsStateStack.current(result.value.context.graphicsStateStack)[target],\n  ).toMatchObject({\n    kind: \"components\",\n    components,\n    pattern: { some: true, value: \"P1\" },\n  });\n  expect(result.value.warnings).toEqual([]);\n});"
+      }
+    },
+    {
+      "id": "pattern-rejection",
+      "suite": "pattern-errors",
+      "name": "%s の色空間を%sで選ぶと%sは使用できない",
+      "techniques": [
+        "regression",
+        "equivalence"
+      ],
+      "why": "判定の移動後も、同じ対象と順序でエラーを返すため。",
+      "given": "基底なし/ありPatternを塗り/輪郭へ選択する。",
+      "when": "sc/SCを実行する。",
+      "then": "名前の欠落より先にILLEGAL_STATEを返す。",
+      "commit": "53811fc721762770f696f8641ac575116b75a30a",
+      "excerpt": {
+        "path": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.boundary.test.ts",
+        "start": 76,
+        "end": 91,
+        "text": "test.each([\n  [\"/Pattern\", \"cs\", \"sc\"],\n  [\"/Pattern\", \"CS\", \"SC\"],\n  [\"[/Pattern /DeviceRGB]\", \"cs\", \"sc\"],\n  [\"[/Pattern /DeviceRGB]\", \"CS\", \"SC\"],\n] as const)(\"%s の色空間を%sで選ぶと%sは使用できない\", async (definition, selection, operatorName) => {\n  const result = await executeColorSpace({\n    resources: `<< /ColorSpace << /Pat ${definition} >> >>`,\n    content: `/Pat ${selection} ${operatorName}`,\n  });\n\n  expect(result).toMatchObject({\n    ok: false,\n    error: { code: \"OPERATOR_ILLEGAL_STATE\", operatorName },\n  });\n});"
+      }
     }
   ],
   "impact": {
@@ -1046,8 +1295,8 @@
           "kind": "excerpt",
           "excerpt": {
             "path": "packages/core/src/content-stream/graphics-state/color-space/index.ts",
-            "start": 106,
-            "end": 136,
+            "start": 115,
+            "end": 145,
             "text": "  componentCount(space: ColorSpace): Option<number> {\n    if (typeof space === \"string\") {\n      switch (space) {\n        case \"DeviceGray\":\n          return some(DeviceComponentCounts.Gray);\n        case \"DeviceRGB\":\n          return some(DeviceComponentCounts.RGB);\n        case \"DeviceCMYK\":\n          return some(DeviceComponentCounts.CMYK);\n      }\n    }\n\n    switch (space.family) {\n      case \"CalGray\":\n      case \"Separation\":\n      case \"Indexed\":\n        return some(1);\n      case \"CalRGB\":\n      case \"Lab\":\n        return some(DeviceComponentCounts.RGB);\n      case \"ICCBased\":\n        return some(space.components);\n      case \"DeviceN\":\n        return some(space.names.length);\n      case \"Pattern\":\n        return space.base.some\n          ? ColorSpace.componentCount(space.base.value)\n          : some(0);\n      case \"Unknown\":\n        return none;\n    }"
           }
         },
@@ -1160,6 +1409,79 @@
       ],
       "seeAlso": [
         "prepared-scope"
+      ]
+    },
+    {
+      "kind": "codebase",
+      "id": "color-operation-domain",
+      "category": "このコードベース · 判定の帰属",
+      "label": "色空間の性質と命令の組合せ",
+      "gist": "値自身の性質と、2つの値の組で決まる規則をそれぞれのドメインへ置く。",
+      "status": "added",
+      "passages": [
+        {
+          "kind": "text",
+          "text": "PatternかどうかはColorSpaceの性質なのでisPatternが答える。一方「この色空間にscを使えるか」は色空間と命令の組で決まるため、ColorOperationがエラーの有無を返す。ハンドラは実行コンテキストから必要な値を取り出して規則へ渡し、結果に従ってオペランドを読む。単に長い条件式へローカル変数名を付けるだけでなく、規則を知る場所を限定する。"
+        },
+        {
+          "kind": "excerpt",
+          "excerpt": {
+            "path": "packages/core/src/content-stream/color-operation/index.ts",
+            "start": 13,
+            "end": 41,
+            "text": "/** 選択した色空間に対する、PDF §8.6の色指定命令。 */\nexport type ColorOperation = {\n  readonly colorSpace: ColorSpace;\n  readonly operatorName: ValueOf<typeof ColorOperatorNames>;\n};\n\nexport const ColorOperation = {\n  /**\n   * 色空間に使用できない色指定命令を検出する。\n   * @param operation - 選択中の色空間と実行する命令\n   * @returns Patternにsc/SCを使う場合は不正状態のエラー、それ以外はNone\n   */\n  operatorError(\n    operation: ColorOperation,\n  ): Option<PdfOperatorIllegalStateError> {\n    const isExtended =\n      operation.operatorName === ColorOperatorNames.FillExtended ||\n      operation.operatorName === ColorOperatorNames.StrokeExtended;\n    const isUnsupported =\n      ColorSpace.isPattern(operation.colorSpace) && !isExtended;\n    return isUnsupported\n      ? some({\n          code: \"OPERATOR_ILLEGAL_STATE\",\n          operatorName: operation.operatorName,\n          message: \"Pattern colors require scn or SCN\",\n        })\n      : none;\n  },\n} as const;"
+          }
+        },
+        {
+          "kind": "text",
+          "text": "名前の読み取りではResult.mapを使い、成功した文字列をSomeへ変える。名前を使わない色空間ではNoneを返すので、後のコードは成功値の表現をtypeofで調べ直さず、ColorへOptionを渡せる。"
+        },
+        {
+          "kind": "excerpt",
+          "excerpt": {
+            "path": "packages/core/src/content-stream/operators/color/selection/index.ts",
+            "start": 97,
+            "end": 115,
+            "text": "      const state = GraphicsStateStack.current(context.graphicsStateStack);\n      const space =\n        target === \"fill\" ? state.fillColorSpace : state.strokeColorSpace;\n      const operatorError = ColorOperation.operatorError({\n        colorSpace: space,\n        operatorName,\n      });\n      if (operatorError.some) {\n        return err(operatorError.value);\n      }\n\n      const patternName = ColorSpace.isPattern(space)\n        ? map(\n            OperandExtractor.popName(context.operandStack, operatorName),\n            some,\n          )\n        : ok(none);\n      if (!patternName.ok) {\n        return patternName;"
+          }
+        },
+        {
+          "kind": "caution",
+          "text": "今回の変更は判定の帰属と成功値の表現の整理で、受理するPDFやエラーの種類を変えない。スタックを読む処理や状態を更新する処理はハンドラに残す。"
+        }
+      ],
+      "occurrences": [
+        {
+          "path": "packages/core/src/content-stream/color-operation/index.ts",
+          "text": "色空間と命令の組合せを判定する。",
+          "lineRange": {
+            "start": 25,
+            "end": 39
+          },
+          "shas": [
+            "53811fc721762770f696f8641ac575116b75a30a"
+          ]
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/color/selection/index.ts",
+          "text": "ドメインの判断を受け取り、実行を続ける。",
+          "lineRange": {
+            "start": 97,
+            "end": 115
+          },
+          "shas": [
+            "53811fc721762770f696f8641ac575116b75a30a"
+          ]
+        }
+      ],
+      "tests": [
+        "pattern-operation",
+        "rgb-operation",
+        "pattern-values",
+        "pattern-rejection"
+      ],
+      "flows": [
+        "color"
       ]
     }
   ]
