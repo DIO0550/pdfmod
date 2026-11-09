@@ -1,6 +1,7 @@
 import type { PdfError } from "../../../../pdf/errors/index";
 import { none, type Option, some } from "../../../../utils/option/index";
-import { err, ok } from "../../../../utils/result/index";
+import { err, map, ok } from "../../../../utils/result/index";
+import { ColorOperation } from "../../../color-operation/index";
 import {
   ColorSpaceDefinition,
   ColorSpaceResources,
@@ -89,25 +90,26 @@ export const ColorSpaceOperators = {
    * @returns 個数・型の不一致を Err にするハンドラ
    */
   setColor(
-    operatorName: "sc" | "SC" | "scn" | "SCN",
+    operatorName: ColorOperation["operatorName"],
     target: ColorTarget,
   ): OperatorHandler {
     return (context) => {
       const state = GraphicsStateStack.current(context.graphicsStateStack);
       const space =
         target === "fill" ? state.fillColorSpace : state.strokeColorSpace;
-      const pattern = typeof space !== "string" && space.family === "Pattern";
-      const extended = operatorName === "scn" || operatorName === "SCN";
-      if (pattern && !extended) {
-        return err({
-          code: "OPERATOR_ILLEGAL_STATE",
-          operatorName,
-          message: "Pattern colors require scn or SCN",
-        });
+      const operatorError = ColorOperation.operatorError({
+        colorSpace: space,
+        operatorName,
+      });
+      if (operatorError.some) {
+        return err(operatorError.value);
       }
 
-      const patternName = pattern
-        ? OperandExtractor.popName(context.operandStack, operatorName)
+      const patternName = ColorSpace.isPattern(space)
+        ? map(
+            OperandExtractor.popName(context.operandStack, operatorName),
+            some,
+          )
         : ok(none);
       if (!patternName.ok) {
         return patternName;
@@ -130,11 +132,9 @@ export const ColorSpaceOperators = {
         return values;
       }
 
-      const name =
-        typeof patternName.value === "string" ? some(patternName.value) : none;
       return ok(
         ColorSpaceOperators.update(context, target, {
-          color: Color.fromComponents(space, values.value, name),
+          color: Color.fromComponents(space, values.value, patternName.value),
           space,
         }),
       );

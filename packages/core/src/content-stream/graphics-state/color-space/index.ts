@@ -43,6 +43,15 @@ export type ColorSpace =
 
 export const ColorSpace = {
   /**
+   * パターン名を指定する色空間かを判定する。
+   * @param space - 選択中の色空間
+   * @returns 基底の有無によらずPatternならtrue
+   */
+  isPattern(space: ColorSpace): boolean {
+    return typeof space !== "string" && space.family === "Pattern";
+  },
+
+  /**
    * ICCプロファイルで有効な成分数に絞る。
    * @param count - プロファイル辞書の /N
    * @returns 1・3・4なら成分数、それ以外は None
