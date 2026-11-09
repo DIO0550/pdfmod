@@ -73,15 +73,20 @@ test("選択されていない色空間の解決エラーは実行を妨げな�
   });
 });
 
-test("Pattern の色指定に sc は使用できない", async () => {
+test.each([
+  ["/Pattern", "cs", "sc"],
+  ["/Pattern", "CS", "SC"],
+  ["[/Pattern /DeviceRGB]", "cs", "sc"],
+  ["[/Pattern /DeviceRGB]", "CS", "SC"],
+] as const)("%s の色空間を%sで選ぶと%sは使用できない", async (definition, selection, operatorName) => {
   const result = await executeColorSpace({
-    resources: "<< >>",
-    content: "/Pattern cs sc",
+    resources: `<< /ColorSpace << /Pat ${definition} >> >>`,
+    content: `/Pat ${selection} ${operatorName}`,
   });
 
   expect(result).toMatchObject({
     ok: false,
-    error: { code: "OPERATOR_ILLEGAL_STATE", operatorName: "sc" },
+    error: { code: "OPERATOR_ILLEGAL_STATE", operatorName },
   });
 });
 

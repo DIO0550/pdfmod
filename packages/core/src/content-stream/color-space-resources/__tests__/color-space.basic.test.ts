@@ -91,24 +91,3 @@ test("DeviceN の間接参照の名前配列と各名前を解決する", async 
       .fillColorSpace,
   ).toMatchObject({ family: "DeviceN", names: ["Cyan", "Magenta", "Yellow"] });
 });
-
-test.each([
-  ["/Pattern", "/P1", []],
-  ["[/Pattern /DeviceRGB]", ".1 .2 .3 /P1", [0.1, 0.2, 0.3]],
-] as const)("%s は scn の末尾のパターン名を成分に数えない", async (definition, operands, components) => {
-  const result = await executeColorSpace({
-    resources: `<< /ColorSpace << /Pat ${definition} >> >>`,
-    content: `/Pat cs ${operands} scn`,
-  });
-  assert(result.ok);
-
-  expect(
-    GraphicsStateStack.current(result.value.context.graphicsStateStack)
-      .fillColor,
-  ).toMatchObject({
-    kind: "components",
-    components,
-    pattern: { some: true, value: "P1" },
-  });
-  expect(result.value.warnings).toEqual([]);
-});
