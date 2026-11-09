@@ -4,11 +4,20 @@
   "headBranch": "feature/668-color-space-resources",
   "baseBranch": "main",
   "mergeBase": "15eb3d78e1cf97fb1b5756f8f412b1345228d6ec",
-  "head": "fc05fbbf661d2a6f97c8043f71f1d919f0b0e91e",
+  "head": "53811fc721762770f696f8641ac575116b75a30a",
   "groups": [
     {
       "label": "TypeScript · core",
       "files": [
+        {
+          "path": "packages/core/src/content-stream/color-operation/index.ts",
+          "status": "A",
+          "oldPath": null,
+          "additions": 41,
+          "deletions": 0,
+          "changed": true,
+          "target": null
+        },
         {
           "path": "packages/core/src/content-stream/color-space-resources/index.ts",
           "status": "A",
@@ -38,7 +47,7 @@
           "path": "packages/core/src/content-stream/graphics-state/color-space/index.ts",
           "status": "M",
           "oldPath": null,
-          "additions": 109,
+          "additions": 118,
           "deletions": 14,
           "changed": true,
           "target": null
@@ -712,10 +721,19 @@
           "changed": false
         },
         {
+          "path": "packages/core/src/content-stream/color-operation/__tests__/color-operation.validation.test.ts",
+          "status": "A",
+          "oldPath": null,
+          "additions": 49,
+          "deletions": 0,
+          "changed": true,
+          "target": "packages/core/src/content-stream/color-operation/index.ts"
+        },
+        {
           "path": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.basic.test.ts",
           "status": "A",
           "oldPath": null,
-          "additions": 114,
+          "additions": 93,
           "deletions": 0,
           "changed": true,
           "target": "packages/core/src/content-stream/color-space-resources/index.ts"
@@ -724,7 +742,7 @@
           "path": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.boundary.test.ts",
           "status": "A",
           "oldPath": null,
-          "additions": 127,
+          "additions": 132,
           "deletions": 0,
           "changed": true,
           "target": "packages/core/src/content-stream/color-space-resources/index.ts"
@@ -752,6 +770,15 @@
           "status": "A",
           "oldPath": null,
           "additions": 100,
+          "deletions": 0,
+          "changed": true,
+          "target": "packages/core/src/content-stream/color-space-resources/index.ts"
+        },
+        {
+          "path": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.pattern.test.ts",
+          "status": "A",
+          "oldPath": null,
+          "additions": 60,
           "deletions": 0,
           "changed": true,
           "target": "packages/core/src/content-stream/color-space-resources/index.ts"
@@ -1581,12 +1608,20 @@
   "tests": {
     "added": [
       {
-        "file": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.basic.test.ts",
-        "name": "%s の数値成分数は %i"
+        "file": "packages/core/src/content-stream/color-operation/__tests__/color-operation.validation.test.ts",
+        "name": "Pattern色空間に%sで色を指定すると不正な命令になる"
+      },
+      {
+        "file": "packages/core/src/content-stream/color-operation/__tests__/color-operation.validation.test.ts",
+        "name": "Pattern色空間に%sで色を指定できる"
+      },
+      {
+        "file": "packages/core/src/content-stream/color-operation/__tests__/color-operation.validation.test.ts",
+        "name": "RGB色空間に%sで色を指定できる"
       },
       {
         "file": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.basic.test.ts",
-        "name": "%s は scn の末尾のパターン名を成分に数えない"
+        "name": "%s の数値成分数は %i"
       },
       {
         "file": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.basic.test.ts",
@@ -1602,6 +1637,10 @@
       },
       {
         "file": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.boundary.test.ts",
+        "name": "%s の色空間を%sで選ぶと%sは使用できない"
+      },
+      {
+        "file": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.boundary.test.ts",
         "name": "%s は名前オペランド以外を拒否する"
       },
       {
@@ -1611,10 +1650,6 @@
       {
         "file": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.boundary.test.ts",
         "name": "ICCBased の欠落した /N は成分数不明になる"
-      },
-      {
-        "file": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.boundary.test.ts",
-        "name": "Pattern の色指定に sc は使用できない"
       },
       {
         "file": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.boundary.test.ts",
@@ -1691,15 +1726,21 @@
       {
         "file": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.names.test.ts",
         "name": "輪郭色空間の別名の参照先がない場合も名前不在を警告する"
+      },
+      {
+        "file": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.pattern.test.ts",
+        "name": "$definition の$operatorNameはパターン名を数値成分に数えない"
       }
     ],
     "removed": [],
     "files": [
+      "packages/core/src/content-stream/color-operation/__tests__/color-operation.validation.test.ts",
       "packages/core/src/content-stream/color-space-resources/__tests__/color-space.basic.test.ts",
       "packages/core/src/content-stream/color-space-resources/__tests__/color-space.boundary.test.ts",
       "packages/core/src/content-stream/color-space-resources/__tests__/color-space.error.test.ts",
       "packages/core/src/content-stream/color-space-resources/__tests__/color-space.integration.test.ts",
-      "packages/core/src/content-stream/color-space-resources/__tests__/color-space.names.test.ts"
+      "packages/core/src/content-stream/color-space-resources/__tests__/color-space.names.test.ts",
+      "packages/core/src/content-stream/color-space-resources/__tests__/color-space.pattern.test.ts"
     ]
   },
   "commits": [
@@ -1990,6 +2031,86 @@
           "truncated": false
         }
       ]
+    },
+    {
+      "sha": "53811fc721762770f696f8641ac575116b75a30a",
+      "merge": false,
+      "author": "土居 孝史",
+      "date": "2026-11-09T13:53:12Z",
+      "subject": "refactor(core): move color operator rules into domain",
+      "body": "",
+      "files": [
+        {
+          "path": "packages/core/src/content-stream/color-operation/__tests__/color-operation.validation.test.ts",
+          "status": "A",
+          "oldPath": null,
+          "additions": 49,
+          "deletions": 0,
+          "patch": "@@ -0,0 +1,49 @@\n+import { expect, test } from \"vitest\";\n+import { none } from \"../../../utils/option/index\";\n+import { ColorSpace } from \"../../graphics-state/color-space/index\";\n+import { ColorOperation } from \"../index\";\n+\n+test.each([\n+  \"sc\",\n+  \"SC\",\n+] as const)(\"Pattern色空間に%sで色を指定すると不正な命令になる\", (operatorName) => {\n+  const error = ColorOperation.operatorError({\n+    colorSpace: { family: \"Pattern\", base: none },\n+    operatorName,\n+  });\n+\n+  expect(error).toEqual({\n+    some: true,\n+    value: {\n+      code: \"OPERATOR_ILLEGAL_STATE\",\n+      operatorName,\n+      message: \"Pattern colors require scn or SCN\",\n+    },\n+  });\n+});\n+\n+test.each([\n+  \"scn\",\n+  \"SCN\",\n+] as const)(\"Pattern色空間に%sで色を指定できる\", (operatorName) => {\n+  const error = ColorOperation.operatorError({\n+    colorSpace: { family: \"Pattern\", base: none },\n+    operatorName,\n+  });\n+\n+  expect(error).toEqual(none);\n+});\n+\n+test.each([\n+  \"sc\",\n+  \"SC\",\n+  \"scn\",\n+  \"SCN\",\n+] as const)(\"RGB色空間に%sで色を指定できる\", (operatorName) => {\n+  const error = ColorOperation.operatorError({\n+    colorSpace: ColorSpace.deviceRGB(),\n+    operatorName,\n+  });\n+\n+  expect(error).toEqual(none);\n+});",
+          "patchLines": 50,
+          "truncated": false
+        },
+        {
+          "path": "packages/core/src/content-stream/color-operation/index.ts",
+          "status": "A",
+          "oldPath": null,
+          "additions": 41,
+          "deletions": 0,
+          "patch": "@@ -0,0 +1,41 @@\n+import type { PdfOperatorIllegalStateError } from \"../../pdf/errors/index\";\n+import { none, type Option, some } from \"../../utils/option/index\";\n+import type { ValueOf } from \"../../utils/types/utility-type\";\n+import { ColorSpace } from \"../graphics-state/color-space/index\";\n+\n+const ColorOperatorNames = {\n+  Fill: \"sc\",\n+  Stroke: \"SC\",\n+  FillExtended: \"scn\",\n+  StrokeExtended: \"SCN\",\n+} as const;\n+\n+/** 選択した色空間に対する、PDF §8.6の色指定命令。 */\n+export type ColorOperation = {\n+  readonly colorSpace: ColorSpace;\n+  readonly operatorName: ValueOf<typeof ColorOperatorNames>;\n+};\n+\n+export const ColorOperation = {\n+  /**\n+   * 色空間に使用できない色指定命令を検出する。\n+   * @param operation - 選択中の色空間と実行する命令\n+   * @returns Patternにsc/SCを使う場合は不正状態のエラー、それ以外はNone\n+   */\n+  operatorError(\n+    operation: ColorOperation,\n+  ): Option<PdfOperatorIllegalStateError> {\n+    const isExtended =\n+      operation.operatorName === ColorOperatorNames.FillExtended ||\n+      operation.operatorName === ColorOperatorNames.StrokeExtended;\n+    const isUnsupported =\n+      ColorSpace.isPattern(operation.colorSpace) && !isExtended;\n+    return isUnsupported\n+      ? some({\n+          code: \"OPERATOR_ILLEGAL_STATE\",\n+          operatorName: operation.operatorName,\n+          message: \"Pattern colors require scn or SCN\",\n+        })\n+      : none;\n+  },\n+} as const;",
+          "patchLines": 42,
+          "truncated": false
+        },
+        {
+          "path": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.basic.test.ts",
+          "status": "M",
+          "oldPath": null,
+          "additions": 0,
+          "deletions": 21,
+          "patch": "@@ -91,24 +91,3 @@ test(\"DeviceN の間接参照の名前配列と各名前を解決する\", async\n       .fillColorSpace,\n   ).toMatchObject({ family: \"DeviceN\", names: [\"Cyan\", \"Magenta\", \"Yellow\"] });\n });\n-\n-test.each([\n-  [\"/Pattern\", \"/P1\", []],\n-  [\"[/Pattern /DeviceRGB]\", \".1 .2 .3 /P1\", [0.1, 0.2, 0.3]],\n-] as const)(\"%s は scn の末尾のパターン名を成分に数えない\", async (definition, operands, components) => {\n-  const result = await executeColorSpace({\n-    resources: `<< /ColorSpace << /Pat ${definition} >> >>`,\n-    content: `/Pat cs ${operands} scn`,\n-  });\n-  assert(result.ok);\n-\n-  expect(\n-    GraphicsStateStack.current(result.value.context.graphicsStateStack)\n-      .fillColor,\n-  ).toMatchObject({\n-    kind: \"components\",\n-    components,\n-    pattern: { some: true, value: \"P1\" },\n-  });\n-  expect(result.value.warnings).toEqual([]);\n-});",
+          "patchLines": 25,
+          "truncated": false
+        },
+        {
+          "path": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.boundary.test.ts",
+          "status": "M",
+          "oldPath": null,
+          "additions": 9,
+          "deletions": 4,
+          "patch": "@@ -73,15 +73,20 @@ test(\"選択されていない色空間の解決エラーは実行を妨げな\n   });\n });\n \n-test(\"Pattern の色指定に sc は使用できない\", async () => {\n+test.each([\n+  [\"/Pattern\", \"cs\", \"sc\"],\n+  [\"/Pattern\", \"CS\", \"SC\"],\n+  [\"[/Pattern /DeviceRGB]\", \"cs\", \"sc\"],\n+  [\"[/Pattern /DeviceRGB]\", \"CS\", \"SC\"],\n+] as const)(\"%s の色空間を%sで選ぶと%sは使用できない\", async (definition, selection, operatorName) => {\n   const result = await executeColorSpace({\n-    resources: \"<< >>\",\n-    content: \"/Pattern cs sc\",\n+    resources: `<< /ColorSpace << /Pat ${definition} >> >>`,\n+    content: `/Pat ${selection} ${operatorName}`,\n   });\n \n   expect(result).toMatchObject({\n     ok: false,\n-    error: { code: \"OPERATOR_ILLEGAL_STATE\", operatorName: \"sc\" },\n+    error: { code: \"OPERATOR_ILLEGAL_STATE\", operatorName },\n   });\n });\n ",
+          "patchLines": 25,
+          "truncated": false
+        },
+        {
+          "path": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.pattern.test.ts",
+          "status": "A",
+          "oldPath": null,
+          "additions": 60,
+          "deletions": 0,
+          "patch": "@@ -0,0 +1,60 @@\n+import { assert, expect, test } from \"vitest\";\n+import { GraphicsStateStack } from \"../../graphics-state/index\";\n+import { executeColorSpace } from \"./setup-color-space\";\n+\n+test.each([\n+  {\n+    definition: \"/Pattern\",\n+    operands: \"/P1\",\n+    components: [],\n+    selection: \"cs\",\n+    operatorName: \"scn\",\n+    target: \"fillColor\",\n+  },\n+  {\n+    definition: \"/Pattern\",\n+    operands: \"/P1\",\n+    components: [],\n+    selection: \"CS\",\n+    operatorName: \"SCN\",\n+    target: \"strokeColor\",\n+  },\n+  {\n+    definition: \"[/Pattern /DeviceRGB]\",\n+    operands: \".1 .2 .3 /P1\",\n+    components: [0.1, 0.2, 0.3],\n+    selection: \"cs\",\n+    operatorName: \"scn\",\n+    target: \"fillColor\",\n+  },\n+  {\n+    definition: \"[/Pattern /DeviceRGB]\",\n+    operands: \".1 .2 .3 /P1\",\n+    components: [0.1, 0.2, 0.3],\n+    selection: \"CS\",\n+    operatorName: \"SCN\",\n+    target: \"strokeColor\",\n+  },\n+] as const)(\"$definition の$operatorNameはパターン名を数値成分に数えない\", async ({\n+  definition,\n+  operands,\n+  components,\n+  selection,\n+  operatorName,\n+  target,\n+}) => {\n+  const result = await executeColorSpace({\n+    resources: `<< /ColorSpace << /Pat ${definition} >> >>`,\n+    content: `/Pat ${selection} ${operands} ${operatorName}`,\n+  });\n+  assert(result.ok);\n+\n+  expect(\n+    GraphicsStateStack.current(result.value.context.graphicsStateStack)[target],\n+  ).toMatchObject({\n+    kind: \"components\",\n+    components,\n+    pattern: { some: true, value: \"P1\" },\n+  });\n+  expect(result.value.warnings).toEqual([]);\n+});",
+          "patchLines": 61,
+          "truncated": false
+        },
+        {
+          "path": "packages/core/src/content-stream/graphics-state/color-space/index.ts",
+          "status": "M",
+          "oldPath": null,
+          "additions": 9,
+          "deletions": 0,
+          "patch": "@@ -42,6 +42,15 @@ export type ColorSpace =\n   | { readonly family: \"Unknown\"; readonly name: string };\n \n export const ColorSpace = {\n+  /**\n+   * パターン名を指定する色空間かを判定する。\n+   * @param space - 選択中の色空間\n+   * @returns 基底の有無によらずPatternならtrue\n+   */\n+  isPattern(space: ColorSpace): boolean {\n+    return typeof space !== \"string\" && space.family === \"Pattern\";\n+  },\n+\n   /**\n    * ICCプロファイルで有効な成分数に絞る。\n    * @param count - プロファイル辞書の /N",
+          "patchLines": 16,
+          "truncated": false
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/color/selection/index.ts",
+          "status": "M",
+          "oldPath": null,
+          "additions": 15,
+          "deletions": 15,
+          "patch": "@@ -1,6 +1,7 @@\n import type { PdfError } from \"../../../../pdf/errors/index\";\n import { none, type Option, some } from \"../../../../utils/option/index\";\n-import { err, ok } from \"../../../../utils/result/index\";\n+import { err, map, ok } from \"../../../../utils/result/index\";\n+import { ColorOperation } from \"../../../color-operation/index\";\n import {\n   ColorSpaceDefinition,\n   ColorSpaceResources,\n@@ -89,25 +90,26 @@ export const ColorSpaceOperators = {\n    * @returns 個数・型の不一致を Err にするハンドラ\n    */\n   setColor(\n-    operatorName: \"sc\" | \"SC\" | \"scn\" | \"SCN\",\n+    operatorName: ColorOperation[\"operatorName\"],\n     target: ColorTarget,\n   ): OperatorHandler {\n     return (context) => {\n       const state = GraphicsStateStack.current(context.graphicsStateStack);\n       const space =\n         target === \"fill\" ? state.fillColorSpace : state.strokeColorSpace;\n-      const pattern = typeof space !== \"string\" && space.family === \"Pattern\";\n-      const extended = operatorName === \"scn\" || operatorName === \"SCN\";\n-      if (pattern && !extended) {\n-        return err({\n-          code: \"OPERATOR_ILLEGAL_STATE\",\n-          operatorName,\n-          message: \"Pattern colors require scn or SCN\",\n-        });\n+      const operatorError = ColorOperation.operatorError({\n+        colorSpace: space,\n+        operatorName,\n+      });\n+      if (operatorError.some) {\n+        return err(operatorError.value);\n       }\n \n-      const patternName = pattern\n-        ? OperandExtractor.popName(context.operandStack, operatorName)\n+      const patternName = ColorSpace.isPattern(space)\n+        ? map(\n+            OperandExtractor.popName(context.operandStack, operatorName),\n+            some,\n+          )\n         : ok(none);\n       if (!patternName.ok) {\n         return patternName;\n@@ -130,11 +132,9 @@ export const ColorSpaceOperators = {\n         return values;\n       }\n \n-      const name =\n-        typeof patternName.value === \"string\" ? some(patternName.value) : none;\n       return ok(\n         ColorSpaceOperators.update(context, target, {\n-          color: Color.fromComponents(space, values.value, name),\n+          color: Color.fromComponents(space, values.value, patternName.value),\n           space,\n         }),\n       );",
+          "patchLines": 60,
+          "truncated": false
+        }
+      ]
     }
   ],
   "dependencies": [
@@ -2007,6 +2128,41 @@
       "from": "packages/core/src/__tests__/namespace-export.type.test-d.ts",
       "to": "packages/core/src/index.ts",
       "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/color-operation/__tests__/color-operation.validation.test.ts",
+      "to": "packages/core/src/content-stream/color-operation/index.ts",
+      "status": "added"
+    },
+    {
+      "from": "packages/core/src/content-stream/color-operation/__tests__/color-operation.validation.test.ts",
+      "to": "packages/core/src/content-stream/graphics-state/color-space/index.ts",
+      "status": "added"
+    },
+    {
+      "from": "packages/core/src/content-stream/color-operation/__tests__/color-operation.validation.test.ts",
+      "to": "packages/core/src/utils/option/index.ts",
+      "status": "added"
+    },
+    {
+      "from": "packages/core/src/content-stream/color-operation/index.ts",
+      "to": "packages/core/src/content-stream/graphics-state/color-space/index.ts",
+      "status": "added"
+    },
+    {
+      "from": "packages/core/src/content-stream/color-operation/index.ts",
+      "to": "packages/core/src/pdf/errors/index.ts",
+      "status": "added"
+    },
+    {
+      "from": "packages/core/src/content-stream/color-operation/index.ts",
+      "to": "packages/core/src/utils/option/index.ts",
+      "status": "added"
+    },
+    {
+      "from": "packages/core/src/content-stream/color-operation/index.ts",
+      "to": "packages/core/src/utils/types/utility-type.ts",
+      "status": "added"
     },
     {
       "from": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.basic.test.ts",
@@ -2065,6 +2221,16 @@
     },
     {
       "from": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.names.test.ts",
+      "to": "packages/core/src/content-stream/graphics-state/index.ts",
+      "status": "added"
+    },
+    {
+      "from": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.pattern.test.ts",
+      "to": "packages/core/src/content-stream/color-space-resources/__tests__/setup-color-space.ts",
+      "status": "added"
+    },
+    {
+      "from": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.pattern.test.ts",
       "to": "packages/core/src/content-stream/graphics-state/index.ts",
       "status": "added"
     },
@@ -2867,6 +3033,11 @@
       "from": "packages/core/src/content-stream/operators/color/rgb/stroke.ts",
       "to": "packages/core/src/content-stream/operator-registry/index.ts",
       "status": "kept"
+    },
+    {
+      "from": "packages/core/src/content-stream/operators/color/selection/index.ts",
+      "to": "packages/core/src/content-stream/color-operation/index.ts",
+      "status": "added"
     },
     {
       "from": "packages/core/src/content-stream/operators/color/selection/index.ts",
