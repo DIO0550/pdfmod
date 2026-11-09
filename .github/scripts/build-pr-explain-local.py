@@ -38,6 +38,10 @@ def main() -> int:
             result = subprocess.run(command, cwd=root, env=env, stdout=stream)
         if result.returncode:
             return result.returncode
+        if args.explain:
+            result = subprocess.run(["python3", str(scripts / "check-pr-story.py"), str(work / "explain.json"), str(work / "change-map.json")], cwd=root, env=env)
+            if result.returncode:
+                return result.returncode
         output.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(template, output / "index.html")
         shutil.copyfile(work / "change-map.json", output / "change-map.json")
