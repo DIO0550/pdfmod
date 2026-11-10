@@ -2,7 +2,7 @@
   "version": 1,
   "pr": 758,
   "issue": 677,
-  "sha": "9cbe452b0cfa2e521bc9e1c5e611464d620484d2",
+  "sha": "638d3d01668575a1638541f5bf6be2dc98b309f0",
   "overview": {
     "title": "名前からパターンとシェーディングの定義へ到達する",
     "lead": "パターン名を色値へ保存するだけだった経路を辞書の取得へつなぎ、シェーディング指定も既定の命令にする。読む順序は描画スコープの準備、種別の読み取り、命令への受け渡し。実描画と関数評価は対象外。",
@@ -714,6 +714,42 @@
           "start": 27,
           "end": 46,
           "text": "色空間命令の生成時に解決済みパターンも受け取り、scnとSCNのハンドラへ同じスコープを渡す。デバイス色命令の登録経路でも、この名前解決を利用できるようにする。"
+        }
+      ]
+    },
+    {
+      "sha": "638d3d01668575a1638541f5bf6be2dc98b309f0",
+      "phase": "hard",
+      "role": "不正な属性参照を省略と区別する",
+      "why": "Matrix・BBox・Backgroundが指定済みでも参照番号が不正なとき、キーを消すと省略時の既定値や不在へ誤って回復してしまうため。PDFのnullを保持して各属性の読み取りで不正と判断する。",
+      "notes": [
+        {
+          "path": "packages/core/src/document/resources/parameters/__tests__/parameters.basic.test.ts",
+          "side": "new",
+          "start": 47,
+          "end": 60,
+          "text": "実バイト列のMatrix 0 0 Rを読み、Matrixはnullとして残り、本当に省略したBBoxだけが対応表にないことを検証する。成功のタグだけでなく、二つの状態の違いを固定する。"
+        },
+        {
+          "path": "packages/core/src/document/resources/parameters/index.ts",
+          "side": "new",
+          "start": 45,
+          "end": 59,
+          "text": "属性が存在するのに参照番号が不正な場合は、解決結果をPDFのnullとして対応表へ保持する。キーを落とすとMatrixの省略時既定値へ入ってしまうため、未指定と指定済みの不正を区別する。参照解決エラーの伝播は維持する。"
+        },
+        {
+          "path": "packages/core/src/document/resources/pattern/__tests__/pattern.error.test.ts",
+          "side": "new",
+          "start": 14,
+          "end": 14,
+          "text": "不正なMatrix参照を既定の単位行列で補わず、タイリングの不正な属性として警告するケースを追加する。既存のMatrix省略時のテストと対になる境界を確認する。"
+        },
+        {
+          "path": "packages/core/src/document/resources/shading/__tests__/shading.error.test.ts",
+          "side": "new",
+          "start": 9,
+          "end": 10,
+          "text": "BBoxとBackgroundの不正な参照を省略として消さず、不正な属性として警告するケースを追加する。任意属性でも指定済みの値が壊れている状態は不在と区別する。"
         }
       ]
     }
