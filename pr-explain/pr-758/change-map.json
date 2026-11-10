@@ -4,7 +4,7 @@
   "headBranch": "feature/677-pattern-shading",
   "baseBranch": "main",
   "mergeBase": "5965066ede34ed6a9865d9dceab09aa437b11d4f",
-  "head": "9cbe452b0cfa2e521bc9e1c5e611464d620484d2",
+  "head": "638d3d01668575a1638541f5bf6be2dc98b309f0",
   "groups": [
     {
       "label": "TypeScript · core",
@@ -455,7 +455,7 @@
           "path": "packages/core/src/document/resources/parameters/index.ts",
           "status": "A",
           "oldPath": null,
-          "additions": 116,
+          "additions": 120,
           "deletions": 0,
           "changed": true,
           "target": null
@@ -1267,7 +1267,7 @@
           "path": "packages/core/src/document/resources/parameters/__tests__/parameters.basic.test.ts",
           "status": "A",
           "oldPath": null,
-          "additions": 46,
+          "additions": 60,
           "deletions": 0,
           "changed": true,
           "target": "packages/core/src/document/resources/parameters/index.ts"
@@ -1285,7 +1285,7 @@
           "path": "packages/core/src/document/resources/pattern/__tests__/pattern.error.test.ts",
           "status": "A",
           "oldPath": null,
-          "additions": 52,
+          "additions": 53,
           "deletions": 0,
           "changed": true,
           "target": "packages/core/src/document/resources/pattern/index.ts"
@@ -1312,7 +1312,7 @@
           "path": "packages/core/src/document/resources/shading/__tests__/shading.error.test.ts",
           "status": "A",
           "oldPath": null,
-          "additions": 31,
+          "additions": 33,
           "deletions": 0,
           "changed": true,
           "target": "packages/core/src/document/resources/shading/index.ts"
@@ -1520,6 +1520,10 @@
       {
         "file": "packages/core/src/document/resources/parameters/__tests__/parameters.basic.test.ts",
         "name": "リソースの数値配列を%s個の座標へ絞り込む"
+      },
+      {
+        "file": "packages/core/src/document/resources/parameters/__tests__/parameters.basic.test.ts",
+        "name": "不正な属性参照をPDFのnullとして保持し、属性の省略と区別する"
       },
       {
         "file": "packages/core/src/document/resources/parameters/__tests__/parameters.basic.test.ts",
@@ -1892,6 +1896,56 @@
           "deletions": 0,
           "patch": "@@ -35,6 +35,12 @@ export type PdfWarningCode =\n   | \"COLOR_SPACE_NOT_FOUND\"\n   | \"COLOR_SPACE_INVALID\"\n   | \"COLOR_SPACE_UNSUPPORTED\"\n+  | \"PATTERN_NOT_FOUND\"\n+  | \"PATTERN_INVALID\"\n+  | \"PATTERN_UNSUPPORTED\"\n+  | \"SHADING_NOT_FOUND\"\n+  | \"SHADING_INVALID\"\n+  | \"SHADING_UNSUPPORTED\"\n   | \"UNKNOWN_OPERATOR\"\n   | \"CATALOG_VERSION_INVALID\"\n   | \"UNBALANCED_RESTORE\"",
           "patchLines": 13,
+          "truncated": false
+        }
+      ]
+    },
+    {
+      "sha": "638d3d01668575a1638541f5bf6be2dc98b309f0",
+      "merge": false,
+      "author": "DIO0550",
+      "date": "2026-11-10T22:25:19+09:00",
+      "subject": "fix(core): distinguish invalid resource references from omitted attributes",
+      "body": "",
+      "files": [
+        {
+          "path": "packages/core/src/document/resources/parameters/__tests__/parameters.basic.test.ts",
+          "status": "M",
+          "oldPath": null,
+          "additions": 14,
+          "deletions": 0,
+          "patch": "@@ -44,3 +44,17 @@ test(\"数値でない配列要素は座標として受理しない\", async () =>\n     ),\n   ).toEqual({ ok: true, value: { some: false } });\n });\n+\n+test(\"不正な属性参照をPDFのnullとして保持し、属性の省略と区別する\", async () => {\n+  const { resources, resolveRef } = setupResources({\n+    resources: \"<< /Matrix 0 0 R >>\",\n+  });\n+  const result = await ResourceParameters.resolve(\n+    resources.dictionary,\n+    [\"Matrix\", \"BBox\"],\n+    resolveRef,\n+  );\n+  assert(result.ok);\n+\n+  expect([...result.value]).toEqual([[\"Matrix\", { type: \"null\" }]]);\n+});",
+          "patchLines": 18,
+          "truncated": false
+        },
+        {
+          "path": "packages/core/src/document/resources/parameters/index.ts",
+          "status": "M",
+          "oldPath": null,
+          "additions": 10,
+          "deletions": 6,
+          "patch": "@@ -42,17 +42,21 @@ export const ResourceParameters = {\n   ): Promise<Result<ReadonlyMap<string, PdfObject>, PdfError>> {\n     const fields = new Map<string, PdfObject>();\n     for (const key of keys) {\n-      const result = await ResolveRef.object(\n-        dictionary.entries.get(key),\n-        resolveRef,\n-      );\n+      const value = dictionary.entries.get(key);\n+      const result = await ResolveRef.object(value, resolveRef);\n       if (!result.ok) {\n         return result;\n       }\n \n-      if (result.value.some) {\n-        fields.set(key, result.value.value);\n+      if (!result.value.some) {\n+        if (value !== undefined) {\n+          fields.set(key, { type: \"null\" });\n+        }\n+\n+        continue;\n       }\n+\n+      fields.set(key, result.value.value);\n     }\n \n     return ok(fields);",
+          "patchLines": 28,
+          "truncated": false
+        },
+        {
+          "path": "packages/core/src/document/resources/pattern/__tests__/pattern.error.test.ts",
+          "status": "M",
+          "oldPath": null,
+          "additions": 1,
+          "deletions": 0,
+          "patch": "@@ -11,6 +11,7 @@ test.each([\n   \"/YStep 0\",\n   \"/BBox [0 0 8]\",\n   \"/Matrix [1 0]\",\n+  \"/Matrix 0 0 R\",\n   \"/Resources /Bad\",\n ])(\"タイリングの不正な属性 %s は警告になる\", async (entries) => {\n   const { execute } = await setupPaint({",
+          "patchLines": 8,
+          "truncated": false
+        },
+        {
+          "path": "packages/core/src/document/resources/shading/__tests__/shading.error.test.ts",
+          "status": "M",
+          "oldPath": null,
+          "additions": 2,
+          "deletions": 0,
+          "patch": "@@ -6,6 +6,8 @@ test.each([\n   \"/Background [.1 /Bad .3]\",\n   \"/BBox [0 0 10]\",\n   \"/BBox [0 0 10 /Bad]\",\n+  \"/BBox 0 0 R\",\n+  \"/Background 0 0 R\",\n ])(\"シェーディングの不正な共通属性は警告になる: %s\", async (entries) => {\n   const { execute } = await setupPaint({\n     resources: `<< /Shading << /S1 << /ShadingType 2 /ColorSpace /DeviceRGB ${entries} >> >> >>`,",
+          "patchLines": 9,
           "truncated": false
         }
       ]
