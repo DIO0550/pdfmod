@@ -76,6 +76,7 @@
     pre code { font-size: inherit; background: none; padding: 0; color: inherit; }
     .key { color: #89e0ce; }
     .value { color: #ffd688; }
+    .operator { color: #d6b5ff; }
     .comment { color: #a3bdc5; }
     .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
     .grid > * { min-width: 0; }
@@ -146,6 +147,7 @@
       pre { background: #eef2f4; color: #182f3c; }
       .key { color: var(--teal); }
       .value { color: var(--amber); }
+      .operator { color: #663399; }
       .comment { color: var(--muted); }
       .table-wrap { overflow: visible; }
       [data-example-panel][hidden] { display: block !important; }
@@ -165,7 +167,8 @@
       <a href="#examples"><span>05</span>具体例で確かめる</a>
       <a href="#font"><span>06</span>Tfからフォント辞書へ</a>
       <a href="#xobject"><span>07</span>Doから画像・フォームへ</a>
-      <a href="#implementation"><span>08</span>実装と対応範囲</a>
+      <a href="#color-space"><span>08</span>csから色の成分数へ</a>
+      <a href="#implementation"><span>09</span>実装と対応範囲</a>
     </nav>
   </aside>
   <main id="top"><div class="wrap">
@@ -417,8 +420,40 @@ endobj</code></pre>
       <div class="note"><strong>pdfmodで不完全なPDFを読むとき</strong>名前の参照先がストリームでなければ未解決です。Formの境界に数値が4個揃わない場合は境界だけが未設定になり、ほかの属性は読めます。参照先の構文を解析できないときは、そのエラーを返します。</div>
     </section>
 
+    <section class="section" id="color-space">
+      <div class="section-heading"><span class="number">08</span><h2>csから色の成分数へ</h2></div>
+      <p><strong>色空間</strong>は、色をいくつの数値で、どう解釈するかを定めるものです。<code>cs</code> は塗り、<code>CS</code> は輪郭の色空間を選びます。その後の <code>sc</code> / <code>SC</code> が色の数値を指定します。名前は現在のページやフォームの <code>/ColorSpace</code> 辞書から引きます。</p>
+      <pre><code><span class="comment">% PDFの抜粋。ページのリソース辞書</span>
+<span class="key">/Resources</span> &lt;&lt;
+  <span class="key">/ColorSpace</span> &lt;&lt;
+    <span class="key">/Palette</span> [<span class="key">/Indexed /DeviceRGB</span> <span class="value">1</span> &lt;000000FFFFFF&gt;]
+    <span class="key">/Print</span> <span class="key">/DeviceCMYK</span>
+  &gt;&gt;
+&gt;&gt;
+<span class="comment">% コンテンツストリームの本文</span>
+<span class="key">/Palette</span> <span class="operator">cs</span>
+<span class="value">1</span> <span class="operator">sc</span>             <span class="comment">% パレットの添字を1個指定</span>
+<span class="key">/Print</span> <span class="operator">CS</span>
+<span class="value">0.1 0.2 0.3 0.4</span> <span class="operator">SC</span> <span class="comment">% 輪郭をCMYKの4成分で指定</span></code></pre>
+      <p><code>Indexed</code> は色の一覧から添字で色を選びます。例の <code>1</code> は最大の添字、16進文字列は黒・白の2色分のRGB値です。基底がRGBでも、<code>sc</code> に渡すのは添字1個です。色空間の選択時には対象の色も初期値へ戻り、<code>q</code> / <code>Q</code> で色空間と色を一緒に保存・復元できます。</p>
+      <div class="table-wrap"><table><thead><tr><th>色空間の族</th><th>数値成分数</th><th>例・読み方</th></tr></thead><tbody>
+        <tr><td>DeviceGray / CalGray / Separation</td><td>1</td><td>濃淡や1種類の特色の濃度。CalGrayは校正情報を持ちます。</td></tr>
+        <tr><td>DeviceRGB / CalRGB / Lab</td><td>3</td><td>RGB、校正RGB、明度と2つの色軸。</td></tr>
+        <tr><td>DeviceCMYK</td><td>4</td><td>シアン・マゼンタ・黄・黒。</td></tr>
+        <tr><td>ICCBased</td><td>プロファイルの /N</td><td>色の特性を記録したICCプロファイルストリームを参照。/N は1・3・4。</td></tr>
+        <tr><td>Indexed</td><td>1</td><td>基底色空間にかかわらず、パレットの添字1個。</td></tr>
+        <tr><td>DeviceN</td><td>名前配列の長さ</td><td>[/DeviceN [/Cyan /Magenta] …] なら2個。</td></tr>
+        <tr><td>Pattern</td><td>0、または基底の成分数</td><td>繰り返し模様。scn / SCN の最後にパターン名を指定。</td></tr>
+      </tbody></table></div>
+      <h3>間接参照とPattern</h3>
+      <p>カテゴリ辞書・各定義・ICCBasedのプロファイルや <code>/N</code>・DeviceNの名前配列・IndexedやPatternの基底は間接参照でも解決します。着色パターンは <code>/Pattern cs /P1 scn</code>、非着色パターンは基底色の成分も必要です。たとえば <code>[/Pattern /DeviceRGB]</code> を選んだ後は <code>0.1 0.2 0.3 /P1 scn</code> と書きます。名前は数値成分数に含めません。</p>
+      <h3>不一致・未知の定義を読むとき</h3>
+      <p>RGBを選んだ後の <code>0.1 0.2 sc</code> は成分が1個不足するためエラーです。余分な成分もエラーになります。色空間配列の先頭に未知の族がある場合は、選択位置に <code>COLOR_SPACE_UNSUPPORTED</code> の警告を出し、成分数不明として保持します。その後の数値は型を確認して保存しますが、個数は検証しません。名前が見つからない場合は、直接の指定でも定義内の別名・基底からの参照でも <code>COLOR_SPACE_NOT_FOUND</code> を報告し、以前の成分数で検証を続けません。基底が不明なIndexedでも、添字の成分数は1です。参照先の構文解析エラーは警告へ置き換えず返します。</p>
+      <div class="note"><strong>実行前の準備と実装の範囲</strong><code>ColorSpaceResources.fromResources(resources, resolveRef)</code> で現在のスコープを準備し、<code>OperatorRegistry.createDefault(extGStates, colorSpaces)</code> の第2引数へ渡します。各定義は事前に解決し、成功・失敗を名前ごとに保持します。カテゴリのエラーは準備時に返し、個々の定義のエラーはその名前の選択時まで返しません。族と成分数を読み色値を保持するところまでを扱い、ICC変換・パレット展開・特色の関数評価・パターン描画は後段の処理です。</div>
+    </section>
+
     <section class="section" id="implementation">
-      <div class="section-heading"><span class="number">08</span><h2>実装と対応範囲</h2></div>
+      <div class="section-heading"><span class="number">09</span><h2>実装と対応範囲</h2></div>
       <p>TypeScript API（<code>@pdfmod/core</code>）におけるリソースの利用例です。以下の抜粋では、<code>page</code> は読み込み済みのページ、<code>resolveRef</code> はその文書の間接参照解決関数とします。<code>Result</code> の <code>ok</code> で成功を、<code>Option</code> の <code>some</code> で値の存在を確認します。</p>
       <pre><code>import { PdfResources } from "@pdfmod/core";
 
@@ -456,7 +491,7 @@ if (PdfResources.hasCategory(resources, "Font")) {
       <div class="grid">
         <div class="card">
           <h3>今回対応する範囲</h3>
-          <p>ページツリーからの全置換属性継承、空辞書フォールバック、標準・カスタムカテゴリの保持、2段階オンデマンド解決、ストリーム透過返却、フォント辞書への型を絞った到達、非推奨 <code>/ProcSet</code> の除外。</p>
+          <p>ページツリーからの全置換属性継承、空辞書フォールバック、標準・カスタムカテゴリの保持、2段階オンデマンド解決、ストリーム透過返却、フォント辞書への型を絞った到達、非推奨 <code>/ProcSet</code> の除外。色空間の事前解決と、cs / CS・sc / SC・scn / SCNの成分数検証。</p>
         </div>
         <div class="card">
           <h3>後続処理・未対応の範囲</h3>

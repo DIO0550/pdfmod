@@ -4,6 +4,7 @@ import type { Option } from "../../utils/option/index";
 import { none, some } from "../../utils/option/index";
 import type { Result } from "../../utils/result/index";
 import { err, flatMap, ok } from "../../utils/result/index";
+import { ColorSpaceResources } from "../color-space-resources/index";
 import { ExtGStateResources } from "../ext-gstate/index";
 import type { GraphicsStateStack } from "../graphics-state/stack";
 import type { MarkedContentStack } from "../marked-content/stack";
@@ -14,6 +15,7 @@ import { gHandler } from "../operators/color/gray/fill";
 import { GHandler } from "../operators/color/gray/stroke";
 import { rgHandler } from "../operators/color/rgb/fill";
 import { RGHandler } from "../operators/color/rgb/stroke";
+import { ColorSpaceOperators } from "../operators/color/selection/index";
 import { cmHandler } from "../operators/graphics-state/cm/index";
 import { dHandler } from "../operators/graphics-state/d/index";
 import { GsOperator } from "../operators/graphics-state/gs/index";
@@ -226,12 +228,18 @@ export const OperatorRegistry = {
    * 全ビルトインオペレータが登録されたデフォルトの `OperatorRegistry` を生成する。
    *
    * @param extGStates - 実行対象スコープの解決済み拡張状態
+   * @param colorSpaces - 実行対象スコープの解決済み色空間
    * @returns 全ビルトインオペレータ登録済みの OperatorRegistry、または重複登録時の PdfError
    */
   createDefault(
     extGStates: ExtGStateResources = ExtGStateResources.empty(),
+    colorSpaces: ColorSpaceResources = ColorSpaceResources.empty(),
   ): Result<OperatorRegistry, PdfError> {
-    return BUILTIN_OPERATORS.reduce<Result<OperatorRegistry, PdfError>>(
+    const operators = [
+      ...BUILTIN_OPERATORS,
+      ...ColorSpaceOperators.create(colorSpaces),
+    ];
+    return operators.reduce<Result<OperatorRegistry, PdfError>>(
       (acc, [name, handler]) =>
         flatMap(acc, (r) => OperatorRegistry.register(r, name, handler)),
       OperatorRegistry.register(
