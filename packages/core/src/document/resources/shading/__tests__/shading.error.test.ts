@@ -6,6 +6,8 @@ test.each([
   "/Background [.1 /Bad .3]",
   "/BBox [0 0 10]",
   "/BBox [0 0 10 /Bad]",
+  "/BBox 0 0 R",
+  "/Background 0 0 R",
 ])("シェーディングの不正な共通属性は警告になる: %s", async (entries) => {
   const { execute } = await setupPaint({
     resources: `<< /Shading << /S1 << /ShadingType 2 /ColorSpace /DeviceRGB ${entries} >> >> >>`,
