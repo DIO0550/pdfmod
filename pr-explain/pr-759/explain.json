@@ -1,0 +1,1180 @@
+{
+  "version": 1,
+  "pr": 759,
+  "issue": 677,
+  "sha": "941568650cc4dcdea1df8ced2b87d298872a89cd",
+  "overview": {
+    "title": "名前からパターンとシェーディングの定義へ到達する",
+    "lead": "パターン名を色値へ保存するだけだった経路を辞書の取得へつなぎ、シェーディング指定も既定の命令にする。読む順序は描画スコープの準備、種別の読み取り、命令への受け渡し。実描画と関数評価は対象外。",
+    "before": [
+      {
+        "text": "Patternの名前は色値として保持していたが、定義の種別や主要属性へ到達する経路がなかった。"
+      },
+      {
+        "text": "shは既定レジストリに登録されていなかった。"
+      }
+    ],
+    "after": [
+      {
+        "text": "Pattern / Shadingのカテゴリ・定義・主要属性を間接参照も含めて取得し、現在のスコープの命令から使用する。"
+      },
+      {
+        "text": "未知や不正は使用位置の警告、参照解決の失敗は元のエラーで区別する。Functionは元の参照・辞書・配列を保存する。"
+      }
+    ]
+  },
+  "features": [
+    {
+      "id": "paint",
+      "label": "描画定義を取得する",
+      "role": "PDFのローカル名から、種別と属性を同期命令で利用できる状態へ準備する。"
+    }
+  ],
+  "concepts": [
+    {
+      "path": "packages/core/src/content-stream/paint-resources/index.ts",
+      "name": "描画リソースの準備",
+      "role": "現在のResourcesから定義を読み、名前ごとの成功・失敗を保存する。",
+      "feature": "paint"
+    },
+    {
+      "path": "packages/core/src/document/resources/pattern/index.ts",
+      "name": "パターンの定義",
+      "role": "種別1のセルと種別2のShadingを型付きで保持する。",
+      "feature": "paint"
+    },
+    {
+      "path": "packages/core/src/document/resources/shading/index.ts",
+      "name": "シェーディングの定義",
+      "role": "7種と共通属性を取得し、Functionを元の値として残す。",
+      "feature": "paint"
+    },
+    {
+      "path": "packages/core/src/document/resources/parameters/index.ts",
+      "name": "リソース属性の読み取り",
+      "role": "直下の参照と数値配列だけを解決し、固定長の座標へ絞る。",
+      "feature": "paint"
+    },
+    {
+      "path": "packages/core/src/content-stream/color-operation/index.ts",
+      "name": "色指定の規則",
+      "role": "着色方式と基底色の組み合わせを検証する。",
+      "feature": "paint"
+    },
+    {
+      "path": "packages/core/src/content-stream/operators/color/selection/index.ts",
+      "name": "色を選択する命令",
+      "role": "パターンの名前を引き、成分と名前を色状態へ保存する。",
+      "feature": "paint"
+    },
+    {
+      "path": "packages/core/src/content-stream/operators/shading/sh/index.ts",
+      "name": "シェーディングを指定する命令",
+      "role": "名前から定義を引き、色状態を変更せず結果や警告を返す。",
+      "feature": "paint"
+    },
+    {
+      "path": "packages/core/src/content-stream/operator-registry/index.ts",
+      "name": "既定の命令登録",
+      "role": "同じ描画スコープを色命令とshへ渡す。",
+      "feature": "paint"
+    }
+  ],
+  "commitStories": [
+    {
+      "sha": "e872a194c9dc3d0094065955df40788a6202595f",
+      "phase": "core",
+      "role": "パターンとシェーディングの取得を命令へつなぐ",
+      "why": "色空間とオペランドの検証に加え、名前の指す定義を現在のスコープから取得できるようにするため。非同期の準備と同期の命令実行を分け、Functionや実描画の処理はこの境界を越えない。",
+      "review": [
+        "既知種別の型に必要な属性が揃ってから構築しているか。",
+        "個別の参照エラーを未使用時に返さず、使用時には原因を保持しているか。",
+        "Functionを解決対象のキーへ含めていないか。"
+      ],
+      "notes": [
+        {
+          "path": "packages/core/src/document/resources/pattern/index.ts",
+          "side": "new",
+          "start": 1,
+          "end": 59,
+          "text": "種別1と2の値域を定数から導き、タイリングにはPaintType・セル境界・未復号ストリーム、シェーディングパターンにはShadingを必須にする。任意の数値や片方の属性を混ぜた定義を後段へ渡さないため。未知の定義は元オブジェクトと警告を別の状態として保持する。"
+        },
+        {
+          "path": "packages/core/src/document/resources/pattern/index.ts",
+          "side": "new",
+          "start": 61,
+          "end": 99,
+          "text": "名前解決済みのオブジェクトからPatternTypeだけを解決し、番号に対応する属性の読み取りへ進む。ストリームの場合は辞書を入口に使う。未知の番号は処理を中断せずUnknownとして残し、使用位置で警告できるようにする。"
+        },
+        {
+          "path": "packages/core/src/document/resources/pattern/index.ts",
+          "side": "new",
+          "start": 101,
+          "end": 142,
+          "text": "タイリングはストリームであることを確認してから、この種別で使うキーだけを解決する。BBoxの4座標とMatrixの6要素では配列の各参照も読む。参照エラーは属性の不正という警告へ置き換えず、そのまま呼び出し側へ返す。"
+        },
+        {
+          "path": "packages/core/src/document/resources/pattern/index.ts",
+          "side": "new",
+          "start": 144,
+          "end": 186,
+          "text": "PaintTypeとTilingTypeを列挙値へ絞り、境界・行列・非ゼロの有限な間隔・Resources辞書がすべて揃ってから種別1を構築する。不正な入力を既定値で補って正しいセルに見せないため。負の間隔は仕様に従い保持する。"
+        },
+        {
+          "path": "packages/core/src/document/resources/pattern/index.ts",
+          "side": "new",
+          "start": 188,
+          "end": 236,
+          "text": "種別2はShading・ExtGState・Matrixを取得する。Shadingの解決結果は種別1〜7へ変換し、その警告をパターン経由でも伝える。ExtGStateは辞書を保持するだけで、この段階では適用しない。"
+        },
+        {
+          "path": "packages/core/src/document/resources/pattern/index.ts",
+          "side": "new",
+          "start": 238,
+          "end": 279,
+          "text": "Matrixはキーが省略された場合だけ単位行列にする。配列が指定されていて不正な場合はNoneを返す。PaintTypeとTilingTypeもここで値域を絞り込み、後続の構築で数値を再解釈する必要をなくす。"
+        },
+        {
+          "path": "packages/core/src/document/resources/pattern/index.ts",
+          "side": "new",
+          "start": 281,
+          "end": 297,
+          "text": "不正と未対応を別の警告コードにし、元オブジェクトを持つUnknownを生成する。利用者が後続の命令を処理しながら元の定義を調べられるようにする。"
+        },
+        {
+          "path": "packages/core/src/document/resources/shading/index.ts",
+          "side": "new",
+          "start": 1,
+          "end": 64,
+          "text": "ShadingTypeを1〜7の定数から導く。共通属性には取得済みの色空間・任意の背景・境界・未評価Functionを置き、メッシュの種別4〜7だけは未復号ストリームを必須にする。Unknownは既知の属性が揃った状態と混ぜない。"
+        },
+        {
+          "path": "packages/core/src/document/resources/shading/index.ts",
+          "side": "new",
+          "start": 66,
+          "end": 103,
+          "text": "辞書またはストリームからShadingTypeを先に読み、未知の番号はUnknownにする。既知の種別ではColorSpace・Background・BBoxだけを参照解決し、Functionの取得をこの解決対象へ含めない。"
+        },
+        {
+          "path": "packages/core/src/document/resources/shading/index.ts",
+          "side": "new",
+          "start": 104,
+          "end": 141,
+          "text": "背景の各要素を有限な数値にし、境界を4座標に絞る。指定された配列が不正なら警告付きUnknownを返す。Functionだけは元の辞書からそのまま保存するため、参照先が未取得でも関数評価を始めない。"
+        },
+        {
+          "path": "packages/core/src/document/resources/shading/index.ts",
+          "side": "new",
+          "start": 142,
+          "end": 161,
+          "text": "種別1〜3は共通属性を保持し、種別4〜7ではストリームであることを確認してから元バイト列を保持する。メッシュの辞書だけを有効なストリームとして扱わないため。"
+        },
+        {
+          "path": "packages/core/src/document/resources/shading/index.ts",
+          "side": "new",
+          "start": 162,
+          "end": 197,
+          "text": "外部の整数を仕様上の種別へ絞り込む入口と、未解釈の定義を警告にする入口を用意する。後段は任意の数値を既知種別として扱わず、Unknownの警告を使用位置へ渡せる。"
+        },
+        {
+          "path": "packages/core/src/document/resources/parameters/index.ts",
+          "side": "new",
+          "start": 1,
+          "end": 29,
+          "text": "矩形4個・行列6個の要素数と、それぞれの固定長タプルの対応を定義する。単なるnumber配列のままでは要素不足を後段の型で防げないため、実行時の確認結果に対応する型を用意する。"
+        },
+        {
+          "path": "packages/core/src/document/resources/parameters/index.ts",
+          "side": "new",
+          "start": 30,
+          "end": 60,
+          "text": "辞書と必要なキーの一覧を入力にして、直下の参照だけを解決する。子辞書へは再帰せず、存在する属性を対応表へ返す。パターン・シェーディング・XObjectで同じ解決処理を共有する。"
+        },
+        {
+          "path": "packages/core/src/document/resources/parameters/index.ts",
+          "side": "new",
+          "start": 62,
+          "end": 94,
+          "text": "数値配列の各要素を実際のリゾルバで読み、有限な数値だけを集める。参照エラーは伝播し、非数値はNoneにすることで、解決失敗と属性不正を区別する。"
+        },
+        {
+          "path": "packages/core/src/document/resources/parameters/index.ts",
+          "side": "new",
+          "start": 96,
+          "end": 116,
+          "text": "配列を指定した個数と照合してから固定長タプルへ変換する。キャストは個数と数値型を確認した境界に限定し、矩形・行列を使う側が不足要素を扱わずに済むようにする。"
+        },
+        {
+          "path": "packages/core/src/content-stream/paint-resources/index.ts",
+          "side": "new",
+          "start": 1,
+          "end": 24,
+          "text": "現在のスコープのパターンとシェーディングを、それぞれ名前から結果を引く読み取り専用マップとして保持する。値不在・解決失敗・取得成功を区別し、共有のグローバルキャッシュへ名前を混ぜない。"
+        },
+        {
+          "path": "packages/core/src/content-stream/paint-resources/index.ts",
+          "side": "new",
+          "start": 25,
+          "end": 52,
+          "text": "PatternとShadingのカテゴリを準備し、各定義の読み取りをそれぞれの型へ任せる。カテゴリ自体の参照解決に失敗したときは準備を中断し、両方のマップが揃った場合だけ描画スコープを返す。"
+        },
+        {
+          "path": "packages/core/src/content-stream/paint-resources/index.ts",
+          "side": "new",
+          "start": 54,
+          "end": 87,
+          "text": "カテゴリ名と型の読み取り関数を対にして、共通の名前解決経路へ渡す。存在しないカテゴリは空のマップになる。種別ごとの属性の知識を共通のカテゴリ走査へ持ち込まないため。"
+        },
+        {
+          "path": "packages/core/src/content-stream/paint-resources/index.ts",
+          "side": "new",
+          "start": 89,
+          "end": 105,
+          "text": "名前ごとの間接参照を解決し、成功なら型付きの定義、失敗なら元エラーをその名前に保存する。未使用の壊れた定義で他の描画命令まで失敗させず、実際にその名前を使った時点で原因を返せるようにする。"
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/shading/sh/index.ts",
+          "side": "new",
+          "start": 1,
+          "end": 18,
+          "text": "shハンドラは現在のスコープの解決済み描画リソースを閉じ込める。非同期の参照解決を命令実行中へ持ち込まず、名前に対する取得結果だけを使うため。"
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/shading/sh/index.ts",
+          "side": "new",
+          "start": 19,
+          "end": 36,
+          "text": "オペランドが正確に1個であることと名前型であることを確認してから、Shadingのマップを引く。個数・型の不一致と元の参照エラーを区別して返す。"
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/shading/sh/index.ts",
+          "side": "new",
+          "start": 37,
+          "end": 51,
+          "text": "定義の警告、または名前不在の警告を返し、既存のグラフィックス状態はそのまま渡す。この段階は定義の取得までなので、色・色空間・パス・クリップを変更しない。"
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/color/selection/index.ts",
+          "side": "new",
+          "start": 1,
+          "end": 46,
+          "text": "色空間命令の生成時に解決済みパターンも受け取り、scnとSCNのハンドラへ同じスコープを渡す。デバイス色命令の登録経路でも、この名前解決を利用できるようにする。"
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/color/selection/index.ts",
+          "side": "new",
+          "start": 88,
+          "end": 103,
+          "text": "成分指定のハンドラがパターンのスコープを明示的に受け取るようにする。現在の色空間と命令名の検証は既存の経路を保つ。"
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/color/selection/index.ts",
+          "side": "new",
+          "start": 140,
+          "end": 162,
+          "text": "最後の名前オペランドからPatternのマップを引き、保存していた参照エラーを返す。定義があれば着色方式と基底色空間を検証し、不一致を状態エラーにする。名前を単に文字列として保存するだけだった経路へ辞書解決をつなぐ。"
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/color/selection/index.ts",
+          "side": "new",
+          "start": 164,
+          "end": 181,
+          "text": "取得した定義の警告または名前不在の警告を返す。指定した名前と数値成分は従来どおり色状態へ保存するため、q/Qで保存・復元できる。警告はインタプリタによって命令位置へ結び付けられる。"
+        },
+        {
+          "path": "packages/core/src/content-stream/color-operation/index.ts",
+          "side": "new",
+          "start": 1,
+          "end": 49,
+          "text": "パターンの規則を色操作の型に集約する。非着色タイリングだけが基底色を必要とし、着色タイリングとシェーディングパターンは基底なしで使う。組み合わせが違えば命令名を含む状態エラーを返し、Unknownは警告として後段へ渡す。"
+        },
+        {
+          "path": "packages/core/src/content-stream/operator-registry/index.ts",
+          "side": "new",
+          "start": 230,
+          "end": 257,
+          "text": "既定レジストリの第3引数として描画スコープを受け取り、色指定命令とshの両方へ渡す。既存の拡張状態・色空間の引数は保ち、省略時は空の描画リソースを使う。"
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/color/color-operators/index.ts",
+          "side": "new",
+          "start": 1,
+          "end": 55,
+          "text": "色命令だけを登録する入口にも解決済みパターンを渡せるようにする。既定レジストリを使わない利用者でも、scnとSCNが同じスコープで名前を解決できるようにする。"
+        },
+        {
+          "path": "packages/core/src/document/resources/xobject/index.ts",
+          "side": "new",
+          "start": 1,
+          "end": 24,
+          "text": "XObjectでも新しい共通の属性解決を利用する。3種のリソースで直下の参照解決を別々に保守しないため。"
+        },
+        {
+          "path": "packages/core/src/document/resources/xobject/index.ts",
+          "side": "old",
+          "start": 100,
+          "end": 129,
+          "text": "XObject専用だった直下の属性解決ループを削除する。同じキー一覧・同じリゾルバを共通処理へ渡し、画像・フォームの取得方法は既存のままにする。"
+        },
+        {
+          "path": "packages/core/src/document/resources/xobject/index.ts",
+          "side": "new",
+          "start": 252,
+          "end": 269,
+          "text": "画像とフォームで必要なキーを選んでから共通の属性解決へ渡す。子リソースへ再帰しない振る舞いと、元の参照エラーを返す振る舞いを保つ。"
+        },
+        {
+          "path": "packages/core/src/index.ts",
+          "side": "new",
+          "start": 1,
+          "end": 21,
+          "text": "描画スコープ、型付きパターン・シェーディング、仕様の種別定数をパッケージの入口から公開する。利用者が内部ファイルを直接importせず、現在のスコープを準備して型を判別できるようにする。"
+        },
+        {
+          "path": "packages/core/src/pdf/errors/warning/index.ts",
+          "side": "new",
+          "start": 25,
+          "end": 52,
+          "text": "パターンとシェーディングそれぞれについて名前不在・属性不正・種別未対応を区別する。利用者が文字列メッセージに依存せず警告の種類で判断できるようにする。"
+        },
+        {
+          "path": "packages/core/src/content-stream/color-space-resources/__tests__/setup-color-space.ts",
+          "side": "new",
+          "start": 1,
+          "end": 41,
+          "text": "色空間の実行準備で描画リソースも同じResourcesから解決し、第3引数へ渡す。テストが色空間だけの準備で通っても実際のパターン名解決を通らない状態を防ぐ。"
+        },
+        {
+          "path": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.pattern.test.ts",
+          "side": "new",
+          "start": 1,
+          "end": 62,
+          "text": "既存の着色・非着色・塗り・輪郭の各ケースに実際のパターン定義を用意する。数値成分と名前の保持の観点を残しながら、定義取得と着色方式の検証も通す。"
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/shading/sh/__tests__/sh.basic.test.ts",
+          "side": "new",
+          "start": 7,
+          "end": 22,
+          "text": "「shはShadingの名前を解決し色と色空間を変更しない」を、実バイト列または型テストから確認する。shの名前解決と状態保持、既定登録、不在と未知種別の警告、個数と型のエラーの境界を守り、単なる成功・失敗のタグではなく、定義の属性・警告コード・状態または型の制約まで検証する。"
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/shading/sh/__tests__/sh.basic.test.ts",
+          "side": "new",
+          "start": 23,
+          "end": 33,
+          "text": "「既定レジストリにもshが登録され不在の名前は位置付き警告になる」を、実バイト列または型テストから確認する。shの名前解決と状態保持、既定登録、不在と未知種別の警告、個数と型のエラーの境界を守り、単なる成功・失敗のタグではなく、定義の属性・警告コード・状態または型の制約まで検証する。"
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/shading/sh/__tests__/sh.basic.test.ts",
+          "side": "new",
+          "start": 34,
+          "end": 51,
+          "text": "「未知のShadingType %s はshの位置で警告し処理を継続する」を、実バイト列または型テストから確認する。shの名前解決と状態保持、既定登録、不在と未知種別の警告、個数と型のエラーの境界を守り、単なる成功・失敗のタグではなく、定義の属性・警告コード・状態または型の制約まで検証する。"
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/shading/sh/__tests__/sh.basic.test.ts",
+          "side": "new",
+          "start": 52,
+          "end": 66,
+          "text": "「shの名前の過不足を拒否する: %s」を、実バイト列または型テストから確認する。shの名前解決と状態保持、既定登録、不在と未知種別の警告、個数と型のエラーの境界を守り、単なる成功・失敗のタグではなく、定義の属性・警告コード・状態または型の制約まで検証する。"
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/shading/sh/__tests__/sh.basic.test.ts",
+          "side": "new",
+          "start": 67,
+          "end": 76,
+          "text": "「shは数値オペランドを拒否する」を、実バイト列または型テストから確認する。shの名前解決と状態保持、既定登録、不在と未知種別の警告、個数と型のエラーの境界を守り、単なる成功・失敗のタグではなく、定義の属性・警告コード・状態または型の制約まで検証する。"
+        },
+        {
+          "path": "packages/core/src/content-stream/paint-resources/__tests__/paint-resources.error.test.ts",
+          "side": "new",
+          "start": 6,
+          "end": 20,
+          "text": "「Pattern以外の色空間では%sの名前オペランドを拒否する」を、実バイト列または型テストから確認する。名前型・着色方式の不一致、カテゴリ・個別定義・座標要素の参照エラー、nullへ解決された参照の回復の境界を守り、単なる成功・失敗のタグではなく、定義の属性・警告コード・状態または型の制約まで検証する。"
+        },
+        {
+          "path": "packages/core/src/content-stream/paint-resources/__tests__/paint-resources.error.test.ts",
+          "side": "new",
+          "start": 21,
+          "end": 36,
+          "text": "「/%s カテゴリの参照エラーは準備時に伝播する」を、実バイト列または型テストから確認する。名前型・着色方式の不一致、カテゴリ・個別定義・座標要素の参照エラー、nullへ解決された参照の回復の境界を守り、単なる成功・失敗のタグではなく、定義の属性・警告コード・状態または型の制約まで検証する。"
+        },
+        {
+          "path": "packages/core/src/content-stream/paint-resources/__tests__/paint-resources.error.test.ts",
+          "side": "new",
+          "start": 37,
+          "end": 58,
+          "text": "「/$category の個別参照エラーは使用する命令へ伝播する」を、実バイト列または型テストから確認する。名前型・着色方式の不一致、カテゴリ・個別定義・座標要素の参照エラー、nullへ解決された参照の回復の境界を守り、単なる成功・失敗のタグではなく、定義の属性・警告コード・状態または型の制約まで検証する。"
+        },
+        {
+          "path": "packages/core/src/content-stream/paint-resources/__tests__/paint-resources.error.test.ts",
+          "side": "new",
+          "start": 59,
+          "end": 79,
+          "text": "「着色方式とPattern基底色空間の不一致を拒否する: $definition」を、実バイト列または型テストから確認する。名前型・着色方式の不一致、カテゴリ・個別定義・座標要素の参照エラー、nullへ解決された参照の回復の境界を守り、単なる成功・失敗のタグではなく、定義の属性・警告コード・状態または型の制約まで検証する。"
+        },
+        {
+          "path": "packages/core/src/content-stream/paint-resources/__tests__/paint-resources.error.test.ts",
+          "side": "new",
+          "start": 80,
+          "end": 103,
+          "text": "「主要属性の配列要素の参照エラーを使用位置へ伝播する: $content」を、実バイト列または型テストから確認する。名前型・着色方式の不一致、カテゴリ・個別定義・座標要素の参照エラー、nullへ解決された参照の回復の境界を守り、単なる成功・失敗のタグではなく、定義の属性・警告コード・状態または型の制約まで検証する。"
+        },
+        {
+          "path": "packages/core/src/content-stream/paint-resources/__tests__/paint-resources.error.test.ts",
+          "side": "new",
+          "start": 104,
+          "end": 112,
+          "text": "「参照先が存在せずnullへ解決された場合は不正なパターンとして警告する」を、実バイト列または型テストから確認する。名前型・着色方式の不一致、カテゴリ・個別定義・座標要素の参照エラー、nullへ解決された参照の回復の境界を守り、単なる成功・失敗のタグではなく、定義の属性・警告コード・状態または型の制約まで検証する。"
+        },
+        {
+          "path": "packages/core/src/content-stream/paint-resources/__tests__/paint-resources.integration.test.ts",
+          "side": "new",
+          "start": 5,
+          "end": 25,
+          "text": "「$operator の名前から着色タイリングを取得できる」を、実バイト列または型テストから確認する。塗りと輪郭の名前解決、非着色の数値成分、シェーディングパターン、q/Q、別スコープへの非フォールバックの境界を守り、単なる成功・失敗のタグではなく、定義の属性・警告コード・状態または型の制約まで検証する。"
+        },
+        {
+          "path": "packages/core/src/content-stream/paint-resources/__tests__/paint-resources.integration.test.ts",
+          "side": "new",
+          "start": 26,
+          "end": 44,
+          "text": "「非着色タイリングは基底色の数値成分とパターン名を受け取る」を、実バイト列または型テストから確認する。塗りと輪郭の名前解決、非着色の数値成分、シェーディングパターン、q/Q、別スコープへの非フォールバックの境界を守り、単なる成功・失敗のタグではなく、定義の属性・警告コード・状態または型の制約まで検証する。"
+        },
+        {
+          "path": "packages/core/src/content-stream/paint-resources/__tests__/paint-resources.integration.test.ts",
+          "side": "new",
+          "start": 45,
+          "end": 55,
+          "text": "「シェーディングパターンをscnから取得しFunctionを評価しない」を、実バイト列または型テストから確認する。塗りと輪郭の名前解決、非着色の数値成分、シェーディングパターン、q/Q、別スコープへの非フォールバックの境界を守り、単なる成功・失敗のタグではなく、定義の属性・警告コード・状態または型の制約まで検証する。"
+        },
+        {
+          "path": "packages/core/src/content-stream/paint-resources/__tests__/paint-resources.integration.test.ts",
+          "side": "new",
+          "start": 56,
+          "end": 70,
+          "text": "「パターンの選択はq/Qによって保存・復元される」を、実バイト列または型テストから確認する。塗りと輪郭の名前解決、非着色の数値成分、シェーディングパターン、q/Q、別スコープへの非フォールバックの境界を守り、単なる成功・失敗のタグではなく、定義の属性・警告コード・状態または型の制約まで検証する。"
+        },
+        {
+          "path": "packages/core/src/content-stream/paint-resources/__tests__/paint-resources.integration.test.ts",
+          "side": "new",
+          "start": 71,
+          "end": 85,
+          "text": "「別のページの同名パターンへフォールバックしない」を、実バイト列または型テストから確認する。塗りと輪郭の名前解決、非着色の数値成分、シェーディングパターン、q/Q、別スコープへの非フォールバックの境界を守り、単なる成功・失敗のタグではなく、定義の属性・警告コード・状態または型の制約まで検証する。"
+        },
+        {
+          "path": "packages/core/src/document/resources/parameters/__tests__/parameters.basic.test.ts",
+          "side": "new",
+          "start": 5,
+          "end": 27,
+          "text": "「リソースの数値配列を%s個の座標へ絞り込む」を、実バイト列または型テストから確認する。4座標・6行列要素の固定長変換と非数値の拒否の境界を守り、単なる成功・失敗のタグではなく、定義の属性・警告コード・状態または型の制約まで検証する。"
+        },
+        {
+          "path": "packages/core/src/document/resources/parameters/__tests__/parameters.basic.test.ts",
+          "side": "new",
+          "start": 28,
+          "end": 46,
+          "text": "「4座標・6行列要素の固定長変換と非数値の拒否」を、実バイト列または型テストから確認する。4座標・6行列要素の固定長変換と非数値の拒否の境界を守り、単なる成功・失敗のタグではなく、定義の属性・警告コード・状態または型の制約まで検証する。"
+        },
+        {
+          "path": "packages/core/src/document/resources/pattern/__tests__/pattern.basic.test.ts",
+          "side": "new",
+          "start": 7,
+          "end": 27,
+          "text": "「タイリングパターンはセルの種別・境界・間隔・リソースと未復号ストリームを保持する」を、実バイト列または型テストから確認する。セルの属性と未復号ストリーム、属性・配列要素の間接参照、種別2からのShadingとExtGStateの取得の境界を守り、単なる成功・失敗のタグではなく、定義の属性・警告コード・状態または型の制約まで検証する。"
+        },
+        {
+          "path": "packages/core/src/document/resources/pattern/__tests__/pattern.basic.test.ts",
+          "side": "new",
+          "start": 28,
+          "end": 63,
+          "text": "「タイリングの属性と座標要素が間接参照でも解決できる」を、実バイト列または型テストから確認する。セルの属性と未復号ストリーム、属性・配列要素の間接参照、種別2からのShadingとExtGStateの取得の境界を守り、単なる成功・失敗のタグではなく、定義の属性・警告コード・状態または型の制約まで検証する。"
+        },
+        {
+          "path": "packages/core/src/document/resources/pattern/__tests__/pattern.basic.test.ts",
+          "side": "new",
+          "start": 64,
+          "end": 88,
+          "text": "「シェーディングパターンは間接参照のShadingとExtGStateを保持する」を、実バイト列または型テストから確認する。セルの属性と未復号ストリーム、属性・配列要素の間接参照、種別2からのShadingとExtGStateの取得の境界を守り、単なる成功・失敗のタグではなく、定義の属性・警告コード・状態または型の制約まで検証する。"
+        },
+        {
+          "path": "packages/core/src/document/resources/pattern/__tests__/pattern.error.test.ts",
+          "side": "new",
+          "start": 7,
+          "end": 27,
+          "text": "「タイリングの不正な属性 %s は警告になる」を、実バイト列または型テストから確認する。PaintType・間隔・配列の不正、未知の種別、Shading欠落に対する警告の境界を守り、単なる成功・失敗のタグではなく、定義の属性・警告コード・状態または型の制約まで検証する。"
+        },
+        {
+          "path": "packages/core/src/document/resources/pattern/__tests__/pattern.error.test.ts",
+          "side": "new",
+          "start": 28,
+          "end": 43,
+          "text": "「未知・欠落のPatternTypeは未対応の定義として保持する: %s」を、実バイト列または型テストから確認する。PaintType・間隔・配列の不正、未知の種別、Shading欠落に対する警告の境界を守り、単なる成功・失敗のタグではなく、定義の属性・警告コード・状態または型の制約まで検証する。"
+        },
+        {
+          "path": "packages/core/src/document/resources/pattern/__tests__/pattern.error.test.ts",
+          "side": "new",
+          "start": 44,
+          "end": 52,
+          "text": "「シェーディングパターンのShading欠落は不正な定義として警告する」を、実バイト列または型テストから確認する。PaintType・間隔・配列の不正、未知の種別、Shading欠落に対する警告の境界を守り、単なる成功・失敗のタグではなく、定義の属性・警告コード・状態または型の制約まで検証する。"
+        },
+        {
+          "path": "packages/core/src/document/resources/pattern/__tests__/pattern.type.test-d.ts",
+          "side": "new",
+          "start": 8,
+          "end": 20,
+          "text": "「タイリングとシェーディングは種別番号で異なる属性へ絞り込める」を、実バイト列または型テストから確認する。種別1と2で使える属性の違い、列挙値の閉包、BBoxの固定長の境界を守り、単なる成功・失敗のタグではなく、定義の属性・警告コード・状態または型の制約まで検証する。"
+        },
+        {
+          "path": "packages/core/src/document/resources/shading/__tests__/shading.basic.test.ts",
+          "side": "new",
+          "start": 4,
+          "end": 28,
+          "text": "「ShadingType %s を判別しメッシュの未復号ストリームを保持する」を、実バイト列または型テストから確認する。7種の判別とメッシュストリーム、背景・境界の間接参照、Functionの未評価保持と任意属性の省略の境界を守り、単なる成功・失敗のタグではなく、定義の属性・警告コード・状態または型の制約まで検証する。"
+        },
+        {
+          "path": "packages/core/src/document/resources/shading/__tests__/shading.basic.test.ts",
+          "side": "new",
+          "start": 29,
+          "end": 60,
+          "text": "「シェーディングの色空間・背景色・境界と配列の各要素を間接参照から取得する」を、実バイト列または型テストから確認する。7種の判別とメッシュストリーム、背景・境界の間接参照、Functionの未評価保持と任意属性の省略の境界を守り、単なる成功・失敗のタグではなく、定義の属性・警告コード・状態または型の制約まで検証する。"
+        },
+        {
+          "path": "packages/core/src/document/resources/shading/__tests__/shading.basic.test.ts",
+          "side": "new",
+          "start": 61,
+          "end": 76,
+          "text": "「背景色・境界・Functionの省略を不在として保持する」を、実バイト列または型テストから確認する。7種の判別とメッシュストリーム、背景・境界の間接参照、Functionの未評価保持と任意属性の省略の境界を守り、単なる成功・失敗のタグではなく、定義の属性・警告コード・状態または型の制約まで検証する。"
+        },
+        {
+          "path": "packages/core/src/document/resources/shading/__tests__/shading.error.test.ts",
+          "side": "new",
+          "start": 4,
+          "end": 20,
+          "text": "「シェーディングの不正な共通属性は警告になる: %s」を、実バイト列または型テストから確認する。不正な共通属性と、メッシュをストリーム以外で渡した場合の警告の境界を守り、単なる成功・失敗のタグではなく、定義の属性・警告コード・状態または型の制約まで検証する。"
+        },
+        {
+          "path": "packages/core/src/document/resources/shading/__tests__/shading.error.test.ts",
+          "side": "new",
+          "start": 21,
+          "end": 31,
+          "text": "「メッシュ種別%sがストリームでない場合は警告する」を、実バイト列または型テストから確認する。不正な共通属性と、メッシュをストリーム以外で渡した場合の警告の境界を守り、単なる成功・失敗のタグではなく、定義の属性・警告コード・状態または型の制約まで検証する。"
+        },
+        {
+          "path": "packages/core/src/document/resources/shading/__tests__/shading.type.test-d.ts",
+          "side": "new",
+          "start": 5,
+          "end": 11,
+          "text": "「ShadingTypeは1〜7に閉じメッシュの型にはストリームが必須になる」を、実バイト列または型テストから確認する。種別を1〜7に閉じ、メッシュでストリームを必須にする型の境界を守り、単なる成功・失敗のタグではなく、定義の属性・警告コード・状態または型の制約まで検証する。"
+        },
+        {
+          "path": "packages/core/src/content-stream/paint-resources/__tests__/setup-paint.ts",
+          "side": "new",
+          "start": 1,
+          "end": 46,
+          "text": "実バイト列からResourcesと実ObjectStoreを作り、色空間・描画定義を同じスコープで準備して命令を実行する。内部の呼び出しをモックせず、パーサから命令の結果までつなぐため。"
+        },
+        {
+          "path": "packages/core/src/content-stream/paint-resources/__tests__/setup-paint.ts",
+          "side": "new",
+          "start": 48,
+          "end": 56,
+          "text": "最小の有効なタイリングセルをストリームとして組み立てる共通のテスト入力。各テストは確認したい属性だけを上書きし、必須属性の欠落が別の原因の失敗を作らないようにする。"
+        },
+        {
+          "path": "docs/guides/patterns-shadings.html",
+          "side": "new",
+          "start": 1,
+          "end": 70,
+          "text": "オフラインで単体表示する解説の土台を用意する。CSPで外部リソースを止め、JavaScriptを含めず、目次と読みやすい本文の配置をCSSで指定する。"
+        },
+        {
+          "path": "docs/guides/patterns-shadings.html",
+          "side": "new",
+          "start": 71,
+          "end": 140,
+          "text": "カード・表・参照経路とPDFコードの見た目を用意する。名前・数値・命令を区別する静的spanの色をCSSで設定し、単に背景色だけを変えたコード表示にしない。"
+        },
+        {
+          "path": "docs/guides/patterns-shadings.html",
+          "side": "new",
+          "start": 141,
+          "end": 179,
+          "text": "小画面と印刷用の配置に加え、ネイティブのラジオ入力を使って文字サイズを変更する。ページ内でコードを実行せずに読みやすさを調整できるようにする。"
+        },
+        {
+          "path": "docs/guides/patterns-shadings.html",
+          "side": "new",
+          "start": 180,
+          "end": 203,
+          "text": "パターンとシェーディングの役割を分けて説明し、タイリングのPDF記述へ種別・色・セル境界・間隔の意味を結び付ける。説明用の抜粋であることと、実描画は未対応であることも明示する。"
+        },
+        {
+          "path": "docs/guides/patterns-shadings.html",
+          "side": "new",
+          "start": 204,
+          "end": 224,
+          "text": "着色・非着色パターンのオペランドと、シェーディングの7種を具体例で説明する。基底色の数値と最後の名前を分け、リソース名と間接参照の役割を読み取れるようにする。"
+        },
+        {
+          "path": "docs/guides/patterns-shadings.html",
+          "side": "new",
+          "start": 225,
+          "end": 244,
+          "text": "同じシェーディングをパターン経由とshから参照する例を示し、Functionを参照のまま保持する境界を説明する。準備と命令実行を分けた参照経路も図と手順で確認できるようにする。"
+        },
+        {
+          "path": "docs/guides/patterns-shadings.html",
+          "side": "new",
+          "start": 245,
+          "end": 270,
+          "text": "エラーと警告の違い、今回のAPIの成功経路、実装済みと後続処理の範囲を示す。Unknownを描画可能と誤読せず、型付き結果の有無とエラーを確認して使えるようにする。"
+        },
+        {
+          "path": "docs/guides/README.md",
+          "side": "new",
+          "start": 18,
+          "end": 25,
+          "text": "新しいテーマを解説一覧へ追加し、扱うPDF命令と対応する実装の場所を結び付ける。恒久的なPDF仕様の学習資料を一覧から見つけられるようにする。"
+        },
+        {
+          "path": "docs/guides/resources.html",
+          "side": "new",
+          "start": 445,
+          "end": 456,
+          "text": "既存の色空間の解説から、パターンとシェーディングの解説へつなぐ。描画リソースは色空間とは別に事前準備し、同じレジストリへ渡すことを補足する。"
+        },
+        {
+          "path": "docs/specs/04_resources_graphics_state.md",
+          "side": "new",
+          "start": 233,
+          "end": 260,
+          "text": "色空間の成分数を読む段階と、今回追加したパターン定義を取得する段階を区別する。セルの必須属性、着色方式と基底色の関係、取得結果と色状態の保存範囲を仕様に記録する。"
+        },
+        {
+          "path": "docs/specs/04_resources_graphics_state.md",
+          "side": "new",
+          "start": 272,
+          "end": 314,
+          "text": "シェーディングの取得属性・未評価Function・shの状態保持と、描画スコープの準備と回復方針を記録する。ライブラリ独自の警告回復と、PDFの構造要件を区別し、後続のテストの根拠にする。"
+        },
+        {
+          "path": "docs/specs/04_resources_graphics_state.md",
+          "side": "new",
+          "start": 241,
+          "end": 254,
+          "text": "色空間の成分数を読む段階と、今回追加したパターン定義を取得する段階を区別する。セルの必須属性、着色方式と基底色の関係、取得結果と色状態の保存範囲を仕様に記録する。"
+        },
+        {
+          "path": "packages/core/src/content-stream/color-operation/index.ts",
+          "side": "new",
+          "start": 18,
+          "end": 46,
+          "text": "パターンの規則を色操作の型に集約する。非着色タイリングだけが基底色を必要とし、着色タイリングとシェーディングパターンは基底なしで使う。組み合わせが違えば命令名を含む状態エラーを返し、Unknownは警告として後段へ渡す。"
+        },
+        {
+          "path": "packages/core/src/content-stream/color-space-resources/__tests__/color-space.pattern.test.ts",
+          "side": "new",
+          "start": 45,
+          "end": 52,
+          "text": "既存の着色・非着色・塗り・輪郭の各ケースに実際のパターン定義を用意する。数値成分と名前の保持の観点を残しながら、定義取得と着色方式の検証も通す。"
+        },
+        {
+          "path": "packages/core/src/content-stream/color-space-resources/__tests__/setup-color-space.ts",
+          "side": "new",
+          "start": 24,
+          "end": 37,
+          "text": "色空間の実行準備で描画リソースも同じResourcesから解決し、第3引数へ渡す。テストが色空間だけの準備で通っても実際のパターン名解決を通らない状態を防ぐ。"
+        },
+        {
+          "path": "packages/core/src/content-stream/operator-registry/index.ts",
+          "side": "new",
+          "start": 50,
+          "end": 57,
+          "text": "既定レジストリの第3引数として描画スコープを受け取り、色指定命令とshの両方へ渡す。既存の拡張状態・色空間の引数は保ち、省略時は空の描画リソースを使う。"
+        },
+        {
+          "path": "packages/core/src/content-stream/operator-registry/index.ts",
+          "side": "new",
+          "start": 69,
+          "end": 72,
+          "text": "既定レジストリの第3引数として描画スコープを受け取り、色指定命令とshの両方へ渡す。既存の拡張状態・色空間の引数は保ち、省略時は空の描画リソースを使う。"
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/color/color-operators/index.ts",
+          "side": "new",
+          "start": 37,
+          "end": 55,
+          "text": "色命令だけを登録する入口にも解決済みパターンを渡せるようにする。既定レジストリを使わない利用者でも、scnとSCNが同じスコープで名前を解決できるようにする。"
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/color/selection/index.ts",
+          "side": "new",
+          "start": 27,
+          "end": 46,
+          "text": "色空間命令の生成時に解決済みパターンも受け取り、scnとSCNのハンドラへ同じスコープを渡す。デバイス色命令の登録経路でも、この名前解決を利用できるようにする。"
+        }
+      ]
+    },
+    {
+      "sha": "941568650cc4dcdea1df8ced2b87d298872a89cd",
+      "phase": "hard",
+      "role": "不正な属性参照を省略と区別する",
+      "why": "Matrix・BBox・Backgroundが指定済みでも参照番号が不正なとき、キーを消すと省略時の既定値や不在へ誤って回復してしまうため。PDFのnullを保持して各属性の読み取りで不正と判断する。",
+      "notes": [
+        {
+          "path": "packages/core/src/document/resources/parameters/__tests__/parameters.basic.test.ts",
+          "side": "new",
+          "start": 47,
+          "end": 60,
+          "text": "実バイト列のMatrix 0 0 Rを読み、Matrixはnullとして残り、本当に省略したBBoxだけが対応表にないことを検証する。成功のタグだけでなく、二つの状態の違いを固定する。"
+        },
+        {
+          "path": "packages/core/src/document/resources/parameters/index.ts",
+          "side": "new",
+          "start": 45,
+          "end": 59,
+          "text": "属性が存在するのに参照番号が不正な場合は、解決結果をPDFのnullとして対応表へ保持する。キーを落とすとMatrixの省略時既定値へ入ってしまうため、未指定と指定済みの不正を区別する。参照解決エラーの伝播は維持する。"
+        },
+        {
+          "path": "packages/core/src/document/resources/pattern/__tests__/pattern.error.test.ts",
+          "side": "new",
+          "start": 14,
+          "end": 14,
+          "text": "不正なMatrix参照を既定の単位行列で補わず、タイリングの不正な属性として警告するケースを追加する。既存のMatrix省略時のテストと対になる境界を確認する。"
+        },
+        {
+          "path": "packages/core/src/document/resources/shading/__tests__/shading.error.test.ts",
+          "side": "new",
+          "start": 9,
+          "end": 10,
+          "text": "BBoxとBackgroundの不正な参照を省略として消さず、不正な属性として警告するケースを追加する。任意属性でも指定済みの値が壊れている状態は不在と区別する。"
+        }
+      ]
+    }
+  ],
+  "suites": [
+    {
+      "id": "suite-1",
+      "label": "paint-resources.integration.test.ts",
+      "file": "packages/core/src/content-stream/paint-resources/__tests__/paint-resources.integration.test.ts"
+    },
+    {
+      "id": "suite-2",
+      "label": "paint-resources.error.test.ts",
+      "file": "packages/core/src/content-stream/paint-resources/__tests__/paint-resources.error.test.ts"
+    },
+    {
+      "id": "suite-3",
+      "label": "sh.basic.test.ts",
+      "file": "packages/core/src/content-stream/operators/shading/sh/__tests__/sh.basic.test.ts"
+    },
+    {
+      "id": "suite-4",
+      "label": "shading.error.test.ts",
+      "file": "packages/core/src/document/resources/shading/__tests__/shading.error.test.ts"
+    }
+  ],
+  "tests": [
+    {
+      "id": "test-1",
+      "suite": "suite-1",
+      "name": "シェーディングパターンをscnから取得しFunctionを評価しない",
+      "techniques": [
+        "equivalence"
+      ],
+      "why": "評価対象ではない関数参照を誤って解決しないため",
+      "given": "取得できるパターンが、未配置の関数オブジェクトへの参照を持つ",
+      "when": "パターン色を指定する",
+      "then": "参照先を読み込まず、警告なしで色指定が成功する",
+      "commit": "e872a194c9dc3d0094065955df40788a6202595f",
+      "targets": [
+        "packages/core/src/content-stream/paint-resources/index.ts"
+      ]
+    },
+    {
+      "id": "test-2",
+      "suite": "suite-2",
+      "name": "/%s カテゴリの参照エラーは準備時に伝播する",
+      "techniques": [
+        "error"
+      ],
+      "why": "カテゴリ全体の失敗と各定義の失敗を混同しないため",
+      "given": "カテゴリの参照先に、途中で切れた辞書バイト列がある",
+      "when": "描画リソースを準備する",
+      "then": "元の構文エラーが準備時に返る",
+      "commit": "e872a194c9dc3d0094065955df40788a6202595f",
+      "targets": [
+        "packages/core/src/content-stream/paint-resources/index.ts"
+      ]
+    },
+    {
+      "id": "test-3",
+      "suite": "suite-2",
+      "name": "Pattern以外の色空間では%sの名前オペランドを拒否する",
+      "techniques": [
+        "error"
+      ],
+      "why": "パターン名を一般の数値成分として誤受理しないため",
+      "given": "RGB色空間と、数値2個・名前1個のオペランドがある",
+      "when": "塗りと輪郭の拡張色命令を実行する",
+      "then": "名前型に対するオペランド型エラーが返る",
+      "commit": "e872a194c9dc3d0094065955df40788a6202595f",
+      "targets": [
+        "packages/core/src/content-stream/paint-resources/index.ts"
+      ]
+    },
+    {
+      "id": "test-4",
+      "suite": "suite-1",
+      "name": "パターンの選択はq/Qによって保存・復元される",
+      "techniques": [
+        "state"
+      ],
+      "why": "保存したパターン名を後の選択で失わないため",
+      "given": "異なる二つのタイリングが同じスコープにある",
+      "when": "一つ目を選択して保存し、二つ目へ切り替えたあと復元する",
+      "then": "一つ目のパターン名が色状態へ戻る",
+      "commit": "e872a194c9dc3d0094065955df40788a6202595f",
+      "targets": [
+        "packages/core/src/content-stream/paint-resources/index.ts"
+      ]
+    },
+    {
+      "id": "test-5",
+      "suite": "suite-3",
+      "name": "shはShadingの名前を解決し色と色空間を変更しない",
+      "techniques": [
+        "state"
+      ],
+      "why": "定義取得だけの段階で既存の塗り状態を壊さないため",
+      "given": "グレーの塗り色と、取得可能な軸方向シェーディングがある",
+      "when": "名前を指定してシェーディング命令を実行する",
+      "then": "色は同じままで名前オペランドが消費され警告はない",
+      "commit": "e872a194c9dc3d0094065955df40788a6202595f",
+      "targets": [
+        "packages/core/src/content-stream/operators/shading/sh/index.ts"
+      ]
+    },
+    {
+      "id": "test-6",
+      "suite": "suite-4",
+      "name": "メッシュ種別%sがストリームでない場合は警告する",
+      "techniques": [
+        "error"
+      ],
+      "why": "メッシュ定義をストリームなしで有効と扱わないため",
+      "given": "メッシュの種別番号を持つが、バイト列を伴わない辞書がある",
+      "when": "そのシェーディングを使用する",
+      "then": "不正な定義として位置付き警告を返す",
+      "commit": "e872a194c9dc3d0094065955df40788a6202595f",
+      "targets": [
+        "packages/core/src/document/resources/shading/index.ts"
+      ]
+    },
+    {
+      "id": "test-7",
+      "suite": "suite-1",
+      "name": "別のページの同名パターンへフォールバックしない",
+      "techniques": [
+        "regression"
+      ],
+      "why": "別のページの定義が漏れ込まないことを確認するため",
+      "given": "一方だけが同名のパターンを持つ二つの独立スコープがある",
+      "when": "同じ色指定を両方のスコープで実行する",
+      "then": "定義のある側だけ警告なしで、ない側は名前不在の警告になる",
+      "commit": "e872a194c9dc3d0094065955df40788a6202595f",
+      "targets": [
+        "packages/core/src/content-stream/paint-resources/index.ts"
+      ]
+    }
+  ],
+  "impact": {
+    "title": "模様と色変化の定義を読み取れる",
+    "lead": "画面へ描く前に、指定された模様や色変化の種類を取り出せる。",
+    "added": [
+      {
+        "label": "模様を名前で選択",
+        "before": [
+          {
+            "text": "定義の取得まで対応していなかった。"
+          }
+        ],
+        "after": [
+          {
+            "text": "現在のページの定義を取得し、種類と主要な設定を読み取れる。"
+          }
+        ],
+        "tests": [
+          "test-1",
+          "test-4",
+          "test-7"
+        ]
+      },
+      {
+        "label": "色変化を名前で指定",
+        "before": [
+          {
+            "text": "定義の取得まで対応していなかった。"
+          }
+        ],
+        "after": [
+          {
+            "text": "定義を取得し、読み取れない種類は警告で知らせる。"
+          }
+        ],
+        "tests": [
+          "test-5",
+          "test-6"
+        ]
+      }
+    ],
+    "kept": [
+      {
+        "text": "実際の画素描画と色を計算する関数の評価は後段が担当する。",
+        "tests": [
+          "test-1",
+          "test-5"
+        ]
+      }
+    ]
+  },
+  "primers": [
+    {
+      "kind": "language",
+      "id": "unions",
+      "category": "TypeScript · 型の境界",
+      "label": "判別可能なunionとValueOf",
+      "gist": "取りうる形を列挙し、種別番号を確認すると、その種別に必要な属性へ型を絞り込める。",
+      "passages": [
+        {
+          "kind": "text",
+          "text": "unionは複数の型のどれかを表す。判別可能なunionでは、各型に共通のキーと異なる固定値を持たせる。ここでは`patternType`の1・2がその固定値になる。"
+        },
+        {
+          "kind": "declaration",
+          "code": "type Pattern =\n  | { patternType: 1; paintType: 1 | 2 }\n  | { patternType: 2; shading: Shading };\n\nif (pattern.patternType === 1) {\n  use(pattern.paintType);\n}"
+        },
+        {
+          "kind": "text",
+          "text": "一つの型に任意属性を並べると、タイリングなのにセルがない状態や、種別2なのにPaintTypeを使うコードを許してしまう。種別ごとに持つ属性を分けると、その組み合わせを型で防げる。"
+        },
+        {
+          "kind": "excerpt",
+          "excerpt": {
+            "path": "packages/core/src/document/resources/pattern/index.ts",
+            "start": 15,
+            "end": 59,
+            "text": "/** ISO 32000 §8.7 のパターン種別。 */\nexport const PdfPatternTypes = { Tiling: 1, Shading: 2 } as const;\nexport type PdfPatternType = ValueOf<typeof PdfPatternTypes>;\n\n/** セル内で色を指定するか、呼び出し側から色を渡すか。 */\nexport const PdfPatternPaintTypes = { Colored: 1, Uncolored: 2 } as const;\nexport type PdfPatternPaintType = ValueOf<typeof PdfPatternPaintTypes>;\n\n/** セルの間隔と形状を画素へ合わせる方式。 */\nexport const PdfPatternTilingTypes = {\n  ConstantSpacing: 1,\n  NoDistortion: 2,\n  Faster: 3,\n} as const;\nexport type PdfPatternTilingType = ValueOf<typeof PdfPatternTilingTypes>;\n\ntype PatternMatrix = readonly [number, number, number, number, number, number];\n\n/** タイリングはセル、シェーディングは色変化の定義を保持する。 */\nexport type PdfPattern =\n  | {\n      readonly patternType: typeof PdfPatternTypes.Tiling;\n      readonly stream: PdfStream;\n      readonly paintType: PdfPatternPaintType;\n      readonly tilingType: PdfPatternTilingType;\n      readonly bbox: readonly [number, number, number, number];\n      readonly xStep: number;\n      readonly yStep: number;\n      readonly resources: PdfDictionary;\n      readonly matrix: PatternMatrix;\n      readonly warnings: readonly PdfWarning[];\n    }\n  | {\n      readonly patternType: typeof PdfPatternTypes.Shading;\n      readonly dictionary: PdfDictionary;\n      readonly shading: PdfShading;\n      readonly extGState: Option<PdfDictionary>;\n      readonly matrix: PatternMatrix;\n      readonly warnings: readonly PdfWarning[];\n    }\n  | {\n      readonly patternType: \"Unknown\";\n      readonly object: PdfObject;\n      readonly warnings: readonly PdfWarning[];\n    };"
+          }
+        },
+        {
+          "kind": "text",
+          "text": "`as const`は定数の数値を単なる`number`へ広げずに保持する。`ValueOf<typeof PdfPatternTypes>`はそのオブジェクトの値を集め、1と2のunionを作る。型テストでは一般の`number`がPaintType・TilingTypeに代入できないことも固定している。"
+        },
+        {
+          "kind": "caution",
+          "text": "型は外部のPDFバイト列を自動で検証しない。読み取り関数が値域・必須属性を確認してから、既知の種別を構築する。Unknownは有効な既知定義とは別の状態で扱う。"
+        }
+      ],
+      "occurrences": [
+        {
+          "path": "packages/core/src/document/resources/pattern/index.ts",
+          "text": "種別1と2で属性を分ける"
+        },
+        {
+          "path": "packages/core/src/document/resources/shading/index.ts",
+          "text": "メッシュの種別だけストリームを必須にする"
+        }
+      ]
+    },
+    {
+      "kind": "language",
+      "id": "results",
+      "category": "TypeScript · 失敗と不在",
+      "label": "ResultとOptionの違い",
+      "gist": "取得に失敗したことと、取得できる値がないことを別々の型で表す。",
+      "passages": [
+        {
+          "kind": "text",
+          "text": "`Result<T,E>`は値を持つ成功か、原因を持つ失敗のどちらか。`Option<T>`は値があるか、ないかのどちらか。例えば名前がないことと、参照先のPDF構文が壊れて読めないことは、呼び出し側の対応が違う。"
+        },
+        {
+          "kind": "excerpt",
+          "excerpt": {
+            "path": "packages/core/src/content-stream/paint-resources/index.ts",
+            "start": 8,
+            "end": 51,
+            "text": "\n/** 同期の色指定・描画命令から参照する、現在のスコープのパターンとシェーディング。 */\nexport type PaintResources = {\n  readonly patterns: ReadonlyMap<string, Result<Option<PdfPattern>, PdfError>>;\n  readonly shadings: ReadonlyMap<string, Result<Option<PdfShading>, PdfError>>;\n};\n\nexport const PaintResources = {\n  /** @returns 描画リソースのないスコープ */\n  empty(): PaintResources {\n    return { patterns: new Map(), shadings: new Map() };\n  },\n\n  /**\n   * 同期実行前に /Pattern と /Shading の定義を解決する。\n   * @param resources - 現在のページ・フォームのリソーススコープ\n   * @param resolveRef - 同じ文書の参照解決関数\n   * @returns カテゴリの参照エラーは Err、個別定義のエラーは使用時まで保持する\n   */\n  async fromResources(\n    resources: PdfResources,\n    resolveRef: ResolveRef,\n  ): Promise<Result<PaintResources, PdfError>> {\n    const patterns = await PaintResources.readCategory(\n      resources,\n      { name: \"Pattern\", read: PdfPattern.fromObject },\n      resolveRef,\n    );\n    if (!patterns.ok) {\n      return patterns;\n    }\n\n    const shadings = await PaintResources.readCategory(\n      resources,\n      { name: \"Shading\", read: PdfShading.fromObject },\n      resolveRef,\n    );\n    if (!shadings.ok) {\n      return shadings;\n    }\n\n    return ok({ patterns: patterns.value, shadings: shadings.value });\n  },\n"
+          }
+        },
+        {
+          "kind": "text",
+          "text": "ここでは名前ごとに`Result<Option<PdfPattern>, PdfError>`を保存する。`ok`を確認し、次に`some`を確認してから定義を取り出す。カテゴリの失敗は準備時に返すが、各名前の失敗は保存して、その名前を使用する命令から返す。"
+        },
+        {
+          "kind": "excerpt",
+          "excerpt": {
+            "path": "packages/core/src/content-stream/operators/shading/sh/index.ts",
+            "start": 19,
+            "end": 49,
+            "text": "        return err({\n          code: \"OPERATOR_OPERAND_COUNT_MISMATCH\",\n          operatorName: \"sh\",\n          required: 1,\n          actual,\n          message: `Operator 'sh' requires 1 operand, got ${actual}`,\n        });\n      }\n\n      const name = OperandExtractor.popName(context.operandStack, \"sh\");\n      if (!name.ok) {\n        return name;\n      }\n\n      const shading = resources.shadings.get(name.value) ?? ok(none);\n      if (!shading.ok) {\n        return shading;\n      }\n\n      return ok({\n        ...context,\n        warnings: shading.value.some\n          ? shading.value.value.warnings\n          : [\n              {\n                code: \"SHADING_NOT_FOUND\",\n                message: `Shading resource not found: /${name.value}`,\n              },\n            ],\n      });\n    };"
+          }
+        },
+        {
+          "kind": "caution",
+          "text": "UnknownはOptionの不在とは違う。オブジェクトは取得できたが既知の定義として解釈できない状態で、警告と元オブジェクトを持つ。失敗・不在・未知を一つのnullに畳まない。"
+        }
+      ],
+      "occurrences": [
+        {
+          "path": "packages/core/src/content-stream/paint-resources/index.ts",
+          "text": "名前別に解決結果を保持する"
+        }
+      ]
+    },
+    {
+      "kind": "pdf",
+      "id": "names",
+      "category": "PDF · 名前と参照",
+      "label": "PatternとShadingの名前解決",
+      "gist": "コンテンツ中の名前は現在のResourcesのカテゴリを引くキーで、間接参照そのものではない。",
+      "passages": [
+        {
+          "kind": "declaration",
+          "code": "/Resources <<\n  /Pattern << /P1 << /PatternType 2 /Shading 20 0 R >> >>\n  /Shading << /S1 20 0 R >>\n>>\n20 0 obj\n<< /ShadingType 2 /ColorSpace /DeviceRGB\n   /Coords [0 0 100 0] /Function 21 0 R >>\nendobj\n% 現在のスコープから選択\n/Pattern cs /P1 scn\n/S1 sh"
+        },
+        {
+          "kind": "text",
+          "text": "これはPDF構造の抜粋。P1とS1はローカルな名前で、同じオブジェクト20に到達しても引くカテゴリが異なる。20 0 Rはオブジェクト番号20・世代番号0への間接参照で、21の関数本体はこの例では省略している。"
+        },
+        {
+          "kind": "excerpt",
+          "excerpt": {
+            "path": "packages/core/src/content-stream/paint-resources/index.ts",
+            "start": 74,
+            "end": 103,
+            "text": "      resources,\n      category.name,\n      resolveRef,\n    );\n    if (!dictionary.ok) {\n      return dictionary;\n    }\n\n    const values = new Map<string, Result<Option<T>, PdfError>>();\n    if (!dictionary.value.some) {\n      return ok(values);\n    }\n\n    for (const [name, value] of dictionary.value.value.entries) {\n      const resolved = await ResolveRef.object(value, resolveRef);\n      if (!resolved.ok) {\n        values.set(name, resolved);\n        continue;\n      }\n\n      if (!resolved.value.some) {\n        values.set(name, ok(none));\n        continue;\n      }\n\n      const parsed = await category.read(resolved.value.value, resolveRef);\n      values.set(name, map(parsed, some));\n    }\n\n    return ok(values);"
+          }
+        },
+        {
+          "kind": "text",
+          "text": "カテゴリ辞書と定義の参照を同じ文書のリゾルバで解決し、種別を読む。一方Functionは元のPdfValueのまま保持し、この参照先の解決も評価も行わない。"
+        },
+        {
+          "kind": "excerpt",
+          "excerpt": {
+            "path": "packages/core/src/document/resources/shading/index.ts",
+            "start": 130,
+            "end": 156,
+            "text": "    if (invalid) {\n      return ok(PdfShading.unresolved(object, \"SHADING_INVALID\"));\n    }\n\n    const parameters: ShadingParameters = {\n      dictionary,\n      colorSpace: colorSpace.value,\n      background: background.value,\n      bbox: bbox.value,\n      function: fromNullable(dictionary.entries.get(\"Function\")),\n      warnings: [],\n    };\n    switch (shadingType.value) {\n      case PdfShadingTypes.Function:\n      case PdfShadingTypes.Axial:\n      case PdfShadingTypes.Radial:\n        return ok({ ...parameters, shadingType: shadingType.value });\n      case PdfShadingTypes.FreeForm:\n      case PdfShadingTypes.Lattice:\n      case PdfShadingTypes.Coons:\n      case PdfShadingTypes.Tensor:\n        return ok(\n          object.type === \"stream\"\n            ? { ...parameters, shadingType: shadingType.value, stream: object }\n            : PdfShading.unresolved(object, \"SHADING_INVALID\"),\n        );\n    }"
+          }
+        },
+        {
+          "kind": "spec",
+          "text": "根拠はリポジトリのdocs/specs/04_resources_graphics_state.md §3.5・§3.6。名前不在や未知の種別を警告で回復する部分はpdfmodの方針であり、未知の定義を描画できるというPDFの要件ではない。"
+        }
+      ],
+      "occurrences": [
+        {
+          "path": "packages/core/src/content-stream/paint-resources/index.ts",
+          "text": "現在のカテゴリだけを引く"
+        },
+        {
+          "path": "packages/core/src/document/resources/shading/index.ts",
+          "text": "Functionを評価せず保存する"
+        }
+      ]
+    },
+    {
+      "kind": "pdf",
+      "id": "tints",
+      "category": "PDF · 色の指定",
+      "label": "着色と非着色パターン",
+      "gist": "色をセルが持つか、呼び出し側が持つかで、数値成分と基底色空間の必要性が変わる。",
+      "passages": [
+        {
+          "kind": "text",
+          "text": "着色パターンはセル内部に色の指定を持つ。非着色パターンは形状を持ち、呼び出し側から色の成分を受け取る。PaintTypeの1と2がその違いで、PatternTypeの1と2とは別の区別。"
+        },
+        {
+          "kind": "declaration",
+          "code": "% P1は着色、P2は非着色として定義済みとする\n/Pattern cs\n/P1 scn\n\n% Resources内の定義: /Pat [/Pattern /DeviceRGB]\n/Pat cs\n.1 .2 .3 /P2 scn"
+        },
+        {
+          "kind": "text",
+          "text": "後半はRGBの数値3個とパターン名1個。最後の名前は数値の成分数に含めない。着色パターンやシェーディングパターンを、この基底色付きの色空間で指定した場合は組み合わせのエラーになる。"
+        },
+        {
+          "kind": "excerpt",
+          "excerpt": {
+            "path": "packages/core/src/content-stream/color-operation/index.ts",
+            "start": 20,
+            "end": 48,
+            "text": "export const ColorOperation = {\n  /**\n   * 非着色パターンと基底色空間の組み合わせを検証する。\n   * @param operation - 現在の色空間と色指定命令\n   * @param pattern - 名前から取得したパターン\n   * @returns 着色方式と基底の有無が一致しなければ不正状態のエラー\n   */\n  patternError(\n    operation: ColorOperation,\n    pattern: PdfPattern,\n  ): Option<PdfOperatorIllegalStateError> {\n    const space = operation.colorSpace;\n    const hasPatternBase =\n      typeof space !== \"string\" &&\n      space.family === \"Pattern\" &&\n      space.base.some;\n    if (pattern.patternType === \"Unknown\") {\n      return none;\n    }\n\n    const requiresBase = pattern.patternType === 1 && pattern.paintType === 2;\n    return hasPatternBase !== requiresBase\n      ? some({\n          code: \"OPERATOR_ILLEGAL_STATE\",\n          operatorName: operation.operatorName,\n          message:\n            \"Pattern PaintType does not match the selected base color space\",\n        })\n      : none;"
+          }
+        },
+        {
+          "kind": "caution",
+          "text": "小文字は塗り、大文字は輪郭。scnとSCNの名前はPatternのときだけ受理する。Pattern以外では数値として検証するため、名前を渡せば型や個数のエラーになる。今回の範囲はこの検証と保持までで、セルの敷き詰めは行わない。"
+        }
+      ],
+      "occurrences": [
+        {
+          "path": "packages/core/src/content-stream/color-operation/index.ts",
+          "text": "基底色と着色方式の組み合わせを検証する"
+        }
+      ]
+    },
+    {
+      "kind": "codebase",
+      "id": "prepare",
+      "category": "実装 · 準備と実行",
+      "label": "非同期の準備と同期の命令実行",
+      "gist": "PDFの参照を事前に解決し、命令は同じスコープの取得結果を同期で利用する。",
+      "passages": [
+        {
+          "kind": "text",
+          "text": "参照先の取得はPromiseを返すが、既存の命令ハンドラはResultを同期で返す。そこで現在のページやフォームのResourcesから、色空間と描画定義を実行前に準備する。"
+        },
+        {
+          "kind": "excerpt",
+          "excerpt": {
+            "path": "packages/core/src/content-stream/operator-registry/index.ts",
+            "start": 230,
+            "end": 257,
+            "text": "   * 全ビルトインオペレータが登録されたデフォルトの `OperatorRegistry` を生成する。\n   *\n   * @param extGStates - 実行対象スコープの解決済み拡張状態\n   * @param colorSpaces - 実行対象スコープの解決済み色空間\n   * @param paints - 実行対象スコープの解決済みパターン・シェーディング\n   * @returns 全ビルトインオペレータ登録済みの OperatorRegistry、または重複登録時の PdfError\n   */\n  createDefault(\n    extGStates: ExtGStateResources = ExtGStateResources.empty(),\n    colorSpaces: ColorSpaceResources = ColorSpaceResources.empty(),\n    paints: PaintResources = PaintResources.empty(),\n  ): Result<OperatorRegistry, PdfError> {\n    const operators = [\n      ...BUILTIN_OPERATORS,\n      ...ColorSpaceOperators.create(colorSpaces, paints),\n      [\"sh\", ShOperator.create(paints)] as const,\n    ];\n    return operators.reduce<Result<OperatorRegistry, PdfError>>(\n      (acc, [name, handler]) =>\n        flatMap(acc, (r) => OperatorRegistry.register(r, name, handler)),\n      OperatorRegistry.register(\n        OperatorRegistry.create(),\n        \"gs\",\n        GsOperator.create(extGStates),\n      ),\n    );\n  },\n} as const;"
+          }
+        },
+        {
+          "kind": "text",
+          "text": "第3引数の描画スコープを色指定命令とshへ渡す。名前のマップは毎回の準備で新しく作り、別ページの同名定義へフォールバックしない。繰り返す命令のたびに参照先を非同期で読み直す必要もない。"
+        },
+        {
+          "kind": "excerpt",
+          "excerpt": {
+            "path": "packages/core/src/content-stream/operators/color/selection/index.ts",
+            "start": 141,
+            "end": 175,
+            "text": "        ? (resources.patterns.get(patternName.value.value) ?? ok(none))\n        : ok(none);\n      if (!pattern.ok) {\n        return pattern;\n      }\n\n      const patternError = pattern.value.some\n        ? ColorOperation.patternError(\n            { colorSpace: space, operatorName },\n            pattern.value.value,\n          )\n        : none;\n      if (patternError.some) {\n        return err(patternError.value);\n      }\n\n      const warnings = pattern.value.some ? pattern.value.value.warnings : [];\n      const missingPattern = patternName.value.some && !pattern.value.some;\n      const next = ColorSpaceOperators.update(context, target, {\n        color: Color.fromComponents(space, values.value, patternName.value),\n        space,\n      });\n      return ok({\n        ...next,\n        warnings: missingPattern\n          ? [\n              {\n                code: \"PATTERN_NOT_FOUND\",\n                message: \"Pattern resource not found\",\n              },\n            ]\n          : warnings,\n      });\n    };\n  },"
+          }
+        },
+        {
+          "kind": "caution",
+          "text": "全定義を先に読むため、準備コストはそのスコープの定義数と数値配列の要素数に応じる。ストリームの描画や復号はせず、Functionも評価しない。Rust側にはこの命令実行層がまだないため、今回はTypeScript側を変更している。"
+        }
+      ],
+      "occurrences": [
+        {
+          "path": "packages/core/src/content-stream/operator-registry/index.ts",
+          "text": "同じ準備結果を各ハンドラへ渡す"
+        },
+        {
+          "path": "packages/core/src/content-stream/paint-resources/index.ts",
+          "text": "準備するたびに新しい名前のマップを作る"
+        }
+      ]
+    }
+  ]
+}
