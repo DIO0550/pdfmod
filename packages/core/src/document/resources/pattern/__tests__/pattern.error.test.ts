@@ -11,6 +11,7 @@ test.each([
   "/YStep 0",
   "/BBox [0 0 8]",
   "/Matrix [1 0]",
+  "/Matrix 0 0 R",
   "/Resources /Bad",
 ])("タイリングの不正な属性 %s は警告になる", async (entries) => {
   const { execute } = await setupPaint({

@@ -42,17 +42,21 @@ export const ResourceParameters = {
   ): Promise<Result<ReadonlyMap<string, PdfObject>, PdfError>> {
     const fields = new Map<string, PdfObject>();
     for (const key of keys) {
-      const result = await ResolveRef.object(
-        dictionary.entries.get(key),
-        resolveRef,
-      );
+      const value = dictionary.entries.get(key);
+      const result = await ResolveRef.object(value, resolveRef);
       if (!result.ok) {
         return result;
       }
 
-      if (result.value.some) {
-        fields.set(key, result.value.value);
+      if (!result.value.some) {
+        if (value !== undefined) {
+          fields.set(key, { type: "null" });
+        }
+
+        continue;
       }
+
+      fields.set(key, result.value.value);
     }
 
     return ok(fields);

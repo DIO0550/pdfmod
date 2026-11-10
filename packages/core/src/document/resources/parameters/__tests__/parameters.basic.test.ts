@@ -44,3 +44,17 @@ test("数値でない配列要素は座標として受理しない", async () =>
     ),
   ).toEqual({ ok: true, value: { some: false } });
 });
+
+test("不正な属性参照をPDFのnullとして保持し、属性の省略と区別する", async () => {
+  const { resources, resolveRef } = setupResources({
+    resources: "<< /Matrix 0 0 R >>",
+  });
+  const result = await ResourceParameters.resolve(
+    resources.dictionary,
+    ["Matrix", "BBox"],
+    resolveRef,
+  );
+  assert(result.ok);
+
+  expect([...result.value]).toEqual([["Matrix", { type: "null" }]]);
+});
