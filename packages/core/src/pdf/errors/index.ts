@@ -9,6 +9,7 @@ export type {
   PdfErrorCode,
   PdfInlineImageRequiredKeyMissingError,
   PdfOperatorIllegalStateError,
+  PdfOperatorOperandCountMismatchError,
   PdfOperatorOperandMissingError,
   PdfOperatorOperandTypeMismatchError,
   PdfOperatorOperandValueOutOfRangeError,
