@@ -4,7 +4,7 @@
   "headBranch": "feature/677-pattern-shading-v2",
   "baseBranch": "main",
   "mergeBase": "8c0e15ce6f1f04a2e1994a30a4fbadcf3bea68c6",
-  "head": "941568650cc4dcdea1df8ced2b87d298872a89cd",
+  "head": "6199a8cc3535548878dc43c84807f9046997cb89",
   "groups": [
     {
       "label": "TypeScript · core",
@@ -1947,6 +1947,32 @@
           "patch": "@@ -6,6 +6,8 @@ test.each([\n   \"/Background [.1 /Bad .3]\",\n   \"/BBox [0 0 10]\",\n   \"/BBox [0 0 10 /Bad]\",\n+  \"/BBox 0 0 R\",\n+  \"/Background 0 0 R\",\n ])(\"シェーディングの不正な共通属性は警告になる: %s\", async (entries) => {\n   const { execute } = await setupPaint({\n     resources: `<< /Shading << /S1 << /ShadingType 2 /ColorSpace /DeviceRGB ${entries} >> >> >>`,",
           "patchLines": 9,
           "truncated": false
+        }
+      ]
+    },
+    {
+      "sha": "6199a8cc3535548878dc43c84807f9046997cb89",
+      "merge": false,
+      "author": "DIO0550",
+      "date": "2026-11-10T23:07:17+09:00",
+      "subject": "style(docs): remove trailing whitespace from pattern guide",
+      "body": "",
+      "files": [
+        {
+          "path": "docs/guides/patterns-shadings.html",
+          "status": "M",
+          "oldPath": null,
+          "additions": 1,
+          "deletions": 1,
+          "patch": "@@ -152,7 +152,7 @@\n       [data-example-panel][hidden] { display: block !important; }\n       a { color: inherit; }\n     }\n-  \n+\n     .reading { font-size: 19px; }\n     .reading pre, .reading table { font-size: .92em; }\n     .reading th { font-size: .95em; }",
+          "patchLines": 9,
+          "truncated": false,
+          "hunkOpeningLines": [
+            {
+              "old": "<style>",
+              "new": "<style>"
+            }
+          ]
         }
       ]
     }
