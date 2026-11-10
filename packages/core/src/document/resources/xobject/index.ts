@@ -18,6 +18,7 @@ import {
 } from "../../../utils/option/index";
 import { ok, type Result } from "../../../utils/result/index";
 import { PdfRectangle } from "../../page-tree/resolved-page/index";
+import { ResourceParameters } from "../parameters/index";
 
 const ComponentDepth = {
   One: 1,
@@ -95,36 +96,6 @@ const ImageKeys = [
 const FormKeys = ["BBox", "Matrix", "Resources"] as const;
 const RECTANGLE_SIZE = 4;
 const MATRIX_SIZE = 6;
-
-/**
- * 種別が使用する辞書エントリのみを1段解決する。子のリソース辞書は走査しない。
- * @param dictionary - 対象ストリームの辞書
- * @param keys - この種別で使用するPDFのキー
- * @param resolveRef - 同じ文書の間接参照解決関数
- * @returns 存在する属性の対応表。参照先の解析に失敗した場合はそのエラー
- */
-async function resolveFields(
-  dictionary: PdfDictionary,
-  keys: readonly string[],
-  resolveRef: ResolveRef,
-): Promise<Result<Map<string, PdfObject>, PdfError>> {
-  const fields = new Map<string, PdfObject>();
-  for (const key of keys) {
-    const result = await ResolveRef.object(
-      dictionary.entries.get(key),
-      resolveRef,
-    );
-
-    if (!result.ok) {
-      return result;
-    }
-
-    if (result.value.some) {
-      fields.set(key, result.value.value);
-    }
-  }
-  return ok(fields);
-}
 
 const PdfImageXObject = {
   /** @param stream - 画像の元ストリーム
@@ -285,7 +256,11 @@ export const PdfXObject = {
     }
 
     const keys = name === PdfXObjectSubtype.Image ? ImageKeys : FormKeys;
-    const fields = await resolveFields(stream.dictionary, keys, resolveRef);
+    const fields = await ResourceParameters.resolve(
+      stream.dictionary,
+      keys,
+      resolveRef,
+    );
     if (!fields.ok) {
       return fields;
     }

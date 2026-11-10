@@ -50,6 +50,7 @@ import { reHandler } from "../operators/path/re/index";
 import { strokeHandler } from "../operators/path/stroke/index";
 import { vHandler } from "../operators/path/v/index";
 import { yHandler } from "../operators/path/y/index";
+import { ShOperator } from "../operators/shading/sh/index";
 import { apostropheHandler } from "../operators/text/apostrophe/index";
 import { btHandler } from "../operators/text/bt/index";
 import { etHandler } from "../operators/text/et/index";
@@ -68,6 +69,7 @@ import { tsHandler } from "../operators/text/ts/index";
 import { twHandler } from "../operators/text/tw/index";
 import { tzHandler } from "../operators/text/tz/index";
 import { doHandler } from "../operators/xobject/do/index";
+import { PaintResources } from "../paint-resources/index";
 
 /**
  * Content stream operator handler が受け取り、更新後に返す実行コンテキスト。
@@ -229,15 +231,18 @@ export const OperatorRegistry = {
    *
    * @param extGStates - 実行対象スコープの解決済み拡張状態
    * @param colorSpaces - 実行対象スコープの解決済み色空間
+   * @param paints - 実行対象スコープの解決済みパターン・シェーディング
    * @returns 全ビルトインオペレータ登録済みの OperatorRegistry、または重複登録時の PdfError
    */
   createDefault(
     extGStates: ExtGStateResources = ExtGStateResources.empty(),
     colorSpaces: ColorSpaceResources = ColorSpaceResources.empty(),
+    paints: PaintResources = PaintResources.empty(),
   ): Result<OperatorRegistry, PdfError> {
     const operators = [
       ...BUILTIN_OPERATORS,
-      ...ColorSpaceOperators.create(colorSpaces),
+      ...ColorSpaceOperators.create(colorSpaces, paints),
+      ["sh", ShOperator.create(paints)] as const,
     ];
     return operators.reduce<Result<OperatorRegistry, PdfError>>(
       (acc, [name, handler]) =>
