@@ -18,6 +18,7 @@ PDF機能の実装に合わせて、仕様の読み方と実装の振る舞い�
 | [字句トークンと描画命令の境界](token-layers.html) | 字句解析と演算子の再分類、LexicalTokenとContentStreamToken、巻き戻しと画像辞書の型境界、Operator.value、正常例・未知の命令・壊れた画像 | [Issue #308](https://github.com/DIO0550/pdfmod/issues/308) / `packages/core/src/pdf/types/token/index.ts` |
 | [暗号化辞書](encryption-dictionary.html) | Standard の6組と方式ごとの型・生成処理、crypt filter と Identity、鍵長の単位正規化、符号なし権限、未対応辞書の保持、間接参照と解析の境界 | [Issue #651](https://github.com/DIO0550/pdfmod/issues/651) / `packages/core/src/pdf/encryption/index.ts` / `rust/crates/core/src/encrypt.rs` |
 | [拡張グラフィックス状態](ext-gstate.html) | gs の名前解決、各パラメータ、Font の辞書指定、透明度、q/Q、警告と回復 | [Issue #667](https://github.com/DIO0550/pdfmod/issues/667) / `packages/core/src/content-stream/ext-gstate/index.ts` |
+| [パターンとシェーディング](patterns-shadings.html) | PatternType・ShadingType、着色と基底色、scn / SCN / sh、間接参照、Functionの未評価保持、警告と回復 | [Issue #677](https://github.com/DIO0550/pdfmod/issues/677) / `packages/core/src/content-stream/paint-resources/` / `packages/core/src/document/resources/pattern/` / `packages/core/src/document/resources/shading/` |
 
 ## 読み方
 

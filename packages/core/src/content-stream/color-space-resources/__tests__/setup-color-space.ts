@@ -5,6 +5,7 @@ import type { Result } from "../../../utils/result/index";
 import type { ContentStreamInterpreterResult } from "../../interpreter/index";
 import { ContentStreamInterpreter } from "../../interpreter/index";
 import { OperatorRegistry } from "../../operator-registry/index";
+import { PaintResources } from "../../paint-resources/index";
 import { ColorSpaceResources } from "../index";
 
 /**
@@ -23,7 +24,14 @@ export async function executeColorSpace(source: {
     resolveRef,
   );
   assert(prepared.ok);
-  const registry = OperatorRegistry.createDefault(undefined, prepared.value);
+  const paints = await PaintResources.fromResources(resources, resolveRef);
+  assert(paints.ok);
+
+  const registry = OperatorRegistry.createDefault(
+    undefined,
+    prepared.value,
+    paints.value,
+  );
   assert(registry.ok);
 
   return ContentStreamInterpreter.execute({
