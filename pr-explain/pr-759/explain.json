@@ -2,7 +2,7 @@
   "version": 1,
   "pr": 759,
   "issue": 677,
-  "sha": "6199a8cc3535548878dc43c84807f9046997cb89",
+  "sha": "7c552357e86bf5f8d57573cb47f1a33516b05c55",
   "overview": {
     "title": "名前からパターンとシェーディングの定義へ到達する",
     "lead": "パターン名を色値へ保存するだけだった経路を辞書の取得へつなぎ、シェーディング指定も既定の命令にする。読む順序は描画スコープの準備、種別の読み取り、命令への受け渡し。実描画と関数評価は対象外。",
@@ -767,6 +767,28 @@
           "text": "本文を持たない空行の末尾空白を取り除く。解説内容・色分け・文字サイズ切り替えの挙動は変わらない。"
         }
       ]
+    },
+    {
+      "sha": "7c552357e86bf5f8d57573cb47f1a33516b05c55",
+      "phase": "revise",
+      "role": "パターン不在の警告に指定名を含める",
+      "why": "複数のパターンを使うPDFで、不足しているリソースを警告から特定できるようにする。",
+      "notes": [
+        {
+          "path": "packages/core/src/content-stream/operators/color/selection/index.ts",
+          "side": "new",
+          "start": 169,
+          "end": 169,
+          "text": "現在のリソースにパターンがないとき、色指定命令で受け取った名前を `/` 付きで警告本文へ入れる。警告から不足している定義を特定できる。"
+        },
+        {
+          "path": "packages/core/src/content-stream/paint-resources/__tests__/paint-resources.integration.test.ts",
+          "side": "new",
+          "start": 83,
+          "end": 87,
+          "text": "一方のページだけにある `/P1` を両方で指定し、定義のない側の警告に `/P1` と命令位置が入ることを確認する。"
+        }
+      ]
     }
   ],
   "suites": [
@@ -898,7 +920,7 @@
       "why": "別のページの定義が漏れ込まないことを確認するため",
       "given": "一方だけが同名のパターンを持つ二つの独立スコープがある",
       "when": "同じ色指定を両方のスコープで実行する",
-      "then": "定義のある側だけ警告なしで、ない側は名前不在の警告になる",
+      "then": "定義のある側は警告がなく、定義のない側は命令位置と指定名 `/P1` を含む警告になる",
       "commit": "e872a194c9dc3d0094065955df40788a6202595f",
       "targets": [
         "packages/core/src/content-stream/paint-resources/index.ts"
@@ -1172,7 +1194,7 @@
             "path": "packages/core/src/content-stream/operators/color/selection/index.ts",
             "start": 141,
             "end": 175,
-            "text": "        ? (resources.patterns.get(patternName.value.value) ?? ok(none))\n        : ok(none);\n      if (!pattern.ok) {\n        return pattern;\n      }\n\n      const patternError = pattern.value.some\n        ? ColorOperation.patternError(\n            { colorSpace: space, operatorName },\n            pattern.value.value,\n          )\n        : none;\n      if (patternError.some) {\n        return err(patternError.value);\n      }\n\n      const warnings = pattern.value.some ? pattern.value.value.warnings : [];\n      const missingPattern = patternName.value.some && !pattern.value.some;\n      const next = ColorSpaceOperators.update(context, target, {\n        color: Color.fromComponents(space, values.value, patternName.value),\n        space,\n      });\n      return ok({\n        ...next,\n        warnings: missingPattern\n          ? [\n              {\n                code: \"PATTERN_NOT_FOUND\",\n                message: \"Pattern resource not found\",\n              },\n            ]\n          : warnings,\n      });\n    };\n  },"
+            "text": "        ? (resources.patterns.get(patternName.value.value) ?? ok(none))\n        : ok(none);\n      if (!pattern.ok) {\n        return pattern;\n      }\n\n      const patternError = pattern.value.some\n        ? ColorOperation.patternError(\n            { colorSpace: space, operatorName },\n            pattern.value.value,\n          )\n        : none;\n      if (patternError.some) {\n        return err(patternError.value);\n      }\n\n      const warnings = pattern.value.some ? pattern.value.value.warnings : [];\n      const missingPattern = patternName.value.some && !pattern.value.some;\n      const next = ColorSpaceOperators.update(context, target, {\n        color: Color.fromComponents(space, values.value, patternName.value),\n        space,\n      });\n      return ok({\n        ...next,\n        warnings: missingPattern\n          ? [\n              {\n                code: \"PATTERN_NOT_FOUND\",\n                message: `Pattern resource not found: /${patternName.value.value}`,\n              },\n            ]\n          : warnings,\n      });\n    };\n  },"
           }
         },
         {
