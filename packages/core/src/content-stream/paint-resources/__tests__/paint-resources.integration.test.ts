@@ -80,6 +80,10 @@ test("別のページの同名パターンへフォールバックしない", as
 
   expect(first.value.warnings).toEqual([]);
   expect(second.value.warnings).toMatchObject([
-    { code: "PATTERN_NOT_FOUND", offset: 16 },
+    {
+      code: "PATTERN_NOT_FOUND",
+      message: "Pattern resource not found: /P1",
+      offset: 16,
+    },
   ]);
 });

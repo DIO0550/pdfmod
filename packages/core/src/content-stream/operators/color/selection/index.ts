@@ -166,7 +166,7 @@ export const ColorSpaceOperators = {
           ? [
               {
                 code: "PATTERN_NOT_FOUND",
-                message: "Pattern resource not found",
+                message: `Pattern resource not found: /${patternName.value.value}`,
               },
             ]
           : warnings,
