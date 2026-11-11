@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'">
+<title>パターンとシェーディング — PDF仕様解説</title>
+<style>
+    :root {
+      --ink: #182f3c;
+      --muted: #526b76;
+      --paper: #f5f7f5;
+      --line: #d7e2e1;
+      --teal: #067666;
+      --mint: #e6f4ef;
+      --blue: #265bb3;
+      --sky: #eaf1ff;
+      --amber: #956000;
+      --sand: #fff4db;
+      --red: #ae3b42;
+      --rose: #fff0ee;
+      --nav-width: 250px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; scroll-padding-top: 24px; }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font: 18px/1.85 -apple-system, BlinkMacSystemFont,
+        "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
+    }
+    a { color: var(--blue); overflow-wrap: anywhere; }
+    button { font: inherit; cursor: pointer; touch-action: manipulation; }
+    a:focus-visible, button:focus-visible, summary:focus-visible {
+      outline: 3px solid #dd8c1f;
+      outline-offset: 4px;
+    }
+    aside {
+      position: fixed;
+      inset: 0 auto 0 0;
+      width: var(--nav-width);
+      overflow: auto;
+      background: #102e39;
+      color: white;
+      padding: 30px 23px;
+    }
+    .brand { font-size: 13px; font-weight: 750; letter-spacing: .14em; color: #8dddd0; }
+    .nav-title { font-size: 23px; line-height: 1.6; margin: 25px 0; overflow-wrap: anywhere; }
+    nav a {
+      display: block;
+      color: #d1e0e3;
+      padding: 10px;
+      margin: 5px 0;
+      border-radius: 7px;
+      font-size: 14px;
+      line-height: 1.6;
+      text-decoration: none;
+    }
+    nav a:hover, nav a[aria-current] { background: #204952; color: white; }
+    nav span { color: #8dddd0; font-size: 11px; margin-right: 9px; }
+    main { margin-left: var(--nav-width); padding: 55px 48px 60px; }
+    .wrap { max-width: 980px; margin: auto; }
+    .hero { border-bottom: 1px solid var(--line); padding: 12px 0 35px; }
+    .eyebrow { font-size: 13px; color: var(--teal); letter-spacing: .12em; font-weight: 800; }
+    h1 { font-size: clamp(32px, 4vw, 50px); line-height: 1.4; margin: 15px 0 22px; }
+    h2 { font-size: 28px; line-height: 1.5; margin: 0; }
+    h3 { font-size: 21px; margin: 20px 0 12px; }
+    p { margin: 14px 0; }
+    .lead { font-size: 20px; color: var(--muted); }
+    .meta { font-size: 13px; color: var(--muted); }
+    .section { padding: 48px 0 8px; scroll-margin-top: 24px; }
+    .section-heading { display: flex; align-items: flex-start; gap: 17px; margin-bottom: 21px; }
+    .number { border-top: 3px solid var(--teal); color: var(--teal); font-weight: 800; font-size: 15px; min-width: 33px; line-height: 2.6; }
+    code { font: .88em/1.8 ui-monospace, SFMono-Regular, Consolas, monospace; background: #e9eeee; padding: 2px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+    pre { background: #142f3b; color: #eaf5f6; padding: 24px; border-radius: 12px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 15px; line-height: 1.85; }
+    pre code { font-size: inherit; background: none; padding: 0; color: inherit; }
+    .key { color: #89e0ce; }
+    .value { color: #ffd688; }
+    .comment { color: #a3bdc5; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .grid > * { min-width: 0; }
+    .card { border: 1px solid var(--line); background: white; border-radius: 13px; padding: 24px; margin: 22px 0; }
+    .card-label { font-size: 13px; color: var(--muted); font-weight: 750; letter-spacing: .07em; margin-bottom: 16px; }
+    .note { border-left: 4px solid var(--teal); border-radius: 0 9px 9px 0; padding: 17px 21px; background: var(--mint); font-size: 16px; margin: 22px 0; }
+    .note strong { display: block; color: var(--teal); }
+    .note.warning { border-color: #c28c27; background: var(--sand); }
+    .note.warning strong { color: var(--amber); }
+    .note.error { border-color: var(--red); background: var(--rose); }
+    .note.error strong { color: var(--red); }
+    .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; margin: 22px 0; }
+    table { border-collapse: collapse; width: 100%; background: white; font-size: 15px; line-height: 1.7; }
+    th, td { text-align: left; vertical-align: top; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+    th { background: #eaf0ef; font-size: 13px; }
+    tr:last-child td { border-bottom: 0; }
+    .flow { max-width: 700px; margin: 0 auto; }
+    .flow-box { padding: 18px; text-align: center; border: 1px solid var(--line); border-radius: 10px; background: #f7f9f8; overflow-wrap: anywhere; }
+    .flow-box strong { display: block; }
+    .flow-box.primary { border-color: var(--teal); background: var(--mint); }
+    .flow-box.secondary { border-color: #adc3ea; background: var(--sky); }
+    .flow-arrow { text-align: center; font-size: 14px; color: var(--muted); padding: 12px 0; }
+    .branches { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    .branches > div { min-width: 0; }
+    .flow-caption { font-size: 14px; color: var(--muted); margin-top: 17px; }
+    .steps { padding-left: 25px; }
+    .steps li { margin: 14px 0; padding-left: 7px; }
+    .steps p { font-size: 16px; color: var(--muted); margin: 5px 0; }
+    .example-controls { display: flex; gap: 9px; flex-wrap: wrap; }
+    .example-controls button { font-size: 14px; padding: 8px 15px; background: white; color: var(--ink); border: 1px solid var(--line); border-radius: 7px; }
+    .example-controls button[aria-pressed="true"] { background: var(--teal); color: white; border-color: var(--teal); }
+    [hidden] { display: none !important; }
+    details { background: white; border: 1px solid var(--line); border-radius: 9px; padding: 15px 20px; margin: 18px 0; }
+    summary { cursor: pointer; font-weight: 700; }
+    footer { border-top: 1px solid var(--line); margin-top: 45px; padding-top: 24px; font-size: 14px; color: var(--muted); }
+    footer li { margin: 9px 0; }
+    @media (max-width: 1000px) {
+      :root { --nav-width: 210px; }
+      main { padding: 38px 28px; }
+      aside { padding: 27px 17px; }
+    }
+    @media (max-width: 760px) {
+      body { font-size: 17px; }
+      aside { position: static; width: auto; padding: 17px 20px; }
+      .nav-title { display: none; }
+      nav { display: flex; gap: 6px; overflow-x: auto; padding: 8px 0 3px; }
+      nav a { white-space: nowrap; font-size: 12px; margin: 0; padding: 6px 9px; }
+      main { margin: 0; padding: 25px 20px 45px; }
+      h1 { font-size: 34px; }
+      h2 { font-size: 25px; }
+      .lead { font-size: 18px; }
+      .grid, .branches { grid-template-columns: 1fr; }
+      .card { padding: 18px; }
+      pre { font-size: 13px; padding: 18px; }
+      th, td { padding: 11px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+    }
+    @media print {
+      aside, .example-controls { display: none !important; }
+      main { margin: 0; padding: 0; }
+      body { background: white; font-size: 11pt; }
+      h1 { font-size: 28pt; }
+      h2 { font-size: 20pt; }
+      .section { padding-top: 24px; }
+      .card, pre, .note, .flow-box { break-inside: avoid; }
+      pre { background: #eef2f4; color: #182f3c; }
+      .key { color: var(--teal); }
+      .value { color: var(--amber); }
+      .comment { color: var(--muted); }
+      .table-wrap { overflow: visible; }
+      [data-example-panel][hidden] { display: block !important; }
+      a { color: inherit; }
+    }
+
+    .reading { font-size: 19px; }
+    .reading pre, .reading table { font-size: .92em; }
+    .reading th { font-size: .95em; }
+    .reading h2 { font-size: 1.5em; }
+    .reading h3 { font-size: 1.15em; }
+    .reading .lead, .reading .note { font-size: 1em; }
+    .size-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 14px 0; }
+    .size-controls label { cursor: pointer; border: 1px solid var(--line); background: white; border-radius: 8px; padding: 8px 12px; }
+    .size-controls label:has(input:checked) { background: var(--mint); border-color: var(--teal); }
+    main:has(#large:checked) .reading { font-size: 22px; }
+    main:has(#largest:checked) .reading { font-size: 25px; }
+    .op { color: #d6b6ff; }
+    .syntax { color: #a5d5ff; }
+    .string { color: #ffb8cb; }
+    .reading .legend { font-size: .85em; color: var(--muted); }
+    @media print { .size-controls { display: none; } .reading { font-size: 11pt !important; } .op { color: #6437a2; } .syntax { color: #215589; } .string { color: #96314f; } }
+</style>
+</head>
+<body>
+  <aside><div class="brand">PDFMOD · PDF GUIDE</div><p class="nav-title">パターンと<br>シェーディング</p><nav aria-label="目次">
+    <a href="#role">1. 何を表すか</a><a href="#pattern">2. タイルと色</a><a href="#shading">3. 色変化の定義</a><a href="#resolve">4. 名前を解決する</a><a href="#boundary">5. 境界と警告</a><a href="#api">6. 実装と使い方</a>
+  </nav></aside>
+  <main id="top"><div class="content">
+    <div class="size-controls" role="group" aria-label="文字サイズ"><strong>文字サイズ</strong><label><input type="radio" name="size" id="normal" checked> 標準</label><label><input type="radio" name="size" id="large"> 大きく</label><label><input type="radio" name="size" id="largest"> さらに大きく</label></div>
+    <div class="reading">
+      <header><div class="eyebrow">色を繰り返す・滑らかに変える</div><h1>パターンと<br>シェーディング</h1><p class="lead">PDFの色は、RGBの数値だけではありません。小さな絵を敷き詰める定義も、場所ごとに色が変わる定義も、リソース名を通して選択できます。</p><p class="legend">コードは名前＝緑、数値＝黄、参照・構文＝青、命令＝紫、コメント＝灰で色分けしています。</p></header>
+      <section class="section" id="role"><h2>1. パターンとシェーディングの違い</h2>
+        <div class="grid"><div class="card"><h3>パターン（Pattern）</h3><p>図形を塗るときの「色」として選択する仕組みです。<code>/Pattern</code> 色空間を選び、<code>scn</code> または <code>SCN</code> でパターン名を渡します。</p><p><strong>種別1</strong>はタイル、<strong>種別2</strong>はシェーディングを使うパターンです。</p></div><div class="card"><h3>シェーディング（Shading）</h3><p>場所によって色がどう変わるかを記述する定義です。軸方向・放射状・メッシュなど7種類があり、パターンの内部からも参照されます。</p><p><code>/S1 sh</code> は現在の <code>/Shading</code> 辞書から定義を選択する命令です。</p></div></div>
+        <div class="note"><strong>定義を読む段階と、描画する段階</strong>今回の実装は辞書の取得・種別の判別・主要属性の保持までです。以下で説明する敷き詰めやグラデーションの画素描画、関数評価は実装していません。</div>
+      </section>
+      <section class="section" id="pattern"><h2>2. タイリングパターンと基底色</h2>
+        <p>タイリング（tiling）は、一つのセルを一定間隔で繰り返す仕組みです。セルの命令列はPDFストリームにあり、<code>/BBox</code> がセルの境界、<code>/XStep</code> と <code>/YStep</code> が繰り返し間隔を表します。</p>
+        <p>次は構造を示す抜粋です。セルは8×8、繰り返し間隔は10です。ストリーム長とページ全体の構造は省略しています。</p>
+        <pre><code><span class="key">/Resources</span> <span class="syntax">&lt;&lt;</span> <span class="key">/Pattern</span> <span class="syntax">&lt;&lt;</span> <span class="key">/P1</span> <span class="value">10</span> <span class="value">0</span> <span class="syntax">R</span> <span class="syntax">&gt;&gt;</span> <span class="syntax">&gt;&gt;</span>
+<span class="value">10</span> <span class="value">0</span> <span class="syntax">obj</span>
+<span class="syntax">&lt;&lt;</span> <span class="key">/Type</span> <span class="key">/Pattern</span> <span class="key">/PatternType</span> <span class="value">1</span>
+   <span class="key">/PaintType</span> <span class="value">1</span> <span class="key">/TilingType</span> <span class="value">1</span>
+   <span class="key">/BBox</span> <span class="syntax">[</span><span class="value">0</span> <span class="value">0</span> <span class="value">8</span> <span class="value">8</span><span class="syntax">]</span> <span class="key">/XStep</span> <span class="value">10</span> <span class="key">/YStep</span> <span class="value">10</span>
+   <span class="key">/Resources</span> <span class="syntax">&lt;&lt;</span> <span class="syntax">&gt;&gt;</span> <span class="syntax">&gt;&gt;</span>
+<span class="syntax">stream</span>
+<span class="value">.2</span> <span class="value">.5</span> <span class="value">.8</span> <span class="op">rg</span>
+<span class="value">0</span> <span class="value">0</span> <span class="value">8</span> <span class="value">8</span> <span class="op">re</span> <span class="op">f</span>
+<span class="syntax">endstream</span>
+<span class="syntax">endobj</span></code></pre>
+        <div class="table-wrap"><table><thead><tr><th>属性</th><th>意味</th><th>今回の保持方法</th></tr></thead><tbody>
+          <tr><td>PatternType</td><td>1＝タイリング、2＝シェーディングパターン</td><td>種別番号を判別子にした型</td></tr>
+          <tr><td>PaintType</td><td>1＝セル内で色を指定、2＝呼び出し側から色を渡す</td><td>1または2に限定</td></tr>
+          <tr><td>TilingType</td><td>1＝間隔一定、2＝形状の歪みを避ける、3＝高速化を許す間隔一定</td><td>1〜3に限定</td></tr>
+          <tr><td>BBox / XStep / YStep</td><td>境界と間隔。間隔は0以外で、負の値も指定可能</td><td>4個の有限座標と有限な間隔</td></tr>
+          <tr><td>Resources</td><td>セル自身が使うローカルリソース</td><td>辞書を取得して保持。内部の再帰実行は後段</td></tr>
+          <tr><td>Matrix</td><td>パターン座標から既定のユーザー座標への変換</td><td>6要素。省略時は単位行列</td></tr>
+        </tbody></table></div>
+        <h3>着色パターン</h3><p><code>PaintType 1</code> はセルが色を持ちます。基底色空間を伴わない <code>/Pattern</code> を選択し、数値成分を渡さず名前だけを指定します。次の <code>/P1</code> は種別1・着色として定義済みとします。</p><pre><code><span class="key">/Pattern</span> <span class="op">cs</span>      <span class="comment">% 塗りの色空間を選択</span>
+<span class="key">/P1</span> <span class="op">scn</span>          <span class="comment">% 数値成分は不要、最後にパターン名</span></code></pre>
+        <h3>非着色パターン</h3><p><code>PaintType 2</code> はセルが形状を持ち、色は呼び出し側が渡します。例えば <code>[/Pattern /DeviceRGB]</code> はRGBの3成分と名前を受け取ります。<code>/P2</code> は非着色として定義済みとします。</p><pre><code><span class="comment">% /Resources内の色空間定義</span>
+<span class="key">/ColorSpace</span> <span class="syntax">&lt;&lt;</span> <span class="key">/Pat</span> <span class="syntax">[</span><span class="key">/Pattern</span> <span class="key">/DeviceRGB</span><span class="syntax">]</span> <span class="syntax">&gt;&gt;</span>
+<span class="comment">% コンテンツストリーム</span>
+<span class="key">/Pat</span> <span class="op">cs</span>
+<span class="value">.1</span> <span class="value">.2</span> <span class="value">.3</span> <span class="key">/P2</span> <span class="op">scn</span></code></pre>
+        <p>小文字の <code>cs / scn</code> は塗り、大文字の <code>CS / SCN</code> は輪郭に作用します。<code>sc / SC</code> はPatternには使用できません。基底色の有無と着色方式が食い違う組み合わせもエラーになります。</p>
+      </section>
+      <section class="section" id="shading"><h2>3. シェーディングの7種類</h2>
+        <p>シェーディングは色変化の計算方法を <code>/ShadingType</code> で選びます。型1〜3は関数で色を定義し、型4〜7はストリーム内のメッシュを使います。</p>
+        <div class="table-wrap"><table><thead><tr><th>番号</th><th>種類</th><th>考え方</th></tr></thead><tbody>
+          <tr><td>1</td><td>関数ベース</td><td>2次元の位置から色を求める</td></tr><tr><td>2</td><td>軸方向</td><td>2点を結ぶ軸に沿って色が変わる</td></tr><tr><td>3</td><td>放射状</td><td>二つの円を基に色が変わる</td></tr><tr><td>4</td><td>フリーフォーム</td><td>自由に連結した三角形メッシュ</td></tr><tr><td>5</td><td>ラティス</td><td>格子状の三角形メッシュ</td></tr><tr><td>6</td><td>クーンズパッチ</td><td>曲線の境界でパッチを定義</td></tr><tr><td>7</td><td>テンソル積パッチ</td><td>内部制御点も使うパッチ</td></tr>
+        </tbody></table></div>
+        <p>次は軸方向の定義を二つの経路から使う抜粋です。<code>20 0 R</code> と <code>21 0 R</code> は間接参照で、オブジェクト番号・世代番号・参照記号の順です。<code>/Function</code> のオブジェクト本体は省略しています。</p><pre><code><span class="key">/Resources</span> <span class="syntax">&lt;&lt;</span>
+  <span class="key">/Pattern</span> <span class="syntax">&lt;&lt;</span> <span class="key">/P3</span> <span class="syntax">&lt;&lt;</span> <span class="key">/PatternType</span> <span class="value">2</span> <span class="key">/Shading</span> <span class="value">20</span> <span class="value">0</span> <span class="syntax">R</span> <span class="syntax">&gt;&gt;</span> <span class="syntax">&gt;&gt;</span>
+  <span class="key">/Shading</span> <span class="syntax">&lt;&lt;</span> <span class="key">/S1</span> <span class="value">20</span> <span class="value">0</span> <span class="syntax">R</span> <span class="syntax">&gt;&gt;</span>
+<span class="syntax">&gt;&gt;</span>
+<span class="value">20</span> <span class="value">0</span> <span class="syntax">obj</span>
+<span class="syntax">&lt;&lt;</span> <span class="key">/ShadingType</span> <span class="value">2</span> <span class="key">/ColorSpace</span> <span class="key">/DeviceRGB</span>
+   <span class="key">/Background</span> <span class="syntax">[</span><span class="value">.1</span> <span class="value">.2</span> <span class="value">.3</span><span class="syntax">]</span> <span class="key">/BBox</span> <span class="syntax">[</span><span class="value">0</span> <span class="value">0</span> <span class="value">200</span> <span class="value">100</span><span class="syntax">]</span>
+   <span class="key">/Coords</span> <span class="syntax">[</span><span class="value">0</span> <span class="value">0</span> <span class="value">200</span> <span class="value">0</span><span class="syntax">]</span> <span class="key">/Function</span> <span class="value">21</span> <span class="value">0</span> <span class="syntax">R</span> <span class="syntax">&gt;&gt;</span>
+<span class="syntax">endobj</span>
+<span class="comment">% パターン経由の選択</span>
+<span class="key">/Pattern</span> <span class="op">cs</span> <span class="key">/P3</span> <span class="op">scn</span>
+<span class="comment">% シェーディングの直接指定</span>
+<span class="key">/S1</span> <span class="op">sh</span></code></pre>
+        <p><code>/ColorSpace</code> は色の表現、任意の <code>/Background</code> は背景の成分、任意の <code>/BBox</code> はシェーディングの境界です。この段階では色空間の名前または配列を取得して保持し、背景の成分数や関数固有の値域の検証は後段に残します。</p>
+        <div class="note warning"><strong>Functionは参照のまま</strong><code>/Function 21 0 R</code> を見つけてもオブジェクト21を読みません。直接の関数辞書・関数配列も元の値として保持します。関数評価とメッシュの展開をここへ混ぜないためです。</div>
+      </section>
+      <section class="section" id="resolve"><h2>4. 名前から定義に到達する</h2>
+        <p>同じ <code>/P1</code> という名前でも、ページやフォームが違えば別の定義を指せます。現在のスコープだけを引き、別ページの定義へフォールバックしません。</p>
+        <div class="branches"><div><div class="flow-box primary"><strong>/Pattern cs → /P1 scn</strong>パターン色を選択</div><div class="flow-arrow">現在のResourcesから参照 ↓</div><div class="flow-box"><strong>/Pattern → /P1</strong>種別1のセル、または種別2のShading</div></div><div><div class="flow-box secondary"><strong>/S1 sh</strong>シェーディングを指定</div><div class="flow-arrow">現在のResourcesから参照 ↓</div><div class="flow-box"><strong>/Shading → /S1</strong>ShadingType 1〜7と共通属性</div></div></div>
+        <ol class="steps"><li><strong>ページのリソースを準備する。</strong><p>継承とResources自体の解決は既存のページ処理が担当します。</p></li><li><strong>非同期で定義を取得する。</strong><p>PaintResourcesがカテゴリ・各定義・主要属性の間接参照を解決します。座標と背景色では配列の各要素も解決します。</p></li><li><strong>同期の命令に渡す。</strong><p>scn / SCNが名前を引いて着色方式を検証し、shがShadingの名前を引きます。命令のたびに非同期I/Oは行いません。</p></li><li><strong>状態と警告を返す。</strong><p>パターン名と数値成分は色状態に保存されq/Qの対象です。shは色・色空間・パス・クリップを変更しません。</p></li></ol>
+      </section>
+      <section class="section" id="boundary"><h2>5. 不正入力・未知の種別・参照エラー</h2>
+        <div class="table-wrap"><table><thead><tr><th>入力</th><th>今回の結果</th></tr></thead><tbody>
+          <tr><td>Pattern以外で名前の色オペランド</td><td>数値として受理せず型・個数エラー</td></tr><tr><td>基底RGBで数値2個＋パターン名</td><td>必要な数値3個に足りず個数エラー</td></tr><tr><td>存在しないパターン / シェーディング</td><td>PATTERN_NOT_FOUND / SHADING_NOT_FOUNDの警告</td></tr><tr><td>未知・欠落の種別番号</td><td>元オブジェクトをUnknownとして保持し、使用位置でUNSUPPORTEDの警告</td></tr><tr><td>セル間隔0・座標の個数不足・メッシュがストリーム以外</td><td>INVALIDの警告。既定値で正しい定義に見せない</td></tr><tr><td>カテゴリの参照解決エラー</td><td>準備時に元のエラーを返す</td></tr><tr><td>個別定義や主要属性の参照解決エラー</td><td>その名前を使用する命令までエラーを保持</td></tr>
+        </tbody></table></div>
+        <p>警告による回復はpdfmodの方針です。未知の定義を描画できると判断した意味ではありません。関数評価前のため、すべてのシェーディング固有の必須キーまで検証する段階でもありません。</p>
+        <p>名前が見つからないパターンでも指定名と数値成分は色状態へ保持し、後続命令を処理します。shの定義が不正でも、警告のあとに来る命令を処理できます。</p>
+      </section>
+      <section class="section" id="api"><h2>6. 実装の入口と対応範囲</h2>
+        <p>呼び出し側は同じResourcesから色空間と描画定義を準備し、結果を確認してからレジストリへ渡します。次は成功経路に絞ったTypeScriptの抜粋です。</p>
+        <pre><code>const spaces = await ColorSpaceResources.fromResources(resources, resolveRef);
+if (!spaces.ok) {
+  return spaces;
+}
+
+const paints = await PaintResources.fromResources(resources, resolveRef);
+if (!paints.ok) {
+  return paints;
+}
+
+const registry = OperatorRegistry.createDefault(undefined, spaces.value, paints.value);</code></pre>
+        <p><code>paints.value.patterns</code> と <code>shadings</code> の名前別結果から、型付き定義を参照できます。パターンの結果は1・2・Unknown、シェーディングの結果は1〜7・Unknownで判別します。成功・エラーと値の有無はそれぞれ別に確認してください。</p>
+        <div class="grid"><div class="card"><h3>対応した範囲</h3><p>間接参照の解決、種別と主要属性の保持、オペランド検証、警告、shの登録です。メッシュのバイト列は未復号で保持します。</p></div><div class="card"><h3>後段の処理</h3><p>Functionの評価、実際の塗り、セルの再帰実行、メッシュ復号、色変換、シェーディング固有のすべての属性の検証です。Rust側には対応する命令実行層がまだないため、今回の変更はTypeScript側です。</p></div></div>
+      </section>
+    </div><footer><a href="#top">↑ 先頭に戻る</a> · <a href="resources.html">リソース辞書の解説へ</a></footer>
+  </div></main>
+
+</body>
+</html>

@@ -11,6 +11,21 @@ export {
 } from "./content-stream/graphics-state/blend-mode/index";
 export { SoftMask } from "./content-stream/graphics-state/soft-mask/index";
 export { TextFont } from "./content-stream/graphics-state/text-font/index";
+export { PaintResources } from "./content-stream/paint-resources/index";
+export {
+  PdfPattern,
+  type PdfPatternPaintType,
+  PdfPatternPaintTypes,
+  type PdfPatternTilingType,
+  PdfPatternTilingTypes,
+  type PdfPatternType,
+  PdfPatternTypes,
+} from "./document/resources/pattern/index";
+export {
+  PdfShading,
+  type PdfShadingType,
+  PdfShadingTypes,
+} from "./document/resources/shading/index";
 /**
  * `@pdfmod/core` — PDF処理エンジン。
  * ISO 32000-1:2008 (PDF 1.7) およびISO 32000-2:2020 (PDF 2.0) 準拠のPDF字句解析・構造解析を提供する。

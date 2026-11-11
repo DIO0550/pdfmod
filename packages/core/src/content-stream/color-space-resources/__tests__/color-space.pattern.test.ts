@@ -1,5 +1,6 @@
 import { assert, expect, test } from "vitest";
 import { GraphicsStateStack } from "../../graphics-state/index";
+import { tilingPattern } from "../../paint-resources/__tests__/setup-paint";
 import { executeColorSpace } from "./setup-color-space";
 
 test.each([
@@ -44,7 +45,8 @@ test.each([
   target,
 }) => {
   const result = await executeColorSpace({
-    resources: `<< /ColorSpace << /Pat ${definition} >> >>`,
+    resources: `<< /ColorSpace << /Pat ${definition} >> /Pattern << /P1 1 0 R >> >>`,
+    objects: [tilingPattern(components.length > 0 ? "/PaintType 2" : "")],
     content: `/Pat ${selection} ${operands} ${operatorName}`,
   });
   assert(result.ok);

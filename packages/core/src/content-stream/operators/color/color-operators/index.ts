@@ -4,6 +4,7 @@ import { flatMap, ok } from "../../../../utils/result/index";
 import { ColorSpaceResources } from "../../../color-space-resources/index";
 import type { OperatorHandler } from "../../../operator-registry/index";
 import { OperatorRegistry } from "../../../operator-registry/index";
+import { PaintResources } from "../../../paint-resources/index";
 import { kHandler } from "../cmyk/fill";
 import { KHandler } from "../cmyk/stroke";
 import { gHandler } from "../gray/fill";
@@ -36,15 +37,18 @@ const COLOR_OPERATORS: ReadonlyArray<readonly [string, OperatorHandler]> = [
  *
  * @param registry - 登録元 registry
  * @param colorSpaces - 実行対象スコープの解決済み色空間
+ * @param paints - 実行対象スコープのパターンリソース
  * @returns 全 operator が登録された新しい registry、または重複登録時の PdfError
  */
 export const registerColorOperators = (
   registry: OperatorRegistry,
   colorSpaces: ColorSpaceResources = ColorSpaceResources.empty(),
+  paints: PaintResources = PaintResources.empty(),
 ): Result<OperatorRegistry, PdfError> =>
-  [...COLOR_OPERATORS, ...ColorSpaceOperators.create(colorSpaces)].reduce<
-    Result<OperatorRegistry, PdfError>
-  >(
+  [
+    ...COLOR_OPERATORS,
+    ...ColorSpaceOperators.create(colorSpaces, paints),
+  ].reduce<Result<OperatorRegistry, PdfError>>(
     (acc, [name, handler]) =>
       flatMap(acc, (r) => OperatorRegistry.register(r, name, handler)),
     ok(registry),

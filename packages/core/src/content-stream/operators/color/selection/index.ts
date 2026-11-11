@@ -17,6 +17,7 @@ import type {
   OperatorHandler,
   OperatorHandlerContext,
 } from "../../../operator-registry/index";
+import { PaintResources } from "../../../paint-resources/index";
 import { OperandExtractor } from "../../operand-extractor/index";
 
 type ColorTarget = "fill" | "stroke";
@@ -26,18 +27,20 @@ export const ColorSpaceOperators = {
   /**
    * 現在のスコープのリソースを使用するハンドラを作る。
    * @param resources - 解決済みの色空間リソース
+   * @param paints - 解決済みのパターンリソース
    * @returns 登録する命令名とハンドラの組
    */
   create(
     resources: ColorSpaceResources = ColorSpaceResources.empty(),
+    paints: PaintResources = PaintResources.empty(),
   ): ReadonlyArray<readonly [string, OperatorHandler]> {
     return [
       ["cs", ColorSpaceOperators.select("fill", resources)],
       ["CS", ColorSpaceOperators.select("stroke", resources)],
-      ["sc", ColorSpaceOperators.setColor("sc", "fill")],
-      ["SC", ColorSpaceOperators.setColor("SC", "stroke")],
-      ["scn", ColorSpaceOperators.setColor("scn", "fill")],
-      ["SCN", ColorSpaceOperators.setColor("SCN", "stroke")],
+      ["sc", ColorSpaceOperators.setColor("sc", "fill", paints)],
+      ["SC", ColorSpaceOperators.setColor("SC", "stroke", paints)],
+      ["scn", ColorSpaceOperators.setColor("scn", "fill", paints)],
+      ["SCN", ColorSpaceOperators.setColor("SCN", "stroke", paints)],
     ];
   },
 
@@ -87,11 +90,13 @@ export const ColorSpaceOperators = {
    * 現在の色空間の成分数を検証して色値を更新する。
    * @param operatorName - 色指定命令
    * @param target - 塗りまたは輪郭
+   * @param resources - 解決済みのパターンリソース
    * @returns 個数・型の不一致を Err にするハンドラ
    */
   setColor(
     operatorName: ColorOperation["operatorName"],
     target: ColorTarget,
+    resources: PaintResources,
   ): OperatorHandler {
     return (context) => {
       const state = GraphicsStateStack.current(context.graphicsStateStack);
@@ -132,12 +137,40 @@ export const ColorSpaceOperators = {
         return values;
       }
 
-      return ok(
-        ColorSpaceOperators.update(context, target, {
-          color: Color.fromComponents(space, values.value, patternName.value),
-          space,
-        }),
-      );
+      const pattern = patternName.value.some
+        ? (resources.patterns.get(patternName.value.value) ?? ok(none))
+        : ok(none);
+      if (!pattern.ok) {
+        return pattern;
+      }
+
+      const patternError = pattern.value.some
+        ? ColorOperation.patternError(
+            { colorSpace: space, operatorName },
+            pattern.value.value,
+          )
+        : none;
+      if (patternError.some) {
+        return err(patternError.value);
+      }
+
+      const warnings = pattern.value.some ? pattern.value.value.warnings : [];
+      const missingPattern = patternName.value.some && !pattern.value.some;
+      const next = ColorSpaceOperators.update(context, target, {
+        color: Color.fromComponents(space, values.value, patternName.value),
+        space,
+      });
+      return ok({
+        ...next,
+        warnings: missingPattern
+          ? [
+              {
+                code: "PATTERN_NOT_FOUND",
+                message: `Pattern resource not found: /${patternName.value.value}`,
+              },
+            ]
+          : warnings,
+      });
     };
   },
 
