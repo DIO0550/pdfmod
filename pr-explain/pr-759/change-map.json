@@ -4,7 +4,7 @@
   "headBranch": "feature/677-pattern-shading-v2",
   "baseBranch": "main",
   "mergeBase": "8c0e15ce6f1f04a2e1994a30a4fbadcf3bea68c6",
-  "head": "6199a8cc3535548878dc43c84807f9046997cb89",
+  "head": "7c552357e86bf5f8d57573cb47f1a33516b05c55",
   "groups": [
     {
       "label": "TypeScript · core",
@@ -1213,7 +1213,7 @@
           "path": "packages/core/src/content-stream/paint-resources/__tests__/paint-resources.integration.test.ts",
           "status": "A",
           "oldPath": null,
-          "additions": 85,
+          "additions": 89,
           "deletions": 0,
           "changed": true,
           "target": "packages/core/src/content-stream/paint-resources/index.ts"
@@ -1973,6 +1973,36 @@
               "new": "<style>"
             }
           ]
+        }
+      ]
+    },
+    {
+      "sha": "7c552357e86bf5f8d57573cb47f1a33516b05c55",
+      "merge": false,
+      "author": "DIO0550",
+      "date": "2026-11-11T21:58:29+09:00",
+      "subject": "fix(core): include the pattern name in missing resource warnings",
+      "body": "",
+      "files": [
+        {
+          "path": "packages/core/src/content-stream/operators/color/selection/index.ts",
+          "status": "M",
+          "oldPath": null,
+          "additions": 1,
+          "deletions": 1,
+          "patch": "@@ -166,7 +166,7 @@ export const ColorSpaceOperators = {\n           ? [\n               {\n                 code: \"PATTERN_NOT_FOUND\",\n-                message: \"Pattern resource not found\",\n+                message: `Pattern resource not found: /${patternName.value.value}`,\n               },\n             ]\n           : warnings,",
+          "patchLines": 9,
+          "truncated": false
+        },
+        {
+          "path": "packages/core/src/content-stream/paint-resources/__tests__/paint-resources.integration.test.ts",
+          "status": "M",
+          "oldPath": null,
+          "additions": 5,
+          "deletions": 1,
+          "patch": "@@ -80,6 +80,10 @@ test(\"別のページの同名パターンへフォールバックしない\", as\n \n   expect(first.value.warnings).toEqual([]);\n   expect(second.value.warnings).toMatchObject([\n-    { code: \"PATTERN_NOT_FOUND\", offset: 16 },\n+    {\n+      code: \"PATTERN_NOT_FOUND\",\n+      message: \"Pattern resource not found: /P1\",\n+      offset: 16,\n+    },\n   ]);\n });",
+          "patchLines": 12,
+          "truncated": false
         }
       ]
     }
