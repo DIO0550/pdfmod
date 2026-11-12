@@ -18,6 +18,7 @@ import {
   type OperatorHandlerContext,
   OperatorRegistry,
 } from "../operator-registry/index";
+import type { ContentStreamResources } from "../resources/index";
 import { ContentStreamTokenizer } from "../tokenizer/index";
 import { readArrayOperand, readDictOperand } from "./composite-operand/index";
 
@@ -31,6 +32,8 @@ export type ContentStreamInterpreterExecuteOptions = {
   readonly registry?: OperatorRegistry;
   /** 呼び出し側が指定する任意の初期 context（省略時は新規生成される） */
   readonly initialContext?: OperatorHandlerContext;
+  /** 実行対象のリソース。指定時は initialContext のスコープより優先される。 */
+  readonly resources?: ContentStreamResources;
 };
 
 /**
@@ -63,7 +66,7 @@ export const ContentStreamInterpreter = {
   /**
    * Content stream の token 列をRPNとしてEOFまで逐次実行する。
    *
-   * @param options - 入力データ、任意のoperator registry（省略時はデフォルト）、任意の初期context
+   * @param options - 入力データ、任意の registry、初期 context、解決済みリソース
    * @returns 最終context、またはtokenize / 変換 / handlerのエラー
    */
   execute(
@@ -78,8 +81,12 @@ export const ContentStreamInterpreter = {
     }
     const registry = registryResult.value;
 
+    const resources = options.resources ?? options.initialContext?.resources;
     const tokenizer = new ContentStreamTokenizer(options.data);
-    let context = createInitialContext(options.initialContext);
+    let context = withResources(
+      createInitialContext(options.initialContext),
+      resources,
+    );
     const warnings: PdfWarning[] = [];
 
     while (true) {
@@ -109,10 +116,18 @@ export const ContentStreamInterpreter = {
         warnings.push(warning);
       }
 
-      context = step.value.context;
+      context = withResources(step.value.context, resources);
     }
   },
 } as const;
+
+/** ハンドラが従来のフィールドだけを返しても、実行開始時のスコープを保つ。 */
+function withResources(
+  context: OperatorHandlerContext,
+  resources: ContentStreamResources | undefined,
+): OperatorHandlerContext {
+  return context.resources === resources ? context : { ...context, resources };
+}
 
 /**
  * 1 token を分類して以下のいずれかを実行する:

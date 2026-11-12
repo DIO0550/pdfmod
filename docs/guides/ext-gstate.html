@@ -188,10 +188,17 @@ endobj
 <section class="section" id="parameters"><h2>03　パラメータと型</h2><div class="table-wrap"><table><thead><tr><th>キー</th><th>PDFの値</th><th>現在の状態での役割</th></tr></thead><tbody>
 <tr><td><code>/LW</code></td><td>数値</td><td>線幅。<code>w</code> と同じ値を更新</td></tr><tr><td><code>/LC</code></td><td>整数 0 / 1 / 2</td><td>線端。順に平端・丸端・突出した四角端</td></tr><tr><td><code>/LJ</code></td><td>整数 0 / 1 / 2</td><td>線接合。順にマイター・丸・面取り</td></tr><tr><td><code>/ML</code></td><td>数値</td><td>マイター限界。<code>M</code> と同じ値を更新</td></tr><tr><td><code>/D</code></td><td><code>[[2 3] 1]</code></td><td>描画長2・空白長3を繰り返し、開始位置を1ずらす</td></tr><tr><td><code>/CA /ca</code></td><td>0〜1</td><td>輪郭／塗りの不透明度</td></tr><tr><td><code>/BM</code></td><td>名前 または 名前の配列</td><td>背景と描画色を混ぜる方式</td></tr><tr><td><code>/SMask</code></td><td>辞書 または <code>/None</code></td><td>位置ごとの透明度を与えるマスク、または解除</td></tr><tr><td><code>/Font</code></td><td><code>[font_ref size]</code></td><td>フォント辞書とサイズ</td></tr></tbody></table></div>
 <p>ブレンドモードは、たとえば <code>/Normal</code>（通常）、<code>/Multiply</code>（乗算）、<code>/Screen</code>（スクリーン）です。配列 <code>[/Future /Multiply /Screen]</code> は優先順位を表し、最初に対応できるモードを使います。この実装では <code>Multiply</code> が選ばれます。対応できる名前のない配列は <code>Normal</code> になります。</p><div class="note warning"><strong>状態の保持と、実際の描画は別</strong>この実装は透明度・ブレンドモード・ソフトマスクを状態として保持します。ピクセルの合成、透明グループの描画、ソフトマスク辞書の内部検証は実装範囲外です。線幅・マイター・破線の値域検証も既存の専用オペレータと同様に今後の範囲です。</div></section>
-<section class="section" id="font"><h2>04　フォント指定の違い</h2><div class="grid"><div class="card"><h3>命令で指定する場合</h3><pre><code><span class="key">/F1</span> <span class="value">12</span> <span class="op">Tf</span></code></pre><p><code>F1</code> はリソースの <code>/Font</code> 内を引くための名前です。テキスト状態は名前指定を保持します。</p></div><div class="card"><h3>拡張状態で指定する場合</h3><pre><code><span class="key">/Font</span> [<span class="value">6 0 R 12</span>]</code></pre><p>配列の先頭はフォント辞書への参照です。<code>/F1</code> ではありません。参照を解決して、辞書とサイズ12を保持します。</p></div></div>
-<p>TypeScriptでは、名前指定と辞書指定を判別可能なユニオンとして表します。<code>type</code> を見れば、次に読める値が <code>name</code> か <code>dictionary</code> かが決まります。</p><pre><code><span class="op">type</span> TextFont =
-  | { <span class="key">readonly type</span>: <span class="value">"name"</span>; <span class="key">readonly name</span>: string }
-  | { <span class="key">readonly type</span>: <span class="value">"dictionary"</span>; <span class="key">readonly dictionary</span>: PdfDictionary };</code></pre><p>どちらの指定も、同じ <code>TextState.withFont</code> を通ります。<code>gs</code> の後に <code>Tf</code> が来れば名前指定へ置き換わり、以前の辞書と新しい名前が併存することはありません。文字間隔や行送りなどは保持します。既存の <code>fontName</code> は <code>font</code> から求める読み取り用アクセサで、辞書指定では <code>None</code> を返します。</p></section>
+<section class="section" id="font"><h2>04　フォント指定の違い</h2>
+  <div class="grid">
+    <div class="card"><h3>命令で指定する場合</h3><pre><code><span class="key">/F1</span> <span class="value">12</span> <span class="op">Tf</span></code></pre><p><code>F1</code> はリソースの <code>/Font</code> 内を引くための名前です。テキスト状態に名前・サイズと取得できた辞書を保持します。</p></div>
+    <div class="card"><h3>拡張状態で指定する場合</h3><pre><code><span class="key">/Font</span> [6 0 R <span class="value">12</span>]</code></pre><p>配列の先頭はフォント辞書への間接参照です。オブジェクト6を解決し、辞書とサイズ12を保持します。</p></div>
+  </div>
+  <p>TypeScriptの <code>TextFont</code> は、<code>type</code> によって2種類の指定を区別します。</p>
+  <pre><code><span class="op">type</span> TextFont =
+  | { <span class="key">readonly type</span>: <span class="value">"name"</span>; <span class="key">readonly name</span>: string; <span class="key">readonly dictionary?</span>: PdfDictionary }
+  | { <span class="key">readonly type</span>: <span class="value">"dictionary"</span>; <span class="key">readonly dictionary</span>: PdfDictionary };</code></pre>
+  <p>どちらの指定も <code>TextState.withFont</code> を通り、現在のフォント指定を置き換えます。文字間隔や行送りは引き継ぎます。<code>fontName</code> は名前指定のときにその名前を返し、辞書指定では <code>None</code> を返します。</p>
+</section>
 <section class="section" id="scope"><h2>05　保存と復元</h2><p><code>q</code> は現在のグラフィックス状態を保存し、<code>Q</code> は直前に保存した状態を復元します。拡張状態も同じ状態に入るため、専用の「拡張状態スタック」は必要ありません。</p><pre><code><span class="value">5</span> <span class="op">w</span>
 <span class="op">q</span>
   <span class="key">/GS1</span> <span class="op">gs</span>   <span class="comment">% LW=3, ca=0.4</span>
@@ -199,23 +206,25 @@ endobj
     <span class="value">9</span> <span class="op">w</span>
   <span class="op">Q</span>
 <span class="op">Q</span></code></pre><div class="table-wrap"><table><thead><tr><th>実行したところ</th><th>現在の線幅</th><th>塗りの不透明度</th></tr></thead><tbody><tr><td>最初の <code>5 w</code></td><td>5</td><td>1</td></tr><tr><td><code>/GS1 gs</code></td><td>3</td><td>0.4</td></tr><tr><td><code>9 w</code></td><td>9</td><td>0.4</td></tr><tr><td>内側の <code>Q</code></td><td>3</td><td>0.4</td></tr><tr><td>外側の <code>Q</code></td><td>5</td><td>1</td></tr></tbody></table></div></section>
-<section class="section" id="recovery"><h2>06　警告と回復</h2><p>以下はpdfmodの回復方針です。仕様上不正な値を推奨するものではありません。</p><div class="table-wrap"><table><thead><tr><th>入力</th><th>結果</th></tr></thead><tbody><tr><td><code>&lt;&lt; /LW 3 /Unknown true /ca .4 &gt;&gt;</code></td><td>未知キーを警告し、線幅3・不透明度0.4を適用</td></tr><tr><td><code>&lt;&lt; /CA 2 /LW 3 &gt;&gt;</code></td><td>範囲外の不透明度だけを警告して無視。以前の不透明度を保持し、線幅3を適用</td></tr><tr><td><code>/Missing gs</code></td><td>名前の不在を警告。状態を保持して次の命令へ進む</td></tr><tr><td>選択した辞書の参照先が構文エラー</td><td>原因のエラーをそのまま返す。未解決警告とは区別</td></tr><tr><td>未使用の名前の参照先が構文エラー</td><td>名前ごとにエラーを保持。別の正常な名前の実行は可能</td></tr></tbody></table></div><p>警告には <code>gs</code> 命令のバイト位置が付きます。同じ辞書を再度適用した場合は、その命令位置で再び警告します。後続の専用オペレータで警告が重複することはありません。</p></section>
-<section class="section" id="implementation"><h2>07　実装の使い方</h2><p>間接参照の解決は非同期、コンテンツストリームの実行は同期です。最初に現在のスコープの拡張状態を解決し、既定のレジストリを組み立てます。</p><pre><code><span class="op">const</span> prepared = <span class="op">await</span> ExtGStateResources.fromResources(
+<section class="section" id="recovery"><h2>06　警告と回復</h2><p>以下は実行スコープを渡したときのpdfmodの回復方針です。</p>
+  <div class="table-wrap"><table><thead><tr><th>入力</th><th>結果</th></tr></thead><tbody>
+    <tr><td><code>&lt;&lt; /LW 3 /Unknown true /ca .4 &gt;&gt;</code></td><td>未知キーを警告し、線幅3・不透明度0.4を適用</td></tr>
+    <tr><td><code>&lt;&lt; /CA 2 /LW 3 &gt;&gt;</code></td><td>範囲外の不透明度を警告。以前の不透明度を保持し、線幅3を適用</td></tr>
+    <tr><td><code>/Missing gs</code></td><td><code>EXT_GSTATE_NOT_FOUND</code>。状態を保持して続行</td></tr>
+    <tr><td>選択した辞書や内部の参照先が構文エラー</td><td><code>RESOURCES_RESOLVE_FAILED</code>。原因を報告し、状態を保持して続行</td></tr>
+    <tr><td>未使用の名前の参照先が構文エラー</td><td>取得結果に原因を保持。実行中の警告は追加しない</td></tr>
+  </tbody></table></div>
+  <p>警告には <code>gs</code> 命令のバイト位置が付きます。同じ辞書を再度使うと、新しい命令位置で警告します。</p>
+</section>
+<section class="section" id="implementation"><h2>07　実装の使い方</h2><p>間接参照を非同期で解決し、コンテンツストリームは準備したスコープを使って同期で実行します。</p><pre><code><span class="op">const</span> scope = <span class="op">await</span> ContentStreamResources.fromResources(
   resources, resolveRef,
 );
-<span class="op">if</span> (!prepared.ok) {
-  <span class="op">return</span> prepared;
-}
-
-<span class="op">const</span> registry = OperatorRegistry.createDefault(prepared.value);
-<span class="op">if</span> (!registry.ok) {
-  <span class="op">return</span> registry;
-}
-
 <span class="op">return</span> ContentStreamInterpreter.execute({
   data: contentBytes,
-  registry: registry.value,
-});</code></pre><p><code>Result</code> は成功の値と失敗の理由を分ける型です。<code>ok</code> を確認した後でだけ、成功値 <code>value</code> を使えます。準備時はカテゴリ全体を解決しますが、各名前の参照エラーはその名前を使うまで実行エラーになりません。ページやフォームのスコープが変わるときは、そのスコープ用に準備し直してください。</p><p><code>registerGraphicsStateOperators(registry, prepared.value)</code> で、グラフィックス関係だけを登録する方法もあります。<code>/OP</code>、<code>/RI</code> など今回扱わない辞書キーは未対応警告になります。<code>/Type</code> は描画パラメータではないため読み飛ばします。</p></section>
+  resources: scope,
+});</code></pre>
+  <p>各カテゴリ・名前の取得結果はスコープに保持されます。ページやフォームの辞書が変わるときは、その辞書を使って準備し直します。<code>/OP</code> や <code>/RI</code> など未対応の辞書キーは個別に警告します。<code>/Type</code> は辞書の種別として読み飛ばします。</p>
+</section>
 <footer>このページの例は説明用です。PDF全体の読み込みや描画処理を実行するデモではありません。</footer>
 </div></div></main>
 </body></html>

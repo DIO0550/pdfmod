@@ -93,30 +93,19 @@ export const ExtGStateResources = {
     resources: PdfResources,
     resolveRef: ResolveRef,
   ): Promise<Result<ExtGStateResources, PdfError>> {
-    const category = await PdfResources.getCategory(
+    const states = await PdfResources.readCategory(
       resources,
-      "ExtGState",
+      {
+        name: "ExtGState",
+        read: (object, resolve) =>
+          ExtGStateResources.parse(
+            ok(object.type === "dictionary" ? some(object) : none),
+            resolve,
+          ),
+      },
       resolveRef,
     );
-    if (!category.ok) {
-      return category;
-    }
-
-    if (!category.value.some) {
-      return ok(ExtGStateResources.empty());
-    }
-
-    const states = new Map<string, Result<Option<ExtGState>, PdfError>>();
-    for (const name of category.value.value.entries.keys()) {
-      const result = await PdfResources.getExtGState(
-        resources,
-        name,
-        resolveRef,
-      );
-      states.set(name, await ExtGStateResources.parse(result, resolveRef));
-    }
-
-    return ok({ states });
+    return states.ok ? ok({ states: states.value }) : states;
   },
 
   /**

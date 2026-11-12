@@ -2,8 +2,8 @@ import { PdfResources } from "../../document/resources/index";
 import { PdfPattern } from "../../document/resources/pattern/index";
 import { PdfShading } from "../../document/resources/shading/index";
 import type { PdfError } from "../../pdf/errors/index";
-import { type PdfObject, ResolveRef } from "../../pdf/types/index";
-import { none, type Option, some } from "../../utils/option/index";
+import type { PdfObject, ResolveRef } from "../../pdf/types/index";
+import { type Option, some } from "../../utils/option/index";
 import { map, ok, type Result } from "../../utils/result/index";
 
 /** 同期の色指定・描画命令から参照する、現在のスコープのパターンとシェーディング。 */
@@ -70,36 +70,14 @@ export const PaintResources = {
   ): Promise<
     Result<ReadonlyMap<string, Result<Option<T>, PdfError>>, PdfError>
   > {
-    const dictionary = await PdfResources.getCategory(
+    return PdfResources.readCategory(
       resources,
-      category.name,
+      {
+        name: category.name,
+        read: async (object, resolve) =>
+          map(await category.read(object, resolve), some),
+      },
       resolveRef,
     );
-    if (!dictionary.ok) {
-      return dictionary;
-    }
-
-    const values = new Map<string, Result<Option<T>, PdfError>>();
-    if (!dictionary.value.some) {
-      return ok(values);
-    }
-
-    for (const [name, value] of dictionary.value.value.entries) {
-      const resolved = await ResolveRef.object(value, resolveRef);
-      if (!resolved.ok) {
-        values.set(name, resolved);
-        continue;
-      }
-
-      if (!resolved.value.some) {
-        values.set(name, ok(none));
-        continue;
-      }
-
-      const parsed = await category.read(resolved.value.value, resolveRef);
-      values.set(name, map(parsed, some));
-    }
-
-    return ok(values);
   },
 } as const;

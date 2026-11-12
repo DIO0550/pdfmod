@@ -18,6 +18,7 @@ import type {
   OperatorHandlerContext,
 } from "../../../operator-registry/index";
 import { PaintResources } from "../../../paint-resources/index";
+import { ContentStreamResources } from "../../../resources/index";
 import { OperandExtractor } from "../../operand-extractor/index";
 
 type ColorTarget = "fill" | "stroke";
@@ -47,8 +48,8 @@ export const ColorSpaceOperators = {
   /**
    * 色空間を選択し、その色空間の初期色へ切り替える。
    * @param target - 塗りまたは輪郭
-   * @param resources - 現在のリソーススコープ
-   * @returns 名前不在は警告、参照解決の失敗は Err にするハンドラ
+   * @param resources - コンテキストにスコープがない場合の従来の色空間
+   * @returns スコープから取得できなければ、成分数不明の色空間を使うハンドラ
    */
   select(target: ColorTarget, resources: ColorSpaceResources): OperatorHandler {
     return (context) => {
@@ -64,25 +65,35 @@ export const ColorSpaceOperators = {
       }
 
       const builtin = ColorSpace.fromName(name.value);
+      const scoped = builtin.some
+        ? undefined
+        : context.resources?.getColorSpace(name.value);
+      const missing = (): ColorSpaceDefinition =>
+        ColorSpaceDefinition.unresolved(name.value, "COLOR_SPACE_NOT_FOUND");
+      const prepared =
+        scoped &&
+        map(scoped, (value) => (value.some ? value.value : missing()));
       const resolved = builtin.some
         ? ok({ colorSpace: builtin.value, warnings: [] })
-        : (resources.spaces.get(name.value) ??
-          ok(
-            ColorSpaceDefinition.unresolved(
-              name.value,
-              "COLOR_SPACE_NOT_FOUND",
-            ),
-          ));
-      if (!resolved.ok) {
+        : (prepared ?? resources.spaces.get(name.value) ?? ok(missing()));
+      if (!resolved.ok && scoped === undefined) {
         return resolved;
       }
 
-      const definition = resolved.value;
+      const definition = resolved.ok ? resolved.value : missing();
       const next = ColorSpaceOperators.update(context, target, {
         color: Color.initial(definition.colorSpace),
         space: definition.colorSpace,
       });
-      return ok({ ...next, warnings: definition.warnings });
+      const warnings = resolved.ok
+        ? definition.warnings
+        : [
+            ContentStreamResources.warning(
+              { category: "ColorSpace", name: name.value },
+              resolved.error,
+            ),
+          ];
+      return ok({ ...next, warnings });
     };
   },
 
@@ -90,7 +101,7 @@ export const ColorSpaceOperators = {
    * 現在の色空間の成分数を検証して色値を更新する。
    * @param operatorName - 色指定命令
    * @param target - 塗りまたは輪郭
-   * @param resources - 解決済みのパターンリソース
+   * @param resources - コンテキストにスコープがない場合の従来のパターンリソース
    * @returns 個数・型の不一致を Err にするハンドラ
    */
   setColor(
@@ -137,39 +148,56 @@ export const ColorSpaceOperators = {
         return values;
       }
 
-      const pattern = patternName.value.some
-        ? (resources.patterns.get(patternName.value.value) ?? ok(none))
+      const name = patternName.value;
+      const scoped = name.some
+        ? context.resources?.getPattern(name.value)
+        : undefined;
+      const pattern = name.some
+        ? (scoped ?? resources.patterns.get(name.value) ?? ok(none))
         : ok(none);
-      if (!pattern.ok) {
+      if (!pattern.ok && scoped === undefined) {
         return pattern;
       }
 
-      const patternError = pattern.value.some
+      const definition = pattern.ok ? pattern.value : none;
+      const patternError = definition.some
         ? ColorOperation.patternError(
             { colorSpace: space, operatorName },
-            pattern.value.value,
+            definition.value,
           )
         : none;
       if (patternError.some) {
         return err(patternError.value);
       }
 
-      const warnings = pattern.value.some ? pattern.value.value.warnings : [];
-      const missingPattern = patternName.value.some && !pattern.value.some;
       const next = ColorSpaceOperators.update(context, target, {
-        color: Color.fromComponents(space, values.value, patternName.value),
+        color: Color.fromComponents(space, values.value, name),
         space,
       });
+      if (!pattern.ok && name.some) {
+        return ok({
+          ...next,
+          warnings: [
+            ContentStreamResources.warning(
+              { category: "Pattern", name: name.value },
+              pattern.error,
+            ),
+          ],
+        });
+      }
+
+      const warnings = definition.some ? definition.value.warnings : [];
       return ok({
         ...next,
-        warnings: missingPattern
-          ? [
-              {
-                code: "PATTERN_NOT_FOUND",
-                message: `Pattern resource not found: /${patternName.value.value}`,
-              },
-            ]
-          : warnings,
+        warnings:
+          name.some && !definition.some
+            ? [
+                {
+                  code: "PATTERN_NOT_FOUND",
+                  message: `Pattern resource not found: /${name.value}`,
+                },
+              ]
+            : warnings,
       });
     };
   },

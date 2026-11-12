@@ -77,6 +77,8 @@
     .key { color: #89e0ce; }
     .value { color: #ffd688; }
     .operator { color: #d6b5ff; }
+    .syntax { color: #9ecaff; }
+    .string { color: #ffc2d2; }
     .comment { color: #a3bdc5; }
     .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
     .grid > * { min-width: 0; }
@@ -148,6 +150,8 @@
       .key { color: var(--teal); }
       .value { color: var(--amber); }
       .operator { color: #663399; }
+      .syntax { color: #215589; }
+      .string { color: #96314f; }
       .comment { color: var(--muted); }
       .table-wrap { overflow: visible; }
       [data-example-panel][hidden] { display: block !important; }
@@ -341,83 +345,62 @@ endobj</code></pre>
       <div class="section-heading"><span class="number">06</span><h2>Tfからフォント辞書へ</h2></div>
       <p><code>/F1</code> はフォント製品の名前ではなく、現在のリソース辞書で使う<strong>ローカル名</strong>です。別のページの <code>/F1</code> が同じフォントとは限りません。次の抜粋では <code>12 Tf</code> の直前の名前を手掛かりに、辞書へ2段階で到達します。</p>
       <pre><code><span class="comment">% PDF断片。完全なPDFではありません。</span>
-/Resources &lt;&lt; /Font 6 0 R &gt;&gt;
+<span class="key">/Resources</span> <span class="syntax">&lt;&lt;</span> <span class="key">/Font</span> <span class="syntax">6 0 R &gt;&gt;</span>
 
-6 0 obj
-&lt;&lt; /F1 7 0 R &gt;&gt;
-endobj
+<span class="syntax">6 0 obj</span>
+<span class="syntax">&lt;&lt;</span> <span class="key">/F1</span> <span class="syntax">7 0 R &gt;&gt;
+endobj</span>
 
-7 0 obj
-&lt;&lt; /Type /Font /Subtype /Type1 /BaseFont /Helvetica &gt;&gt;
-endobj
+<span class="syntax">7 0 obj
+&lt;&lt;</span> <span class="key">/Type /Font /Subtype /Type1 /BaseFont /Helvetica</span> <span class="syntax">&gt;&gt;
+endobj</span>
 
 <span class="comment">% コンテンツストリームの本文</span>
-BT /F1 12 Tf (Hello) Tj ET</code></pre>
+<span class="operator">BT</span> <span class="key">/F1</span> <span class="value">12</span> <span class="operator">Tf</span> <span class="string">(Hello)</span> <span class="operator">Tj ET</span></code></pre>
       <ol class="steps">
-        <li><code>Tf</code> が名前 <code>F1</code> とサイズ <code>12</code> をテキスト状態に保存します。名前の先頭の <code>/</code> は構文上の記号なので、APIへ渡す文字列には含めません。</li>
+        <li><code>Tf</code> の入力は名前 <code>F1</code> とサイズ <code>12</code> です。APIへ渡す名前は、構文上の接頭辞 <code>/</code> を外した文字列です。</li>
         <li>ページの <code>/Resources</code> にある <code>/Font</code> の値を読みます。この例では <code>6 0 R</code> を解決し、名前の対応表を取得します。</li>
-        <li>対応表の <code>/F1</code> を読み、<code>7 0 R</code> を解決します。実体が辞書なら取得成功です。直接埋め込まれた辞書でも同じ結果になります。</li>
+        <li>対応表の <code>/F1</code> を読み、<code>7 0 R</code> を解決します。実行時には <code>Tf</code> が名前・サイズと、取得できた辞書をテキスト状態に保存します。直接埋め込まれた辞書でも同じ結果になります。</li>
       </ol>
       <h3>不在と失敗を分ける</h3>
       <p><code>Result</code> は処理の成功・失敗、<code>Option</code> は成功時に値があるかを表します。この二つを重ねることで、「名前がない」と「参照先を解析できない」を区別できます。次の扱いはpdfmodの回復方針であり、壊れたフォントをPDF仕様上有効とみなす意味ではありません。</p>
       <div class="table-wrap"><table>
-        <thead><tr><th>入力</th><th>取得結果</th><th>テキスト状態</th></tr></thead>
+        <thead><tr><th>入力</th><th>名前を引いた結果</th><th>Tf 実行時</th></tr></thead>
         <tbody>
-          <tr><td>名前に対応する辞書がある</td><td><code>Ok(Some(辞書))</code></td><td>名前・サイズを保持</td></tr>
-          <tr><td>名前または /Font がない</td><td><code>Ok(None)</code>：未解決</td><td>名前・サイズ・文字間隔等を保持</td></tr>
-          <tr><td>/Font または名前の参照先が数値・Null・ストリーム</td><td><code>Ok(None)</code>：辞書として扱わない</td><td>状態を変更しない</td></tr>
-          <tr><td>参照解決関数が構文エラー等を返す</td><td><code>Err(原因)</code>：呼び出し側へ伝播</td><td>状態を変更しない</td></tr>
+          <tr><td>名前に対応する辞書がある</td><td><code>Ok(Some(辞書))</code></td><td>名前・サイズ・辞書を保持</td></tr>
+          <tr><td>名前または /Font がない</td><td><code>Ok(None)</code></td><td><code>FONT_NOT_FOUND</code>。名前・サイズを保持</td></tr>
+          <tr><td>/Font または名前の参照先が数値・Null・ストリーム</td><td><code>Ok(None)</code></td><td><code>FONT_NOT_FOUND</code>。名前・サイズを保持</td></tr>
+          <tr><td>参照解決関数が構文エラー等を返す</td><td><code>Err(原因)</code></td><td><code>RESOURCES_RESOLVE_FAILED</code>。名前・サイズを保持して続行</td></tr>
         </tbody>
       </table></div>
-      <h3>保存した名前をAPIへ渡す</h3>
-      <p>次はTypeScriptの関数本体の抜粋です。<code>textState</code> は <code>Tf</code> 実行後の状態、<code>resources</code> と <code>resolveRef</code> は同じ文書・ページのものを渡します。</p>
-      <pre><code>if (!textState.fontName.some) {
-  return ok(none);
-}
-
-const result = await PdfResources.getFont(
-  resources,
-  textState.fontName.value,
-  resolveRef,
-);
-
-if (!result.ok) {
-  return result; <span class="comment">// 参照先の解析失敗を呼び出し側へ返す</span>
-}
-
-if (!result.value.some) {
-  return ok(none); <span class="comment">// 未解決。フォントを勝手に置き換えない</span>
-}
-
-const dictionary = result.value.value;
-return ok(some(dictionary));</code></pre>
-      <div class="note"><strong>辞書の取得とフォントの解釈は別の段階です。</strong>このAPIは辞書の内容を保持して返します。<code>/Subtype</code> の妥当性、文字コードの変換、グリフ幅、埋め込みフォントの読み込みはここでは扱いません。また、解決結果をテキスト状態へ重複保存しないため、フォント切替後に古い辞書が残ることもありません。</div>
+      <p>どの結果でも文字間隔や行送りは保持します。次の <code>Tf</code> は新しい名前・サイズと、その名前で取得した辞書でフォント指定全体を置き換えます。</p>
+      <div class="note"><strong>取得した辞書はテキスト状態から読める</strong><code>textState.font</code> が <code>Some</code> で、<code>type</code> が <code>"name"</code> のとき、<code>name</code> は命令が指定した名前、<code>dictionary</code> は取得できた場合に入る辞書です。辞書の <code>/Subtype</code>、文字コード、グリフ幅、埋め込みフォントの処理は後段が担います。</div>
     </section>
 
     <section class="section" id="xobject">
       <div class="section-heading"><span class="number">07</span><h2>Doから画像・フォームへ</h2></div>
       <p><code>Do</code> は、名前で指定した外部オブジェクト（XObject）を描画する命令です。名前は作成者が自由に付けられます。たとえば <code>/Logo</code> が写真か、文字や線で組み立てた図かは、参照先の <code>/Subtype</code> で決まります。</p>
       <pre><code><span class="comment">% PDFの抜粋。ページのリソース辞書</span>
-<span class="key">/Resources</span> &lt;&lt; <span class="key">/XObject</span> &lt;&lt; <span class="key">/Logo</span> <span class="value">8 0 R</span> &gt;&gt; &gt;&gt;
+<span class="key">/Resources</span> <span class="syntax">&lt;&lt;</span> <span class="key">/XObject</span> <span class="syntax">&lt;&lt;</span> <span class="key">/Logo</span> <span class="syntax">8 0 R &gt;&gt; &gt;&gt;</span>
 <span class="comment">% ページの描画命令</span>
-<span class="key">/Logo</span> <span class="value">Do</span>
+<span class="key">/Logo</span> <span class="operator">Do</span>
 
 <span class="comment">% 8番のオブジェクト。3バイトでRGBの1画素を表す</span>
-<span class="value">8 0 obj</span>
-&lt;&lt; <span class="key">/Type</span> /XObject <span class="key">/Subtype</span> <span class="value">/Image</span>
-   <span class="key">/Width</span> 1 <span class="key">/Height</span> 1 <span class="key">/ColorSpace</span> /DeviceRGB
-   <span class="key">/BitsPerComponent</span> 8 <span class="key">/Length</span> 3 &gt;&gt;
-stream
+<span class="syntax">8 0 obj
+&lt;&lt;</span> <span class="key">/Type /XObject /Subtype /Image</span>
+   <span class="key">/Width</span> <span class="value">1</span> <span class="key">/Height</span> <span class="value">1</span> <span class="key">/ColorSpace /DeviceRGB</span>
+   <span class="key">/BitsPerComponent</span> <span class="value">8</span> <span class="key">/Length</span> <span class="value">3</span> <span class="syntax">&gt;&gt;
+stream</span>
 RGB
-endstream
-endobj</code></pre>
+<span class="syntax">endstream
+endobj</span></code></pre>
       <p><code>8 0 R</code> はオブジェクト番号8、世代番号0への参照です。この例で <code>RGB</code> は3個の文字コードからなる実データです。順に赤・緑・青の強度（82、71、66）として読めます。<code>/Filter</code> が付いた画像では、画素を得る前に指定のフィルタを適用します。取得APIではフィルタと元のバイト列の両方を保持します。</p>
       <div class="table-wrap"><table><thead><tr><th>ストリームの種別</th><th>辞書から読み取れること</th></tr></thead><tbody>
         <tr><td>Image</td><td>幅・高さ、色空間、成分のビット数、フィルタ。<code>/ImageMask true</code> は描画色を置く場所を指定するステンシルです。<code>/SMask</code> は濃淡を持つマスク、<code>/Mask</code> はマスク画像または透明にする色の範囲を指定します。</td></tr>
         <tr><td>Form</td><td>本文は繰り返し実行できる描画命令です。<code>/BBox [0 0 40 20]</code> はフォーム座標で描画を切り取る境界、<code>/Matrix [1 0 0 1 10 5]</code> は原点を (10, 5) へ移す変換です。行列を省略すると座標はそのままです。内部で使う名前はフォーム自身の <code>/Resources</code> に定義できます。</td></tr>
         <tr><td>PS・未知</td><td>非推奨のPostScriptは独立した種別です。未知の名前、欠落、型の違う値でも元ストリームを取得できます。</td></tr>
       </tbody></table></div>
-      <div class="note"><strong>pdfmodで不完全なPDFを読むとき</strong>名前の参照先がストリームでなければ未解決です。Formの境界に数値が4個揃わない場合は境界だけが未設定になり、ほかの属性は読めます。参照先の構文を解析できないときは、そのエラーを返します。</div>
+      <div class="note"><strong>pdfmodで不完全なPDFを読むとき</strong>名前の参照先がストリームでなければ未解決です。Formの境界に数値が4個揃わない場合は境界だけが未設定になり、ほかの属性は読めます。<code>Do</code> は取得できなかった名前や参照の解析エラーを警告して先へ進みます。画像の復号とFormの入れ子実行は後段が担います。</div>
     </section>
 
     <section class="section" id="color-space">
@@ -446,16 +429,35 @@ endobj</code></pre>
         <tr><td>Pattern</td><td>0、または基底の成分数</td><td>繰り返し模様。scn / SCN の最後にパターン名を指定。</td></tr>
       </tbody></table></div>
       <h3>間接参照とPattern</h3>
-      <p>Pattern / Shadingの種別と主要属性の取得、scn / SCN / shによる名前解決については、<a href="patterns-shadings.html">パターンとシェーディングの解説</a>を参照してください。実行前に <code>PaintResources.fromResources(resources, resolveRef)</code> を呼び、<code>createDefault</code> の第3引数へ渡します。</p>
+      <p>Pattern / Shadingの種別と主要属性、scn / SCN / shの名前解決は <a href="patterns-shadings.html">パターンとシェーディングの解説</a>で扱います。</p>
       <p>カテゴリ辞書・各定義・ICCBasedのプロファイルや <code>/N</code>・DeviceNの名前配列・IndexedやPatternの基底は間接参照でも解決します。着色パターンは <code>/Pattern cs /P1 scn</code>、非着色パターンは基底色の成分も必要です。たとえば <code>[/Pattern /DeviceRGB]</code> を選んだ後は <code>0.1 0.2 0.3 /P1 scn</code> と書きます。名前は数値成分数に含めません。</p>
       <h3>不一致・未知の定義を読むとき</h3>
-      <p>RGBを選んだ後の <code>0.1 0.2 sc</code> は成分が1個不足するためエラーです。余分な成分もエラーになります。色空間配列の先頭に未知の族がある場合は、選択位置に <code>COLOR_SPACE_UNSUPPORTED</code> の警告を出し、成分数不明として保持します。その後の数値は型を確認して保存しますが、個数は検証しません。名前が見つからない場合は、直接の指定でも定義内の別名・基底からの参照でも <code>COLOR_SPACE_NOT_FOUND</code> を報告し、以前の成分数で検証を続けません。基底が不明なIndexedでも、添字の成分数は1です。参照先の構文解析エラーは警告へ置き換えず返します。</p>
-      <div class="note"><strong>実行前の準備と実装の範囲</strong><code>ColorSpaceResources.fromResources(resources, resolveRef)</code> で現在のスコープを準備し、<code>OperatorRegistry.createDefault(extGStates, colorSpaces)</code> の第2引数へ渡します。各定義は事前に解決し、成功・失敗を名前ごとに保持します。カテゴリのエラーは準備時に返し、個々の定義のエラーはその名前の選択時まで返しません。族と成分数を読み色値を保持するところまでを扱い、ICC変換・パレット展開・特色の関数評価・パターン描画は後段の処理です。</div>
+      <p>RGBを選んだ後の <code>0.1 0.2 sc</code> は成分が1個不足するためエラーです。余分な成分もエラーになります。未知の族は <code>COLOR_SPACE_UNSUPPORTED</code>、名前の不在は <code>COLOR_SPACE_NOT_FOUND</code>、参照先の解析エラーは <code>RESOURCES_RESOLVE_FAILED</code> として、選択した命令位置に警告します。成分数不明の色空間では、後続の数値の型を検証して保存します。基底が不明なIndexedでも、添字の成分数は1です。</p>
+      <div class="note"><strong>色値を保持するまで</strong>色空間の族・成分数を読み、指定した色値を保持します。ICC変換・パレット展開・特色の関数評価・パターン描画は後段の処理です。</div>
     </section>
 
     <section class="section" id="implementation">
       <div class="section-heading"><span class="number">09</span><h2>実装と対応範囲</h2></div>
-      <p>TypeScript API（<code>@pdfmod/core</code>）におけるリソースの利用例です。以下の抜粋では、<code>page</code> は読み込み済みのページ、<code>resolveRef</code> はその文書の間接参照解決関数とします。<code>Result</code> の <code>ok</code> で成功を、<code>Option</code> の <code>some</code> で値の存在を確認します。</p>
+      <h3>ページのスコープをインタプリタへ渡す</h3>
+      <p>PDFでは現在のページやフォームのリソース辞書が名前の意味を決めます。pdfmodは間接参照を事前に解決し、同期で実行される各命令へ同じスコープを渡します。たとえば <code>q</code> と <code>Q</code> は描画状態を保存・復元し、スコープはその間も共有されます。</p>
+      <pre><code>import { ContentStreamInterpreter, ContentStreamResources } from "@pdfmod/core";
+
+const resources = await ContentStreamResources.fromResources(
+  page.resources,
+  (ref) =&gt; document.resolver.get(ref),
+);
+const result = ContentStreamInterpreter.execute({ data: contentBytes, resources });
+
+if (result.ok) {
+  for (const warning of result.value.warnings) {
+    console.log(warning.offset, warning.message);
+  }
+}</code></pre>
+      <p><code>document</code> は読み込み済みの <code>PdfDocument</code>、<code>page</code> は同じ文書のページ、<code>contentBytes</code> は復号済みの命令列です。カスタムハンドラは <code>context.resources?.getXObject("Logo")</code> など、カテゴリごとの取得メソッドを使えます。結果の <code>ok</code> で参照解決の成否、<code>some</code> で値の有無を確認します。</p>
+      <p>明示したスコープは <code>initialContext</code> のスコープより優先されます。省略時は初期コンテキストのスコープを引き継ぎます。新しいページに切り替えるときは、そのページの辞書を準備して渡します。</p>
+      <div class="note warning"><strong>参照の失敗は命令を使用した位置で報告する</strong>準備時に壊れた参照を見つけても、そのカテゴリ・名前の取得結果として保持します。たとえば壊れた <code>/Logo</code> を <code>Do</code> が使うと命令のバイト位置に警告が付き、その後の <code>7 w</code> も実行されます。名前が未使用なら警告は追加されません。命令のオペランドが型違いの場合は引き続き実行エラーです。</div>
+      <h3>辞書だけを取得する</h3>
+      <p>単独の名前を引く場合は <code>PdfResources</code> の遅延解決APIを使えます。次の <code>resolveRef</code> は同じ文書の参照解決関数です。</p>
       <pre><code>import { PdfResources } from "@pdfmod/core";
 
 // ページからリソース辞書を取得
@@ -492,16 +494,16 @@ if (PdfResources.hasCategory(resources, "Font")) {
       <div class="grid">
         <div class="card">
           <h3>今回対応する範囲</h3>
-          <p>ページツリーからの全置換属性継承、空辞書フォールバック、標準・カスタムカテゴリの保持、2段階オンデマンド解決、ストリーム透過返却、フォント辞書への型を絞った到達、非推奨 <code>/ProcSet</code> の除外。色空間の事前解決と、cs / CS・sc / SC・scn / SCNの成分数検証。</p>
+          <p>ページから継承した辞書の取得、カテゴリと名前の解決、命令へのスコープの供給。<code>Tf</code> はフォント辞書を状態に保存し、<code>Do</code> は画像・フォーム等のストリームを取得し、<code>gs</code> は拡張状態を適用します。</p>
         </div>
         <div class="card">
           <h3>後続処理・未対応の範囲</h3>
-          <p>フォント辞書内部のエンコーディング・CMAP 解析、画像ストリームのデコードとピクセル展開、フォントを用いた文字描画。<code>Tf</code> の名前・サイズの保存は既存のインタプリタが行います。</p>
+          <p>フォント辞書内部のエンコーディング・CMAP 解析、画像ストリームのデコード、フォーム内の命令の入れ子実行、画面への描画。</p>
         </div>
       </div>
       <div class="note">
         <strong>覚えておくこと</strong>
-        ① <code>/Resources</code> はキー単位でマージされず、直近の祖先辞書で完全に上書きされます。② 間接参照はオンデマンド解決されるため、不要な解決オーバーヘッドや破損参照の巻き添えを防ぎます。③ <code>PdfResources.lookup</code> は辞書だけでなく画像などのストリームも透過的に返却します。
+        ページがリソース辞書を継承する場合は、直近の祖先辞書が単位です。単独の名前を引くAPIは必要な参照だけを解決し、命令列を実行するAPIはスコープを事前に準備してから同期で名前を引きます。
       </div>
     </section>
 

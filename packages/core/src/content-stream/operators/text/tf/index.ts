@@ -1,3 +1,5 @@
+import type { PdfWarning } from "../../../../pdf/errors/index";
+import { none } from "../../../../utils/option/index";
 import { err, ok } from "../../../../utils/result/index";
 import {
   GraphicsState,
@@ -8,6 +10,7 @@ import type {
   OperatorHandler,
   OperatorHandlerContext,
 } from "../../../operator-registry/index";
+import { ContentStreamResources } from "../../../resources/index";
 import { OperandExtractor } from "../../operand-extractor/index";
 
 const OPERATOR_NAME = "Tf";
@@ -17,7 +20,7 @@ const OPERAND_COUNT = 2;
  * PDF §9.3.1 `Tf` operator (font and font size) のハンドラ。
  *
  * operand (PDF 順): `font` (name) `size` (number)。スタック頂上は size のため
- * size → font の順に 2 回 pop し、`textState.fontName` / `textState.fontSize` を更新する。
+ * size → font の順に pop し、名前とサイズ、取得できたフォント辞書を保持する。
  *
  * - operand 不足: `OPERATOR_OPERAND_MISSING`（actual = pop 成功数 / required = 2）
  * - 型不一致: `OPERATOR_OPERAND_TYPE_MISMATCH`（size は "number"、font は "name"）
@@ -50,9 +53,15 @@ export const tfHandler: OperatorHandler = (context: OperatorHandlerContext) => {
   }
   const fontName = fontResult.value;
 
+  const resolved = context.resources?.getFont(fontName);
+  const dictionary = resolved?.ok ? resolved.value : none;
   const current = GraphicsStateStack.current(context.graphicsStateStack);
   const nextTextState = TextState.withFont(current.textState, {
-    font: { type: "name", name: fontName },
+    font: {
+      type: "name",
+      name: fontName,
+      ...(dictionary.some ? { dictionary: dictionary.value } : {}),
+    },
     size: sizeValue,
   });
   const next = GraphicsState.update(current, { textState: nextTextState });
@@ -61,9 +70,19 @@ export const tfHandler: OperatorHandler = (context: OperatorHandlerContext) => {
     next,
   );
 
-  return ok({
-    operandStack: context.operandStack,
-    graphicsStateStack,
-    markedContentStack: context.markedContentStack,
-  });
+  const updated = { ...context, graphicsStateStack };
+  if (resolved === undefined || dictionary.some) {
+    return ok(updated);
+  }
+
+  const warning: PdfWarning = resolved.ok
+    ? {
+        code: "FONT_NOT_FOUND",
+        message: `Font resource not found: /${fontName}`,
+      }
+    : ContentStreamResources.warning(
+        { category: "Font", name: fontName },
+        resolved.error,
+      );
+  return ok({ ...updated, warnings: [warning] });
 };

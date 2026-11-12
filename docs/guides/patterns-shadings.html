@@ -238,29 +238,23 @@
       <section class="section" id="resolve"><h2>4. 名前から定義に到達する</h2>
         <p>同じ <code>/P1</code> という名前でも、ページやフォームが違えば別の定義を指せます。現在のスコープだけを引き、別ページの定義へフォールバックしません。</p>
         <div class="branches"><div><div class="flow-box primary"><strong>/Pattern cs → /P1 scn</strong>パターン色を選択</div><div class="flow-arrow">現在のResourcesから参照 ↓</div><div class="flow-box"><strong>/Pattern → /P1</strong>種別1のセル、または種別2のShading</div></div><div><div class="flow-box secondary"><strong>/S1 sh</strong>シェーディングを指定</div><div class="flow-arrow">現在のResourcesから参照 ↓</div><div class="flow-box"><strong>/Shading → /S1</strong>ShadingType 1〜7と共通属性</div></div></div>
-        <ol class="steps"><li><strong>ページのリソースを準備する。</strong><p>継承とResources自体の解決は既存のページ処理が担当します。</p></li><li><strong>非同期で定義を取得する。</strong><p>PaintResourcesがカテゴリ・各定義・主要属性の間接参照を解決します。座標と背景色では配列の各要素も解決します。</p></li><li><strong>同期の命令に渡す。</strong><p>scn / SCNが名前を引いて着色方式を検証し、shがShadingの名前を引きます。命令のたびに非同期I/Oは行いません。</p></li><li><strong>状態と警告を返す。</strong><p>パターン名と数値成分は色状態に保存されq/Qの対象です。shは色・色空間・パス・クリップを変更しません。</p></li></ol>
+        <ol class="steps"><li><strong>ページのリソースを準備する。</strong><p>継承とResources自体の解決はページ処理が担当します。</p></li><li><strong>非同期で定義を取得する。</strong><p>カテゴリ・各定義・主要属性の間接参照を解決し、実行スコープを作ります。座標と背景色では配列の各要素も解決します。</p></li><li><strong>同期の命令に渡す。</strong><p>scn / SCNが名前を引いて着色方式を検証し、shがShadingの名前を引きます。</p></li><li><strong>状態と警告を返す。</strong><p>パターン名と数値成分は色状態に保存されq/Qの対象です。shはシェーディングを取得し、描画状態を保持します。</p></li></ol>
       </section>
       <section class="section" id="boundary"><h2>5. 不正入力・未知の種別・参照エラー</h2>
         <div class="table-wrap"><table><thead><tr><th>入力</th><th>今回の結果</th></tr></thead><tbody>
-          <tr><td>Pattern以外で名前の色オペランド</td><td>数値として受理せず型・個数エラー</td></tr><tr><td>基底RGBで数値2個＋パターン名</td><td>必要な数値3個に足りず個数エラー</td></tr><tr><td>存在しないパターン / シェーディング</td><td>PATTERN_NOT_FOUND / SHADING_NOT_FOUNDの警告</td></tr><tr><td>未知・欠落の種別番号</td><td>元オブジェクトをUnknownとして保持し、使用位置でUNSUPPORTEDの警告</td></tr><tr><td>セル間隔0・座標の個数不足・メッシュがストリーム以外</td><td>INVALIDの警告。既定値で正しい定義に見せない</td></tr><tr><td>カテゴリの参照解決エラー</td><td>準備時に元のエラーを返す</td></tr><tr><td>個別定義や主要属性の参照解決エラー</td><td>その名前を使用する命令までエラーを保持</td></tr>
+          <tr><td>Pattern以外で名前の色オペランド</td><td>型・個数エラー</td></tr><tr><td>基底RGBで数値2個＋パターン名</td><td>必要な数値3個に足りず個数エラー</td></tr><tr><td>存在しないパターン / シェーディング</td><td>PATTERN_NOT_FOUND / SHADING_NOT_FOUNDの警告</td></tr><tr><td>未知・欠落の種別番号</td><td>元オブジェクトをUnknownとして保持し、使用位置でUNSUPPORTEDの警告</td></tr><tr><td>セル間隔0・座標の個数不足・メッシュがストリーム以外</td><td>INVALIDの警告</td></tr><tr><td>カテゴリ・個別定義・主要属性の参照解決エラー</td><td>実行スコープに原因を保持。名前を使用した命令位置に RESOURCES_RESOLVE_FAILED を報告して続行</td></tr>
         </tbody></table></div>
         <p>警告による回復はpdfmodの方針です。未知の定義を描画できると判断した意味ではありません。関数評価前のため、すべてのシェーディング固有の必須キーまで検証する段階でもありません。</p>
         <p>名前が見つからないパターンでも指定名と数値成分は色状態へ保持し、後続命令を処理します。shの定義が不正でも、警告のあとに来る命令を処理できます。</p>
       </section>
       <section class="section" id="api"><h2>6. 実装の入口と対応範囲</h2>
-        <p>呼び出し側は同じResourcesから色空間と描画定義を準備し、結果を確認してからレジストリへ渡します。次は成功経路に絞ったTypeScriptの抜粋です。</p>
-        <pre><code>const spaces = await ColorSpaceResources.fromResources(resources, resolveRef);
-if (!spaces.ok) {
-  return spaces;
-}
-
-const paints = await PaintResources.fromResources(resources, resolveRef);
-if (!paints.ok) {
-  return paints;
-}
-
-const registry = OperatorRegistry.createDefault(undefined, spaces.value, paints.value);</code></pre>
-        <p><code>paints.value.patterns</code> と <code>shadings</code> の名前別結果から、型付き定義を参照できます。パターンの結果は1・2・Unknown、シェーディングの結果は1〜7・Unknownで判別します。成功・エラーと値の有無はそれぞれ別に確認してください。</p>
+        <p>現在のリソース辞書から色空間と描画定義を準備し、実行時に渡します。</p>
+        <pre><code><span class="op">const</span> scope = <span class="op">await</span> ContentStreamResources.fromResources(resources, resolveRef);
+<span class="op">const</span> result = ContentStreamInterpreter.execute({
+  data: contentBytes,
+  resources: scope,
+});</code></pre>
+        <p><code>scope.getPattern("P1")</code> と <code>scope.getShading("S1")</code> から型付き定義を参照できます。<code>ok</code> で解決の成否、<code>some</code> で定義の有無を確認します。パターンは1・2・Unknown、シェーディングは1〜7・Unknownで判別します。</p>
         <div class="grid"><div class="card"><h3>対応した範囲</h3><p>間接参照の解決、種別と主要属性の保持、オペランド検証、警告、shの登録です。メッシュのバイト列は未復号で保持します。</p></div><div class="card"><h3>後段の処理</h3><p>Functionの評価、実際の塗り、セルの再帰実行、メッシュ復号、色変換、シェーディング固有のすべての属性の検証です。Rust側には対応する命令実行層がまだないため、今回の変更はTypeScript側です。</p></div></div>
       </section>
     </div><footer><a href="#top">↑ 先頭に戻る</a> · <a href="resources.html">リソース辞書の解説へ</a></footer>

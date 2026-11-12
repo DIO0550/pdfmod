@@ -1,4 +1,7 @@
-export { ColorSpaceResources } from "./content-stream/color-space-resources/index";
+export {
+  type ColorSpaceDefinition,
+  ColorSpaceResources,
+} from "./content-stream/color-space-resources/index";
 export {
   ExtGState,
   type ExtGStateParameter,
@@ -12,6 +15,7 @@ export {
 export { SoftMask } from "./content-stream/graphics-state/soft-mask/index";
 export { TextFont } from "./content-stream/graphics-state/text-font/index";
 export { PaintResources } from "./content-stream/paint-resources/index";
+export { ContentStreamResources } from "./content-stream/resources/index";
 export {
   PdfPattern,
   type PdfPatternPaintType,

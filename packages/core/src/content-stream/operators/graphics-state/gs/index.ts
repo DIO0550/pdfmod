@@ -3,14 +3,15 @@ import { ok } from "../../../../utils/result/index";
 import { ExtGState, ExtGStateResources } from "../../../ext-gstate/index";
 import { GraphicsStateStack } from "../../../graphics-state/index";
 import type { OperatorHandler } from "../../../operator-registry/index";
+import { ContentStreamResources } from "../../../resources/index";
 import { OperandExtractor } from "../../operand-extractor/index";
 
-/** gs ハンドラを、解決済みのリソーススコープに束縛する。 */
+/** gs ハンドラを作り、実行コンテキストから拡張状態を引く。 */
 export const GsOperator = {
   /**
    * 名前オペランドから拡張状態を適用するハンドラを生成する。
-   * @param resources - 実行対象スコープの解決済み拡張状態
-   * @returns 不在は警告して状態を保持し、参照解決エラーは Err にするハンドラ
+   * @param resources - コンテキストにスコープがない場合の従来の拡張状態
+   * @returns スコープから取得できなければ警告して状態を保持するハンドラ
    */
   create(
     resources: ExtGStateResources = ExtGStateResources.empty(),
@@ -21,9 +22,22 @@ export const GsOperator = {
         return name;
       }
 
-      const resolved = resources.states.get(name.value) ?? ok(none);
-      if (!resolved.ok) {
+      const scoped = context.resources?.getExtGState(name.value);
+      const resolved = scoped ?? resources.states.get(name.value) ?? ok(none);
+      if (!resolved.ok && scoped === undefined) {
         return resolved;
+      }
+
+      if (!resolved.ok) {
+        return ok({
+          ...context,
+          warnings: [
+            ContentStreamResources.warning(
+              { category: "ExtGState", name: name.value },
+              resolved.error,
+            ),
+          ],
+        });
       }
 
       const extended = resolved.value;
