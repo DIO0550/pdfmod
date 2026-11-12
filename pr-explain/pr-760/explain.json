@@ -1,0 +1,894 @@
+{
+  "version": 1,
+  "pr": 760,
+  "sha": "fe149bc525c41da4fc97ec42b902cdeffbe6cded",
+  "issue": 678,
+  "overview": {
+    "title": "ページのリソース辞書をコンテンツストリームの命令へ供給する",
+    "lead": "フォント、画像、拡張状態の名前を現在のスコープで解決します。参照エラーは使用した命令の位置に記録します。",
+    "before": [
+      {
+        "text": "Tf と Do は名前を受け取る。拡張状態や色空間の解決結果は登録時に個別に渡す。"
+      }
+    ],
+    "after": [
+      {
+        "text": "ページの辞書から準備した実行スコープをすべてのハンドラで利用する。",
+        "message": "prepare-page"
+      },
+      {
+        "text": "壊れた参照を使用しても、原因を警告して後続の命令を処理する。",
+        "message": "report-gs"
+      }
+    ]
+  },
+  "features": [
+    {
+      "id": "prepare",
+      "label": "名前解決の準備",
+      "role": "ページやフォームから、名前ごとの値・不在・参照エラーを用意する。"
+    },
+    {
+      "id": "dispatch",
+      "label": "同期実行",
+      "role": "一つのスコープを、命令を処理するたびに使えるようにする。"
+    },
+    {
+      "id": "recover",
+      "label": "参照失敗からの回復",
+      "role": "失敗した名前を使った命令の位置を記録し、後続の命令を解釈する。"
+    }
+  ],
+  "concepts": [
+    {
+      "path": "packages/core/src/document/resources/index.ts",
+      "name": "カテゴリ辞書の読み取り",
+      "role": "カテゴリの間接参照を解決してから、各エントリを参照先へ辿る。",
+      "feature": "prepare"
+    },
+    {
+      "path": "packages/core/src/content-stream/resources/index.ts",
+      "name": "準備済みのリソース",
+      "role": "取得関数と、各カテゴリ・名前の読取結果を束ねる。",
+      "feature": "prepare"
+    },
+    {
+      "path": "packages/core/src/content-stream/interpreter/index.ts",
+      "name": "コンテンツの実行",
+      "role": "同じスコープで命令を実行し、命令ごとの警告に位置を付ける。",
+      "feature": "dispatch"
+    },
+    {
+      "path": "packages/core/src/content-stream/operators/text/tf/index.ts",
+      "name": "フォントの選択",
+      "role": "フォント名とサイズを読み、取得できた辞書をテキスト状態に保持する。",
+      "feature": "dispatch"
+    },
+    {
+      "path": "packages/core/src/content-stream/operators/xobject/do/index.ts",
+      "name": "外部オブジェクトの選択",
+      "role": "画像やフォームなどのストリームを名前から引く。",
+      "feature": "dispatch"
+    },
+    {
+      "path": "packages/core/src/content-stream/operators/graphics-state/gs/index.ts",
+      "name": "拡張描画状態の適用",
+      "role": "拡張状態を適用する。参照が壊れていたら状態を保持し警告する。",
+      "feature": "recover"
+    }
+  ],
+  "messages": [
+    {
+      "id": "prepare-page",
+      "from": "packages/core/src/content-stream/resources/index.ts",
+      "to": "packages/core/src/document/resources/index.ts",
+      "kind": "qry",
+      "name": "名前ごとの定義を準備",
+      "code": "ContentStreamResources.fromResources(page.resources, resolveRef)",
+      "via": "call",
+      "returns": "ページやフォームの実行スコープ",
+      "status": "added"
+    },
+    {
+      "id": "dispatch-tf",
+      "from": "packages/core/src/content-stream/interpreter/index.ts",
+      "to": "packages/core/src/content-stream/operators/text/tf/index.ts",
+      "kind": "cmd",
+      "name": "指定されたフォントを取得",
+      "code": "context.resources?.getFont(fontName)",
+      "via": "call",
+      "returns": "フォント指定を更新したテキスト状態",
+      "status": "changed"
+    },
+    {
+      "id": "report-gs",
+      "from": "packages/core/src/content-stream/operators/graphics-state/gs/index.ts",
+      "to": "packages/core/src/content-stream/interpreter/index.ts",
+      "kind": "evt",
+      "name": "使用位置へ警告を追加",
+      "code": "RESOURCES_RESOLVE_FAILED",
+      "via": "state",
+      "payload": "カテゴリ・名前・元のエラー",
+      "returns": "次の命令に渡す実行状態",
+      "status": "added"
+    }
+  ],
+  "flows": [
+    {
+      "id": "select",
+      "label": "ページのリソースからフォントを選ぶ",
+      "steps": [
+        "prepare-page",
+        "dispatch-tf"
+      ]
+    },
+    {
+      "id": "recover",
+      "label": "壊れた拡張状態の参照を報告する",
+      "steps": [
+        "prepare-page",
+        "report-gs"
+      ]
+    }
+  ],
+  "commitStories": [
+    {
+      "sha": "fe149bc525c41da4fc97ec42b902cdeffbe6cded",
+      "phase": "core",
+      "role": "スコープの準備・供給・名前解決・回復を一つの経路にする。",
+      "why": "同期の実行を維持しつつ、同じ命令の登録をページやフォームごとに再利用するため。",
+      "flows": [
+        "select",
+        "recover"
+      ],
+      "notes": [
+        {
+          "path": "docs/guides/README.md",
+          "start": 14,
+          "end": 14,
+          "text": "リソース解説の索引から、実行スコープの供給と回復動作へ辿れるようにする。"
+        },
+        {
+          "path": "docs/guides/resources.html",
+          "start": 80,
+          "end": 81,
+          "text": "参照やオブジェクト構文、文字列をPDF記述例の既存の名前・命令と別の色で表示する。"
+        },
+        {
+          "path": "docs/guides/resources.html",
+          "start": 153,
+          "end": 154,
+          "text": "印刷時は明るい背景に合う色で参照と文字列を読み分けられるようにする。"
+        },
+        {
+          "path": "docs/guides/resources.html",
+          "start": 347,
+          "end": 379,
+          "text": "フォントの例はカテゴリ参照とフォント辞書参照を色分けし、取得成否ごとの警告とテキスト状態を表にする。"
+        },
+        {
+          "path": "docs/guides/resources.html",
+          "start": 383,
+          "end": 404,
+          "text": "画像ストリームへの参照と命令を色分けする。取得できない名前で Do を実行したときの回復動作を説明する。"
+        },
+        {
+          "path": "docs/guides/resources.html",
+          "start": 432,
+          "end": 437,
+          "text": "色空間の参照が壊れていたら使用位置に警告し、成分数不明の色空間を扱う。後続の数値を型で検査する例を加える。"
+        },
+        {
+          "path": "docs/guides/resources.html",
+          "start": 441,
+          "end": 460,
+          "text": "ページの辞書と同じ文書の参照解決関数からスコープを準備し、同期実行へ渡す。初期コンテキストに対する優先順と警告位置も記す。"
+        },
+        {
+          "path": "docs/guides/resources.html",
+          "start": 497,
+          "end": 507,
+          "text": "実行時に扱える操作と次の段階で扱う描画を記す。単一の名前を直接引く入口と、実行前に準備する入口を説明する。"
+        },
+        {
+          "path": "docs/guides/ext-gstate.html",
+          "start": 191,
+          "end": 202,
+          "text": "Tf の名前指定には取得できた辞書も入る。gs のフォント配列が指す辞書指定と、それぞれの読み取り方を示す。"
+        },
+        {
+          "path": "docs/guides/ext-gstate.html",
+          "start": 209,
+          "end": 218,
+          "text": "失敗した名前や参照先を gs が使用したとき、拡張状態を適用せず使用位置に警告する。正常な定義や未使用の失敗も例にする。"
+        },
+        {
+          "path": "docs/guides/ext-gstate.html",
+          "start": 219,
+          "end": 229,
+          "text": "拡張状態の読み取りを含むスコープを準備し、実行オプションへ渡す手順へ更新する。"
+        },
+        {
+          "path": "docs/guides/patterns-shadings.html",
+          "start": 241,
+          "end": 241,
+          "text": "パターンとシェーディングの定義を実行前に解決し、同期の命令が名前で参照する順序を示す。"
+        },
+        {
+          "path": "docs/guides/patterns-shadings.html",
+          "start": 243,
+          "end": 249,
+          "text": "カテゴリ・名前・主要属性の参照エラーは、該当する命令で警告して続行する。オペランドの型や個数の誤りの扱いも記す。"
+        },
+        {
+          "path": "docs/guides/patterns-shadings.html",
+          "start": 251,
+          "end": 259,
+          "text": "ページやフォームの辞書を実行へ渡し、必要な種別の取得結果を型で判別するコードに置き換える。"
+        },
+        {
+          "path": "packages/core/src/content-stream/ext-gstate/index.ts",
+          "start": 96,
+          "end": 109,
+          "text": "拡張状態カテゴリを一度解決して名前を走査する。辞書だけを既存のパラメータ読み取りへ送り、参照エラーを名前ごとに保持する。"
+        },
+        {
+          "path": "packages/core/src/content-stream/graphics-state/text-font/index.ts",
+          "start": 4,
+          "end": 12,
+          "text": "Tf の名前指定に任意の辞書を付ける。既存の name 判別子と名前を保ち、gs の辞書指定も同じ型で表す。"
+        },
+        {
+          "path": "packages/core/src/content-stream/interpreter/index.ts",
+          "start": 21,
+          "end": 21,
+          "text": "公開オプションで参照するリソーススコープの型を取り込む。"
+        },
+        {
+          "path": "packages/core/src/content-stream/interpreter/index.ts",
+          "start": 35,
+          "end": 36,
+          "text": "実行入力に任意のスコープを追加する。明示指定が初期コンテキストのスコープを上書きできる。"
+        },
+        {
+          "path": "packages/core/src/content-stream/interpreter/index.ts",
+          "start": 69,
+          "end": 69,
+          "text": "同期実行の引数に、準備済みリソースも受け取ることを記す。"
+        },
+        {
+          "path": "packages/core/src/content-stream/interpreter/index.ts",
+          "start": 84,
+          "end": 90,
+          "text": "ループに入る前に1回だけスコープを選び、初期状態へ渡す。初期コンテキスト由来のスコープも明示指定があれば切り替える。"
+        },
+        {
+          "path": "packages/core/src/content-stream/interpreter/index.ts",
+          "start": 119,
+          "end": 130,
+          "text": "旧形式のハンドラが3つのスタックだけを返しても、次の命令に実行開始時のスコープを引き継ぐ。同じ参照ならそのまま返す。"
+        },
+        {
+          "path": "packages/core/src/content-stream/operator-registry/index.ts",
+          "start": 73,
+          "end": 74,
+          "text": "ハンドラの入力型から実行スコープを参照できるようにする。"
+        },
+        {
+          "path": "packages/core/src/content-stream/operator-registry/index.ts",
+          "start": 85,
+          "end": 87,
+          "text": "既存ハンドラや呼び出し側のコンテキスト構築を受け付けるため、読み取り専用のフィールドを任意で追加する。"
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/color/selection/index.ts",
+          "start": 21,
+          "end": 22,
+          "text": "色の名前解決に共通の警告生成を取り込む。"
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/color/selection/index.ts",
+          "start": 51,
+          "end": 55,
+          "text": "選択ハンドラに渡す既存の色空間設定は実行スコープ省略時に使う。取得失敗時は成分数不明の色空間で回復する。"
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/color/selection/index.ts",
+          "start": 68,
+          "end": 82,
+          "text": "標準色空間は名前から直接取得する。ローカル名は現在のスコープから引き、指定がないときは従来のレジストリ設定を使う。"
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/color/selection/index.ts",
+          "start": 83,
+          "end": 98,
+          "text": "名前の解決に失敗したら色空間を成分数不明として設定する。原因付きの警告を返し、次の色指定に前の色空間の成分数を使わない。"
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/color/selection/index.ts",
+          "start": 103,
+          "end": 106,
+          "text": "パターン用の従来の設定はスコープ省略時に使用することを引数の説明へ反映する。"
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/color/selection/index.ts",
+          "start": 151,
+          "end": 172,
+          "text": "パターン名がある場合に解決し、取得できた定義の着色方式を検査する。旧経路のエラーとオペランドのエラーはそのまま返せる。"
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/color/selection/index.ts",
+          "start": 173,
+          "end": 203,
+          "text": "解決に失敗したパターンでも指定した名前と数値を色状態へ保存する。参照エラーと名前の不在を別の警告にする。"
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/graphics-state/gs/index.ts",
+          "start": 6,
+          "end": 14,
+          "text": "拡張状態の読み取り先を実行コンテキストに追加する。旧形式のレジストリからの読み取りも扱う。"
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/graphics-state/gs/index.ts",
+          "start": 25,
+          "end": 41,
+          "text": "現在のスコープを優先して名前を引く。参照エラーがあれば描画状態を保持し、名前・カテゴリ・原因を含む警告を返す。"
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/shading/sh/index.ts",
+          "start": 8,
+          "end": 15,
+          "text": "シェーディングの取得先と警告への変換を宣言し、命令の引数エラーとの区別を示す。"
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/shading/sh/index.ts",
+          "start": 34,
+          "end": 50,
+          "text": "現在のスコープでシェーディングを取得する。参照エラーは警告にして後続命令へ進める。"
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/text/tf/index.ts",
+          "start": 1,
+          "end": 2,
+          "text": "フォント辞書の不在と命令の警告に使う型と値を取り込む。"
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/text/tf/index.ts",
+          "start": 13,
+          "end": 13,
+          "text": "参照解決エラーを他の命令と同じ形式で警告へ変換する。"
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/text/tf/index.ts",
+          "start": 23,
+          "end": 23,
+          "text": "名前・サイズ・取得した辞書を保持する動作をハンドラの説明へ反映する。"
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/text/tf/index.ts",
+          "start": 56,
+          "end": 68,
+          "text": "名前とサイズを読み取ったあとにフォント辞書を検索し、辞書が取得できた場合だけ現在のフォント指定へ含める。"
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/text/tf/index.ts",
+          "start": 73,
+          "end": 87,
+          "text": "フォント名・サイズは解決成否にかかわらず状態へ反映する。リソース未指定・取得成功は警告なし、不在と参照エラーは別の警告を返す。"
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/xobject/do/index.ts",
+          "start": 1,
+          "end": 9,
+          "text": "XObjectの不在や参照失敗を実行警告にするため、共通の警告生成を取り込む。"
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/xobject/do/index.ts",
+          "start": 15,
+          "end": 16,
+          "text": "名前の検査に加えて画像やフォームのストリームに到達する段階を明記する。"
+        },
+        {
+          "path": "packages/core/src/content-stream/operators/xobject/do/index.ts",
+          "start": 27,
+          "end": 42,
+          "text": "名前を消費して型付きのXObjectを取得する。スコープ指定時に不在や参照エラーがあれば、その名前を報告する。"
+        },
+        {
+          "path": "packages/core/src/content-stream/paint-resources/index.ts",
+          "start": 5,
+          "end": 6,
+          "text": "カテゴリと個別参照の走査を共通処理に委ね、ここではパターン・シェーディングの型を保持する。"
+        },
+        {
+          "path": "packages/core/src/content-stream/paint-resources/index.ts",
+          "start": 73,
+          "end": 83,
+          "text": "共通のカテゴリ走査へ、対象カテゴリと既存の読取関数を渡す。エラーの区別を維持して型付きの成功値を Some に包む。"
+        },
+        {
+          "path": "packages/core/src/content-stream/resources/index.ts",
+          "start": 1,
+          "end": 34,
+          "text": "文書側の型とカテゴリ別の読取処理を接続する。同期の名前取得はカテゴリごとに固有の成功値を返す。"
+        },
+        {
+          "path": "packages/core/src/content-stream/resources/index.ts",
+          "start": 36,
+          "end": 47,
+          "text": "辞書カテゴリでは辞書だけを Some にする。各名前の取得関数はカテゴリ全体のエラーを維持し、未登録名に None を返す。"
+        },
+        {
+          "path": "packages/core/src/content-stream/resources/index.ts",
+          "start": 54,
+          "end": 77,
+          "text": "同じページやフォームの辞書からフォント、XObject、拡張状態、色空間、パターンを準備する。カテゴリごとの結果は独立に保持する。"
+        },
+        {
+          "path": "packages/core/src/content-stream/resources/index.ts",
+          "start": 78,
+          "end": 106,
+          "text": "シェーディングとプロパティも取得し、各カテゴリの結果を同期の取得関数へ閉じ込める。準備済みのスコープを実行中に再利用できる。"
+        },
+        {
+          "path": "packages/core/src/content-stream/resources/index.ts",
+          "start": 109,
+          "end": 118,
+          "text": "取得時のエラーから、名前・カテゴリ・元のエラーコードを含む警告を組み立てる。実行側が警告に命令位置を付ける。"
+        },
+        {
+          "path": "packages/core/src/document/resources/index.ts",
+          "start": 5,
+          "end": 5,
+          "text": "XObjectの種別選択をXObject側へ委譲し、辞書側での結果変換を減らす。"
+        },
+        {
+          "path": "packages/core/src/document/resources/index.ts",
+          "start": 149,
+          "end": 156,
+          "text": "間接参照を含む名前検索の結果から、存在する値をXObjectの型変換へ渡す。"
+        },
+        {
+          "path": "packages/core/src/document/resources/index.ts",
+          "start": 207,
+          "end": 236,
+          "text": "カテゴリ辞書を一度解決し、カテゴリエラーはその原因を返す。辞書がなければ空の名前表を返す。"
+        },
+        {
+          "path": "packages/core/src/document/resources/index.ts",
+          "start": 237,
+          "end": 249,
+          "text": "辞書の各名前から間接参照を解決し、取得した値をカテゴリ固有の読取関数に渡す。個別エラーを残すためほかの名前も読み進める。"
+        },
+        {
+          "path": "packages/core/src/document/resources/xobject/index.ts",
+          "start": 19,
+          "end": 19,
+          "text": "ストリームの読取結果を、成功時にだけ Some へ変換するための操作を取り込む。"
+        },
+        {
+          "path": "packages/core/src/document/resources/xobject/index.ts",
+          "start": 219,
+          "end": 228,
+          "text": "値がストリームなら既存の種別読み取りへ渡す。名前検索の入口がどちらでも同じ型境界を使える。"
+        },
+        {
+          "path": "packages/core/src/index.ts",
+          "start": 1,
+          "end": 4,
+          "text": "パッケージ入口から、色空間取得の成功値に使う型も参照できるようにする。"
+        },
+        {
+          "path": "packages/core/src/index.ts",
+          "start": 18,
+          "end": 18,
+          "text": "スコープの型と作成方法をパッケージ入口から利用できるようにする。"
+        },
+        {
+          "path": "packages/core/src/pdf/errors/warning/index.ts",
+          "start": 32,
+          "end": 34,
+          "text": "フォントとXObjectの不在を、原因付きの参照解決警告と別のコードで扱えるようにする。"
+        },
+        {
+          "path": "packages/core/src/content-stream/resources/__tests__/content-stream-resources.integration.test.ts",
+          "start": 1,
+          "end": 22,
+          "text": "公開入口と実オブジェクトストアをつないで、PDFの辞書と命令列から一連の動作を確認できるようにする。"
+        },
+        {
+          "path": "packages/core/src/content-stream/resources/__tests__/content-stream-resources.integration.test.ts",
+          "start": 23,
+          "end": 91,
+          "text": "間接参照を用意し、同じ実行でフォント辞書、画像バイト、拡張状態が取得できることを確認する。Q の復元とスコープの維持も検査する。"
+        },
+        {
+          "path": "packages/core/src/content-stream/resources/__tests__/content-stream-resources.integration.test.ts",
+          "start": 92,
+          "end": 116,
+          "text": "ローカル色空間名、パターン、シェーディングをレジストリの個別設定なしで実行し、プロパティも名前で引けることを確認する。"
+        },
+        {
+          "path": "packages/core/src/content-stream/resources/__tests__/content-stream-resources.integration.test.ts",
+          "start": 117,
+          "end": 165,
+          "text": "壊れたカテゴリと個別参照を混ぜる。使った命令だけに原因・位置が出て、同じ実行の正常な名前と後続命令まで処理できることを検査する。"
+        },
+        {
+          "path": "packages/core/src/content-stream/resources/__tests__/content-stream-resources.integration.test.ts",
+          "start": 166,
+          "end": 195,
+          "text": "正常なフォントから辞書でない値へ切り替え、古い辞書が残らず、新しい名前・サイズと既存の文字間隔を保持することを確認する。"
+        },
+        {
+          "path": "packages/core/src/content-stream/resources/__tests__/content-stream-resources.integration.test.ts",
+          "start": 196,
+          "end": 214,
+          "text": "リソースオプションを渡さず、Tf・Do・gs の既存動作と後続の線幅変更を確認する。"
+        },
+        {
+          "path": "packages/core/src/content-stream/resources/__tests__/content-stream-resources.integration.test.ts",
+          "start": 215,
+          "end": 267,
+          "text": "同じレジストリを別々のスコープで使い、明示指定、初期コンテキスト継承、空のスコープ、従来の設定を比較する。"
+        },
+        {
+          "path": "packages/core/src/content-stream/resources/__tests__/content-stream-resources.integration.test.ts",
+          "start": 268,
+          "end": 280,
+          "text": "数値を Do に渡す。名前解決の回復経路を使っていても命令の型エラーを返すことを確認する。"
+        }
+      ]
+    }
+  ],
+  "suites": [
+    {
+      "id": "resource-integration",
+      "label": "実行スコープの統合テスト",
+      "file": "packages/core/src/content-stream/resources/__tests__/content-stream-resources.integration.test.ts"
+    }
+  ],
+  "tests": [
+    {
+      "id": "indirect",
+      "suite": "resource-integration",
+      "name": "Tf・Do・gs が同じスコープの間接参照を引き、Q は描画状態だけを復元する",
+      "techniques": [
+        "state",
+        "regression"
+      ],
+      "why": "名前解決と描画状態の保存を同じ実行で確認する。",
+      "given": "フォントのカテゴリ参照と辞書参照、画像と拡張状態の参照を用意する。",
+      "when": "q、gs、Do、カスタム命令、Q、Tf を実行する。",
+      "then": "画像の元バイトと拡張状態が読める。Q で状態を復元したあともフォント辞書を引ける。",
+      "commit": "fe149bc525c41da4fc97ec42b902cdeffbe6cded",
+      "excerpt": {
+        "path": "packages/core/src/content-stream/resources/__tests__/content-stream-resources.integration.test.ts",
+        "start": 23,
+        "end": 91,
+        "text": "test(\"Tf・Do・gs が同じスコープの間接参照を引き、Q は描画状態だけを復元する\", async () => {\n  const resources = await prepare({\n    resources:\n      \"<< /Font 1 0 R /XObject << /Im0 3 0 R >> /ExtGState << /GS1 4 0 R >> >>\",\n    objects: [\n      \"<< /F1 2 0 R >>\",\n      \"<< /Type /Font /BaseFont /Courier >>\",\n      \"<< /Subtype /Image /Width 1 /Height 1 /Length 1 >>\\nstream\\nA\\nendstream\",\n      \"<< /LW 5 /ca .4 >>\",\n    ],\n  });\n  const defaults = OperatorRegistry.createDefault();\n  assert(defaults.ok);\n  const registry = OperatorRegistry.register(\n    defaults.value,\n    \"inspect\",\n    (context) => {\n      const image = context.resources?.getXObject(\"Im0\");\n      assert(image?.ok && image.value.some);\n      assert(image.value.value.subtype === \"Image\");\n      expect(image.value.value.stream.data).toEqual(encode(\"A\"));\n      expect(image.value.value.width).toEqual({ some: true, value: 1 });\n      expect(\n        GraphicsStateStack.current(context.graphicsStateStack),\n      ).toMatchObject({\n        lineWidth: 5,\n        fillAlpha: 0.4,\n      });\n\n      return Result.ok({\n        operandStack: context.operandStack,\n        graphicsStateStack: context.graphicsStateStack,\n        markedContentStack: context.markedContentStack,\n      });\n    },\n  );\n  assert(registry.ok);\n\n  const result = ContentStreamInterpreter.execute({\n    data: encode(\"q /GS1 gs /Im0 Do inspect Q BT /F1 12 Tf ET\"),\n    registry: registry.value,\n    resources,\n  });\n\n  assert(result.ok);\n  const state = GraphicsStateStack.current(\n    result.value.context.graphicsStateStack,\n  );\n  expect(state.lineWidth).toBe(1);\n  expect(state.fillAlpha).toBe(1);\n  expect(state.textState.font).toMatchObject({\n    some: true,\n    value: {\n      type: \"name\",\n      name: \"F1\",\n      dictionary: {\n        entries: new Map([\n          [\"Type\", { type: \"name\", value: \"Font\" }],\n          [\"BaseFont\", { type: \"name\", value: \"Courier\" }],\n        ]),\n      },\n    },\n  });\n  expect(state.textState.fontName).toEqual({ some: true, value: \"F1\" });\n  expect(state.textState.fontSize).toBe(12);\n  expect(result.value.context.resources).toBe(resources);\n  expect(result.value.warnings).toEqual([]);\n});\n"
+      },
+      "covers": [
+        "dispatch-tf"
+      ]
+    },
+    {
+      "id": "colors",
+      "suite": "resource-integration",
+      "name": "色空間・パターン・シェーディングも実行スコープから引ける",
+      "techniques": [
+        "equivalence"
+      ],
+      "why": "既存の色と描画のカテゴリも同じ実行オプションから利用できることを確認する。",
+      "given": "ローカルRGB、パターン、シェーディング、プロパティを定義する。",
+      "when": "CS、SC、cs、scn、sh を実行してプロパティも取得する。",
+      "then": "色空間が選択され、各名前を警告なしで取得できる。",
+      "commit": "fe149bc525c41da4fc97ec42b902cdeffbe6cded",
+      "excerpt": {
+        "path": "packages/core/src/content-stream/resources/__tests__/content-stream-resources.integration.test.ts",
+        "start": 92,
+        "end": 116,
+        "text": "test(\"色空間・パターン・シェーディングも実行スコープから引ける\", async () => {\n  const resources = await prepare({\n    resources:\n      \"<< /ColorSpace << /LocalRGB /DeviceRGB >> /Pattern << /P1 << /PatternType 2 /Shading << /ShadingType 2 /ColorSpace /DeviceRGB >> >> >> /Shading << /S1 << /ShadingType 2 /ColorSpace /DeviceRGB >> >> /Properties << /Tag << /MCID 1 >> >> >>\",\n  });\n\n  const result = ContentStreamInterpreter.execute({\n    data: encode(\"/LocalRGB CS .1 .2 .3 SC /Pattern cs /P1 scn /S1 sh\"),\n    resources,\n  });\n\n  assert(result.ok);\n  expect(result.value.warnings).toEqual([]);\n  expect(\n    GraphicsStateStack.current(result.value.context.graphicsStateStack),\n  ).toMatchObject({\n    strokeColorSpace: \"DeviceRGB\",\n    fillColorSpace: { family: \"Pattern\" },\n  });\n  expect(result.value.context.resources?.getProperties(\"Tag\")).toMatchObject({\n    ok: true,\n    value: { some: true, value: { type: \"dictionary\" } },\n  });\n});\n"
+      }
+    },
+    {
+      "id": "broken",
+      "suite": "resource-integration",
+      "name": "壊れたカテゴリや名前は使用した命令位置にだけ警告し、後続の命令を実行する",
+      "techniques": [
+        "error",
+        "state"
+      ],
+      "why": "カテゴリ単位の失敗と個別の失敗が後続処理を止める回帰を防ぐ。",
+      "given": "破損参照と未使用の名前と正常な名前を一つのスコープへ入れる。",
+      "when": "6カテゴリの壊れた名前を使い、あとから正常なフォントと拡張状態を指定する。",
+      "then": "使用した命令だけに位置と原因があり、最後の線幅とフォントが更新される。",
+      "commit": "fe149bc525c41da4fc97ec42b902cdeffbe6cded",
+      "excerpt": {
+        "path": "packages/core/src/content-stream/resources/__tests__/content-stream-resources.integration.test.ts",
+        "start": 117,
+        "end": 165,
+        "text": "test(\"壊れたカテゴリや名前は使用した命令位置にだけ警告し、後続の命令を実行する\", async () => {\n  const resources = await prepare({\n    resources:\n      \"<< /Font << /Bad 1 0 R /Unused 1 0 R /Good << /Type /Font >> >> /XObject 1 0 R /ExtGState << /Bad 1 0 R /Good << /LW 6 >> >> /ColorSpace 1 0 R /Pattern 1 0 R /Shading << /Bad 1 0 R /Good << /ShadingType 2 /ColorSpace /DeviceGray >> >> >>\",\n    objects: [\"<< /Broken\"],\n  });\n  const operations = [\n    \"/Bad 12 Tf\",\n    \"/Bad Do\",\n    \"/Bad gs\",\n    \"/Bad cs\",\n    \"/Bad scn\",\n    \"/Bad sh\",\n  ];\n  const categories = [\n    \"Font\",\n    \"XObject\",\n    \"ExtGState\",\n    \"ColorSpace\",\n    \"Pattern\",\n    \"Shading\",\n  ];\n  const content =\n    \"/Bad 12 Tf /Bad Do /Bad gs /Bad cs .2 .4 sc /Pattern cs /Bad scn /Bad sh /Good 14 Tf /Good gs /Good sh\";\n\n  const result = ContentStreamInterpreter.execute({\n    data: encode(content),\n    resources,\n  });\n\n  assert(result.ok);\n  expect(result.value.warnings).toEqual(\n    operations.map((operation, index) => ({\n      code: \"RESOURCES_RESOLVE_FAILED\",\n      offset: content.indexOf(operation) + operation.lastIndexOf(\" \") + 1,\n      message: expect.stringContaining(\n        `/${categories[index]} /Bad: OBJECT_PARSE_UNEXPECTED_TOKEN`,\n      ),\n    })),\n  );\n  const state = GraphicsStateStack.current(\n    result.value.context.graphicsStateStack,\n  );\n  expect(state.lineWidth).toBe(6);\n  expect(state.textState.fontName).toEqual({ some: true, value: \"Good\" });\n  expect(state.textState.fontSize).toBe(14);\n  expect(OperandStack.depth(result.value.context.operandStack)).toBe(0);\n});\n"
+      },
+      "covers": [
+        "report-gs"
+      ]
+    },
+    {
+      "id": "missing",
+      "suite": "resource-integration",
+      "name": "不在・型違いのリソースを警告し、Tf の名前とサイズを保持する",
+      "techniques": [
+        "boundary",
+        "state"
+      ],
+      "why": "以前のフォント辞書が失敗後も残る回帰を防ぐ。",
+      "given": "正常な辞書と数値を指すフォント名を用意する。",
+      "when": "正常なフォントの後で数値のフォント、未登録画像と拡張状態を指定する。",
+      "then": "不在警告が3件。新しいフォント名・サイズと元の文字間隔を保持する。",
+      "commit": "fe149bc525c41da4fc97ec42b902cdeffbe6cded",
+      "excerpt": {
+        "path": "packages/core/src/content-stream/resources/__tests__/content-stream-resources.integration.test.ts",
+        "start": 166,
+        "end": 195,
+        "text": "test(\"不在・型違いのリソースを警告し、Tf の名前とサイズを保持する\", async () => {\n  const resources = await prepare({\n    resources: \"<< /Font << /Known << /Type /Font >> /F1 42 >> >>\",\n  });\n\n  const result = ContentStreamInterpreter.execute({\n    data: encode(\"3 Tc /Known 10 Tf /F1 12 Tf /Im0 Do /GS1 gs 7 w\"),\n    resources,\n  });\n\n  assert(result.ok);\n  expect(result.value.warnings.map(({ code }) => code)).toEqual([\n    \"FONT_NOT_FOUND\",\n    \"XOBJECT_NOT_FOUND\",\n    \"EXT_GSTATE_NOT_FOUND\",\n  ]);\n  const state = GraphicsStateStack.current(\n    result.value.context.graphicsStateStack,\n  );\n  expect(state.lineWidth).toBe(7);\n  expect(state.textState.font).toEqual({\n    some: true,\n    value: { type: \"name\", name: \"F1\" },\n  });\n  expect(state.textState).toMatchObject({\n    fontSize: 12,\n    charSpace: 3,\n  });\n});\n"
+      }
+    },
+    {
+      "id": "legacy",
+      "suite": "resource-integration",
+      "name": "スコープを省略した従来の Tf・Do・gs を実行できる",
+      "techniques": [
+        "regression"
+      ],
+      "why": "リソースを渡していない利用者の動作を確認する。",
+      "given": "オプションからスコープを省く。",
+      "when": "Tf、Do、gs、線幅変更を実行する。",
+      "then": "従来の拡張状態不在の警告とフォント名・線幅を取得できる。",
+      "commit": "fe149bc525c41da4fc97ec42b902cdeffbe6cded",
+      "excerpt": {
+        "path": "packages/core/src/content-stream/resources/__tests__/content-stream-resources.integration.test.ts",
+        "start": 196,
+        "end": 214,
+        "text": "test(\"スコープを省略した従来の Tf・Do・gs を実行できる\", () => {\n  const result = ContentStreamInterpreter.execute({\n    data: encode(\"/F1 12 Tf /Im0 Do /GS1 gs 7 w\"),\n  });\n\n  assert(result.ok);\n  expect(result.value.warnings.map(({ code }) => code)).toEqual([\n    \"EXT_GSTATE_NOT_FOUND\",\n  ]);\n  const state = GraphicsStateStack.current(\n    result.value.context.graphicsStateStack,\n  );\n  expect(state.lineWidth).toBe(7);\n  expect(state.textState.font).toEqual({\n    some: true,\n    value: { type: \"name\", name: \"F1\" },\n  });\n});\n"
+      }
+    },
+    {
+      "id": "scope",
+      "suite": "resource-integration",
+      "name": "実行ごとのスコープは初期 context と従来の registry 設定から独立する",
+      "techniques": [
+        "state",
+        "regression"
+      ],
+      "why": "レジストリや初期コンテキストを再利用したときに同名リソースが混ざるのを検出する。",
+      "given": "同じ名前に異なる線幅を設定した2スコープと空スコープを作る。",
+      "when": "明示指定・空の指定・継承・従来の設定で同じ命令を実行する。",
+      "then": "各経路で選ばれた定義を使い、最初のスコープは元の参照を保持する。",
+      "commit": "fe149bc525c41da4fc97ec42b902cdeffbe6cded",
+      "excerpt": {
+        "path": "packages/core/src/content-stream/resources/__tests__/content-stream-resources.integration.test.ts",
+        "start": 215,
+        "end": 267,
+        "text": "test(\"実行ごとのスコープは初期 context と従来の registry 設定から独立する\", async () => {\n  const { resources: source, resolveRef } = setupResources({\n    resources: \"<< /ExtGState << /GS << /LW 9 >> >> >>\",\n  });\n  const states = await ExtGStateResources.fromResources(source, resolveRef);\n  assert(states.ok);\n  const registry = OperatorRegistry.createDefault(states.value);\n  assert(registry.ok);\n  const firstScope = await prepare({\n    resources: \"<< /ExtGState << /GS << /LW 3 >> >> >>\",\n  });\n  const secondScope = await prepare({\n    resources: \"<< /ExtGState << /GS << /LW 7 >> >> >>\",\n  });\n  const emptyScope = await prepare({ resources: \"<< >>\" });\n  const options = { data: encode(\"/GS gs\"), registry: registry.value };\n  const first = ContentStreamInterpreter.execute({\n    ...options,\n    resources: firstScope,\n  });\n  assert(first.ok);\n  const initialContext = first.value.context;\n\n  const second = ContentStreamInterpreter.execute({\n    ...options,\n    initialContext,\n    resources: secondScope,\n  });\n  const empty = ContentStreamInterpreter.execute({\n    ...options,\n    initialContext,\n    resources: emptyScope,\n  });\n  const inherited = ContentStreamInterpreter.execute({\n    ...options,\n    initialContext,\n  });\n  const legacy = ContentStreamInterpreter.execute(options);\n\n  assert(second.ok && empty.ok && inherited.ok && legacy.ok);\n  const width = (result: ContentStreamInterpreterResult): number =>\n    GraphicsStateStack.current(result.context.graphicsStateStack).lineWidth;\n  expect(width(first.value)).toBe(3);\n  expect(width(second.value)).toBe(7);\n  expect(width(empty.value)).toBe(3);\n  expect(empty.value.warnings).toMatchObject([\n    { code: \"EXT_GSTATE_NOT_FOUND\" },\n  ]);\n  expect(width(inherited.value)).toBe(3);\n  expect(width(legacy.value)).toBe(9);\n  expect(initialContext.resources).toBe(firstScope);\n});\n"
+      }
+    },
+    {
+      "id": "invalid",
+      "suite": "resource-integration",
+      "name": "リソースを指定しても Do の不正なオペランドは実行エラーになる",
+      "techniques": [
+        "error",
+        "boundary"
+      ],
+      "why": "オペランドの型検査が引き続き働くことを確認する。",
+      "given": "空のスコープを指定する。",
+      "when": "名前が必要な Do に数値を渡す。",
+      "then": "オペランドの型違いを実行エラーで返す。",
+      "commit": "fe149bc525c41da4fc97ec42b902cdeffbe6cded",
+      "excerpt": {
+        "path": "packages/core/src/content-stream/resources/__tests__/content-stream-resources.integration.test.ts",
+        "start": 268,
+        "end": 280,
+        "text": "test(\"リソースを指定しても Do の不正なオペランドは実行エラーになる\", async () => {\n  const resources = await prepare({ resources: \"<< >>\" });\n\n  const result = ContentStreamInterpreter.execute({\n    data: encode(\"5 Do\"),\n    resources,\n  });\n\n  expect(result).toMatchObject({\n    ok: false,\n    error: { code: \"OPERATOR_OPERAND_TYPE_MISMATCH\", operatorName: \"Do\" },\n  });\n});"
+      }
+    }
+  ],
+  "impact": {
+    "title": "ページの名前が辞書やストリームに届く",
+    "lead": "読み込み時に現在のページにある定義を使い、参照を読めない場合は問題の命令位置を知らせる。",
+    "changed": {
+      "before": [
+        {
+          "text": "名前から得られる内容は命令ごとに異なり、実行時にページの辞書をまとめて渡す入口がなかった。"
+        }
+      ],
+      "after": [
+        {
+          "text": "同じページの定義から、フォントの辞書・画像のストリーム・線幅などの拡張状態に到達する。"
+        }
+      ]
+    },
+    "added": [
+      {
+        "label": "壊れた参照",
+        "before": [],
+        "after": [
+          {
+            "text": "使用した位置と原因を警告し、正常な後続命令を実行する。"
+          }
+        ],
+        "tests": [
+          "broken"
+        ]
+      },
+      {
+        "label": "別ページで同じ名前を使う",
+        "before": [],
+        "after": [
+          {
+            "text": "実行時に指定したページの定義が選ばれる。"
+          }
+        ],
+        "tests": [
+          "scope"
+        ]
+      }
+    ],
+    "kept": [
+      {
+        "text": "辞書を渡さない既存の呼び出しも利用できる。",
+        "tests": [
+          "legacy"
+        ]
+      },
+      {
+        "text": "命令の引数が型違いなら実行エラーを返す。",
+        "tests": [
+          "invalid"
+        ]
+      }
+    ]
+  },
+  "primers": [
+    {
+      "kind": "pdf",
+      "id": "pdf-resource-dictionary",
+      "category": "PDF · リソース辞書",
+      "label": "ローカル名と間接参照",
+      "gist": "描画命令はページやフォームの辞書に登録された名前から、別のオブジェクトを参照する。",
+      "passages": [
+        {
+          "kind": "text",
+          "text": "コンテンツストリームではオペランドを先に書きます。名前の先頭のスラッシュはPDFの構文です。各命令がどのサブ辞書から名前を引くかを決めます。"
+        },
+        {
+          "kind": "declaration",
+          "code": "% ページ辞書の抜粋\n/Resources <<\n  /Font << /F1 6 0 R >>\n  /XObject << /Im0 8 0 R >>\n  /ExtGState << /GS1 10 0 R >>\n>>\n10 0 obj\n<< /LW 3 /ca .4 >>\nendobj\n\n% コンテンツストリームの本文\nq\n/GS1 gs\n/Im0 Do\nQ\nBT /F1 12 Tf (Hello) Tj ET"
+        },
+        {
+          "kind": "text",
+          "text": "6 0 R はオブジェクト番号6と世代番号0への参照です。このページの F1 を引くと、その参照先のフォント辞書へ到達します。Do は XObject のストリームを引きます。gs は GS1 の線幅と不透明度を適用し、Q が q の時点の描画状態を復元します。"
+        },
+        {
+          "kind": "excerpt",
+          "excerpt": {
+            "path": "packages/core/src/content-stream/operators/text/tf/index.ts",
+            "start": 55,
+            "end": 70,
+            "text": "\n  const resolved = context.resources?.getFont(fontName);\n  const dictionary = resolved?.ok ? resolved.value : none;\n  const current = GraphicsStateStack.current(context.graphicsStateStack);\n  const nextTextState = TextState.withFont(current.textState, {\n    font: {\n      type: \"name\",\n      name: fontName,\n      ...(dictionary.some ? { dictionary: dictionary.value } : {}),\n    },\n    size: sizeValue,\n  });\n  const next = GraphicsState.update(current, { textState: nextTextState });\n  const graphicsStateStack = GraphicsStateStack.replaceCurrent(\n    context.graphicsStateStack,\n    next,"
+          }
+        },
+        {
+          "kind": "spec",
+          "text": "リポジトリの docs/specs/04_resources_graphics_state.md §3.1〜§3.3。描画やグリフ処理は取得した辞書やストリームを使う後段です。参照の解析失敗を警告にするのはpdfmodの回復方針です。"
+        }
+      ],
+      "occurrences": [
+        {
+          "path": "packages/core/src/content-stream/operators/text/tf/index.ts",
+          "lineRange": {
+            "start": 55,
+            "end": 70
+          },
+          "text": "ローカル名から引いた辞書をテキスト状態に保持する。"
+        }
+      ],
+      "seeAlso": [
+        "lookup-result"
+      ]
+    },
+    {
+      "kind": "language",
+      "id": "lookup-result",
+      "category": "TypeScript · 失敗と不在",
+      "label": "Result<Option<T>, PdfError>",
+      "gist": "参照を処理できたかと、目的の値が見つかったかを二つの判別子で表す。",
+      "passages": [
+        {
+          "kind": "text",
+          "text": "単に辞書または undefined を返す関数では、名前がないときと、名前が指すオブジェクトを読めなかったときに、同じ値が返ります。後者の原因を利用者へ示すには成功・失敗と在否をそれぞれ表せる型が必要です。"
+        },
+        {
+          "kind": "declaration",
+          "code": "const result = resources.getFont('F1');\nif (!result.ok) {\n  return result.error;\n}\nif (result.value.some) {\n  return result.value.value;\n}"
+        },
+        {
+          "kind": "text",
+          "text": "ok を確認すると、失敗側から元の PdfError を、成功側から Option を読めます。Option の some が true の枝だけに目的の辞書があります。Tf はどちらの失敗でも名前とサイズを保ち、参照エラーには原因を付けて警告します。"
+        },
+        {
+          "kind": "excerpt",
+          "excerpt": {
+            "path": "packages/core/src/content-stream/operators/text/tf/index.ts",
+            "start": 70,
+            "end": 88,
+            "text": "    next,\n  );\n\n  const updated = { ...context, graphicsStateStack };\n  if (resolved === undefined || dictionary.some) {\n    return ok(updated);\n  }\n\n  const warning: PdfWarning = resolved.ok\n    ? {\n        code: \"FONT_NOT_FOUND\",\n        message: `Font resource not found: /${fontName}`,\n      }\n    : ContentStreamResources.warning(\n        { category: \"Font\", name: fontName },\n        resolved.error,\n      );\n  return ok({ ...updated, warnings: [warning] });\n};"
+          }
+        },
+        {
+          "kind": "caution",
+          "text": "コンテキストにスコープを渡さない呼び出しでは、名前とサイズを従来どおり保存します。"
+        }
+      ],
+      "occurrences": [
+        {
+          "path": "packages/core/src/content-stream/resources/index.ts",
+          "lineRange": {
+            "start": 24,
+            "end": 34
+          },
+          "text": "すべての取得関数が、対応する型の値・不在・エラーを表す。"
+        }
+      ]
+    },
+    {
+      "kind": "codebase",
+      "id": "prepared-scope",
+      "category": "pdfmod · 実行の設計",
+      "label": "非同期の準備と同期の実行",
+      "gist": "実行を始める前に参照解決を済ませ、命令は準備済みのスコープから名前を引く。",
+      "passages": [
+        {
+          "kind": "text",
+          "text": "同じ名前の意味は文書内でもページやフォームによって変わります。名前を引く処理を各命令の登録時に固定すると、実行ごとに登録を組み立て直す必要があります。準備した辞書を引数として渡せば、命令の登録を複数のスコープで共有できます。"
+        },
+        {
+          "kind": "declaration",
+          "code": "const scope = await ContentStreamResources.fromResources(page.resources, resolveRef);\nconst result = ContentStreamInterpreter.execute({ data, resources: scope });"
+        },
+        {
+          "kind": "excerpt",
+          "excerpt": {
+            "path": "packages/core/src/content-stream/interpreter/index.ts",
+            "start": 81,
+            "end": 121,
+            "text": "    }\n    const registry = registryResult.value;\n\n    const resources = options.resources ?? options.initialContext?.resources;\n    const tokenizer = new ContentStreamTokenizer(options.data);\n    let context = withResources(\n      createInitialContext(options.initialContext),\n      resources,\n    );\n    const warnings: PdfWarning[] = [];\n\n    while (true) {\n      const tokenResult = tokenizer.nextToken();\n      if (!tokenResult.ok) {\n        return err(tokenResult.error);\n      }\n\n      const step = executeToken({\n        token: tokenResult.value,\n        tokenizer,\n        registry,\n        context,\n      });\n      if (!step.ok) {\n        return err(step.error);\n      }\n\n      if (step.value.type === \"done\") {\n        return ok({\n          context: step.value.result.context,\n          warnings,\n        });\n      }\n\n      for (const warning of step.value.warnings ?? []) {\n        warnings.push(warning);\n      }\n\n      context = withResources(step.value.context, resources);\n    }\n  },"
+          }
+        },
+        {
+          "kind": "rule",
+          "text": "指定を省略すると初期コンテキストのスコープを使用します。明示したスコープがある場合は、後続の命令も最初に選んだ同じ参照を使います。"
+        }
+      ],
+      "occurrences": [
+        {
+          "path": "packages/core/src/content-stream/interpreter/index.ts",
+          "lineRange": {
+            "start": 119,
+            "end": 130
+          },
+          "text": "ハンドラの戻り値へ、その実行に属するスコープを引き継ぐ。"
+        }
+      ],
+      "flows": [
+        "select",
+        "recover"
+      ],
+      "tests": [
+        "scope",
+        "broken"
+      ]
+    }
+  ]
+}
