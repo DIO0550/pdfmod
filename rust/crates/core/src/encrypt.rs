@@ -3,11 +3,11 @@
 //!
 //! `/Filter /Standard` の暗号化辞書のみを型として解釈し、`/V` と `/R` の
 //! 取りうる組み合わせだけを [`StandardAlgorithm`] のバリアントで表現する。
-//! 旧リビジョンの鍵導出に使う MD5 も内部で実装する。
+//! 旧リビジョンの鍵導出に使う MD5 と、バイト列に適用する RC4 を内部で実装する。
 //!
 //! # スコープ外（#604）
 //!
-//! - 復号処理そのもの（RC4 / AES による文字列・ストリームの復号）
+//! - PDF 読み込み時の文字列・ストリームの復号
 //! - 鍵導出・パスワード認証（`/O` `/U` からの検証）
 //! - 公開鍵ハンドラ `/Adobe.PubSec` 固有キー（`/Recipients` `/SubFilter`）の解釈
 //! - 暗号化辞書の中に書かれた間接参照の解決（`/Length 5 0 R` など）
@@ -27,6 +27,14 @@ pub mod key;
 )]
 mod md5;
 pub mod permissions;
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "標準セキュリティハンドラの後続実装 (#675、#683) から呼び出す"
+    )
+)]
+mod rc4;
 pub mod standard;
 
 use crate::byte_offset::ByteOffset;
