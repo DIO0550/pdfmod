@@ -15,7 +15,10 @@ export {
 export { SoftMask } from "./content-stream/graphics-state/soft-mask/index";
 export { TextFont } from "./content-stream/graphics-state/text-font/index";
 export { PaintResources } from "./content-stream/paint-resources/index";
-export { ContentStreamResources } from "./content-stream/resources/index";
+export {
+  ContentStreamResources,
+  type PreparedFormXObject,
+} from "./content-stream/resources/index";
 export {
   PdfPattern,
   type PdfPatternPaintType,
@@ -38,6 +41,7 @@ export {
  */
 
 export {
+  type ClippingPath,
   Color,
   ColorSpace,
   GraphicsState,
@@ -46,6 +50,7 @@ export {
 export type {
   ContentStreamInterpreterExecuteOptions,
   ContentStreamInterpreterResult,
+  ImageXObjectDraw,
 } from "./content-stream/interpreter/index";
 export { ContentStreamInterpreter } from "./content-stream/interpreter/index";
 export type { MarkedContentEntry } from "./content-stream/marked-content/index";

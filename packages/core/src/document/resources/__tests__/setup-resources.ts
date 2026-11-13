@@ -17,12 +17,21 @@ import { PdfResources } from "../index";
  */
 export function setupResources(source: {
   readonly resources: string;
-  readonly objects?: readonly string[];
+  readonly objects?: readonly (string | Uint8Array)[];
 }): { readonly resources: PdfResources; readonly resolveRef: ResolveRef } {
   const encoder = new TextEncoder();
-  const objects = (source.objects ?? []).map((body, index) =>
-    encoder.encode(`${index + 1} 0 obj\n${body}\nendobj\n`),
-  );
+  const objects = (source.objects ?? []).map((body, index) => {
+    const header = encoder.encode(`${index + 1} 0 obj\n`);
+    const content = typeof body === "string" ? encoder.encode(body) : body;
+    const footer = encoder.encode("\nendobj\n");
+    const bytes = new Uint8Array(
+      header.length + content.length + footer.length,
+    );
+    bytes.set(header);
+    bytes.set(content, header.length);
+    bytes.set(footer, header.length + content.length);
+    return bytes;
+  });
   const length = objects.reduce((sum, bytes) => sum + bytes.byteLength, 0);
   const data = new Uint8Array(length);
   const entries = new Map<ObjectNumber, XRefEntry>();

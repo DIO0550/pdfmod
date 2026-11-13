@@ -400,7 +400,39 @@ endobj</span></code></pre>
         <tr><td>Form</td><td>本文は繰り返し実行できる描画命令です。<code>/BBox [0 0 40 20]</code> はフォーム座標で描画を切り取る境界、<code>/Matrix [1 0 0 1 10 5]</code> は原点を (10, 5) へ移す変換です。行列を省略すると座標はそのままです。内部で使う名前はフォーム自身の <code>/Resources</code> に定義できます。</td></tr>
         <tr><td>PS・未知</td><td>非推奨のPostScriptは独立した種別です。未知の名前、欠落、型の違う値でも元ストリームを取得できます。</td></tr>
       </tbody></table></div>
-      <div class="note"><strong>pdfmodで不完全なPDFを読むとき</strong>名前の参照先がストリームでなければ未解決です。Formの境界に数値が4個揃わない場合は境界だけが未設定になり、ほかの属性は読めます。<code>Do</code> は取得できなかった名前や参照の解析エラーを警告して先へ進みます。画像の復号とFormの入れ子実行は後段が担います。</div>
+      <h3>Formを実行するときの座標とリソース</h3>
+      <p>次の抜粋では、ページの <code>/Im0</code> は8番、フォームの <code>/Im0</code> は10番の画像です。画像オブジェクト本体は省略しています。</p>
+      <pre id="form-example"><code><span class="comment">% ページのリソース辞書</span>
+<span class="key">/Resources</span> <span class="syntax">&lt;&lt;</span> <span class="key">/XObject</span> <span class="syntax">&lt;&lt;</span>
+  <span class="key">/Badge</span> <span class="syntax">9 0 R</span> <span class="key">/Im0</span> <span class="syntax">8 0 R
+&gt;&gt; &gt;&gt;</span>
+
+<span class="comment">% ページのコンテンツストリーム</span>
+<span class="operator">q</span>
+<span class="value">2 0 0 2 100 40</span> <span class="operator">cm</span>
+<span class="key">/Badge</span> <span class="operator">Do</span>
+<span class="operator">Q</span>
+<span class="key">/Im0</span> <span class="operator">Do</span>
+
+<span class="comment">% /Badge の Form XObject</span>
+<span class="syntax">9 0 obj
+&lt;&lt;</span> <span class="key">/Type /XObject /Subtype /Form</span>
+   <span class="key">/BBox</span> [<span class="value">0 0 40 20</span>]
+   <span class="key">/Matrix</span> [<span class="value">1 0 0 1 10.5 5</span>]
+   <span class="key">/Resources</span> <span class="syntax">&lt;&lt;</span> <span class="key">/XObject</span> <span class="syntax">&lt;&lt;</span> <span class="key">/Im0</span> <span class="syntax">10 0 R &gt;&gt; &gt;&gt;</span>
+   <span class="key">/Length</span> <span class="value">7</span> <span class="syntax">&gt;&gt;
+stream</span>
+<span class="key">/Im0</span> <span class="operator">Do</span>
+<span class="syntax">endstream
+endobj</span></code></pre>
+      <ol>
+        <li><code>/Badge Do</code> が9番のストリームを引き、現在の描画状態を保存します。</li>
+        <li>Formの <code>/Matrix</code> を現在の変換行列（CTM）に連結します。フォームの原点はまず <code>(10.5, 5)</code> に移動し、ページ側の <code>cm</code> を適用すると <code>(121, 50)</code> に置かれます。</li>
+        <li><code>/BBox</code> の矩形を同じCTMで変換し、既存のクリッピング領域との重なりに描画を制限します。この例の矩形は <code>(121, 50)</code> から <code>(201, 90)</code> までです。Formの途中で <code>cm</code> を実行しても、確定したクリップの位置は保たれます。</li>
+        <li>Formの <code>/Im0 Do</code> はローカル辞書から10番の画像を引きます。Formを抜けると呼び出し時の描画状態とスコープが復元され、ページの <code>/Im0 Do</code> は8番を引きます。</li>
+      </ol>
+      <p>独自の <code>/Resources</code> があれば、その辞書が内側の名前すべてを決めます。空辞書 <code>&lt;&lt; &gt;&gt;</code> で <code>/Im0</code> を使うと名前の不在が警告されます。<code>/Resources</code> を省略したFormは、ページまたは直近の呼び出し元Formのスコープを使います。</p>
+      <div class="note"><strong>pdfmodの回復動作</strong>同じFormへの自己参照や相互参照を見つけた場合と、Formが33段目に入る場合は、その呼び出しを警告して先へ進みます。不正・欠落した <code>/BBox</code> や復号できないストリームも呼び出し単位でスキップします。解決済みのImageは、画像バイト列とその位置で有効な描画状態を結果の <code>images</code> に記録します。画素の復号とラスタライズはレンダラーが担当します。</div>
     </section>
 
     <section class="section" id="color-space">
@@ -454,6 +486,7 @@ if (result.ok) {
   }
 }</code></pre>
       <p><code>document</code> は読み込み済みの <code>PdfDocument</code>、<code>page</code> は同じ文書のページ、<code>contentBytes</code> は復号済みの命令列です。カスタムハンドラは <code>context.resources?.getXObject("Logo")</code> など、カテゴリごとの取得メソッドを使えます。結果の <code>ok</code> で参照解決の成否、<code>some</code> で値の有無を確認します。</p>
+      <p><code>fromResources</code> はFormの命令列と辞書も事前に準備します。ストリームは未圧縮のほか、単一の <code>FlateDecode</code> または <code>LZWDecode</code> に対応します。<code>execute</code> が返す <code>images</code> は入れ子を含む描画順で、各項目から画像、描画時のCTMとクリッピングパス、参照元のリソースを読めます。</p>
       <p>明示したスコープは <code>initialContext</code> のスコープより優先されます。省略時は初期コンテキストのスコープを引き継ぎます。新しいページに切り替えるときは、そのページの辞書を準備して渡します。</p>
       <div class="note warning"><strong>参照の失敗は命令を使用した位置で報告する</strong>準備時に壊れた参照を見つけても、そのカテゴリ・名前の取得結果として保持します。たとえば壊れた <code>/Logo</code> を <code>Do</code> が使うと命令のバイト位置に警告が付き、その後の <code>7 w</code> も実行されます。名前が未使用なら警告は追加されません。命令のオペランドが型違いの場合は引き続き実行エラーです。</div>
       <h3>辞書だけを取得する</h3>
@@ -494,11 +527,11 @@ if (PdfResources.hasCategory(resources, "Font")) {
       <div class="grid">
         <div class="card">
           <h3>今回対応する範囲</h3>
-          <p>ページから継承した辞書の取得、カテゴリと名前の解決、命令へのスコープの供給。<code>Tf</code> はフォント辞書を状態に保存し、<code>Do</code> は画像・フォーム等のストリームを取得し、<code>gs</code> は拡張状態を適用します。</p>
+          <p>ページから継承した辞書の取得、カテゴリと名前の解決、命令へのスコープの供給。<code>Tf</code> はフォント辞書を状態に保存し、<code>Do</code> は画像の描画情報を記録し、Formの命令を入れ子で実行します。<code>gs</code> は拡張状態を適用します。</p>
         </div>
         <div class="card">
           <h3>後続処理・未対応の範囲</h3>
-          <p>フォント辞書内部のエンコーディング・CMAP 解析、画像ストリームのデコード、フォーム内の命令の入れ子実行、画面への描画。</p>
+          <p>フォント辞書内部のエンコーディング・CMAP 解析、画像ストリームの復号、画面への描画。</p>
         </div>
       </div>
       <div class="note">

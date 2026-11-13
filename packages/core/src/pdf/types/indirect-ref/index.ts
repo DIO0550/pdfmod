@@ -48,6 +48,15 @@ const IndirectRef = {
       generationNumber: gen.value,
     });
   },
+
+  /**
+   * 同一文書の参照を照合するキーを返す。
+   * @param ref - オブジェクト番号と世代番号を持つ参照
+   * @returns 両方の番号を含むキー
+   */
+  key(ref: IndirectRef): string {
+    return `${ref.objectNumber}-${ref.generationNumber}`;
+  },
 } as const;
 
 export { IndirectRef };

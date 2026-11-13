@@ -12,9 +12,9 @@ import type {
   PdfWarning,
 } from "../../pdf/errors/index";
 import { GenerationNumber } from "../../pdf/types/generation-number/index";
+import { IndirectRef } from "../../pdf/types/indirect-ref/index";
 import type { ObjectNumber } from "../../pdf/types/object-number/index";
 import type {
-  IndirectRef,
   PdfObject,
   PdfStream,
   PdfValue,
@@ -187,7 +187,7 @@ export class ObjectStore {
     ref: IndirectRef,
     ancestors: Set<string>,
   ): Promise<Result<PdfObject, PdfError>> {
-    const cacheKey = `${ref.objectNumber}-${ref.generationNumber}`;
+    const cacheKey = IndirectRef.key(ref);
 
     const cached = this.cache.get(cacheKey);
     if (cached !== undefined) {
@@ -312,7 +312,7 @@ export class ObjectStore {
     let found: Option<PdfValue> = none;
 
     for (let depth = 0; depth < MAX_OBJECT_STREAM_CHAIN; depth++) {
-      const key = `${current.ref.objectNumber}-${current.ref.generationNumber}`;
+      const key = IndirectRef.key(current.ref);
       if (visited.has(key)) {
         return err({
           code: "OBJECT_STREAM_INVALID",

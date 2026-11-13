@@ -1,5 +1,5 @@
 import type { Brand } from "../../../utils/brand/index";
-import { none, type Option } from "../../../utils/option/index";
+import { none, type Option, some } from "../../../utils/option/index";
 import { Alpha } from "../alpha/index";
 import { type BlendMode, BlendModes } from "../blend-mode/index";
 import type { ClippingRule } from "../clipping-rule";
@@ -16,6 +16,14 @@ import { TextObject } from "../text-object";
 import { TextState } from "../text-state";
 
 declare const GraphicsStateBrand: unique symbol;
+
+/** 確定時の CTM で変換したパスと、直前のクリッピング領域との交差。 */
+export type ClippingPath = {
+  readonly path: CurrentPath;
+  readonly rule: ClippingRule;
+  readonly ctm: Matrix;
+  readonly previous: Option<ClippingPath>;
+};
 
 type GraphicsStateFields = {
   readonly strokeAlpha: Alpha;
@@ -37,6 +45,7 @@ type GraphicsStateFields = {
   readonly textObject: TextObject;
   readonly renderingIntent: RenderingIntent;
   readonly flatness: number;
+  readonly clippingPath: Option<ClippingPath>;
   readonly pendingClip: Option<ClippingRule>;
 };
 
@@ -69,6 +78,7 @@ export const GraphicsState = {
    *   textObject       = TextObject.inactive()
    *   renderingIntent  = RelativeColorimetric
    *   flatness         = 1.0
+   *   clippingPath     = none (ページ既定の領域)
    *   pendingClip      = none (ISO 32000-1:2008 §8.5.4)
    *
    * @returns デフォルト値で初期化された GraphicsState
@@ -94,6 +104,7 @@ export const GraphicsState = {
       textObject: TextObject.inactive(),
       renderingIntent: RenderingIntent.create("RelativeColorimetric"),
       flatness: 1.0,
+      clippingPath: none,
       pendingClip: none,
     } as unknown as GraphicsState;
   },
@@ -156,10 +167,30 @@ export const GraphicsState = {
           : state.renderingIntent,
       flatness:
         partial.flatness !== undefined ? partial.flatness : state.flatness,
+      clippingPath: partial.clippingPath ?? state.clippingPath,
       pendingClip:
         partial.pendingClip !== undefined
           ? partial.pendingClip
           : state.pendingClip,
     } as unknown as GraphicsState;
+  },
+
+  /**
+   * 現在の座標系のパスでクリッピング領域を狭める。
+   * @param state - 既存のクリッピング領域と現在の CTM を持つ状態
+   * @param clip - 交差させるパスと内側を決める規則
+   * @returns クリッピングパスを追加した状態
+   */
+  intersectClippingPath(
+    state: GraphicsState,
+    clip: Pick<ClippingPath, "path" | "rule">,
+  ): GraphicsState {
+    return GraphicsState.update(state, {
+      clippingPath: some({
+        ...clip,
+        ctm: state.ctm,
+        previous: state.clippingPath,
+      }),
+    });
   },
 } as const;

@@ -109,12 +109,18 @@ export const ResourceParameters = {
     size: Size,
     resolveRef: ResolveRef,
   ): Promise<Result<Option<Coordinates[Size]>, PdfError>> {
+    const validSize = value?.type === "array" && value.elements.length === size;
+    if (!validSize) {
+      return ok(none);
+    }
+
     const result = await ResourceParameters.numbers(value, resolveRef);
     if (!result.ok) {
       return result;
     }
 
-    const valid = result.value.some && result.value.value.length === size;
-    return ok(valid ? some(result.value.value as Coordinates[Size]) : none);
+    return ok(
+      result.value.some ? some(result.value.value as Coordinates[Size]) : none,
+    );
   },
 } as const;

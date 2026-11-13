@@ -18,7 +18,7 @@ import {
 } from "../../../utils/option/index";
 import { map, ok, type Result } from "../../../utils/result/index";
 import { PdfRectangle } from "../../page-tree/resolved-page/index";
-import { ResourceParameters } from "../parameters/index";
+import { CoordinateCounts, ResourceParameters } from "../parameters/index";
 
 const ComponentDepth = {
   One: 1,
@@ -94,8 +94,6 @@ const ImageKeys = [
   "ImageMask",
 ] as const;
 const FormKeys = ["BBox", "Matrix", "Resources"] as const;
-const RECTANGLE_SIZE = 4;
-const MATRIX_SIZE = 6;
 
 const PdfImageXObject = {
   /** @param stream - 画像の元ストリーム
@@ -131,44 +129,6 @@ const PdfImageXObject = {
   },
 } as const;
 
-/**
- * 矩形または行列の各成分を読む。
- * @param value - 辞書から取得した配列
- * @param size - 必要な成分数
- * @param resolveRef - 成分が間接参照だった場合の解決関数
- * @returns 必要な数値が揃えば Some。不在・型不正は None、参照エラーは Err
- */
-async function coordinates(
-  value: PdfObject | undefined,
-  size: number,
-  resolveRef: ResolveRef,
-): Promise<Result<Option<number[]>, PdfError>> {
-  const validSize = value?.type === "array" && value.elements.length === size;
-  if (!validSize) {
-    return ok(none);
-  }
-
-  const numbers: number[] = [];
-  for (const element of value.elements) {
-    const result = await ResolveRef.object(element, resolveRef);
-
-    if (!result.ok) {
-      return result;
-    }
-
-    if (!result.value.some) {
-      return ok(none);
-    }
-    const number = result.value.value;
-    const numeric = number.type === "integer" || number.type === "real";
-    if (!numeric) {
-      return ok(none);
-    }
-    numbers.push(number.value);
-  }
-  return ok(some(numbers));
-}
-
 const PdfFormXObject = {
   /**
    * @param stream - フォームの元ストリーム
@@ -181,18 +141,18 @@ const PdfFormXObject = {
     fields: ReadonlyMap<string, PdfObject>,
     resolveRef: ResolveRef,
   ): Promise<Result<PdfFormXObject, PdfError>> {
-    const bbox = await coordinates(
+    const bbox = await ResourceParameters.coordinates(
       fields.get("BBox"),
-      RECTANGLE_SIZE,
+      CoordinateCounts.Rectangle,
       resolveRef,
     );
     if (!bbox.ok) {
       return bbox;
     }
 
-    const matrix = await coordinates(
+    const matrix = await ResourceParameters.coordinates(
       fields.get("Matrix"),
-      MATRIX_SIZE,
+      CoordinateCounts.Matrix,
       resolveRef,
     );
     if (!matrix.ok) {

@@ -4,23 +4,40 @@ import {
 } from "../../document/resources/index";
 import { PdfPattern } from "../../document/resources/pattern/index";
 import { PdfShading } from "../../document/resources/shading/index";
-import { PdfXObject } from "../../document/resources/xobject/index";
+import {
+  type PdfFormXObject,
+  PdfXObject,
+  PdfXObjectSubtype,
+} from "../../document/resources/xobject/index";
 import type { PdfError, PdfWarning } from "../../pdf/errors/index";
-import type {
-  PdfDictionary,
-  PdfObject,
-  ResolveRef,
+import {
+  IndirectRef,
+  type PdfDictionary,
+  type PdfObject,
+  type PdfStream,
+  type ResolveRef,
 } from "../../pdf/types/index";
 import { none, type Option, some } from "../../utils/option/index";
-import { flatMap, map, ok, type Result } from "../../utils/result/index";
+import { err, flatMap, map, ok, type Result } from "../../utils/result/index";
 import {
   type ColorSpaceDefinition,
   ColorSpaceResources,
 } from "../color-space-resources/index";
 import { type ExtGState, ExtGStateResources } from "../ext-gstate/index";
 import { PaintResources } from "../paint-resources/index";
+import { FormXObjectContent } from "./form-xobject-content/index";
 
 type ResourceLookup<T> = (name: string) => Result<Option<T>, PdfError>;
+
+export type PreparedFormXObject = FormXObjectContent & {
+  /** /Resources を省略した Form は呼び出し元のスコープを使う。 */
+  readonly resources: Option<ContentStreamResources>;
+};
+
+type PreparedResourceScope = {
+  readonly scope: ContentStreamResources;
+  readonly forms: readonly PdfFormXObject[];
+};
 
 /** ページまたはフォームの名前を同期実行中に引く、読み取り専用のリソーススコープ。 */
 export type ContentStreamResources = {
@@ -31,6 +48,10 @@ export type ContentStreamResources = {
   readonly getPattern: ResourceLookup<PdfPattern>;
   readonly getShading: ResourceLookup<PdfShading>;
   readonly getProperties: ResourceLookup<PdfDictionary>;
+  /** fromResources が準備した Form の実行入力を引く。 */
+  readonly getFormContent?: (
+    form: PdfFormXObject,
+  ) => Result<PreparedFormXObject, PdfError>;
 };
 
 function readDictionary(
@@ -46,23 +67,102 @@ function lookup<T>(
     flatMap(category, (entries) => entries.get(name) ?? ok(none));
 }
 
-export const ContentStreamResources = {
-  /**
-   * 同期実行の前に PDF のリソースを準備する。各 getter はスラッシュを除いた名前を受け取る。
-   * 名前の不在は None。カテゴリまたは参照先のエラーは該当する getter から返す。
-   */
-  async fromResources(
+/**
+ * 文書内のリソース辞書と Form を準備する。Form が辞書を共有しても各スコープは一度だけ読む。
+ */
+class ResourcePreparation {
+  readonly #resolveRef: ResolveRef;
+  readonly #scopes = new Map<PdfDictionary, ContentStreamResources>();
+  readonly #xObjects = new Map<PdfStream, Result<PdfXObject, PdfError>>();
+  readonly #forms = new Map<
+    PdfFormXObject,
+    Result<PreparedFormXObject, PdfError>
+  >();
+
+  constructor(resolveRef: ResolveRef) {
+    const objects = new Map<string, Promise<Result<PdfObject, PdfError>>>();
+    this.#resolveRef = (ref) => {
+      const key = IndirectRef.key(ref);
+      const cached = objects.get(key);
+      if (cached !== undefined) {
+        return cached;
+      }
+
+      const object = resolveRef(ref);
+      objects.set(key, object);
+      return object;
+    };
+  }
+
+  async prepare(resources: PdfResources): Promise<ContentStreamResources> {
+    const root = await this.readScope(resources);
+    const queue = [...root.forms];
+
+    // スコープを登録してから、その配下の Form をたどる。
+    for (const form of queue) {
+      const content = await FormXObjectContent.fromForm(form, this.#resolveRef);
+      if (!content.ok) {
+        this.#forms.set(form, content);
+        continue;
+      }
+
+      if (!form.resources.some) {
+        this.#forms.set(form, ok({ ...content.value, resources: none }));
+        continue;
+      }
+
+      const { scope, forms } = await this.readScope(
+        PdfResources.from(form.resources.value),
+      );
+      this.#forms.set(form, ok({ ...content.value, resources: some(scope) }));
+      for (const child of forms) {
+        queue.push(child);
+      }
+    }
+
+    return root.scope;
+  }
+
+  private async readScope(
     resources: PdfResources,
-    resolveRef: ResolveRef,
-  ): Promise<ContentStreamResources> {
+  ): Promise<PreparedResourceScope> {
+    const existing = this.#scopes.get(resources.dictionary);
+    if (existing !== undefined) {
+      return { scope: existing, forms: [] };
+    }
+
+    const resolveRef = this.#resolveRef;
     const fonts = await PdfResources.readCategory(
       resources,
       { name: "Font", read: readDictionary },
       resolveRef,
     );
+    const forms: PdfFormXObject[] = [];
     const xObjects = await PdfResources.readCategory(
       resources,
-      { name: "XObject", read: PdfXObject.fromObject },
+      {
+        name: "XObject",
+        read: async (object, resolveRef) => {
+          if (object.type !== "stream") {
+            return ok(none);
+          }
+
+          const cached = this.#xObjects.get(object);
+          if (cached !== undefined) {
+            return map(cached, some);
+          }
+
+          const result = await PdfXObject.fromStream(object, resolveRef);
+          this.#xObjects.set(object, result);
+          const form =
+            result.ok && result.value.subtype === PdfXObjectSubtype.Form;
+          if (form) {
+            forms.push(result.value);
+          }
+
+          return map(result, some);
+        },
+      },
       resolveRef,
     );
     const states = await ExtGStateResources.fromResources(
@@ -89,7 +189,8 @@ export const ContentStreamResources = {
       resolveRef,
     );
 
-    return {
+    const preparedForms = this.#forms;
+    const scope: ContentStreamResources = {
       getFont: lookup(fonts),
       getXObject: lookup(xObjects),
       getExtGState: lookup(map(states, ({ states }) => states)),
@@ -103,7 +204,31 @@ export const ContentStreamResources = {
       getPattern: lookup(patterns),
       getShading: lookup(shadings),
       getProperties: lookup(properties),
+      getFormContent: (form) =>
+        preparedForms.get(form) ??
+        err({
+          code: "PDF_TYPE_INVALID",
+          message: "Form content was not prepared",
+        }),
     };
+    this.#scopes.set(resources.dictionary, scope);
+
+    return { scope, forms };
+  }
+}
+
+export const ContentStreamResources = {
+  /**
+   * 同期実行の前にリソース辞書と Form の命令列を準備する。
+   * @param resources - ページまたは Form のリソース辞書
+   * @param resolveRef - 同じ文書の間接参照解決関数
+   * @returns 名前を引くスコープ。参照・復号エラーは該当する getter が返す
+   */
+  async fromResources(
+    resources: PdfResources,
+    resolveRef: ResolveRef,
+  ): Promise<ContentStreamResources> {
+    return new ResourcePreparation(resolveRef).prepare(resources);
   },
 
   /** リソースの参照エラーを、命令の位置に付ける警告へ変換する。 */
