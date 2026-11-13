@@ -16,7 +16,7 @@ import {
   type Option,
   some,
 } from "../../../utils/option/index";
-import { ok, type Result } from "../../../utils/result/index";
+import { map, ok, type Result } from "../../../utils/result/index";
 import { PdfRectangle } from "../../page-tree/resolved-page/index";
 import { ResourceParameters } from "../parameters/index";
 
@@ -216,6 +216,18 @@ const PdfFormXObject = {
 } as const;
 
 export const PdfXObject = {
+  /** ストリームを XObject として読み、それ以外のオブジェクトは None を返す。 */
+  async fromObject(
+    object: PdfObject,
+    resolveRef: ResolveRef,
+  ): Promise<Result<Option<PdfXObject>, PdfError>> {
+    if (object.type !== "stream") {
+      return ok(none);
+    }
+
+    return map(await PdfXObject.fromStream(object, resolveRef), some);
+  },
+
   /**
    * /Subtype から種別と属性を読み、元のストリームを保持する。
    * @param stream - 名前解決で得たストリーム

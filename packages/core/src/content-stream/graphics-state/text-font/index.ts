@@ -1,9 +1,13 @@
 import type { PdfDictionary } from "../../../pdf/types/index";
 import { none, type Option, some } from "../../../utils/option/index";
 
-/** Tf のローカル名、または gs /Font の解決済み辞書。 */
+/** Tf のローカル名と取得できた辞書、または gs /Font の辞書指定。 */
 export type TextFont =
-  | { readonly type: "name"; readonly name: string }
+  | {
+      readonly type: "name";
+      readonly name: string;
+      readonly dictionary?: PdfDictionary;
+    }
   | { readonly type: "dictionary"; readonly dictionary: PdfDictionary };
 
 export const TextFont = {

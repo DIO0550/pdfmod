@@ -2,7 +2,7 @@ import type { PdfError } from "../../pdf/errors/index";
 import type { PdfDictionary, PdfObject, PdfValue } from "../../pdf/types/index";
 import { ResolveRef } from "../../pdf/types/index";
 import { none, type Option, some } from "../../utils/option/index";
-import { map, ok, type Result } from "../../utils/result/index";
+import { ok, type Result } from "../../utils/result/index";
 import { PdfXObject } from "./xobject/index";
 
 /**
@@ -146,11 +146,11 @@ export const PdfResources = {
     }
 
     const target = result.value;
-    if (!target.some || target.value.type !== "stream") {
+    if (!target.some) {
       return ok(none);
     }
 
-    return map(await PdfXObject.fromStream(target.value, resolveRef), some);
+    return PdfXObject.fromObject(target.value, resolveRef);
   },
 
   /**
@@ -201,6 +201,50 @@ export const PdfResources = {
       return ok(none);
     }
     return ok(some(resolvedObj));
+  },
+
+  /**
+   * カテゴリ辞書を一度引き、名前ごとの読み取り結果を保持する。
+   * カテゴリ自体の参照エラーと、個別の参照・読み取りエラーを区別する。
+   */
+  async readCategory<T>(
+    resources: PdfResources,
+    category: {
+      readonly name: PdfResourceCategory;
+      readonly read: (
+        object: PdfObject,
+        resolveRef: ResolveRef,
+      ) => Result<Option<T>, PdfError> | Promise<Result<Option<T>, PdfError>>;
+    },
+    resolveRef: ResolveRef,
+  ): Promise<
+    Result<ReadonlyMap<string, Result<Option<T>, PdfError>>, PdfError>
+  > {
+    const dictionary = await PdfResources.getCategory(
+      resources,
+      category.name,
+      resolveRef,
+    );
+    if (!dictionary.ok) {
+      return dictionary;
+    }
+
+    const entries = new Map<string, Result<Option<T>, PdfError>>();
+    if (!dictionary.value.some) {
+      return ok(entries);
+    }
+
+    for (const [name, value] of dictionary.value.value.entries) {
+      const object = await ResolveRef.object(value, resolveRef);
+      if (!object.ok || !object.value.some) {
+        entries.set(name, object.ok ? ok(none) : object);
+        continue;
+      }
+
+      entries.set(name, await category.read(object.value.value, resolveRef));
+    }
+
+    return ok(entries);
   },
 
   /**

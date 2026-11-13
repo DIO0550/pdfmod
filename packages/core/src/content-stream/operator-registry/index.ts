@@ -70,6 +70,7 @@ import { twHandler } from "../operators/text/tw/index";
 import { tzHandler } from "../operators/text/tz/index";
 import { doHandler } from "../operators/xobject/do/index";
 import { PaintResources } from "../paint-resources/index";
+import type { ContentStreamResources } from "../resources/index";
 
 /**
  * Content stream operator handler が受け取り、更新後に返す実行コンテキスト。
@@ -81,6 +82,8 @@ export type OperatorHandlerContext = {
   readonly graphicsStateStack: GraphicsStateStack;
   /** BMC/BDC/EMC 由来の marked content stack (ISO 32000-2:2020 §14.6) */
   readonly markedContentStack: MarkedContentStack;
+  /** 現在のページ・フォームのリソース。実行中の命令は同じスコープを参照する。 */
+  readonly resources?: ContentStreamResources;
 };
 
 /**
