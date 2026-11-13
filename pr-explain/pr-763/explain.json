@@ -1,0 +1,675 @@
+{
+  "version": 1,
+  "pr": 763,
+  "sha": "de7f0d40998a1ca82c477ebcae1a1c0b8fc1f91d",
+  "issue": 640,
+  "overview": {
+    "title": "旧形式のPDFに使うRC4をRustに追加",
+    "lead": "標準セキュリティハンドラが渡す鍵とデータを受け取り、バイト列にRC4を適用できるようにします。鍵の受け取り、置換表の準備、データの書き換えの順に読むと処理を追えます。",
+    "before": [
+      {
+        "text": "Rustでは暗号化辞書からRC4の指定を読み取れても、渡された鍵でバイト列を変換する処理がありませんでした。"
+      }
+    ],
+    "after": [
+      {
+        "text": "5〜16バイトの鍵から置換表を作り、データを暗号化または復号できます。",
+        "message": "prepare-rc4"
+      },
+      {
+        "text": "分割したデータは鍵ストリームの続きから処理できます。",
+        "message": "apply-rc4"
+      }
+    ],
+    "highlights": [
+      {
+        "title": "鍵長と状態の境界",
+        "text": "生成時に鍵長を検証し、呼び出し側は成功時にだけRC4の状態を受け取ります。",
+        "go": {
+          "kind": "file",
+          "path": "rust/crates/core/src/encrypt/rc4.rs"
+        }
+      }
+    ]
+  },
+  "concepts": [
+    {
+      "path": "rust/crates/core/src/encrypt.rs",
+      "name": "暗号化モジュール",
+      "role": "暗号化辞書と旧形式用の内部処理をまとめる。",
+      "change": "RC4を内部モジュールとして追加。"
+    },
+    {
+      "path": "rust/crates/core/src/encrypt/rc4.rs",
+      "name": "RC4の状態",
+      "role": "鍵で置換表を初期化し、バイト列をその場で更新する。",
+      "change": "KSA、PRGAと分割入力の状態を実装。"
+    },
+    {
+      "path": "rust/crates/core/src/encrypt/rc4/tests.rs",
+      "name": "既知の出力との照合",
+      "role": "公開テストベクタと鍵長・状態の境界を確認する。",
+      "change": "5件のユニットテストを追加。"
+    },
+    {
+      "path": "docs/guides/encryption-dictionary.html",
+      "name": "PDF仕様のHTML解説",
+      "role": "暗号化辞書の指定とバイト列への変換をつなぐ。",
+      "change": "色分けしたPDFの抜粋とXORの例を追記。"
+    },
+    {
+      "path": "docs/specs/02b_encryption.md",
+      "name": "暗号化の仕様資料",
+      "role": "旧形式でRC4が選ばれる条件と内部APIの契約を記す。",
+      "change": "RC4の手順とPDF読み込みへの適用範囲を追記。"
+    }
+  ],
+  "messages": [
+    {
+      "id": "prepare-rc4",
+      "from": "rust/crates/core/src/encrypt/rc4/tests.rs",
+      "to": "rust/crates/core/src/encrypt/rc4.rs",
+      "kind": "cmd",
+      "name": "鍵から状態を生成",
+      "code": "Rc4::new(key)",
+      "via": "call",
+      "payload": "5〜16バイトの鍵を借用して受け取る。",
+      "returns": "置換表と添字を持つ状態。鍵長が範囲外ならNone。",
+      "status": "added"
+    },
+    {
+      "id": "apply-rc4",
+      "from": "rust/crates/core/src/encrypt/rc4/tests.rs",
+      "to": "rust/crates/core/src/encrypt/rc4.rs",
+      "kind": "cmd",
+      "name": "鍵ストリームを適用",
+      "code": "rc4.apply(data)",
+      "via": "call",
+      "payload": "変換するバイト列の可変スライス。",
+      "returns": "バイト列をその場で更新し、次に使う状態を保持する。",
+      "status": "added"
+    }
+  ],
+  "flows": [
+    {
+      "id": "rc4-transform",
+      "label": "鍵の検証からデータの変換まで",
+      "steps": [
+        "prepare-rc4",
+        "apply-rc4"
+      ]
+    }
+  ],
+  "commitStories": [
+    {
+      "sha": "de7f0d40998a1ca82c477ebcae1a1c0b8fc1f91d",
+      "phase": "core",
+      "role": "旧形式向けのRC4をRust標準ライブラリだけで実装する",
+      "why": "暗号化辞書の解析で得た方式を、後続のパスワード認証や文字列・ストリームの復号から利用できるようにする。",
+      "flows": [
+        "rc4-transform"
+      ],
+      "notes": [
+        {
+          "path": "rust/crates/core/src/encrypt.rs",
+          "side": "new",
+          "start": 6,
+          "end": 6,
+          "text": "暗号化辞書の型表現に加えて、内部でMD5とRC4を提供する範囲を明示する。"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt.rs",
+          "side": "new",
+          "start": 10,
+          "end": 10,
+          "text": "今回のRC4は渡された鍵とバイト列に作用する。PDFを読む途中の文字列・ストリームへの接続は後続の処理が担う。"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt.rs",
+          "side": "new",
+          "start": 30,
+          "end": 37,
+          "text": "既存のMD5と同じ公開範囲にRC4を置く。認証とPDF読み込みで利用するまでは、非テストビルドに限って未使用を想定する。"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/rc4.rs",
+          "side": "new",
+          "start": 1,
+          "end": 12,
+          "text": "PDF互換で扱う鍵長と256要素の置換表を定める。添字をu8で保持すると、0〜255の全値が固定長配列の有効な位置になる。"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/rc4.rs",
+          "side": "new",
+          "start": 15,
+          "end": 19,
+          "text": "生の鍵を受け取り、長さが5〜16バイトの範囲外ならNoneを返す。後続の処理には空や範囲外の鍵が入らない。"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/rc4.rs",
+          "side": "new",
+          "start": 21,
+          "end": 24,
+          "text": "0〜255を順に書き込み、鍵を混ぜる前に各値がちょうど一度現れる置換表を作る。"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/rc4.rs",
+          "side": "new",
+          "start": 26,
+          "end": 30,
+          "text": "鍵バイトを順に循環させ、添字iの表の値と合わせてjを更新する。各ステップでiとjの要素を交換し、256回で鍵を置換表に反映する。"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/rc4.rs",
+          "side": "new",
+          "start": 32,
+          "end": 38,
+          "text": "KSAで並べ替えた表を保持し、PRGA用のiとjは0で初期化する。これで鍵ストリームの先頭から生成を始められる。"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/rc4.rs",
+          "side": "new",
+          "start": 40,
+          "end": 48,
+          "text": "データの各バイトに対し、iを1進め、表の値をjに加えて要素を交換する。u8の折り返しで加算を256を法とする演算にする。"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/rc4.rs",
+          "side": "new",
+          "start": 50,
+          "end": 53,
+          "text": "交換後の2要素の和で表を引き、得た1バイトをデータへXORする。可変スライスを直接更新し、置換表と添字は続きの入力に使う。"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/rc4.rs",
+          "side": "new",
+          "start": 56,
+          "end": 57,
+          "text": "実装の内部型を同じモジュール階層のユニットテストから呼ぶ。"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/rc4/tests.rs",
+          "side": "new",
+          "start": 1,
+          "end": 16,
+          "text": "鍵Secretと既知の平文・暗号文を用意し、変換結果の一致と新しく初期化した状態による復号を確かめる。"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/rc4/tests.rs",
+          "side": "new",
+          "start": 18,
+          "end": 38,
+          "text": "5バイト鍵とゼロ列から鍵ストリームを取り出す。先頭と256バイト処理後を独立した既知値と比べ、最短鍵と添字の折り返しを確かめる。"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/rc4/tests.rs",
+          "side": "new",
+          "start": 40,
+          "end": 54,
+          "text": "16バイト鍵の先頭16バイトを既知値と比べる。最長の鍵を受理し、鍵スケジューリングの結果が一致することを確かめる。"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/rc4/tests.rs",
+          "side": "new",
+          "start": 56,
+          "end": 61,
+          "text": "0・3・4・17バイトの鍵がすべてNoneを返すことを確認し、空入力と鍵長の両境界の拒否を確かめる。"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/rc4/tests.rs",
+          "side": "new",
+          "start": 63,
+          "end": 74,
+          "text": "既知の平文を分割し、間に空スライスを渡す。暗号文全体が既知値と一致すれば、分割や空入力で鍵ストリームの位置がずれていない。"
+        },
+        {
+          "path": "rust/crates/core/src/lib.rs",
+          "side": "new",
+          "start": 17,
+          "end": 18,
+          "text": "クレートの案内を更新し、旧形式のMD5・RC4を内部に持つ段階と、PDFを開く処理への接続状況を読めるようにする。"
+        },
+        {
+          "path": "docs/guides/README.md",
+          "side": "new",
+          "start": 19,
+          "end": 19,
+          "text": "既存の暗号化辞書ガイドにRC4が加わったことを示し、IssueとRustの実装から辿れるようにする。"
+        },
+        {
+          "path": "docs/guides/encryption-dictionary.html",
+          "side": "new",
+          "start": 167,
+          "end": 167,
+          "text": "目次に旧形式のRC4を追加し、仕組みとPDFの例がある節へ移動できるようにする。"
+        },
+        {
+          "path": "docs/guides/encryption-dictionary.html",
+          "side": "new",
+          "start": 319,
+          "end": 319,
+          "text": "辞書解析では鍵材料を保持することを示し、RustでのRC4の適用手順へのリンクを置く。"
+        },
+        {
+          "path": "docs/guides/encryption-dictionary.html",
+          "side": "new",
+          "start": 363,
+          "end": 378,
+          "text": "色分けした暗号化辞書と文字列の抜粋で、StrFからRC4を選ぶ経路と、2つのLengthの単位を説明する。"
+        },
+        {
+          "path": "docs/guides/encryption-dictionary.html",
+          "side": "new",
+          "start": 379,
+          "end": 387,
+          "text": "KSA、PRGA、XORの順に示し、同じ鍵ストリームを使ったXORで元の1バイトに戻ることを具体例で説明する。"
+        },
+        {
+          "path": "docs/guides/encryption-dictionary.html",
+          "side": "new",
+          "start": 388,
+          "end": 389,
+          "text": "鍵長の上下限、空データ、分割入力の結果を示し、内部処理をPDF読み込みへ接続する作業の位置を伝える。"
+        },
+        {
+          "path": "docs/specs/00_overview.md",
+          "side": "new",
+          "start": 29,
+          "end": 29,
+          "text": "暗号化の仕様資料にMD5とRC4の節があることを一覧に記載する。"
+        },
+        {
+          "path": "docs/specs/00_overview.md",
+          "side": "new",
+          "start": 69,
+          "end": 69,
+          "text": "RC4を記載済みの資料へ案内し、AES・鍵導出・認証が未記載の項目として読めるようにする。"
+        },
+        {
+          "path": "docs/specs/02b_encryption.md",
+          "side": "new",
+          "start": 5,
+          "end": 5,
+          "text": "暗号化辞書に加え、旧形式で使用するMD5とRC4を仕様資料の対象に含める。"
+        },
+        {
+          "path": "docs/specs/02b_encryption.md",
+          "side": "new",
+          "start": 112,
+          "end": 112,
+          "text": "読み込み中の復号の現状を記し、バイト列へRC4を適用する説明に誘導する。"
+        },
+        {
+          "path": "docs/specs/02b_encryption.md",
+          "side": "new",
+          "start": 133,
+          "end": 135,
+          "text": "暗号化辞書の版、crypt filterの指定、オブジェクト単位で使う鍵の関係を記す。"
+        },
+        {
+          "path": "docs/specs/02b_encryption.md",
+          "side": "new",
+          "start": 137,
+          "end": 139,
+          "text": "置換表の初期化と更新、鍵ストリームの生成、XORで復号できる条件を手順として記す。"
+        },
+        {
+          "path": "docs/specs/02b_encryption.md",
+          "side": "new",
+          "start": 141,
+          "end": 141,
+          "text": "内部APIが扱う鍵長、範囲外の扱い、分割・空入力時の状態を明文化する。"
+        }
+      ]
+    }
+  ],
+  "suites": [
+    {
+      "id": "rc4",
+      "label": "RC4のテストベクタと境界",
+      "file": "rust/crates/core/src/encrypt/rc4/tests.rs"
+    }
+  ],
+  "tests": [
+    {
+      "id": "secret-vector",
+      "suite": "rc4",
+      "name": "matches_secret_vector_in_both_directions",
+      "techniques": [
+        "equivalence"
+      ],
+      "why": "往復だけでは同じ誤りを含む実装でも成功するため、既知の暗号文と比べます。",
+      "given": "6バイトのSecret、既知の平文と暗号文。",
+      "when": "平文を変換し、新しい状態でもう一度変換する。",
+      "then": "既知の暗号文になり、元の平文に戻る。",
+      "commit": "de7f0d40998a1ca82c477ebcae1a1c0b8fc1f91d",
+      "excerpt": {
+        "path": "rust/crates/core/src/encrypt/rc4/tests.rs",
+        "start": 8,
+        "end": 16,
+        "text": "#[test]\nfn matches_secret_vector_in_both_directions() {\n    let mut data = *SECRET_PLAINTEXT;\n    Rc4::new(b\"Secret\").unwrap().apply(&mut data);\n    assert_eq!(data, SECRET_CIPHERTEXT);\n\n    Rc4::new(b\"Secret\").unwrap().apply(&mut data);\n    assert_eq!(&data, SECRET_PLAINTEXT);\n}"
+      },
+      "targets": [
+        "rust/crates/core/src/encrypt/rc4.rs"
+      ]
+    },
+    {
+      "id": "minimum-key",
+      "suite": "rc4",
+      "name": "matches_rfc_6229_with_a_five_byte_key",
+      "techniques": [
+        "boundary",
+        "regression"
+      ],
+      "why": "5バイトは対応する下限です。オフセット256は1バイト幅の添字が一周した後を確かめられます。",
+      "given": "RFC 6229の5バイト鍵と272バイトのゼロ列。",
+      "when": "ゼロ列にRC4を適用する。",
+      "then": "先頭とオフセット256からの各16バイトがRFCの値と一致する。",
+      "commit": "de7f0d40998a1ca82c477ebcae1a1c0b8fc1f91d",
+      "excerpt": {
+        "path": "rust/crates/core/src/encrypt/rc4/tests.rs",
+        "start": 18,
+        "end": 38,
+        "text": "#[test]\nfn matches_rfc_6229_with_a_five_byte_key() {\n    let mut data = [0; 272];\n    Rc4::new(&[1, 2, 3, 4, 5]).unwrap().apply(&mut data);\n\n    // RFC 6229 §2 のオフセット 0 と 256。後者では PRGA の添字が一周している。\n    assert_eq!(\n        data[..16],\n        [\n            0xb2, 0x39, 0x63, 0x05, 0xf0, 0x3d, 0xc0, 0x27, 0xcc, 0xc3, 0x52, 0x4a, 0x0a, 0x11,\n            0x18, 0xa8,\n        ]\n    );\n    assert_eq!(\n        data[256..],\n        [\n            0x1c, 0xfc, 0xf6, 0x2b, 0x03, 0xed, 0xdb, 0x64, 0x1d, 0x77, 0xdf, 0xcf, 0x7f, 0x8d,\n            0x8c, 0x93,\n        ]\n    );\n}"
+      },
+      "targets": [
+        "rust/crates/core/src/encrypt/rc4.rs"
+      ]
+    },
+    {
+      "id": "maximum-key",
+      "suite": "rc4",
+      "name": "matches_rfc_6229_with_a_sixteen_byte_key",
+      "techniques": [
+        "boundary"
+      ],
+      "why": "16バイトは対応する上限です。",
+      "given": "RFC 6229の16バイト鍵と16バイトのゼロ列。",
+      "when": "ゼロ列にRC4を適用する。",
+      "then": "先頭16バイトがRFCの値と一致する。",
+      "commit": "de7f0d40998a1ca82c477ebcae1a1c0b8fc1f91d",
+      "excerpt": {
+        "path": "rust/crates/core/src/encrypt/rc4/tests.rs",
+        "start": 40,
+        "end": 54,
+        "text": "#[test]\nfn matches_rfc_6229_with_a_sixteen_byte_key() {\n    let key = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];\n    let mut data = [0; 16];\n    Rc4::new(&key).unwrap().apply(&mut data);\n\n    // RFC 6229 §2 のオフセット 0。\n    assert_eq!(\n        data,\n        [\n            0x9a, 0xc7, 0xcc, 0x9a, 0x60, 0x9d, 0x1e, 0xf7, 0xb2, 0x93, 0x28, 0x99, 0xcd, 0xe4,\n            0x1b, 0x97,\n        ]\n    );\n}"
+      },
+      "targets": [
+        "rust/crates/core/src/encrypt/rc4.rs"
+      ]
+    },
+    {
+      "id": "invalid-key",
+      "suite": "rc4",
+      "name": "rejects_keys_outside_the_pdf_range",
+      "techniques": [
+        "boundary",
+        "error"
+      ],
+      "why": "長さの検証を生成時に行い、不正な鍵で状態を作らないためです。",
+      "given": "0・3・4・17バイトの鍵。",
+      "when": "それぞれの鍵で初期化を試す。",
+      "then": "すべてNoneを返す。",
+      "commit": "de7f0d40998a1ca82c477ebcae1a1c0b8fc1f91d",
+      "excerpt": {
+        "path": "rust/crates/core/src/encrypt/rc4/tests.rs",
+        "start": 56,
+        "end": 61,
+        "text": "#[test]\nfn rejects_keys_outside_the_pdf_range() {\n    for key in [b\"\".as_slice(), b\"Key\", &[0; 4], &[0; 17]] {\n        assert!(Rc4::new(key).is_none(), \"key length {}\", key.len());\n    }\n}"
+      },
+      "targets": [
+        "rust/crates/core/src/encrypt/rc4.rs"
+      ]
+    },
+    {
+      "id": "split-input",
+      "suite": "rc4",
+      "name": "continues_keystream_across_chunks_and_empty_input",
+      "techniques": [
+        "state",
+        "equivalence"
+      ],
+      "why": "空の入力が鍵ストリームを消費すると、後半の暗号文が既知値からずれます。",
+      "given": "Secretの平文を前半6バイトと残りに分ける。",
+      "when": "前半、空のスライス、後半の順で同じ状態を使う。",
+      "then": "全体が既知の暗号文と一致する。",
+      "commit": "de7f0d40998a1ca82c477ebcae1a1c0b8fc1f91d",
+      "excerpt": {
+        "path": "rust/crates/core/src/encrypt/rc4/tests.rs",
+        "start": 63,
+        "end": 74,
+        "text": "#[test]\nfn continues_keystream_across_chunks_and_empty_input() {\n    let mut rc4 = Rc4::new(b\"Secret\").unwrap();\n    let mut data = *SECRET_PLAINTEXT;\n    let (first, rest) = data.split_at_mut(6);\n\n    rc4.apply(first);\n    rc4.apply(&mut []);\n    rc4.apply(rest);\n\n    assert_eq!(data, SECRET_CIPHERTEXT);\n}"
+      },
+      "targets": [
+        "rust/crates/core/src/encrypt/rc4.rs"
+      ]
+    }
+  ],
+  "impact": {
+    "title": "旧形式の暗号化に使うバイト列を変換できる",
+    "lead": "鍵を持つ内部の呼び出し側は、旧形式PDFの暗号化データに使う変換を実行できます。PDFを開く処理に組み込むには、鍵の導出と対象の判定が必要です。",
+    "changed": {
+      "before": [
+        {
+          "text": "暗号化辞書の指定から、RC4を使う形式であることを読み取れる。"
+        }
+      ],
+      "after": [
+        {
+          "text": "5〜16バイトの鍵とデータを渡すと、同じ長さの暗号文または平文が得られる。"
+        }
+      ]
+    },
+    "added": [
+      {
+        "label": "範囲外の鍵",
+        "before": [],
+        "after": [
+          {
+            "text": "変換に使える状態は生成されない。"
+          }
+        ],
+        "tests": [
+          "invalid-key"
+        ]
+      },
+      {
+        "label": "分割されたデータ",
+        "before": [],
+        "after": [
+          {
+            "text": "前のデータに続く位置から処理し、空データを挟んでも結果は同じになる。"
+          }
+        ],
+        "tests": [
+          "split-input"
+        ]
+      }
+    ]
+  },
+  "primers": [
+    {
+      "kind": "pdf",
+      "id": "pdf-rc4",
+      "category": "PDF · 暗号化辞書",
+      "label": "旧形式のRC4とcrypt filter",
+      "gist": "PDFの暗号化辞書は、文字列やストリームに使う方式を指定します。",
+      "passages": [
+        {
+          "kind": "text",
+          "text": "`/V 1` と `/V 2` の旧形式はRC4を使います。`/V 4` では、文字列とストリームに別々のcrypt filterを割り当てられます。"
+        },
+        {
+          "kind": "declaration",
+          "code": "% 暗号化辞書と文字列の抜粋\n8 0 obj\n<< /Filter /Standard /V 4 /R 4 /Length 128\n   /CF << /StdCF << /CFM /V2 /Length 16 >> >>\n   /StrF /StdCF /StmF /Identity >>\nendobj\n\n9 0 obj\n<< /Subject <A1076C> >>\nendobj"
+        },
+        {
+          "kind": "text",
+          "text": "通常の文字列に使う `/StrF` は `/StdCF` を指し、その辞書の `/CFM /V2` がRC4を選びます。通常のストリームに使う `/StmF /Identity` は暗号化しない指定です。直下の `/Length 128` はビット、フィルタ辞書の `/Length 16` はバイトを表します。"
+        },
+        {
+          "kind": "text",
+          "text": "例の `9 0 obj` 内の `<A1076C>` は暗号化された16進文字列の抜粋です。実際に復号するときは、ファイル暗号鍵とオブジェクト番号9・世代番号0から求めた鍵をRC4へ渡します。"
+        },
+        {
+          "kind": "excerpt",
+          "excerpt": {
+            "path": "rust/crates/core/src/encrypt/rc4.rs",
+            "start": 14,
+            "end": 30,
+            "text": "impl Rc4 {\n    /// 鍵スケジューリング (KSA) を行う。鍵が 5〜16 バイトの範囲外なら `None`。\n    pub(super) fn new(key: &[u8]) -> Option<Self> {\n        if !(MIN_KEY_LEN..=MAX_KEY_LEN).contains(&key.len()) {\n            return None;\n        }\n\n        let mut permutation = [0; STATE_LEN];\n        for (slot, value) in permutation.iter_mut().zip(0..=u8::MAX) {\n            *slot = value;\n        }\n\n        let mut j = 0_u8;\n        for (i, &key_byte) in (0..STATE_LEN).zip(key.iter().cycle()) {\n            j = j.wrapping_add(permutation[i]).wrapping_add(key_byte);\n            permutation.swap(i, usize::from(j));\n        }"
+          }
+        },
+        {
+          "kind": "text",
+          "text": "今回追加した入口は、呼び出し側からその鍵をバイト列として受け取ります。辞書からの鍵の導出と読み込み中の適用は後続の実装です。"
+        },
+        {
+          "kind": "spec",
+          "text": "ISO 32000-1:2008 §7.6.2（Algorithm 1）、§7.6.5（crypt filter、表25）。"
+        }
+      ],
+      "occurrences": [
+        {
+          "path": "docs/specs/02b_encryption.md",
+          "lineRange": {
+            "start": 133,
+            "end": 141
+          },
+          "text": "PDFの指定、RC4の3つの手順、Rust内部APIの対応を説明する。"
+        }
+      ],
+      "seeAlso": [
+        "stream-cipher"
+      ]
+    },
+    {
+      "kind": "language",
+      "id": "wrapping-add",
+      "category": "Rust · 整数演算",
+      "label": "u8::wrapping_add",
+      "gist": "8ビットの加算が255を超えたとき、結果を256で割った余りにします。",
+      "passages": [
+        {
+          "kind": "text",
+          "text": "たとえば250に10を加えると260になり、256で割った余りは4です。RC4はこの演算で256要素の表に収まる添字を計算します。"
+        },
+        {
+          "kind": "excerpt",
+          "excerpt": {
+            "path": "rust/crates/core/src/encrypt/rc4.rs",
+            "start": 42,
+            "end": 51,
+            "text": "    pub(super) fn apply(&mut self, data: &mut [u8]) {\n        for byte in data {\n            self.i = self.i.wrapping_add(1);\n            let i = usize::from(self.i);\n            self.j = self.j.wrapping_add(self.permutation[i]);\n            let j = usize::from(self.j);\n            self.permutation.swap(i, j);\n\n            let index = self.permutation[i].wrapping_add(self.permutation[j]);\n            *byte ^= self.permutation[usize::from(index)];"
+          }
+        },
+        {
+          "kind": "text",
+          "text": "`i` は1ずつ進み、`j` は表に入っている値だけ進みます。`wrapping_add` を使うと、デバッグビルドでもリリースビルドでも同じ折り返しになります。添字に変えるときは `usize::from` で値を保ちます。"
+        }
+      ],
+      "occurrences": [
+        {
+          "path": "rust/crates/core/src/encrypt/rc4.rs",
+          "lineRange": {
+            "start": 26,
+            "end": 30
+          },
+          "text": "KSAで表の値と鍵バイトを足して交換先を決める。"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/rc4.rs",
+          "lineRange": {
+            "start": 42,
+            "end": 51
+          },
+          "text": "PRGAで次の添字と鍵ストリームの参照位置を決める。"
+        }
+      ],
+      "seeAlso": [
+        "stream-cipher"
+      ]
+    },
+    {
+      "kind": "codebase",
+      "id": "stream-cipher",
+      "category": "pdfmod · RC4の状態",
+      "label": "鍵スケジューリングと鍵ストリーム",
+      "gist": "鍵で並べ替えた表と2つの添字を保持し、バイトごとに鍵ストリームを生成します。",
+      "passages": [
+        {
+          "kind": "text",
+          "text": "[[KSA|ksa]]は同じ鍵から同じ置換表を作ります。その表を受け取る[[PRGA|prga]]は、2つの添字を0から始め、表を交換して毎回1バイトを取り出します。"
+        },
+        {
+          "kind": "excerpt",
+          "excerpt": {
+            "path": "rust/crates/core/src/encrypt/rc4.rs",
+            "start": 26,
+            "end": 52,
+            "text": "        let mut j = 0_u8;\n        for (i, &key_byte) in (0..STATE_LEN).zip(key.iter().cycle()) {\n            j = j.wrapping_add(permutation[i]).wrapping_add(key_byte);\n            permutation.swap(i, usize::from(j));\n        }\n\n        // PRGA の添字は KSA の最終値にかかわらず 0 から始まる。\n        Some(Self {\n            permutation,\n            i: 0,\n            j: 0,\n        })\n    }\n\n    /// PRGA の鍵ストリームをデータに XOR する。暗号化と復号は同じ操作で、\n    /// 同じ鍵から新しく初期化すれば元に戻る。次の呼び出しは続きから処理する。\n    pub(super) fn apply(&mut self, data: &mut [u8]) {\n        for byte in data {\n            self.i = self.i.wrapping_add(1);\n            let i = usize::from(self.i);\n            self.j = self.j.wrapping_add(self.permutation[i]);\n            let j = usize::from(self.j);\n            self.permutation.swap(i, j);\n\n            let index = self.permutation[i].wrapping_add(self.permutation[j]);\n            *byte ^= self.permutation[usize::from(index)];\n        }"
+          }
+        },
+        {
+          "kind": "text",
+          "text": "XORは同じ値を2度重ねると元に戻ります。暗号化と復号のどちらでも `apply` を使います。復号するときは同じ鍵で状態を作り直し、暗号化時と同じ位置の鍵ストリームを再生成します。"
+        },
+        {
+          "kind": "excerpt",
+          "excerpt": {
+            "path": "rust/crates/core/src/encrypt/rc4/tests.rs",
+            "start": 63,
+            "end": 74,
+            "text": "#[test]\nfn continues_keystream_across_chunks_and_empty_input() {\n    let mut rc4 = Rc4::new(b\"Secret\").unwrap();\n    let mut data = *SECRET_PLAINTEXT;\n    let (first, rest) = data.split_at_mut(6);\n\n    rc4.apply(first);\n    rc4.apply(&mut []);\n    rc4.apply(rest);\n\n    assert_eq!(data, SECRET_CIPHERTEXT);\n}"
+          }
+        },
+        {
+          "kind": "text",
+          "text": "1つのデータを分割して渡す場合は、同じ状態を使い続けます。空のスライスではループが動かないため、次の入力は予定どおりの位置から処理されます。"
+        }
+      ],
+      "occurrences": [
+        {
+          "path": "rust/crates/core/src/encrypt/rc4.rs",
+          "lineRange": {
+            "start": 7,
+            "end": 12
+          },
+          "text": "置換表と添字はRc4の内部で保持する。"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/rc4.rs",
+          "lineRange": {
+            "start": 40,
+            "end": 53
+          },
+          "text": "渡されたスライスを1バイトずつ更新する。"
+        }
+      ],
+      "status": "added",
+      "tests": [
+        "secret-vector",
+        "split-input"
+      ],
+      "flows": [
+        "rc4-transform"
+      ],
+      "seeAlso": [
+        "wrapping-add",
+        "pdf-rc4"
+      ]
+    }
+  ],
+  "terms": [
+    {
+      "id": "ksa",
+      "label": "KSA",
+      "text": "Key Scheduling Algorithm。鍵のバイトからRC4の初期置換表を作る手順。"
+    },
+    {
+      "id": "prga",
+      "label": "PRGA",
+      "text": "Pseudo-Random Generation Algorithm。RC4の状態を更新し、XORに使う鍵ストリームを1バイトずつ生成する手順。"
+    }
+  ]
+}
