@@ -1,26 +1,45 @@
-import type { PdfWarning } from "../../pdf/errors/warning/index";
+import type { PdfRectangle } from "../../document/page-tree/resolved-page/index";
+import {
+  type PdfFormXObject,
+  type PdfImageXObject,
+  PdfXObjectSubtype,
+} from "../../document/resources/xobject/index";
+import type { PdfWarning } from "../../pdf/errors/index";
 import type {
   ContentStreamToken,
   Operator,
   PdfError,
+  PdfStream,
   TokenArrayBegin,
   TokenDictBegin,
   TokenInlineImage,
 } from "../../pdf/index";
 import { Token, TokenType } from "../../pdf/index";
+import { none } from "../../utils/option/index";
 import type { Result } from "../../utils/result/index";
 import { err, ok } from "../../utils/result/index";
-import { GraphicsStateStack } from "../graphics-state/index";
+import {
+  ClippingRule,
+  CurrentPath,
+  GraphicsState,
+  GraphicsStateStack,
+  Matrix,
+  TextObject,
+} from "../graphics-state/index";
+import { PathSegment } from "../graphics-state/path-segment/index";
 import { inlineImageHandler } from "../inline-image/handler/index";
 import { MarkedContentStack } from "../marked-content/stack";
 import { OperandStack } from "../operand-stack/index";
 import {
   type OperatorHandlerContext,
   OperatorRegistry,
+  type XObjectInvocation,
 } from "../operator-registry/index";
 import type { ContentStreamResources } from "../resources/index";
 import { ContentStreamTokenizer } from "../tokenizer/index";
 import { readArrayOperand, readDictOperand } from "./composite-operand/index";
+
+const MAX_FORM_DEPTH = 32;
 
 /**
  * `ContentStreamInterpreter.execute` の入力パラメータ。
@@ -44,19 +63,33 @@ export type ContentStreamInterpreterResult = {
   readonly context: OperatorHandlerContext;
   /** 実行中に収集された warning の一覧 */
   readonly warnings: readonly PdfWarning[];
+  /** Form 内も含め、Do が呼び出した画像を描画順に保持する。 */
+  readonly images: readonly ImageXObjectDraw[];
 };
 
-type InterpreterDoneResult = {
-  readonly context: OperatorHandlerContext;
+/** Do が参照した画像と、その呼び出し位置で有効な描画状態。 */
+export type ImageXObjectDraw = {
+  readonly name: string;
+  readonly image: PdfImageXObject;
+  readonly graphicsState: GraphicsState;
+  readonly resources: ContentStreamResources;
+};
+
+type InterpreterExecution = {
+  readonly registry: OperatorRegistry;
+  readonly activeForms: readonly PdfStream[];
 };
 
 type InterpreterStep =
-  | {
-      readonly type: "continue";
-      readonly context: OperatorHandlerContext;
-      readonly warnings?: readonly PdfWarning[];
-    }
-  | { readonly type: "done"; readonly result: InterpreterDoneResult };
+  | InterpreterContinueStep
+  | { readonly type: "done"; readonly context: OperatorHandlerContext };
+
+type InterpreterContinueStep = {
+  readonly type: "continue";
+  readonly context: OperatorHandlerContext;
+  readonly warnings?: readonly PdfWarning[];
+  readonly images?: readonly ImageXObjectDraw[];
+};
 
 /**
  * Content stream (RPN 命令列) を解釈実行するインタプリタ。
@@ -67,7 +100,7 @@ export const ContentStreamInterpreter = {
    * Content stream の token 列をRPNとしてEOFまで逐次実行する。
    *
    * @param options - 入力データ、任意の registry、初期 context、解決済みリソース
-   * @returns 最終context、またはtokenize / 変換 / handlerのエラー
+   * @returns 最終状態・警告・画像の描画情報。構文・実行エラーは Err
    */
   execute(
     options: ContentStreamInterpreterExecuteOptions,
@@ -79,47 +112,67 @@ export const ContentStreamInterpreter = {
     if (!registryResult.ok) {
       return err(registryResult.error);
     }
-    const registry = registryResult.value;
-
     const resources = options.resources ?? options.initialContext?.resources;
-    const tokenizer = new ContentStreamTokenizer(options.data);
-    let context = withResources(
+    const context = withResources(
       createInitialContext(options.initialContext),
       resources,
     );
-    const warnings: PdfWarning[] = [];
-
-    while (true) {
-      const tokenResult = tokenizer.nextToken();
-      if (!tokenResult.ok) {
-        return err(tokenResult.error);
-      }
-
-      const step = executeToken({
-        token: tokenResult.value,
-        tokenizer,
-        registry,
-        context,
-      });
-      if (!step.ok) {
-        return err(step.error);
-      }
-
-      if (step.value.type === "done") {
-        return ok({
-          context: step.value.result.context,
-          warnings,
-        });
-      }
-
-      for (const warning of step.value.warnings ?? []) {
-        warnings.push(warning);
-      }
-
-      context = withResources(step.value.context, resources);
-    }
+    return executeStream(options.data, context, {
+      registry: registryResult.value,
+      activeForms: [],
+    });
   },
 } as const;
+
+/**
+ * 現在のストリームを実行し、命令順に警告と画像を収集する。
+ * @param data - 復号済みの命令列
+ * @param initialContext - このストリームの開始状態とリソース
+ * @param execution - 命令の登録簿と実行中の Form
+ * @returns 最終状態と描画対象。命令列の構文・実行エラーは Err
+ */
+function executeStream(
+  data: Uint8Array,
+  initialContext: OperatorHandlerContext,
+  execution: InterpreterExecution,
+): Result<ContentStreamInterpreterResult, PdfError> {
+  const resources = initialContext.resources;
+  const tokenizer = new ContentStreamTokenizer(data);
+  const warnings: PdfWarning[] = [];
+  const images: ImageXObjectDraw[] = [];
+  let context = initialContext;
+
+  while (true) {
+    const tokenResult = tokenizer.nextToken();
+    if (!tokenResult.ok) {
+      return tokenResult;
+    }
+
+    const step = executeToken({
+      token: tokenResult.value,
+      tokenizer,
+      execution,
+      context,
+    });
+    if (!step.ok) {
+      return step;
+    }
+
+    if (step.value.type === "done") {
+      return ok({ context: step.value.context, warnings, images });
+    }
+
+    for (const warning of step.value.warnings ?? []) {
+      warnings.push(warning);
+    }
+
+    for (const image of step.value.images ?? []) {
+      images.push(image);
+    }
+
+    context = withResources(step.value.context, resources);
+  }
+}
 
 /** ハンドラが従来のフィールドだけを返しても、実行開始時のスコープを保つ。 */
 function withResources(
@@ -137,14 +190,14 @@ function withResources(
  *
  * @param options.token - 実行対象 token
  * @param options.tokenizer - 配列・辞書リテラルの読み取りに使う tokenizer（reader へ委譲）
- * @param options.registry - operator handler 登録簿
+ * @param options.execution - operator handler 登録簿と実行中の Form
  * @param options.context - 現在 context
  * @returns 次 step、または処理エラー
  */
 function executeToken(options: {
   readonly token: ContentStreamToken;
   readonly tokenizer: ContentStreamTokenizer;
-  readonly registry: OperatorRegistry;
+  readonly execution: InterpreterExecution;
   readonly context: OperatorHandlerContext;
 }): Result<InterpreterStep, PdfError> {
   if (options.token.type === TokenType.EOF) {
@@ -162,13 +215,13 @@ function executeToken(options: {
         offset: options.token.offset,
       });
     }
-    return ok({ type: "done", result: { context: options.context } });
+    return ok({ type: "done", context: options.context });
   }
 
   if (options.token.type === TokenType.Operator) {
     return dispatchOperator({
       token: options.token,
-      registry: options.registry,
+      execution: options.execution,
       context: options.context,
     });
   }
@@ -214,16 +267,16 @@ function executeToken(options: {
  * 登録済みoperator handlerを呼び出す。未登録operatorはUNKNOWN_OPERATOR warningを
  * emitし、operand stackをclearして継続する。
  *
- * @param options - operator token、registry、現在context
+ * @param options - operator token、実行中の情報、現在context
  * @returns 次step、またはhandlerエラー
  */
 function dispatchOperator(options: {
   readonly token: Operator;
-  readonly registry: OperatorRegistry;
+  readonly execution: InterpreterExecution;
   readonly context: OperatorHandlerContext;
 }): Result<InterpreterStep, PdfError> {
   const handler = OperatorRegistry.lookup(
-    options.registry,
+    options.execution.registry,
     options.token.value,
   );
   if (!handler.some) {
@@ -245,14 +298,151 @@ function dispatchOperator(options: {
     return err(handled.error);
   }
 
-  const { warnings = [], ...context } = handled.value;
-  return ok({
+  const { warnings = [], xObject, ...context } = handled.value;
+  const step = {
     type: "continue",
     context,
     warnings: warnings.map((warning) => ({
       ...warning,
       offset: options.token.offset,
     })),
+  } as const;
+
+  if (xObject === undefined) {
+    return ok(step);
+  }
+
+  const { name, object, resources } = xObject;
+  if (object.subtype === PdfXObjectSubtype.Image) {
+    const image: ImageXObjectDraw = {
+      name,
+      image: object,
+      graphicsState: context.graphicsStateStack.current,
+      resources,
+    };
+    return ok({ ...step, images: [image] });
+  }
+
+  return executeForm({
+    invocation: { ...xObject, object },
+    step,
+    execution: options.execution,
+    offset: options.token.offset,
+  });
+}
+
+/** Form の開始状態を作って実行し、描画対象と警告を呼び出し元の命令へ返す。 */
+function executeForm(options: {
+  readonly invocation: Omit<XObjectInvocation, "object"> & {
+    readonly object: PdfFormXObject;
+  };
+  readonly step: InterpreterContinueStep;
+  readonly execution: InterpreterExecution;
+  readonly offset: number;
+}): Result<InterpreterStep, PdfError> {
+  const { invocation, step, execution, offset } = options;
+  const { name, object: form, resources } = invocation;
+  const { activeForms } = execution;
+  const skip = (
+    code: PdfWarning["code"],
+    message: string,
+  ): Result<InterpreterStep, PdfError> =>
+    ok({
+      ...step,
+      warnings: [
+        ...(step.warnings ?? []),
+        { code, message: `Form /${name}: ${message}`, offset },
+      ],
+    });
+
+  if (activeForms.includes(form.stream)) {
+    return skip("FORM_XOBJECT_CYCLE", "recursive invocation was skipped");
+  }
+
+  if (activeForms.length >= MAX_FORM_DEPTH) {
+    return skip(
+      "FORM_XOBJECT_TOO_DEEP",
+      `maximum nesting depth is ${MAX_FORM_DEPTH}`,
+    );
+  }
+
+  const prepared = resources.getFormContent?.(form);
+  if (prepared === undefined) {
+    return skip("FORM_XOBJECT_PREPARE_FAILED", "content was not prepared");
+  }
+
+  if (!prepared.ok) {
+    return skip(
+      "FORM_XOBJECT_PREPARE_FAILED",
+      `${prepared.error.code}: ${prepared.error.message}`,
+    );
+  }
+
+  const { data, bbox, resources: local } = prepared.value;
+  const caller = step.context.graphicsStateStack.current;
+  const state = createFormState(caller, form.matrix, bbox);
+  const childContext: OperatorHandlerContext = {
+    // 暗黙の保存状態は呼び出し元に置き、Form 内の Q が取り出せないようにする。
+    graphicsStateStack: { current: state, saved: [] },
+    operandStack: OperandStack.create(),
+    markedContentStack: MarkedContentStack.create(),
+    resources: local.some ? local.value : resources,
+  };
+
+  const result = executeStream(data, childContext, {
+    ...execution,
+    activeForms: [...activeForms, form.stream],
+  });
+  if (!result.ok) {
+    return err({
+      ...result.error,
+      message: `Form /${name}: ${result.error.message}`,
+    });
+  }
+
+  const warnings = result.value.warnings.map((warning) => {
+    const location =
+      warning.offset === undefined ? "" : ` (byte ${warning.offset})`;
+    return {
+      ...warning,
+      message: `Form /${name}${location}: ${warning.message}`,
+      offset,
+    };
+  });
+  return ok({
+    ...step,
+    warnings: [...(step.warnings ?? []), ...warnings],
+    images: result.value.images,
+  });
+}
+
+/**
+ * Form 座標を現在の CTM に連結し、その座標系の境界でクリップする。
+ * @param caller - 呼び出し元の描画状態
+ * @param matrix - Form のローカル座標から呼び出し元への変換
+ * @param bbox - Form 座標の境界
+ * @returns Form の描画状態
+ */
+function createFormState(
+  caller: GraphicsState,
+  matrix: Matrix,
+  bbox: PdfRectangle,
+): GraphicsState {
+  const state = GraphicsState.update(caller, {
+    ctm: Matrix.multiply(matrix, caller.ctm),
+    currentPath: CurrentPath.empty(),
+    pendingClip: none,
+    textObject: TextObject.inactive(),
+  });
+  const [left, bottom, right, top] = bbox;
+  const path = CurrentPath.append(
+    CurrentPath.empty(),
+    PathSegment.rect(left, bottom, right - left, top - bottom),
+  );
+
+  return GraphicsState.intersectClippingPath(state, {
+    path,
+    rule: ClippingRule.nonzero(),
   });
 }
 

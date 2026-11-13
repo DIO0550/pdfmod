@@ -37,7 +37,7 @@ import { consumePendingClipContext } from "../consume-pending-clip";
  * - ctm / lineWidth / lineCap / lineJoin / miterLimit など
  *   currentPath 以外の graphics state は変更しない
  * - `pendingClip` が some の場合は消費して none に戻す (§8.5.4)。current path が
- *   空でも消費する。クリッピング領域自体は保持しない (renderer 層の責務)
+ *   空でも消費し、確定したクリッピングパスを状態に保持する
  * - 本 handler では PdfError を返さない (常に ok)
  *
  * @param context - 実行コンテキスト (operand stack / graphics state stack)

@@ -24,8 +24,7 @@ import { consumePendingClipContext } from "../consume-pending-clip";
  * clipping: 主用途は `W n` / `W* n` によるクリッピングパスの確定
  * (ISO 32000-1:2008 §8.5.4, `docs/specs/05_content_streams.md` §4.3)。
  * pendingClip が some の場合は consumePendingClipContext で消費して none に
- * 戻す。current path が空でも消費する。クリッピング領域自体は保持しない
- * (領域の集合演算は renderer 層の責務)。
+ * 戻し、確定したクリッピングパスを状態に保持する。空のパスでも確定する。
  *
  * - operand 数: 0 (operand stack を一切参照しない)
  * - current path が空の場合は no-op で同一 operandStack / graphicsStateStack

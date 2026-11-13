@@ -19,13 +19,13 @@ import type { OperatorHandlerContext } from "../../../operator-registry/index";
  *   も同一参照)。クリッピングを使わない既存コンテンツの振る舞いを変えないため
  * - current path が空かどうかは見ない。paint handler の早期 return より前に
  *   呼ぶことで、空 path に対する `W n` でも pendingClip が確実に消費される
- * - クリッピング領域そのものは保持しない。領域の集合演算は renderer 層の責務
+ * - 確定したパスと CTM を保持する。領域の描画は renderer 層の責務
  * - operandStack / markedContentStack は常に同一参照を引き継ぐ
- * - pendingClip 以外の graphics state は変更しない
+ * - clippingPath と pendingClip を更新する
  * - 失敗しないため `Result` は返さない
  *
  * @param context - 実行コンテキスト
- * @returns pendingClip を none に戻した新しいコンテキスト。既に none なら `context` 自身
+ * @returns クリッピングパスを確定したコンテキスト。予約がなければ context 自身
  */
 export const consumePendingClipContext = (
   context: OperatorHandlerContext,
@@ -34,7 +34,11 @@ export const consumePendingClipContext = (
   if (!current.pendingClip.some) {
     return context;
   }
-  const next = GraphicsState.update(current, { pendingClip: none });
+  const clipped = GraphicsState.intersectClippingPath(current, {
+    path: current.currentPath,
+    rule: current.pendingClip.value,
+  });
+  const next = GraphicsState.update(clipped, { pendingClip: none });
   return {
     operandStack: context.operandStack,
     graphicsStateStack: GraphicsStateStack.replaceCurrent(

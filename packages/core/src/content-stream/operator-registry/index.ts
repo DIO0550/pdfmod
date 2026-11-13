@@ -1,3 +1,7 @@
+import type {
+  PdfFormXObject,
+  PdfImageXObject,
+} from "../../document/resources/xobject/index";
 import type { PdfError } from "../../pdf/errors/index";
 import type { PdfWarning } from "../../pdf/errors/warning/index";
 import type { Option } from "../../utils/option/index";
@@ -86,13 +90,21 @@ export type OperatorHandlerContext = {
   readonly resources?: ContentStreamResources;
 };
 
+/** Do が現在のリソーススコープで解決した描画対象。 */
+export type XObjectInvocation = {
+  readonly name: string;
+  readonly object: PdfImageXObject | PdfFormXObject;
+  readonly resources: ContentStreamResources;
+};
+
 /**
  * Content stream operator を実行するハンドラ。
  */
-export type OperatorHandler = (
-  context: OperatorHandlerContext,
-) => Result<
-  OperatorHandlerContext & { readonly warnings?: readonly PdfWarning[] },
+export type OperatorHandler = (context: OperatorHandlerContext) => Result<
+  OperatorHandlerContext & {
+    readonly warnings?: readonly PdfWarning[];
+    readonly xObject?: XObjectInvocation;
+  },
   PdfError
 >;
 
