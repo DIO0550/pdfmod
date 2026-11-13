@@ -3,6 +3,7 @@
 //!
 //! `/Filter /Standard` の暗号化辞書のみを型として解釈し、`/V` と `/R` の
 //! 取りうる組み合わせだけを [`StandardAlgorithm`] のバリアントで表現する。
+//! 旧リビジョンの鍵導出に使う MD5 も内部で実装する。
 //!
 //! # スコープ外（#604）
 //!
@@ -20,6 +21,11 @@ pub mod algorithm;
 pub mod crypt_filter;
 pub mod error;
 pub mod key;
+#[cfg_attr(
+    not(test),
+    expect(dead_code, reason = "鍵導出の実装 (#662) から呼び出す")
+)]
+mod md5;
 pub mod permissions;
 pub mod standard;
 

@@ -74,6 +74,8 @@
     .comment { color: #a3bdc5; }
     .keyword { color: #b9caff; }
     .type { color: #89e0ce; }
+    .string { color: #c0ed9c; }
+    .pdf-syntax { color: #e2c1ff; }
     .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
     .grid > * { min-width: 0; }
     .card { border: 1px solid var(--line); background: white; border-radius: 13px; padding: 24px; margin: 22px 0; }
@@ -146,6 +148,8 @@
       .comment { color: var(--muted); }
       .keyword { color: var(--blue); }
       .type { color: var(--teal); }
+      .string { color: #3b631d; }
+      .pdf-syntax { color: #6e3983; }
       .table-wrap { overflow: visible; }
       [data-example-panel][hidden] { display: block !important; }
       a { color: inherit; }
@@ -159,14 +163,15 @@ nav a { font-size: 16px; } table { font-size: 17px; } th { font-size: 15px; }
 <a href="#overview"><span>01</span>暗号化の起点</a><a href="#syntax"><span>02</span>辞書を読む</a>
 <a href="#algorithms"><span>03</span>有効な6組</a><a href="#filters"><span>04</span>crypt filter と単位</a>
 <a href="#permissions"><span>05</span>権限のビット表現</a><a href="#examples"><span>06</span>正常・未対応・不正</a>
-<a href="#implementation"><span>07</span>解析の境界</a><a href="#algorithm-types"><span>08</span>方式ごとの型と責務</a></nav></aside>
+<a href="#implementation"><span>07</span>解析の境界</a><a href="#algorithm-types"><span>08</span>方式ごとの型と責務</a>
+<a href="#legacy-md5"><span>09</span>旧リビジョンのMD5</a></nav></aside>
 <main id="top"><div class="wrap"><header class="hero"><div class="eyebrow">PDF INTERNALS / ENCRYPTION DICTIONARY</div>
 <h1>暗号化辞書を読む</h1><p class="lead">PDFの <code>/Encrypt</code> は、暗号化の方式と鍵の材料を記述します。アルゴリズムの版、crypt filter、権限を、解釈できる型へ変換する仕組みを見ていきます。</p></header>
 <section class="section" id="overview"><div class="section-heading"><span class="number">01</span><h2>暗号化の起点</h2></div>
 <p>トレイラの <code>/Encrypt</code> が暗号化辞書を指します。直接辞書でも間接参照でも書けます。暗号化辞書自体は復号前に読む必要があるため、オブジェクトストリームには格納できません。</p>
 <div class="grid"><div class="card"><h3>セキュリティハンドラ</h3><p>Security handler はパスワードなどからアクセスを認証する方式です。<code>/Filter /Standard</code> はパスワードベースの標準ハンドラを表します。</p></div>
 <div class="card"><h3>暗号化される値</h3><p>対象は文字列とストリームです。辞書のキー名、名前オブジェクト、数値は暗号化されません。暗号化文書のトレイラには鍵導出に使用する <code>/ID</code> が必要です。</p></div></div>
-<div class="note"><strong>今回扱うのは辞書の構造</strong>辞書から方式と鍵の材料を読み取ります。文字列やストリームの復号、鍵導出、パスワード認証はこの型変換に含まれません。</div></section>
+<div class="note"><strong>辞書から読み取れること</strong>辞書の型変換では方式と鍵の材料が得られます。旧リビジョンのファイル暗号鍵を求めるときは、その材料を後段の鍵導出に渡します。</div></section>
 <section class="section" id="syntax"><div class="section-heading"><span class="number">02</span><h2>辞書を読む</h2></div>
 <p>以下は説明用の抜粋です。暗号鍵の材料は短縮しており、完全なPDFや復号可能な鍵の例ではありません。</p>
 <pre><code><span class="keyword">trailer</span>
@@ -312,6 +317,48 @@ nav a { font-size: 16px; } table { font-size: 17px; } th { font-size: 15px; }
 <p>成功した戻り値は <code>StandardAlgorithm</code> 全体ではなく <code>V5R6</code> です。呼び出し側は、もう一度方式を調べずに <code>keys</code> や固定値256の <code>keyLength</code> を扱えます。可変鍵長の読み取りは <code>KeyLength.fromEncryptionDictionary</code>、AESの追加鍵の読み取りは <code>AesKeyMaterial.fromDictionary</code> が共有します。</p>
 <ol class="steps"><li><strong>PDFの辞書を読む入口</strong><p>外部入力には <code>EncryptDictionary.fromDictionary</code> を使います。ハンドラ名と /V・/R の判定、方式の生成、共通キーの読み取りをつなぎます。</p></li><li><strong>選択された方式の項目を読む</strong><p>各方式の <code>fromDictionary</code> は方式固有の項目を読みます。/V・/R 自体の再判定や、共通の /O・/U・/P の検証は担当しません。</p></li><li><strong>正常・省略・不正を値として返す</strong><p>V2R3で /Length 128 は128ビット、省略は40ビット、/Length 44 はキー /Length と辞書開始位置を持つエラーになります。生成処理を分けても、この解析方針は変わりません。</p></li></ol>
 <div class="note"><strong>版の選択と、バイト列の暗号処理は別の責務</strong>V4R4ではcrypt filterから暗号方式を選びます。ここで分離したのは辞書を解釈する型と生成処理です。パスワード認証・鍵導出・RC4やAESによる復号は未実装です。鍵材料のバイト列の長さも、この段階では検証しません。</div>
+</section>
+<section class="section" id="legacy-md5">
+<div class="section-heading"><span class="number">09</span><h2>旧リビジョンの鍵導出とMD5</h2></div>
+<p>標準セキュリティハンドラのリビジョン2〜4では、パスワードとPDFに記録された値からファイル暗号鍵を導出します。この手順で使うMD5は、任意長のバイト列を16バイトのダイジェストに変換するハッシュ関数です。</p>
+<h3>PDFから取り出す鍵の材料</h3>
+<p>次の抜粋はリビジョン4で使う項目です。<code>/O</code> と <code>/ID</code> の16進文字列は、説明用に短縮しています。</p>
+<pre><code><span class="comment">% 鍵導出に使う項目の抜粋</span>
+<span class="value">8 0</span> <span class="pdf-syntax">obj</span>
+<span class="pdf-syntax">&lt;&lt;</span> <span class="key">/Filter</span> <span class="key">/Standard</span> <span class="key">/V</span> <span class="value">4</span> <span class="key">/R</span> <span class="value">4</span> <span class="key">/Length</span> <span class="value">128</span>
+   <span class="key">/O</span> <span class="string">&lt;00FF&gt;</span> <span class="key">/P</span> <span class="value">-4</span> <span class="key">/EncryptMetadata</span> <span class="keyword">false</span> <span class="pdf-syntax">&gt;&gt;</span>
+<span class="pdf-syntax">endobj</span>
+<span class="pdf-syntax">trailer</span>
+<span class="pdf-syntax">&lt;&lt;</span> <span class="key">/Encrypt</span> <span class="value">8 0</span> <span class="pdf-syntax">R</span>
+   <span class="key">/ID</span> <span class="pdf-syntax">[</span><span class="string">&lt;00112233&gt;</span> <span class="string">&lt;44556677&gt;</span><span class="pdf-syntax">]</span> <span class="pdf-syntax">&gt;&gt;</span></code></pre>
+<ol class="steps">
+  <li>32バイトに調整したパスワード、<code>/O</code> の生バイト、<code>/P</code> の4バイトのリトルエンディアン表現、<code>/ID</code> 配列の先頭のバイト列を順にMD5へ渡します。</li>
+  <li>リビジョン4で <code>/EncryptMetadata false</code> の場合は、<code>FF FF FF FF</code> を加えてから最初のダイジェストを得ます。</li>
+  <li>リビジョン3と4では、直前のダイジェストの先頭からファイル暗号鍵と同じ長さのバイト列を取り出し、MD5に掛ける処理をさらに50回繰り返します。例の <code>/Length 128</code> は16バイトに相当します。</li>
+  <li>最後のダイジェストの先頭から、ファイル暗号鍵に必要なバイト数を取り出します。リビジョン2では5バイト固定です。</li>
+</ol>
+<h3>分割しても同じダイジェストを得る</h3>
+<p>MD5は64バイトがそろうたびに、4バイトずつ16個の整数へ読み替えます。各ブロックでビット演算、32ビットの加算、左回転を繰り返し、4個の32ビット整数からなる状態を更新します。<code>update</code> は64バイトに満たない末尾を保持するため、下の2通りの渡し方で同じダイジェストが得られます。</p>
+<pre><code><span class="keyword">let mut</span> md5 = <span class="type">Md5</span>::new();
+md5.update(<span class="string">b"a"</span>);
+md5.update(<span class="string">b"bc"</span>);
+<span class="keyword">let</span> digest = md5.finalize();
+assert_eq!(digest, <span class="type">Md5</span>::digest(<span class="string">b"abc"</span>));</code></pre>
+<p><code>finalize</code> は末尾に <code>80</code>（16進数）と必要な数の <code>00</code> を加え、最後の8バイトに元の入力のビット長をリトルエンディアンで置きます。端数が56バイト以上なら、終端と長さが1ブロックに収まらないため、長さは次のブロックに入ります。</p>
+<div class="table-wrap" tabindex="0" role="region" aria-label="入力長とMD5のパディング">
+<table>
+<thead><tr><th scope="col">入力のバイト数</th><th scope="col">最後に残るバイト数</th><th scope="col">確定時に処理するブロック数</th></tr></thead>
+<tbody>
+<tr><td>0</td><td>0</td><td>1</td></tr>
+<tr><td>55</td><td>55</td><td>1</td></tr>
+<tr><td>56</td><td>56</td><td>2</td></tr>
+<tr><td>64</td><td>0</td><td>1</td></tr>
+<tr><td>120</td><td>56</td><td>2</td></tr>
+</tbody>
+</table>
+</div>
+<p>Rust実装では内部の <code>Md5</code> がブロック処理を担当します。状態、バッファー、出力は固定長なので、50回の反復で前のダイジェストの一部を渡すたびにヒープを確保する必要はありません。辞書から鍵を導出し、パスワードを認証してPDFを復号する処理は後続の実装です。</p>
+<div class="note warning"><strong>既存PDFとの互換性に限って使用</strong>MD5の衝突耐性は失われています。旧形式の読み取りに限って使い、新規用途には使いません。</div>
 </section>
 <footer><a href="#top">最上部へ</a> · <a href="README.md">解説一覧</a></footer></div></main>
 </body></html>
