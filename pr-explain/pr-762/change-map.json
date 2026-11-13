@@ -1,0 +1,216 @@
+{
+  "version": 2,
+  "pr": 762,
+  "headBranch": "feature/639-rust-md5",
+  "baseBranch": "main",
+  "mergeBase": "91032011c91172130f3b768ee84a693ad33b0cef",
+  "head": "cd595ed07c3e5fe3311c5de26f129de0182fa0e6",
+  "groups": [
+    {
+      "label": "Rust",
+      "files": [
+        {
+          "path": "rust/crates/core/src/encrypt.rs",
+          "status": "M",
+          "oldPath": null,
+          "additions": 6,
+          "deletions": 0,
+          "changed": true,
+          "target": null
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/md5.rs",
+          "status": "A",
+          "oldPath": null,
+          "additions": 203,
+          "deletions": 0,
+          "changed": true,
+          "target": null
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/md5/tests.rs",
+          "status": "A",
+          "oldPath": null,
+          "additions": 94,
+          "deletions": 0,
+          "changed": true,
+          "target": "rust/crates/core/src/encrypt/md5.rs"
+        }
+      ]
+    },
+    {
+      "label": "PDF 仕様の解説",
+      "files": [
+        {
+          "path": "docs/guides/README.md",
+          "status": "M",
+          "oldPath": null,
+          "additions": 1,
+          "deletions": 1,
+          "changed": true,
+          "target": null
+        },
+        {
+          "path": "docs/guides/encryption-dictionary.html",
+          "status": "M",
+          "oldPath": null,
+          "additions": 49,
+          "deletions": 2,
+          "changed": true,
+          "target": null
+        }
+      ]
+    },
+    {
+      "label": "仕様・設計",
+      "files": [
+        {
+          "path": "docs/specs/02b_encryption.md",
+          "status": "M",
+          "oldPath": null,
+          "additions": 9,
+          "deletions": 1,
+          "changed": true,
+          "target": null
+        }
+      ]
+    },
+    {
+      "label": "設定・その他",
+      "files": [
+        {
+          "path": "README.md",
+          "changed": false
+        }
+      ]
+    }
+  ],
+  "tests": {
+    "added": [
+      {
+        "file": "rust/crates/core/src/encrypt/md5/tests.rs",
+        "name": "finalizes_at_block_boundaries_for_every_split"
+      },
+      {
+        "file": "rust/crates/core/src/encrypt/md5/tests.rs",
+        "name": "keeps_partial_blocks_across_many_updates"
+      },
+      {
+        "file": "rust/crates/core/src/encrypt/md5/tests.rs",
+        "name": "matches_all_rfc_1321_vectors"
+      },
+      {
+        "file": "rust/crates/core/src/encrypt/md5/tests.rs",
+        "name": "rehashes_a_digest_prefix_fifty_times"
+      }
+    ],
+    "removed": [],
+    "files": [
+      "rust/crates/core/src/encrypt.rs",
+      "rust/crates/core/src/encrypt/md5.rs",
+      "rust/crates/core/src/encrypt/md5/tests.rs"
+    ]
+  },
+  "commits": [
+    {
+      "sha": "cd595ed07c3e5fe3311c5de26f129de0182fa0e6",
+      "merge": false,
+      "author": "DIO0550",
+      "date": "2026-11-13T20:55:00+09:00",
+      "subject": "feat(rust): implement streaming MD5 for legacy PDF encryption",
+      "body": "",
+      "files": [
+        {
+          "path": "docs/guides/README.md",
+          "status": "M",
+          "oldPath": null,
+          "additions": 1,
+          "deletions": 1,
+          "patch": "@@ -16,7 +16,7 @@ PDF機能の実装に合わせて、仕様の読み方と実装の振る舞い\n | [テキスト文字列](text-strings.html) | PDFDocEncoding・UTF-16BE・UTF-8、BOM判定、未割当バイト、サロゲート、不正入力の拒否／置換、バイト列との型境界 | [Issue #637](https://github.com/DIO0550/pdfmod/issues/637) / `rust/crates/core/src/text_string.rs` |\n | [日付文字列](date-format.html) | ISO 32000-1 / ISO 32000-2 構文、D: 接頭辞、階層的省略、タイムゾーン形式（' 区切り・Z）、うるう年・カレンダー厳格検証 | [Issue #638](https://github.com/DIO0550/pdfmod/issues/638) / `rust/crates/core/src/date.rs` |\n | [字句トークンと描画命令の境界](token-layers.html) | 字句解析と演算子の再分類、LexicalTokenとContentStreamToken、巻き戻しと画像辞書の型境界、Operator.value、正常例・未知の命令・壊れた画像 | [Issue #308](https://github.com/DIO0550/pdfmod/issues/308) / `packages/core/src/pdf/types/token/index.ts` |\n-| [暗号化辞書](encryption-dictionary.html) | Standard の6組と方式ごとの型・生成処理、crypt filter と Identity、鍵長の単位正規化、符号なし権限、未対応辞書の保持、間接参照と解析の境界 | [Issue #651](https://github.com/DIO0550/pdfmod/issues/651) / `packages/core/src/pdf/encryption/index.ts` / `rust/crates/core/src/encrypt.rs` |\n+| [暗号化辞書](encryption-dictionary.html) | Standard の6組と方式ごとの型・生成処理、crypt filter と Identity、鍵長の単位正規化、符号なし権限、未対応辞書の保持、間接参照と解析の境界、旧リビジョンの鍵導出で使うMD5 | [Issue #651](https://github.com/DIO0550/pdfmod/issues/651) / [Issue #639](https://github.com/DIO0550/pdfmod/issues/639) / `packages/core/src/pdf/encryption/index.ts` / `rust/crates/core/src/encrypt.rs` / `rust/crates/core/src/encrypt/md5.rs` |\n | [拡張グラフィックス状態](ext-gstate.html) | gs の名前解決、各パラメータ、Font の辞書指定、透明度、q/Q、警告と回復 | [Issue #667](https://github.com/DIO0550/pdfmod/issues/667) / `packages/core/src/content-stream/ext-gstate/index.ts` |\n | [パターンとシェーディング](patterns-shadings.html) | PatternType・ShadingType、着色と基底色、scn / SCN / sh、間接参照、Functionの未評価保持、警告と回復 | [Issue #677](https://github.com/DIO0550/pdfmod/issues/677) / `packages/core/src/content-stream/paint-resources/` / `packages/core/src/document/resources/pattern/` / `packages/core/src/document/resources/shading/` |\n ",
+          "patchLines": 9,
+          "truncated": false
+        },
+        {
+          "path": "docs/guides/encryption-dictionary.html",
+          "status": "M",
+          "oldPath": null,
+          "additions": 49,
+          "deletions": 2,
+          "patch": "@@ -74,6 +74,8 @@\n     .comment { color: #a3bdc5; }\n     .keyword { color: #b9caff; }\n     .type { color: #89e0ce; }\n+    .string { color: #c0ed9c; }\n+    .pdf-syntax { color: #e2c1ff; }\n     .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }\n     .grid > * { min-width: 0; }\n     .card { border: 1px solid var(--line); background: white; border-radius: 13px; padding: 24px; margin: 22px 0; }\n@@ -146,6 +148,8 @@\n       .comment { color: var(--muted); }\n       .keyword { color: var(--blue); }\n       .type { color: var(--teal); }\n+      .string { color: #3b631d; }\n+      .pdf-syntax { color: #6e3983; }\n       .table-wrap { overflow: visible; }\n       [data-example-panel][hidden] { display: block !important; }\n       a { color: inherit; }\n@@ -159,14 +163,15 @@ nav a { font-size: 16px; } table { font-size: 17px; } th { font-size: 15px; }\n <a href=\"#overview\"><span>01</span>暗号化の起点</a><a href=\"#syntax\"><span>02</span>辞書を読む</a>\n <a href=\"#algorithms\"><span>03</span>有効な6組</a><a href=\"#filters\"><span>04</span>crypt filter と単位</a>\n <a href=\"#permissions\"><span>05</span>権限のビット表現</a><a href=\"#examples\"><span>06</span>正常・未対応・不正</a>\n-<a href=\"#implementation\"><span>07</span>解析の境界</a><a href=\"#algorithm-types\"><span>08</span>方式ごとの型と責務</a></nav></aside>\n+<a href=\"#implementation\"><span>07</span>解析の境界</a><a href=\"#algorithm-types\"><span>08</span>方式ごとの型と責務</a>\n+<a href=\"#legacy-md5\"><span>09</span>旧リビジョンのMD5</a></nav></aside>\n <main id=\"top\"><div class=\"wrap\"><header class=\"hero\"><div class=\"eyebrow\">PDF INTERNALS / ENCRYPTION DICTIONARY</div>\n <h1>暗号化辞書を読む</h1><p class=\"lead\">PDFの <code>/Encrypt</code> は、暗号化の方式と鍵の材料を記述します。アルゴリズムの版、crypt filter、権限を、解釈できる型へ変換する仕組みを見ていきます。</p></header>\n <section class=\"section\" id=\"overview\"><div class=\"section-heading\"><span class=\"number\">01</span><h2>暗号化の起点</h2></div>\n <p>トレイラの <code>/Encrypt</code> が暗号化辞書を指します。直接辞書でも間接参照でも書けます。暗号化辞書自体は復号前に読む必要があるため、オブジェクトストリームには格納できません。</p>\n <div class=\"grid\"><div class=\"card\"><h3>セキュリティハンドラ</h3><p>Security handler はパスワードなどからアクセスを認証する方式です。<code>/Filter /Standard</code> はパスワードベースの標準ハンドラを表します。</p></div>\n <div class=\"card\"><h3>暗号化される値</h3><p>対象は文字列とストリームです。辞書のキー名、名前オブジェクト、数値は暗号化されません。暗号化文書のトレイラには鍵導出に使用する <code>/ID</code> が必要です。</p></div></div>\n-<div class=\"note\"><strong>今回扱うのは辞書の構造</strong>辞書から方式と鍵の材料を読み取ります。文字列やストリームの復号、鍵導出、パスワード認証はこの型変換に含まれません。</div></section>\n+<div class=\"note\"><strong>辞書から読み取れること</strong>辞書の型変換では方式と鍵の材料が得られます。旧リビジョンのファイル暗号鍵を求めるときは、その材料を後段の鍵導出に渡します。</div></section>\n <section class=\"section\" id=\"syntax\"><div class=\"section-heading\"><span class=\"number\">02</span><h2>辞書を読む</h2></div>\n <p>以下は説明用の抜粋です。暗号鍵の材料は短縮しており、完全なPDFや復号可能な鍵の例ではありません。</p>\n <pre><code><span class=\"keyword\">trailer</span>\n@@ -313,5 +318,47 @@ nav a { font-size: 16px; } table { font-size: 17px; } th { font-size: 15px; }\n <ol class=\"steps\"><li><strong>PDFの辞書を読む入口</strong><p>外部入力には <code>EncryptDictionary.fromDictionary</code> を使います。ハンドラ名と /V・/R の判定、方式の生成、共通キーの読み取りをつなぎます。</p></li><li><strong>選択された方式の項目を読む</strong><p>各方式の <code>fromDictionary</code> は方式固有の項目を読みます。/V・/R 自体の再判定や、共通の /O・/U・/P の検証は担当しません。</p></li><li><strong>正常・省略・不正を値として返す</strong><p>V2R3で /Length 128 は128ビット、省略は40ビット、/Length 44 はキー /Length と辞書開始位置を持つエラーになります。生成処理を分けても、この解析方針は変わりません。</p></li></ol>\n <div class=\"note\"><strong>版の選択と、バイト列の暗号処理は別の責務</strong>V4R4ではcrypt filterから暗号方式を選びます。ここで分離したのは辞書を解釈する型と生成処理です。パスワード認証・鍵導出・RC4やAESによる復号は未実装です。鍵材料のバイト列の長さも、この段階では検証しません。</div>\n </section>\n+<section class=\"section\" id=\"legacy-md5\">\n+<div class=\"section-heading\"><span class=\"number\">09</span><h2>旧リビジョンの鍵導出とMD5</h2></div>\n+<p>標準セキュリティハンドラのリビジョン2〜4では、パスワードとPDFに記録された値からファイル暗号鍵を導出します。この手順で使うMD5は、任意長のバイト列を16バイトのダイジェストに変換するハッシュ関数です。</p>\n+<h3>PDFから取り出す鍵の材料</h3>\n+<p>次の抜粋はリビジョン4で使う項目です。<code>/O</code> と <code>/ID</code> の16進文字列は、説明用に短縮しています。</p>\n+<pre><code><span class=\"comment\">% 鍵導出に使う項目の抜粋</span>\n+<span class=\"value\">8 0</span> <span class=\"pdf-syntax\">obj</span>\n+<span class=\"pdf-syntax\">&lt;&lt;</span> <span class=\"key\">/Filter</span> <span class=\"key\">/Standard</span> <span class=\"key\">/V</span> <span class=\"value\">4</span> <span class=\"key\">/R</span> <span class=\"value\">4</span> <span class=\"key\">/Length</span> <span class=\"value\">128</span>\n+   <span class=\"key\">/O</span> <span class=\"string\">&lt;00FF&gt;</span> <span class=\"key\">/P</span> <span class=\"value\">-4</span> <span class=\"key\">/EncryptMetadata</span> <span class=\"keyword\">false</span> <span class=\"pdf-syntax\">&gt;&gt;</span>\n+<span class=\"pdf-syntax\">endobj</span>\n+<span class=\"pdf-syntax\">trailer</span>\n+<span class=\"pdf-syntax\">&lt;&lt;</span> <span class=\"key\">/Encrypt</span> <span class=\"value\">8 0</span> <span class=\"pdf-syntax\">R</span>\n+   <span class=\"key\">/ID</span> <span class=\"pdf-syntax\">[</span><span class=\"string\">&lt;00112233&gt;</span> <span class=\"string\">&lt;44556677&gt;</span><span class=\"pdf-syntax\">]</span> <span class=\"pdf-syntax\">&gt;&gt;</span></code></pre>\n+<ol class=\"steps\">\n+  <li>32バイトに調整したパスワード、<code>/O</code> の生バイト、<code>/P</code> の4バイトのリトルエンディアン表現、<code>/ID</code> 配列の先頭のバイト列を順にMD5へ渡します。</li>\n+  <li>リビジョン4で <code>/EncryptMetadata false</code> の場合は、<code>FF FF FF FF</code> を加えてから最初のダイジェストを得ます。</li>\n+  <li>リビジョン3と4では、直前のダイジェストの先頭からファイル暗号鍵と同じ長さのバイト列を取り出し、MD5に掛ける処理をさらに50回繰り返します。例の <code>/Length 128</code> は16バイトに相当します。</li>\n+  <li>最後のダイジェストの先頭から、ファイル暗号鍵に必要なバイト数を取り出します。リビジョン2では5バイト固定です。</li>\n+</ol>\n+<h3>分割しても同じダイジェストを得る</h3>\n+<p>MD5は64バイトがそろうたびに、4バイトずつ16個の整数へ読み替えます。各ブロックでビット演算、32ビットの加算、左回転を繰り返し、4個の32ビット整数からなる状態を更新します。<code>update</code> は64バイトに満たない末尾を保持するため、下の2通りの渡し方で同じダイジェストが得られます。</p>\n+<pre><code><span class=\"keyword\">let mut</span> md5 = <span class=\"type\">Md5</span>::new();\n+md5.update(<span class=\"string\">b\"a\"</span>);\n+md5.update(<span class=\"string\">b\"bc\"</span>);\n+<span class=\"keyword\">let</span> digest = md5.finalize();\n+assert_eq!(digest, <span class=\"type\">Md5</span>::digest(<span class=\"string\">b\"abc\"</span>));</code></pre>\n+<p><code>finalize</code> は末尾に <code>80</code>（16進数）と必要な数の <code>00</code> を加え、最後の8バイトに元の入力のビット長をリトルエンディアンで置きます。端数が56バイト以上なら、終端と長さが1ブロックに収まらないため、長さは次のブロックに入ります。</p>\n+<div class=\"table-wrap\" tabindex=\"0\" role=\"region\" aria-label=\"入力長とMD5のパディング\">\n+<table>\n+<thead><tr><th scope=\"col\">入力のバイト数</th><th scope=\"col\">最後に残るバイト数</th><th scope=\"col\">確定時に処理するブロック数</th></tr></thead>\n+<tbody>\n+<tr><td>0</td><td>0</td><td>1</td></tr>\n+<tr><td>55</td><td>55</td><td>1</td></tr>\n+<tr><td>56</td><td>56</td><td>2</td></tr>\n+<tr><td>64</td><td>0</td><td>1</td></tr>\n+<tr><td>120</td><td>56</td><td>2</td></tr>\n+</tbody>\n+</table>\n+</div>\n+<p>Rust実装では内部の <code>Md5</code> がブロック処理を担当します。状態、バッファー、出力は固定長なので、50回の反復で前のダイジェストの一部を渡すたびにヒープを確保する必要はありません。辞書から鍵を導出し、パスワードを認証してPDFを復号する処理は後続の実装です。</p>\n+<div class=\"note warning\"><strong>既存PDFとの互換性に限って使用</strong>MD5の衝突耐性は失われています。旧形式の読み取りに限って使い、新規用途には使いません。</div>\n+</section>\n <footer><a href=\"#top\">最上部へ</a> · <a href=\"README.md\">解説一覧</a></footer></div></main>\n </body></html>",
+          "patchLines": 84,
+          "truncated": false,
+          "hunkOpeningLines": [
+            {
+              "old": "<html lang=\"ja\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>暗号化辞書 — PDF仕様解説</title><style>",
+              "new": "<html lang=\"ja\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>暗号化辞書 — PDF仕様解説</title><style>"
+            },
+            {
+              "old": "<html lang=\"ja\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>暗号化辞書 — PDF仕様解説</title><style>",
+              "new": "<html lang=\"ja\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>暗号化辞書 — PDF仕様解説</title><style>"
+            },
+            {
+              "old": null,
+              "new": null
+            },
+            {
+              "old": null,
+              "new": null
+            }
+          ]
+        },
+        {
+          "path": "docs/specs/02b_encryption.md",
+          "status": "M",
+          "oldPath": null,
+          "additions": 9,
+          "deletions": 1,
+          "patch": "@@ -2,7 +2,7 @@\n \n ISO 32000-1:2008 §7.6 / ISO 32000-2:2020 §7.6\n \n-> 本書は**暗号化辞書の構造**のみを扱う。復号アルゴリズム（RC4 / AES）・鍵導出・\n+> 本書は暗号化辞書の構造と、Rust が内部で使う MD5 を扱う。復号アルゴリズム（RC4 / AES）・鍵導出・\n > パスワード認証は未記載（#604 のスコープ外）。\n \n ## 1. 暗号化辞書の位置づけ\n@@ -122,3 +122,11 @@ ISO 32000-1 表 20（共通）・表 21（標準ハンドラ）。\n - `/P` は -2147483648..4294967295 の整数を受理し、符号付き32ビットの同じビットパターンに正規化する\n - 未対応の `/V` × `/R` は必要な `/V`・`/R` の型を検証した後に生辞書を保持する。未対応ハンドラでは `/Filter` のみを検証する\n - TypeScript の構造エラーは `EncryptError` のキーのパスと、呼び出し側が渡した辞書の開始位置を保持する。個々の値の位置は取得しない\n+\n+## 7. 旧リビジョンの鍵導出に使う MD5\n+\n+ISO 32000-1 §7.6.3.3 の Algorithm 2 は、リビジョン2〜4のファイル暗号鍵を導出するために MD5 を使う。\n+Rust の `encrypt::md5` は RFC 1321 §3 に従って入力を64バイトずつ処理し、終端の `80`（16進数）とゼロの後に元のビット長の下位64ビットをリトルエンディアンで付加する。出力は16バイト。\n+\n+`update` は複数のバイト列を順番に受け取り、`finalize` がダイジェストを返す。一続きの入力に使う `digest` もヒープ確保を行わず、リビジョン3と4の鍵導出でダイジェストの先頭を50回再ハッシュする際に利用できる。\n+MD5 は既存PDFとの互換性に限って使い、新規用途には使わない。",
+          "patchLines": 21,
+          "truncated": false
+        },
+        {
+          "path": "rust/crates/core/src/encrypt.rs",
+          "status": "M",
+          "oldPath": null,
+          "additions": 6,
+          "deletions": 0,
+          "patch": "@@ -3,6 +3,7 @@\n //!\n //! `/Filter /Standard` の暗号化辞書のみを型として解釈し、`/V` と `/R` の\n //! 取りうる組み合わせだけを [`StandardAlgorithm`] のバリアントで表現する。\n+//! 旧リビジョンの鍵導出に使う MD5 も内部で実装する。\n //!\n //! # スコープ外（#604）\n //!\n@@ -20,6 +21,11 @@ pub mod algorithm;\n pub mod crypt_filter;\n pub mod error;\n pub mod key;\n+#[cfg_attr(\n+    not(test),\n+    expect(dead_code, reason = \"鍵導出の実装 (#662) から呼び出す\")\n+)]\n+mod md5;\n pub mod permissions;\n pub mod standard;\n ",
+          "patchLines": 20,
+          "truncated": false
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/md5.rs",
+          "status": "A",
+          "oldPath": null,
+          "additions": 203,
+          "deletions": 0,
+          "patch": "@@ -0,0 +1,203 @@\n+//! RFC 1321 の MD5。旧式 PDF の標準セキュリティハンドラとの互換性に限って使い、\n+//! 衝突耐性が失われているため新規用途には使わない。\n+\n+const BLOCK_LEN: usize = 64;\n+const DIGEST_LEN: usize = 16;\n+const LENGTH_OFFSET: usize = BLOCK_LEN - size_of::<u64>();\n+\n+const INITIAL_STATE: [u32; 4] = [0x6745_2301, 0xefcd_ab89, 0x98ba_dcfe, 0x1032_5476];\n+\n+const ROTATIONS: [[u32; 4]; 4] = [\n+    [7, 12, 17, 22],\n+    [5, 9, 14, 20],\n+    [4, 11, 16, 23],\n+    [6, 10, 15, 21],\n+];\n+\n+// RFC 1321 §3.4 の各ステップの加算定数。\n+const STEP_CONSTANTS: [u32; 64] = [\n+    0xd76a_a478,\n+    0xe8c7_b756,\n+    0x2420_70db,\n+    0xc1bd_ceee,\n+    0xf57c_0faf,\n+    0x4787_c62a,\n+    0xa830_4613,\n+    0xfd46_9501,\n+    0x6980_98d8,\n+    0x8b44_f7af,\n+    0xffff_5bb1,\n+    0x895c_d7be,\n+    0x6b90_1122,\n+    0xfd98_7193,\n+    0xa679_438e,\n+    0x49b4_0821,\n+    0xf61e_2562,\n+    0xc040_b340,\n+    0x265e_5a51,\n+    0xe9b6_c7aa,\n+    0xd62f_105d,\n+    0x0244_1453,\n+    0xd8a1_e681,\n+    0xe7d3_fbc8,\n+    0x21e1_cde6,\n+    0xc337_07d6,\n+    0xf4d5_0d87,\n+    0x455a_14ed,\n+    0xa9e3_e905,\n+    0xfcef_a3f8,\n+    0x676f_02d9,\n+    0x8d2a_4c8a,\n+    0xfffa_3942,\n+    0x8771_f681,\n+    0x6d9d_6122,\n+    0xfde5_380c,\n+    0xa4be_ea44,\n+    0x4bde_cfa9,\n+    0xf6bb_4b60,\n+    0xbebf_bc70,\n+    0x289b_7ec6,\n+    0xeaa1_27fa,\n+    0xd4ef_3085,\n+    0x0488_1d05,\n+    0xd9d4_d039,\n+    0xe6db_99e5,\n+    0x1fa2_7cf8,\n+    0xc4ac_5665,\n+    0xf429_2244,\n+    0x432a_ff97,\n+    0xab94_23a7,\n+    0xfc93_a039,\n+    0x655b_59c3,\n+    0x8f0c_cc92,\n+    0xffef_f47d,\n+    0x8584_5dd1,\n+    0x6fa8_7e4f,\n+    0xfe2c_e6e0,\n+    0xa301_4314,\n+    0x4e08_11a1,\n+    0xf753_7e82,\n+    0xbd3a_f235,\n+    0x2ad7_d2bb,\n+    0xeb86_d391,\n+];\n+\n+/// MD5 の逐次計算状態。バッファ先頭の `byte_len % 64` バイトが未処理の入力。\n+pub(super) struct Md5 {\n+    state: [u32; 4],\n+    buffer: [u8; BLOCK_LEN],\n+    byte_len: u64,\n+}\n+\n+impl Md5 {\n+    /// 空の入力から計算を始める。\n+    pub(super) fn new() -> Self {\n+        Self {\n+            state: INITIAL_STATE,\n+            buffer: [0; BLOCK_LEN],\n+            byte_len: 0,\n+        }\n+    }\n+\n+    /// 入力を追加し、そろった 64 バイトのブロックを処理する。\n+    pub(super) fn update(&mut self, mut input: &[u8]) {\n+        let buffered_len = self.buffered_len();\n+\n+        // usize が 32 ビットの環境でも、入力長を 64 ビットへゼロ拡張する。\n+        let len_bytes = input.len().to_le_bytes();\n+        let mut input_len = [0; size_of::<u64>()];\n+        input_len[..len_bytes.len()].copy_from_slice(&len_bytes);\n+        self.byte_len = self.byte_len.wrapping_add(u64::from_le_bytes(input_len));\n+\n+        if buffered_len != 0 {\n+            let space = &mut self.buffer[buffered_len..];\n+            let copy_len = input.len().min(space.len());\n+            let (prefix, rest) = input.split_at(copy_len);\n+            space[..copy_len].copy_from_slice(prefix);\n+\n+            if copy_len < space.len() {\n+                return;\n+            }\n+\n+            Self::compress(&mut self.state, &self.buffer);\n+            input = rest;\n+        }\n+\n+        let (blocks, tail) = input.as_chunks::<BLOCK_LEN>();\n+        for block in blocks {\n+            Self::compress(&mut self.state, block);\n+        }\n+        self.buffer[..tail.len()].copy_from_slice(tail);\n+    }\n+\n+    /// RFC 1321 §3.1–3.2 のパディングと入力長を付け、16 バイトを返す。\n+    #[must_use]\n+    pub(super) fn finalize(mut self) -> [u8; DIGEST_LEN] {\n+        let buffered_len = self.buffered_len();\n+        self.buffer[buffered_len] = 0x80;\n+        self.buffer[buffered_len + 1..].fill(0);\n+\n+        // 終端とビット長が収まらないときは、ビット長を次のブロックに置く。\n+        if buffered_len >= LENGTH_OFFSET {\n+            Self::compress(&mut self.state, &self.buffer);\n+            self.buffer.fill(0);\n+        }\n+\n+        let bit_len = self.byte_len.wrapping_mul(8);\n+        self.buffer[LENGTH_OFFSET..].copy_from_slice(&bit_len.to_le_bytes());\n+        Self::compress(&mut self.state, &self.buffer);\n+\n+        let mut digest = [0; DIGEST_LEN];\n+        let (output_words, _) = digest.as_chunks_mut::<4>();\n+        for (output, word) in output_words.iter_mut().zip(self.state) {\n+            *output = word.to_le_bytes();\n+        }\n+        digest\n+    }\n+\n+    /// 一続きの入力をヒープ確保なしでハッシュする。\n+    #[must_use]\n+    pub(super) fn digest(input: &[u8]) -> [u8; DIGEST_LEN] {\n+        let mut md5 = Self::new();\n+        md5.update(input);\n+        md5.finalize()\n+    }\n+\n+    fn buffered_len(&self) -> usize {\n+        // 256 は 64 の倍数なので、下位 1 バイトから剰余を求められる。\n+        let [low_byte, ..] = self.byte_len.to_le_bytes();\n+        usize::from(low_byte) % BLOCK_LEN\n+    }\n+\n+    fn compress(state: &mut [u32; 4], block: &[u8; BLOCK_LEN]) {\n+        let mut words = [0; 16];\n+        let (word_bytes, _) = block.as_chunks::<4>();\n+        for (word, &bytes) in words.iter_mut().zip(word_bytes) {\n+            *word = u32::from_le_bytes(bytes);\n+        }\n+\n+        let [mut a, mut b, mut c, mut d] = *state;\n+        for (step, &constant) in STEP_CONSTANTS.iter().enumerate() {\n+            let (mixed, word_index) = match step {\n+                0..=15 => ((b & c) | (!b & d), step),\n+                16..=31 => ((b & d) | (c & !d), (5 * step + 1) % 16),\n+                32..=47 => (b ^ c ^ d, (3 * step + 5) % 16),\n+                _ => (c ^ (b | !d), (7 * step) % 16),\n+            };\n+\n+            let rotation = ROTATIONS[step / 16][step % 4];\n+            let sum = a\n+                .wrapping_add(mixed)\n+                .wrapping_add(constant)\n+                .wrapping_add(words[word_index]);\n+            (a, b, c, d) = (d, b.wrapping_add(sum.rotate_left(rotation)), b, c);\n+        }\n+\n+        for (word, value) in state.iter_mut().zip([a, b, c, d]) {\n+            *word = word.wrapping_add(value);\n+        }\n+    }\n+}\n+\n+#[cfg(test)]\n+mod tests;",
+          "patchLines": 204,
+          "truncated": false
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/md5/tests.rs",
+          "status": "A",
+          "oldPath": null,
+          "additions": 94,
+          "deletions": 0,
+          "patch": "@@ -0,0 +1,94 @@\n+use std::fmt::Write;\n+\n+use super::{Md5, DIGEST_LEN};\n+\n+fn hex(digest: [u8; DIGEST_LEN]) -> String {\n+    let mut output = String::with_capacity(DIGEST_LEN * 2);\n+    for byte in digest {\n+        write!(output, \"{byte:02x}\").unwrap();\n+    }\n+    output\n+}\n+\n+#[test]\n+fn matches_all_rfc_1321_vectors() {\n+    let vectors: &[(&[u8], &str)] = &[\n+        (b\"\", \"d41d8cd98f00b204e9800998ecf8427e\"),\n+        (b\"a\", \"0cc175b9c0f1b6a831c399e269772661\"),\n+        (b\"abc\", \"900150983cd24fb0d6963f7d28e17f72\"),\n+        (b\"message digest\", \"f96b697d7cb7938d525a2f31aaf161d0\"),\n+        (\n+            b\"abcdefghijklmnopqrstuvwxyz\",\n+            \"c3fcd3d76192e4007dfb496cca67e13b\",\n+        ),\n+        (\n+            b\"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789\",\n+            \"d174ab98d277d9f5a5611c2c9f419d9f\",\n+        ),\n+        (\n+            b\"12345678901234567890123456789012345678901234567890123456789012345678901234567890\",\n+            \"57edf4a22be3c955ac49da2e2107b67a\",\n+        ),\n+    ];\n+\n+    for &(input, expected) in vectors {\n+        assert_eq!(hex(Md5::digest(input)), expected, \"{input:?}\");\n+    }\n+}\n+\n+#[test]\n+fn finalizes_at_block_boundaries_for_every_split() {\n+    // 00, 01, ... の先頭 len バイトを Python の hashlib.md5 で照合した値。\n+    let vectors = [\n+        (55, \"6912ee65fff2d9f9ce2508cddf8bcda0\"),\n+        (56, \"51fdd1acda72405dfdfa03fcb85896d7\"),\n+        (63, \"48a6295221902e8e0938f773a7185e72\"),\n+        (64, \"b2d3f56bc197fd985d5965079b5e7148\"),\n+        (65, \"8bd7053801c768420faf816fadba971c\"),\n+        (119, \"1c772251899a7ff007400b888d6b2042\"),\n+        (120, \"b7ba1efc6022e9ed272f00b8831e26e6\"),\n+    ];\n+    let bytes: Vec<_> = (0..=u8::MAX).collect();\n+\n+    for (len, expected) in vectors {\n+        for split in 0..=len {\n+            let mut md5 = Md5::new();\n+            md5.update(&bytes[..split]);\n+            md5.update(&bytes[split..len]);\n+            assert_eq!(\n+                hex(md5.finalize()),\n+                expected,\n+                \"{len} bytes, split at {split}\"\n+            );\n+        }\n+    }\n+}\n+\n+#[test]\n+fn keeps_partial_blocks_across_many_updates() {\n+    let input = [0xa5; 513];\n+    let expected = \"b5670ce4c28d66a1252669692935f3b4\";\n+\n+    for chunk_len in [1, 7, 55, 63, 64, 65, 129] {\n+        let mut md5 = Md5::new();\n+        for chunk in input.chunks(chunk_len) {\n+            md5.update(chunk);\n+            md5.update(b\"\");\n+        }\n+        assert_eq!(hex(md5.finalize()), expected, \"chunk length {chunk_len}\");\n+    }\n+}\n+\n+#[test]\n+fn rehashes_a_digest_prefix_fifty_times() {\n+    for (prefix_len, expected) in [\n+        (5, \"f84aa1ebc58926bf6db85f0634deed3b\"),\n+        (16, \"c3c28188e3295593b1fdc347f343d024\"),\n+    ] {\n+        let mut digest = Md5::digest(b\"abc\");\n+        for _ in 0..50 {\n+            digest = Md5::digest(&digest[..prefix_len]);\n+        }\n+        assert_eq!(hex(digest), expected, \"{prefix_len}-byte prefix\");\n+    }\n+}",
+          "patchLines": 95,
+          "truncated": false
+        }
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "from": "docs/guides/encryption-dictionary.html",
+      "to": "README.md",
+      "status": "kept"
+    },
+    {
+      "from": "docs/guides/encryption-dictionary.html",
+      "to": "docs/guides/README.md",
+      "status": "kept"
+    }
+  ]
+}
