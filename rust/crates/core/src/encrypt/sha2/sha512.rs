@@ -125,6 +125,7 @@ impl Sha384 {
     }
 
     /// 入力を追加する。合計ビット長が 2^128 以上になると、状態を維持して `None` を返す。
+    #[must_use]
     pub(in crate::encrypt) fn update(&mut self, input: &[u8]) -> Option<()> {
         self.0.update(input)
     }
@@ -136,6 +137,7 @@ impl Sha384 {
     }
 
     /// 一続きの入力をヒープ確保なしでハッシュする。ビット長が 2^128 以上なら `None`。
+    #[must_use]
     pub(in crate::encrypt) fn digest(input: &[u8]) -> Option<[u8; SHA384_DIGEST_LEN]> {
         let mut sha = Self::new();
         sha.update(input)?;
@@ -153,6 +155,7 @@ impl Sha512 {
     }
 
     /// 入力を追加する。合計ビット長が 2^128 以上になると、状態を維持して `None` を返す。
+    #[must_use]
     pub(in crate::encrypt) fn update(&mut self, input: &[u8]) -> Option<()> {
         self.0.update(input)
     }
@@ -164,6 +167,7 @@ impl Sha512 {
     }
 
     /// 一続きの入力をヒープ確保なしでハッシュする。ビット長が 2^128 以上なら `None`。
+    #[must_use]
     pub(in crate::encrypt) fn digest(input: &[u8]) -> Option<[u8; SHA512_DIGEST_LEN]> {
         let mut sha = Self::new();
         sha.update(input)?;

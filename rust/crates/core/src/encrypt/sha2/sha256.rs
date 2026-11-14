@@ -104,6 +104,7 @@ impl Sha256 {
     }
 
     /// 入力を追加する。合計ビット長が 2^64 以上になると、状態を維持して `None` を返す。
+    #[must_use]
     pub(in crate::encrypt) fn update(&mut self, input: &[u8]) -> Option<()> {
         let input_bits = u64::try_from(input.len()).ok()?.checked_mul(8)?;
         self.bit_len = self.bit_len.checked_add(input_bits)?;
@@ -129,6 +130,7 @@ impl Sha256 {
     }
 
     /// 一続きの入力をヒープ確保なしでハッシュする。ビット長が 2^64 以上なら `None`。
+    #[must_use]
     pub(in crate::encrypt) fn digest(input: &[u8]) -> Option<[u8; DIGEST_LEN]> {
         let mut sha = Self::new();
         sha.update(input)?;
