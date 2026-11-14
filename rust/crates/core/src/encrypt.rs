@@ -3,7 +3,7 @@
 //!
 //! `/Filter /Standard` の暗号化辞書のみを型として解釈し、`/V` と `/R` の
 //! 取りうる組み合わせだけを [`StandardAlgorithm`] のバリアントで表現する。
-//! 旧リビジョンの鍵導出に使う MD5 と、バイト列に適用する RC4 を内部で実装する。
+//! 鍵導出に使う MD5・SHA-2 と、バイト列に適用する RC4 を内部で実装する。
 //!
 //! # スコープ外（#604）
 //!
@@ -35,6 +35,11 @@ pub mod permissions;
     )
 )]
 mod rc4;
+#[cfg_attr(
+    not(test),
+    expect(dead_code, reason = "AES-256 の鍵導出 (#663) から呼び出す")
+)]
+mod sha2;
 pub mod standard;
 
 use crate::byte_offset::ByteOffset;

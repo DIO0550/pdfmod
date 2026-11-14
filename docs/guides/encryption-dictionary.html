@@ -164,7 +164,8 @@ nav a { font-size: 16px; } table { font-size: 17px; } th { font-size: 15px; }
 <a href="#algorithms"><span>03</span>有効な6組</a><a href="#filters"><span>04</span>crypt filter と単位</a>
 <a href="#permissions"><span>05</span>権限のビット表現</a><a href="#examples"><span>06</span>正常・未対応・不正</a>
 <a href="#implementation"><span>07</span>解析の境界</a><a href="#algorithm-types"><span>08</span>方式ごとの型と責務</a>
-<a href="#legacy-md5"><span>09</span>旧リビジョンのMD5</a><a href="#legacy-rc4"><span>10</span>旧形式のRC4</a></nav></aside>
+<a href="#legacy-md5"><span>09</span>旧リビジョンのMD5</a><a href="#legacy-rc4"><span>10</span>旧形式のRC4</a>
+<a href="#revision6-sha2"><span>11</span>リビジョン6のSHA-2</a></nav></aside>
 <main id="top"><div class="wrap"><header class="hero"><div class="eyebrow">PDF INTERNALS / ENCRYPTION DICTIONARY</div>
 <h1>暗号化辞書を読む</h1><p class="lead">PDFの <code>/Encrypt</code> は、暗号化の方式と鍵の材料を記述します。アルゴリズムの版、crypt filter、権限を、解釈できる型へ変換する仕組みを見ていきます。</p></header>
 <section class="section" id="overview"><div class="section-heading"><span class="number">01</span><h2>暗号化の起点</h2></div>
@@ -387,6 +388,44 @@ assert_eq!(digest, <span class="type">Md5</span>::digest(<span class="string">b"
 復号    <span class="value">5E</span> XOR <span class="value">1F</span> = <span class="value">41</span></code></pre>
 <p>Rustの内部型 <code>Rc4</code> は5〜16バイトの鍵を受け取ります。例えば4バイトや17バイトを渡すと <code>None</code> が返ります。<code>apply</code> は渡したデータをその場で書き換え、同じ状態で続けて呼ぶと次のバイトから処理します。空のデータでは鍵ストリームは進みません。</p>
 <div class="note"><strong>Rustで使える処理</strong>鍵とバイト列を渡してRC4を適用できます。PDFの読み込み中に鍵を求め、暗号化された文字列やストリームに適用する処理は後続の実装です。</div>
+</section>
+<section class="section" id="revision6-sha2">
+<div class="section-heading"><span class="number">11</span><h2>リビジョン6の鍵導出とSHA-2</h2></div>
+<p>標準セキュリティハンドラのリビジョン6では、パスワードとソルト（PDFに保存するランダムなバイト列）から、ファイル暗号鍵を取り出すための中間値を求めます。この処理で使うSHA-2は、バイト列から固定長のダイジェストを求めるハッシュ関数の系列です。</p>
+<h3>暗号化辞書からリビジョン6を判定する</h3>
+<p>以下は暗号化辞書とトレイラから方式の選択に関わる項目を抜き出した例です。<code>/Encrypt 8 0 R</code> は暗号化辞書への参照です。<code>/R 6</code> はリビジョン6のパスワード処理を選び、<code>/CFM /AESV3</code> は通常の文字列とストリームに使うAES-256を指定します。</p>
+<pre><code><span class="comment">% 暗号化辞書とトレイラの抜粋</span>
+<span class="value">8 0</span> <span class="pdf-syntax">obj</span>
+<span class="pdf-syntax">&lt;&lt;</span> <span class="key">/Filter</span> <span class="key">/Standard</span> <span class="key">/V</span> <span class="value">5</span> <span class="key">/R</span> <span class="value">6</span>
+   <span class="key">/CF</span> <span class="pdf-syntax">&lt;&lt;</span> <span class="key">/StdCF</span> <span class="pdf-syntax">&lt;&lt;</span> <span class="key">/CFM</span> <span class="key">/AESV3</span> <span class="pdf-syntax">&gt;&gt;</span> <span class="pdf-syntax">&gt;&gt;</span>
+   <span class="key">/StrF</span> <span class="key">/StdCF</span> <span class="key">/StmF</span> <span class="key">/StdCF</span> <span class="pdf-syntax">&gt;&gt;</span>
+<span class="pdf-syntax">endobj</span>
+<span class="pdf-syntax">trailer</span>
+<span class="pdf-syntax">&lt;&lt;</span> <span class="key">/Encrypt</span> <span class="pdf-syntax">8 0 R</span> <span class="pdf-syntax">&gt;&gt;</span></code></pre>
+<h3>鍵を取り出す手順で3種類を使い分ける</h3>
+<p>ファイル暗号鍵を取り出す Algorithm 2.A は、中間値を求めるために Algorithm 2.B を呼び出します。最初の2ステップが Algorithm 2.B のハッシュ計算です。</p>
+<ol class="steps">
+  <li>パスワードとソルトをSHA-256に掛け、最初の中間値を得ます。所有者のパスワードを使う場合は、入力に <code>/U</code> の全48バイトも含めます。</li>
+  <li>中間値を使ったAES-128-CBC処理の結果から、次に使うSHA-256・SHA-384・SHA-512のいずれかを選びます。AESの出力全体を選んだハッシュに掛けて、次の中間値を更新します。この手順を少なくとも64回繰り返します。</li>
+  <li>鍵導出に使うソルトで得た中間値の先頭32バイトを使い、利用者なら <code>/UE</code>、所有者なら <code>/OE</code> を復号して、ファイル暗号鍵を取り出します。</li>
+</ol>
+<h3>入力の切れ目とパディング</h3>
+<p>ハッシュは入力を固定長のブロックに切り、ブロックごとに状態を更新します。<code>update</code> はブロックに満たない末尾だけを保持します。入力が完了すると、<code>finalize</code> が終端の <code>80</code>（16進数）、必要なゼロ、元のビット長を順に補います。</p>
+<div class="table-wrap" tabindex="0" role="region" aria-label="SHA-2のブロック長と出力長">
+<table><thead><tr><th scope="col">方式</th><th scope="col">ブロック長</th><th scope="col">ビット長の欄</th><th scope="col">ダイジェスト</th></tr></thead>
+<tbody><tr><td>SHA-256</td><td>64バイト</td><td>8バイト</td><td>32バイト</td></tr>
+<tr><td>SHA-384</td><td>128バイト</td><td>16バイト</td><td>48バイト</td></tr>
+<tr><td>SHA-512</td><td>128バイト</td><td>16バイト</td><td>64バイト</td></tr></tbody></table>
+</div>
+<p>SHA-256では末尾が55バイトなら同じブロックに終端と長さが収まり、56バイトなら長さを次のブロックに置きます。SHA-384とSHA-512では境界が111バイトと112バイトです。SHA-384はSHA-512と同じ圧縮処理を専用の初期値から実行し、最終状態の先頭6ワードを出力します。</p>
+<p>次は分けて渡した <code>abc</code> のハッシュを返すRustの例です。一括入力の <code>Sha256::digest(b"abc")</code> と同じ32バイトになります。</p>
+<pre><code><span class="keyword">fn</span> hash_abc() -&gt; <span class="type">Option</span>&lt;[<span class="type">u8</span>; <span class="value">32</span>]&gt; {
+    <span class="keyword">let mut</span> sha = <span class="type">Sha256</span>::new();
+    sha.update(<span class="string">b"a"</span>)?;
+    sha.update(<span class="string">b"bc"</span>)?;
+    <span class="type">Some</span>(sha.finalize())
+}</code></pre>
+<div class="note"><strong>Rustで使える処理</strong>3種類のSHA-2は固定長の配列だけで計算するため、ハッシュを繰り返すたびにヒープを確保する必要はありません。PDFのパスワード検証とファイル暗号鍵の取り出しは、このハッシュ処理を使う後続の実装です。</div>
 </section>
 <footer><a href="#top">最上部へ</a> · <a href="README.md">解説一覧</a></footer></div></main>
 </body></html>
