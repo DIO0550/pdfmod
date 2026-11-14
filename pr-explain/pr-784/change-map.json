@@ -1,0 +1,294 @@
+{
+  "version": 2,
+  "pr": 784,
+  "headBranch": "feature/641-rust-sha2",
+  "baseBranch": "main",
+  "mergeBase": "1b78638c35e5e2fa034cf5205001282f36d77b12",
+  "head": "7fed39c8514f887a3fd96f1c24e5a355d9e5f88e",
+  "groups": [
+    {
+      "label": "Rust",
+      "files": [
+        {
+          "path": "rust/crates/core/src/encrypt.rs",
+          "status": "M",
+          "oldPath": null,
+          "additions": 6,
+          "deletions": 1,
+          "changed": true,
+          "target": null
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/sha2.rs",
+          "status": "A",
+          "oldPath": null,
+          "additions": 8,
+          "deletions": 0,
+          "changed": true,
+          "target": null
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/sha2/block_buffer.rs",
+          "status": "A",
+          "oldPath": null,
+          "additions": 65,
+          "deletions": 0,
+          "changed": true,
+          "target": null
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/sha2/sha256.rs",
+          "status": "A",
+          "oldPath": null,
+          "additions": 200,
+          "deletions": 0,
+          "changed": true,
+          "target": null
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/sha2/sha512.rs",
+          "status": "A",
+          "oldPath": null,
+          "additions": 276,
+          "deletions": 0,
+          "changed": true,
+          "target": null
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/sha2/tests.rs",
+          "status": "A",
+          "oldPath": null,
+          "additions": 223,
+          "deletions": 0,
+          "changed": true,
+          "target": "rust/crates/core/src/encrypt/sha2.rs"
+        }
+      ]
+    },
+    {
+      "label": "PDF 仕様の解説",
+      "files": [
+        {
+          "path": "docs/guides/README.md",
+          "status": "M",
+          "oldPath": null,
+          "additions": 1,
+          "deletions": 1,
+          "changed": true,
+          "target": null
+        },
+        {
+          "path": "docs/guides/encryption-dictionary.html",
+          "status": "M",
+          "oldPath": null,
+          "additions": 39,
+          "deletions": 1,
+          "changed": true,
+          "target": null
+        }
+      ]
+    },
+    {
+      "label": "仕様・設計",
+      "files": [
+        {
+          "path": "docs/specs/02b_encryption.md",
+          "status": "M",
+          "oldPath": null,
+          "additions": 19,
+          "deletions": 2,
+          "changed": true,
+          "target": null
+        }
+      ]
+    },
+    {
+      "label": "設定・その他",
+      "files": [
+        {
+          "path": "README.md",
+          "changed": false
+        }
+      ]
+    }
+  ],
+  "tests": {
+    "added": [
+      {
+        "file": "rust/crates/core/src/encrypt/sha2/sha256.rs",
+        "name": "rejects_updates_past_the_64_bit_length_field"
+      },
+      {
+        "file": "rust/crates/core/src/encrypt/sha2/sha512.rs",
+        "name": "rejects_updates_past_the_128_bit_length_field"
+      },
+      {
+        "file": "rust/crates/core/src/encrypt/sha2/tests.rs",
+        "name": "matches_empty_message_digests"
+      },
+      {
+        "file": "rust/crates/core/src/encrypt/sha2/tests.rs",
+        "name": "matches_nist_million_a_in_chunks"
+      },
+      {
+        "file": "rust/crates/core/src/encrypt/sha2/tests.rs",
+        "name": "matches_nist_short_and_long_messages"
+      },
+      {
+        "file": "rust/crates/core/src/encrypt/sha2/tests.rs",
+        "name": "repeatedly_hashes_fixed_size_digests_across_all_variants"
+      },
+      {
+        "file": "rust/crates/core/src/encrypt/sha2/tests.rs",
+        "name": "sha256_matches_padding_boundaries_at_every_split"
+      },
+      {
+        "file": "rust/crates/core/src/encrypt/sha2/tests.rs",
+        "name": "sha384_and_sha512_match_padding_boundaries_at_every_split"
+      }
+    ],
+    "removed": [],
+    "files": [
+      "rust/crates/core/src/encrypt.rs",
+      "rust/crates/core/src/encrypt/sha2.rs",
+      "rust/crates/core/src/encrypt/sha2/block_buffer.rs",
+      "rust/crates/core/src/encrypt/sha2/sha256.rs",
+      "rust/crates/core/src/encrypt/sha2/sha512.rs",
+      "rust/crates/core/src/encrypt/sha2/tests.rs"
+    ]
+  },
+  "commits": [
+    {
+      "sha": "446eb66c6ce15516462558a255f466bef4a7324c",
+      "merge": false,
+      "author": "DIO0550",
+      "date": "2026-11-15T00:50:11+09:00",
+      "subject": "✨ [New Feature]: #641 RustでSHA-256・384・512を計算する",
+      "body": "- 3種のSHA-2を固定長バッファと逐次入力で計算する\n- 既知ベクタとパディング境界、反復入力を検証する\n\n背景:\n標準セキュリティハンドラのリビジョン6は鍵導出の反復で3種を使う。\n\n採用理由:\nSHA-384とSHA-512の圧縮を共有し、初期値とダイジェスト長を\n内部型ごとに固定する。入力末尾だけを保持して確保を省く。\n\n影響とトレードオフ:\n累積ビット長がFIPSの長さ欄を超える場合は状態を維持して\nNoneを返す。鍵導出を接続する#663から内部APIを利用する。",
+      "files": [
+        {
+          "path": "rust/crates/core/src/encrypt.rs",
+          "status": "M",
+          "oldPath": null,
+          "additions": 6,
+          "deletions": 1,
+          "patch": "@@ -3,7 +3,7 @@\n //!\n //! `/Filter /Standard` の暗号化辞書のみを型として解釈し、`/V` と `/R` の\n //! 取りうる組み合わせだけを [`StandardAlgorithm`] のバリアントで表現する。\n-//! 旧リビジョンの鍵導出に使う MD5 と、バイト列に適用する RC4 を内部で実装する。\n+//! 鍵導出に使う MD5・SHA-2 と、バイト列に適用する RC4 を内部で実装する。\n //!\n //! # スコープ外（#604）\n //!\n@@ -35,6 +35,11 @@ pub mod permissions;\n     )\n )]\n mod rc4;\n+#[cfg_attr(\n+    not(test),\n+    expect(dead_code, reason = \"AES-256 の鍵導出 (#663) から呼び出す\")\n+)]\n+mod sha2;\n pub mod standard;\n \n use crate::byte_offset::ByteOffset;",
+          "patchLines": 21,
+          "truncated": false
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/sha2.rs",
+          "status": "A",
+          "oldPath": null,
+          "additions": 8,
+          "deletions": 0,
+          "patch": "@@ -0,0 +1,8 @@\n+//! FIPS 180-4 の SHA-256 / SHA-384 / SHA-512。AES-256 の鍵導出に使う。\n+\n+mod block_buffer;\n+pub(super) mod sha256;\n+pub(super) mod sha512;\n+\n+#[cfg(test)]\n+mod tests;",
+          "patchLines": 9,
+          "truncated": false
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/sha2/block_buffer.rs",
+          "status": "A",
+          "oldPath": null,
+          "additions": 65,
+          "deletions": 0,
+          "patch": "@@ -0,0 +1,65 @@\n+//! SHA-2 のブロック分割とパディング（FIPS 180-4 §5.1–5.2）。\n+\n+/// 64 または 128 バイトのブロックを扱い、先頭 `len < BLOCK_LEN` バイトに未処理の末尾を保持する。\n+pub(super) struct BlockBuffer<const BLOCK_LEN: usize> {\n+    bytes: [u8; BLOCK_LEN],\n+    len: usize,\n+}\n+\n+impl<const BLOCK_LEN: usize> BlockBuffer<BLOCK_LEN> {\n+    /// SHA-2 が使う 64 バイトまたは 128 バイトの空バッファを作る。\n+    pub(super) fn new() -> Self {\n+        const { assert!(matches!(BLOCK_LEN, 64 | 128)) };\n+\n+        Self {\n+            bytes: [0; BLOCK_LEN],\n+            len: 0,\n+        }\n+    }\n+\n+    /// 完成したブロックを順に渡し、残りのバイトを次の呼び出しに持ち越す。\n+    pub(super) fn update(&mut self, mut input: &[u8], mut compress: impl FnMut(&[u8; BLOCK_LEN])) {\n+        if self.len != 0 {\n+            let space = &mut self.bytes[self.len..];\n+            let copy_len = input.len().min(space.len());\n+            let (prefix, rest) = input.split_at(copy_len);\n+            space[..copy_len].copy_from_slice(prefix);\n+\n+            if copy_len < space.len() {\n+                self.len += copy_len;\n+                return;\n+            }\n+\n+            compress(&self.bytes);\n+            input = rest;\n+        }\n+\n+        let (blocks, tail) = input.as_chunks::<BLOCK_LEN>();\n+        for block in blocks {\n+            compress(block);\n+        }\n+        self.bytes[..tail.len()].copy_from_slice(tail);\n+        self.len = tail.len();\n+    }\n+\n+    /// 元のビット長（8 または 16 バイトのビッグエンディアン表現）を末尾に付ける。\n+    pub(super) fn finalize<const LENGTH_LEN: usize>(\n+        mut self,\n+        bit_len: [u8; LENGTH_LEN],\n+        mut compress: impl FnMut(&[u8; BLOCK_LEN]),\n+    ) {\n+        const { assert!(LENGTH_LEN == BLOCK_LEN / 8) };\n+\n+        self.bytes[self.len] = 0x80;\n+        self.bytes[self.len + 1..].fill(0);\n+\n+        let length_offset = BLOCK_LEN - LENGTH_LEN;\n+        if self.len >= length_offset {\n+            compress(&self.bytes);\n+            self.bytes.fill(0);\n+        }\n+\n+        self.bytes[length_offset..].copy_from_slice(&bit_len);\n+        compress(&self.bytes);\n+    }\n+}",
+          "patchLines": 66,
+          "truncated": false
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/sha2/sha256.rs",
+          "status": "A",
+          "oldPath": null,
+          "additions": 200,
+          "deletions": 0,
+          "patch": "@@ -0,0 +1,200 @@\n+//! 32 ビットワードで計算する SHA-256（FIPS 180-4 §6.2）。\n+\n+use super::block_buffer::BlockBuffer;\n+\n+const BLOCK_LEN: usize = 64;\n+const DIGEST_LEN: usize = 32;\n+const ROUNDS: usize = 64;\n+\n+// FIPS 180-4 §5.3.3 の初期値。\n+const INITIAL_STATE: [u32; 8] = [\n+    0x6a09_e667,\n+    0xbb67_ae85,\n+    0x3c6e_f372,\n+    0xa54f_f53a,\n+    0x510e_527f,\n+    0x9b05_688c,\n+    0x1f83_d9ab,\n+    0x5be0_cd19,\n+];\n+\n+// FIPS 180-4 §4.2.2 のラウンド定数。\n+const ROUND_CONSTANTS: [u32; ROUNDS] = [\n+    0x428a_2f98,\n+    0x7137_4491,\n+    0xb5c0_fbcf,\n+    0xe9b5_dba5,\n+    0x3956_c25b,\n+    0x59f1_11f1,\n+    0x923f_82a4,\n+    0xab1c_5ed5,\n+    0xd807_aa98,\n+    0x1283_5b01,\n+    0x2431_85be,\n+    0x550c_7dc3,\n+    0x72be_5d74,\n+    0x80de_b1fe,\n+    0x9bdc_06a7,\n+    0xc19b_f174,\n+    0xe49b_69c1,\n+    0xefbe_4786,\n+    0x0fc1_9dc6,\n+    0x240c_a1cc,\n+    0x2de9_2c6f,\n+    0x4a74_84aa,\n+    0x5cb0_a9dc,\n+    0x76f9_88da,\n+    0x983e_5152,\n+    0xa831_c66d,\n+    0xb003_27c8,\n+    0xbf59_7fc7,\n+    0xc6e0_0bf3,\n+    0xd5a7_9147,\n+    0x06ca_6351,\n+    0x1429_2967,\n+    0x27b7_0a85,\n+    0x2e1b_2138,\n+    0x4d2c_6dfc,\n+    0x5338_0d13,\n+    0x650a_7354,\n+    0x766a_0abb,\n+    0x81c2_c92e,\n+    0x9272_2c85,\n+    0xa2bf_e8a1,\n+    0xa81a_664b,\n+    0xc24b_8b70,\n+    0xc76c_51a3,\n+    0xd192_e819,\n+    0xd699_0624,\n+    0xf40e_3585,\n+    0x106a_a070,\n+    0x19a4_c116,\n+    0x1e37_6c08,\n+    0x2748_774c,\n+    0x34b0_bcb5,\n+    0x391c_0cb3,\n+    0x4ed8_aa4a,\n+    0x5b9c_ca4f,\n+    0x682e_6ff3,\n+    0x748f_82ee,\n+    0x78a5_636f,\n+    0x84c8_7814,\n+    0x8cc7_0208,\n+    0x90be_fffa,\n+    0xa450_6ceb,\n+    0xbef9_a3f7,\n+    0xc671_78f2,\n+];\n+\n+/// SHA-256 の逐次計算状態。入力のビット長は 64 ビット以内で、末尾はバッファに保持する。\n+pub(in crate::encrypt) struct Sha256 {\n+    state: [u32; 8],\n+    buffer: BlockBuffer<BLOCK_LEN>,\n+    bit_len: u64,\n+}\n+\n+impl Sha256 {\n+    /// SHA-256 の初期値から計算を始める。\n+    pub(in crate::encrypt) fn new() -> Self {\n+        Self {\n+            state: INITIAL_STATE,\n+            buffer: BlockBuffer::new(),\n+            bit_len: 0,\n+        }\n+    }\n+\n+    /// 入力を追加する。合計ビット長が 2^64 以上になると、状態を維持して `None` を返す。\n+    pub(in crate::encrypt) fn update(&mut self, input: &[u8]) -> Option<()> {\n+        let input_bits = u64::try_from(input.len()).ok()?.checked_mul(8)?;\n+        self.bit_len = self.bit_len.checked_add(input_bits)?;\n+\n+        self.buffer\n+            .update(input, |block| Self::compress(&mut self.state, block));\n+        Some(())\n+    }\n+\n+    /// パディングを処理し、8 ワードをビッグエンディアンの 32 バイトで返す。\n+    #[must_use]\n+    pub(in crate::encrypt) fn finalize(mut self) -> [u8; DIGEST_LEN] {\n+        self.buffer.finalize(self.bit_len.to_be_bytes(), |block| {\n+            Self::compress(&mut self.state, block);\n+        });\n+\n+        let mut digest = [0; DIGEST_LEN];\n+        let (output_words, _) = digest.as_chunks_mut::<4>();\n+        for (output, word) in output_words.iter_mut().zip(self.state) {\n+            *output = word.to_be_bytes();\n+        }\n+        digest\n+    }\n+\n+    /// 一続きの入力をヒープ確保なしでハッシュする。ビット長が 2^64 以上なら `None`。\n+    pub(in crate::encrypt) fn digest(input: &[u8]) -> Option<[u8; DIGEST_LEN]> {\n+        let mut sha = Self::new();\n+        sha.update(input)?;\n+        Some(sha.finalize())\n+    }\n+\n+    fn message_schedule(block: &[u8; BLOCK_LEN]) -> [u32; ROUNDS] {\n+        let mut words = [0; ROUNDS];\n+        let (word_bytes, _) = block.as_chunks::<4>();\n+        for (word, &bytes) in words.iter_mut().zip(word_bytes) {\n+            *word = u32::from_be_bytes(bytes);\n+        }\n+\n+        for index in word_bytes.len()..ROUNDS {\n+            let w15 = words[index - 15];\n+            let w2 = words[index - 2];\n+            let sigma0 = w15.rotate_right(7) ^ w15.rotate_right(18) ^ (w15 >> 3);\n+            let sigma1 = w2.rotate_right(17) ^ w2.rotate_right(19) ^ (w2 >> 10);\n+            words[index] = words[index - 16]\n+                .wrapping_add(sigma0)\n+                .wrapping_add(words[index - 7])\n+                .wrapping_add(sigma1);\n+        }\n+        words\n+    }\n+\n+    fn compress(state: &mut [u32; 8], block: &[u8; BLOCK_LEN]) {\n+        let words = Self::message_schedule(block);\n+        let [mut a, mut b, mut c, mut d, mut e, mut f, mut g, mut h] = *state;\n+\n+        for (&word, &constant) in words.iter().zip(&ROUND_CONSTANTS) {\n+            let sum1 = e.rotate_right(6) ^ e.rotate_right(11) ^ e.rotate_right(25);\n+            let choose = (e & f) ^ (!e & g);\n+            let t1 = h\n+                .wrapping_add(sum1)\n+                .wrapping_add(choose)\n+                .wrapping_add(constant)\n+                .wrapping_add(word);\n+\n+            let sum0 = a.rotate_right(2) ^ a.rotate_right(13) ^ a.rotate_right(22);\n+            let majority = (a & b) ^ (a & c) ^ (b & c);\n+            let t2 = sum0.wrapping_add(majority);\n+\n+            (a, b, c, d, e, f, g, h) = (t1.wrapping_add(t2), a, b, c, d.wrapping_add(t1), e, f, g);\n+        }\n+\n+        for (word, value) in state.iter_mut().zip([a, b, c, d, e, f, g, h]) {\n+            *word = word.wrapping_add(value);\n+        }\n+    }\n+}\n+\n+#[cfg(test)]\n+mod tests {\n+    use super::{Sha256, BLOCK_LEN};\n+\n+    #[test]\n+    fn rejects_updates_past_the_64_bit_length_field() {\n+        let mut sha = Sha256::new();\n+        sha.update(&[0; BLOCK_LEN - 2]).unwrap();\n+        sha.bit_len = u64::MAX - 15;\n+\n+        assert_eq!(sha.update(b\"ab\"), None);\n+        assert_eq!(sha.bit_len, u64::MAX - 15);\n+        assert_eq!(sha.update(b\"a\"), Some(()));\n+        assert_eq!(sha.update(b\"b\"), None);\n+        assert_eq!(sha.bit_len, u64::MAX - 7);\n+    }\n+}",
+          "patchLines": 201,
+          "truncated": false
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/sha2/sha512.rs",
+          "status": "A",
+          "oldPath": null,
+          "additions": 276,
+          "deletions": 0,
+          "patch": "@@ -0,0 +1,276 @@\n+//! 64 ビットワードで計算する SHA-384 / SHA-512（FIPS 180-4 §6.4–6.5）。\n+\n+use super::block_buffer::BlockBuffer;\n+\n+const BLOCK_LEN: usize = 128;\n+const SHA384_DIGEST_LEN: usize = 48;\n+const SHA512_DIGEST_LEN: usize = 64;\n+const ROUNDS: usize = 80;\n+\n+// FIPS 180-4 §5.3.4 の SHA-384 の初期値。\n+const SHA384_INITIAL_STATE: [u64; 8] = [\n+    0xcbbb_9d5d_c105_9ed8,\n+    0x629a_292a_367c_d507,\n+    0x9159_015a_3070_dd17,\n+    0x152f_ecd8_f70e_5939,\n+    0x6733_2667_ffc0_0b31,\n+    0x8eb4_4a87_6858_1511,\n+    0xdb0c_2e0d_64f9_8fa7,\n+    0x47b5_481d_befa_4fa4,\n+];\n+\n+// FIPS 180-4 §5.3.5 の SHA-512 の初期値。\n+const SHA512_INITIAL_STATE: [u64; 8] = [\n+    0x6a09_e667_f3bc_c908,\n+    0xbb67_ae85_84ca_a73b,\n+    0x3c6e_f372_fe94_f82b,\n+    0xa54f_f53a_5f1d_36f1,\n+    0x510e_527f_ade6_82d1,\n+    0x9b05_688c_2b3e_6c1f,\n+    0x1f83_d9ab_fb41_bd6b,\n+    0x5be0_cd19_137e_2179,\n+];\n+\n+// FIPS 180-4 §4.2.3 のラウンド定数。\n+const ROUND_CONSTANTS: [u64; ROUNDS] = [\n+    0x428a_2f98_d728_ae22,\n+    0x7137_4491_23ef_65cd,\n+    0xb5c0_fbcf_ec4d_3b2f,\n+    0xe9b5_dba5_8189_dbbc,\n+    0x3956_c25b_f348_b538,\n+    0x59f1_11f1_b605_d019,\n+    0x923f_82a4_af19_4f9b,\n+    0xab1c_5ed5_da6d_8118,\n+    0xd807_aa98_a303_0242,\n+    0x1283_5b01_4570_6fbe,\n+    0x2431_85be_4ee4_b28c,\n+    0x550c_7dc3_d5ff_b4e2,\n+    0x72be_5d74_f27b_896f,\n+    0x80de_b1fe_3b16_96b1,\n+    0x9bdc_06a7_25c7_1235,\n+    0xc19b_f174_cf69_2694,\n+    0xe49b_69c1_9ef1_4ad2,\n+    0xefbe_4786_384f_25e3,\n+    0x0fc1_9dc6_8b8c_d5b5,\n+    0x240c_a1cc_77ac_9c65,\n+    0x2de9_2c6f_592b_0275,\n+    0x4a74_84aa_6ea6_e483,\n+    0x5cb0_a9dc_bd41_fbd4,\n+    0x76f9_88da_8311_53b5,\n+    0x983e_5152_ee66_dfab,\n+    0xa831_c66d_2db4_3210,\n+    0xb003_27c8_98fb_213f,\n+    0xbf59_7fc7_beef_0ee4,\n+    0xc6e0_0bf3_3da8_8fc2,\n+    0xd5a7_9147_930a_a725,\n+    0x06ca_6351_e003_826f,\n+    0x1429_2967_0a0e_6e70,\n+    0x27b7_0a85_46d2_2ffc,\n+    0x2e1b_2138_5c26_c926,\n+    0x4d2c_6dfc_5ac4_2aed,\n+    0x5338_0d13_9d95_b3df,\n+    0x650a_7354_8baf_63de,\n+    0x766a_0abb_3c77_b2a8,\n+    0x81c2_c92e_47ed_aee6,\n+    0x9272_2c85_1482_353b,\n+    0xa2bf_e8a1_4cf1_0364,\n+    0xa81a_664b_bc42_3001,\n+    0xc24b_8b70_d0f8_9791,\n+    0xc76c_51a3_0654_be30,\n+    0xd192_e819_d6ef_5218,\n+    0xd699_0624_5565_a910,\n+    0xf40e_3585_5771_202a,\n+    0x106a_a070_32bb_d1b8,\n+    0x19a4_c116_b8d2_d0c8,\n+    0x1e37_6c08_5141_ab53,\n+    0x2748_774c_df8e_eb99,\n+    0x34b0_bcb5_e19b_48a8,\n+    0x391c_0cb3_c5c9_5a63,\n+    0x4ed8_aa4a_e341_8acb,\n+    0x5b9c_ca4f_7763_e373,\n+    0x682e_6ff3_d6b2_b8a3,\n+    0x748f_82ee_5def_b2fc,\n+    0x78a5_636f_4317_2f60,\n+    0x84c8_7814_a1f0_ab72,\n+    0x8cc7_0208_1a64_39ec,\n+    0x90be_fffa_2363_1e28,\n+    0xa450_6ceb_de82_bde9,\n+    0xbef9_a3f7_b2c6_7915,\n+    0xc671_78f2_e372_532b,\n+    0xca27_3ece_ea26_619c,\n+    0xd186_b8c7_21c0_c207,\n+    0xeada_7dd6_cde0_eb1e,\n+    0xf57d_4f7f_ee6e_d178,\n+    0x06f0_67aa_7217_6fba,\n+    0x0a63_7dc5_a2c8_98a6,\n+    0x113f_9804_bef9_0dae,\n+    0x1b71_0b35_131c_471b,\n+    0x28db_77f5_2304_7d84,\n+    0x32ca_ab7b_40c7_2493,\n+    0x3c9e_be0a_15c9_bebc,\n+    0x431d_67c4_9c10_0d4c,\n+    0x4cc5_d4be_cb3e_42b6,\n+    0x597f_299c_fc65_7e2a,\n+    0x5fcb_6fab_3ad6_faec,\n+    0x6c44_198c_4a47_5817,\n+];\n+\n+/// SHA-384 の逐次計算状態。専用の初期値から開始し、最終状態の先頭 6 ワードを出力する。\n+pub(in crate::encrypt) struct Sha384(Sha512State);\n+\n+impl Sha384 {\n+    /// SHA-384 の初期値から計算を始める。\n+    pub(in crate::encrypt) fn new() -> Self {\n+        Self(Sha512State::new(SHA384_INITIAL_STATE))\n+    }\n+\n+    /// 入力を追加する。合計ビット長が 2^128 以上になると、状態を維持して `None` を返す。\n+    pub(in crate::encrypt) fn update(&mut self, input: &[u8]) -> Option<()> {\n+        self.0.update(input)\n+    }\n+\n+    /// パディングを処理し、先頭 6 ワードをビッグエンディアンの 48 バイトで返す。\n+    #[must_use]\n+    pub(in crate::encrypt) fn finalize(self) -> [u8; SHA384_DIGEST_LEN] {\n+        self.0.finalize()\n+    }\n+\n+    /// 一続きの入力をヒープ確保なしでハッシュする。ビット長が 2^128 以上なら `None`。\n+    pub(in crate::encrypt) fn digest(input: &[u8]) -> Option<[u8; SHA384_DIGEST_LEN]> {\n+        let mut sha = Self::new();\n+        sha.update(input)?;\n+        Some(sha.finalize())\n+    }\n+}\n+\n+/// SHA-512 の逐次計算状態。専用の初期値から開始し、最終状態の全 8 ワードを出力する。\n+pub(in crate::encrypt) struct Sha512(Sha512State);\n+\n+impl Sha512 {\n+    /// SHA-512 の初期値から計算を始める。\n+    pub(in crate::encrypt) fn new() -> Self {\n+        Self(Sha512State::new(SHA512_INITIAL_STATE))\n+    }\n+\n+    /// 入力を追加する。合計ビット長が 2^128 以上になると、状態を維持して `None` を返す。\n+    pub(in crate::encrypt) fn update(&mut self, input: &[u8]) -> Option<()> {\n+        self.0.update(input)\n+    }\n+\n+    /// パディングを処理し、8 ワードをビッグエンディアンの 64 バイトで返す。\n+    #[must_use]\n+    pub(in crate::encrypt) fn finalize(self) -> [u8; SHA512_DIGEST_LEN] {\n+        self.0.finalize()\n+    }\n+\n+    /// 一続きの入力をヒープ確保なしでハッシュする。ビット長が 2^128 以上なら `None`。\n+    pub(in crate::encrypt) fn digest(input: &[u8]) -> Option<[u8; SHA512_DIGEST_LEN]> {\n+        let mut sha = Self::new();\n+        sha.update(input)?;\n+        Some(sha.finalize())\n+    }\n+}\n+\n+/// 128 ビットで入力のビット長を保持し、SHA-384 と SHA-512 の圧縮処理を共有する。\n+struct Sha512State {\n+    state: [u64; 8],\n+    buffer: BlockBuffer<BLOCK_LEN>,\n+    bit_len: u128,\n+}\n+\n+impl Sha512State {\n+    fn new(initial_state: [u64; 8]) -> Self {\n+        Self {\n+            state: initial_state,\n+            buffer: BlockBuffer::new(),\n+            bit_len: 0,\n+        }\n+    }\n+\n+    fn update(&mut self, input: &[u8]) -> Option<()> {\n+        let input_bits = u128::try_from(input.len()).ok()?.checked_mul(8)?;\n+        self.bit_len = self.bit_len.checked_add(input_bits)?;\n+\n+        self.buffer\n+            .update(input, |block| Self::compress(&mut self.state, block));\n+        Some(())\n+    }\n+\n+    fn finalize<const DIGEST_LEN: usize>(mut self) -> [u8; DIGEST_LEN] {\n+        const { assert!(matches!(DIGEST_LEN, SHA384_DIGEST_LEN | SHA512_DIGEST_LEN)) };\n+\n+        self.buffer.finalize(self.bit_len.to_be_bytes(), |block| {\n+            Self::compress(&mut self.state, block);\n+        });\n+\n+        let mut digest = [0; DIGEST_LEN];\n+        let (output_words, _) = digest.as_chunks_mut::<8>();\n+        for (output, word) in output_words.iter_mut().zip(self.state) {\n+            *output = word.to_be_bytes();\n+        }\n+        digest\n+    }\n+\n+    fn message_schedule(block: &[u8; BLOCK_LEN]) -> [u64; ROUNDS] {\n+        let mut words = [0; ROUNDS];\n+        let (word_bytes, _) = block.as_chunks::<8>();\n+        for (word, &bytes) in words.iter_mut().zip(word_bytes) {\n+            *word = u64::from_be_bytes(bytes);\n+        }\n+\n+        for index in word_bytes.len()..ROUNDS {\n+            let w15 = words[index - 15];\n+            let w2 = words[index - 2];\n+            let sigma0 = w15.rotate_right(1) ^ w15.rotate_right(8) ^ (w15 >> 7);\n+            let sigma1 = w2.rotate_right(19) ^ w2.rotate_right(61) ^ (w2 >> 6);\n+            words[index] = words[index - 16]\n+                .wrapping_add(sigma0)\n+                .wrapping_add(words[index - 7])\n+                .wrapping_add(sigma1);\n+        }\n+        words\n+    }\n+\n+    fn compress(state: &mut [u64; 8], block: &[u8; BLOCK_LEN]) {\n+        let words = Self::message_schedule(block);\n+        let [mut a, mut b, mut c, mut d, mut e, mut f, mut g, mut h] = *state;\n+\n+        for (&word, &constant) in words.iter().zip(&ROUND_CONSTANTS) {\n+            let sum1 = e.rotate_right(14) ^ e.rotate_right(18) ^ e.rotate_right(41);\n+            let choose = (e & f) ^ (!e & g);\n+            let t1 = h\n+                .wrapping_add(sum1)\n+                .wrapping_add(choose)\n+                .wrapping_add(constant)\n+                .wrapping_add(word);\n+\n+            let sum0 = a.rotate_right(28) ^ a.rotate_right(34) ^ a.rotate_right(39);\n+            let majority = (a & b) ^ (a & c) ^ (b & c);\n+            let t2 = sum0.wrapping_add(majority);\n+\n+            (a, b, c, d, e, f, g, h) = (t1.wrapping_add(t2), a, b, c, d.wrapping_add(t1), e, f, g);\n+        }\n+\n+        for (word, value) in state.iter_mut().zip([a, b, c, d, e, f, g, h]) {\n+            *word = word.wrapping_add(value);\n+        }\n+    }\n+}\n+\n+#[cfg(test)]\n+mod tests {\n+    use super::{Sha512, BLOCK_LEN};\n+\n+    #[test]\n+    fn rejects_updates_past_the_128_bit_length_field() {\n+        let mut sha = Sha512::new();\n+        sha.update(&[0; BLOCK_LEN - 2]).unwrap();\n+        sha.0.bit_len = u128::MAX - 15;\n+\n+        assert_eq!(sha.update(b\"ab\"), None);\n+        assert_eq!(sha.0.bit_len, u128::MAX - 15);\n+        assert_eq!(sha.update(b\"a\"), Some(()));\n+        assert_eq!(sha.update(b\"b\"), None);\n+        assert_eq!(sha.0.bit_len, u128::MAX - 7);\n+    }\n+}",
+          "patchLines": 277,
+          "truncated": false
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/sha2/tests.rs",
+          "status": "A",
+          "oldPath": null,
+          "additions": 223,
+          "deletions": 0,
+          "patch": "@@ -0,0 +1,223 @@\n+use std::fmt::Write;\n+\n+use super::sha256::Sha256;\n+use super::sha512::{Sha384, Sha512};\n+\n+fn hex(bytes: &[u8]) -> String {\n+    let mut output = String::with_capacity(bytes.len() * 2);\n+    for byte in bytes {\n+        write!(output, \"{byte:02x}\").unwrap();\n+    }\n+    output\n+}\n+\n+#[test]\n+fn matches_nist_short_and_long_messages() {\n+    let sha256_long = b\"abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq\";\n+    let sha512_long = b\"abcdefghbcdefghicdefghijdefghijkefghijklfghijklmghijklmnhijklmno\\\n+                       ijklmnopjklmnopqklmnopqrlmnopqrsmnopqrstnopqrstu\";\n+    assert_eq!(\n+        hex(&Sha256::digest(b\"abc\").unwrap()),\n+        \"ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad\"\n+    );\n+    assert_eq!(\n+        hex(&Sha256::digest(sha256_long).unwrap()),\n+        \"248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1\"\n+    );\n+    assert_eq!(\n+        hex(&Sha384::digest(b\"abc\").unwrap()),\n+        \"cb00753f45a35e8bb5a03d699ac65007272c32ab0eded163\\\n+        1a8b605a43ff5bed8086072ba1e7cc2358baeca134c825a7\"\n+    );\n+    assert_eq!(\n+        hex(&Sha384::digest(sha512_long).unwrap()),\n+        \"09330c33f71147e83d192fc782cd1b4753111b173b3b05d2\\\n+        2fa08086e3b0f712fcc7c71a557e2db966c3e9fa91746039\"\n+    );\n+    assert_eq!(\n+        hex(&Sha512::digest(b\"abc\").unwrap()),\n+        \"ddaf35a193617abacc417349ae20413112e6fa4e89a97ea20a9eeee64b55d39a\\\n+        2192992a274fc1a836ba3c23a3feebbd454d4423643ce80e2a9ac94fa54ca49f\"\n+    );\n+    assert_eq!(\n+        hex(&Sha512::digest(sha512_long).unwrap()),\n+        \"8e959b75dae313da8cf4f72814fc143f8f7779c6eb9f7fa17299aeadb6889018\\\n+        501d289e4900f7e4331b99dec4b5433ac7d329eeb6dd26545e96e55b874be909\"\n+    );\n+}\n+\n+#[test]\n+fn matches_empty_message_digests() {\n+    assert_eq!(\n+        hex(&Sha256::digest(b\"\").unwrap()),\n+        \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"\n+    );\n+    assert_eq!(\n+        hex(&Sha384::digest(b\"\").unwrap()),\n+        \"38b060a751ac96384cd9327eb1b1e36a21fdb71114be0743\\\n+        4c0cc7bf63f6e1da274edebfe76f65fbd51ad2f14898b95b\"\n+    );\n+    assert_eq!(\n+        hex(&Sha512::digest(b\"\").unwrap()),\n+        \"cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce\\\n+        47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e\"\n+    );\n+}\n+\n+#[test]\n+fn matches_nist_million_a_in_chunks() {\n+    let chunk = [b'a'; 1000];\n+    let mut sha256 = Sha256::new();\n+    let mut sha384 = Sha384::new();\n+    let mut sha512 = Sha512::new();\n+\n+    for _ in 0..1000 {\n+        sha256.update(&chunk).unwrap();\n+        sha384.update(&chunk).unwrap();\n+        sha512.update(&chunk).unwrap();\n+    }\n+\n+    assert_eq!(\n+        hex(&sha256.finalize()),\n+        \"cdc76e5c9914fb9281a1c7e284d73e67f1809a48a497200e046d39ccc7112cd0\"\n+    );\n+    assert_eq!(\n+        hex(&sha384.finalize()),\n+        \"9d0e1809716474cb086e834e310a4a1ced149e9c00f24852\\\n+        7972cec5704c2a5b07b8b3dc38ecc4ebae97ddd87f3d8985\"\n+    );\n+    assert_eq!(\n+        hex(&sha512.finalize()),\n+        \"e718483d0ce769644e2e42c7bc15b4638e1f98b13b2044285632a803afa973eb\\\n+        de0ff244877ea60a4cb0432ce577c31beb009c5c2c49aa2e4eadb217ad8cc09b\"\n+    );\n+}\n+\n+#[test]\n+fn sha256_matches_padding_boundaries_at_every_split() {\n+    // 00, 01, ... の先頭 len バイトを Python の hashlib で照合した値。\n+    let input: [u8; 65] = std::array::from_fn(|index| u8::try_from(index).unwrap());\n+    let vectors = [\n+        (\n+            55,\n+            \"463eb28e72f82e0a96c0a4cc53690c571281131f672aa229e0d45ae59b598b59\",\n+        ),\n+        (\n+            56,\n+            \"da2ae4d6b36748f2a318f23e7ab1dfdf45acdc9d049bd80e59de82a60895f562\",\n+        ),\n+        (\n+            63,\n+            \"29af2686fd53374a36b0846694cc342177e428d1647515f078784d69cdb9e488\",\n+        ),\n+        (\n+            64,\n+            \"fdeab9acf3710362bd2658cdc9a29e8f9c757fcf9811603a8c447cd1d9151108\",\n+        ),\n+        (\n+            65,\n+            \"4bfd2c8b6f1eec7a2afeb48b934ee4b2694182027e6d0fc075074f2fabb31781\",\n+        ),\n+    ];\n+\n+    for (len, expected) in vectors {\n+        for split in 0..=len {\n+            let (prefix, suffix) = input[..len].split_at(split);\n+            let mut sha = Sha256::new();\n+            sha.update(prefix).unwrap();\n+            sha.update(b\"\").unwrap();\n+            sha.update(suffix).unwrap();\n+\n+            assert_eq!(\n+                hex(&sha.finalize()),\n+                expected,\n+                \"{len} bytes, split at {split}\"\n+            );\n+        }\n+    }\n+}\n+\n+#[test]\n+fn sha384_and_sha512_match_padding_boundaries_at_every_split() {\n+    // 00, 01, ... の先頭 len バイトを Python の hashlib で照合した値。\n+    let input: [u8; 129] = std::array::from_fn(|index| u8::try_from(index).unwrap());\n+    let vectors = [\n+        (\n+            111,\n+            \"f5f9fe110d809d34029de262a01b208356caec6e054c7f92\\\n+            6b2591f6c9780579d4b59f5578c6f531a84f158a33660cef\",\n+            \"a1a111449b198d9b1f538bad7f3fc1022b3a5b1a5e90a0bc860de8512746cbc3\\\n+            1599e6c834de3a3235327af0b51ff57bf7acf1974a73014d9c3953812edc7c8d\",\n+        ),\n+        (\n+            112,\n+            \"33ba080ec0ccb378e4e95fed3b26c23aa1a280476e007519\\\n+            ee47f60cd9c5c8a65d627259a9aa2fd33ca06d3c14ee5548\",\n+            \"c5fbd731d19d2ae1180f001be72c2c1aaba1d7b094b3748880e24593b8e117a7\\\n+            50e11c1bd867cc2f96dace8c8b74abd2d5c4f236be444e77d30d1916174070b9\",\n+        ),\n+        (\n+            127,\n+            \"d5fcfe2fcf6b3ef375ede37c8123d9b78065fecc1d55197e\\\n+            2f7721e6e9a93d0ba4d7fd15f9b96dea2744df24141ba2ef\",\n+            \"eab89674feaa34e27aebeeff3c0a4d70070bb872d5e9f186cf1dbbdee517b6e3\\\n+            5724d629ff025a5b07185e911ada7e3c8acf830aa0e4f71777bd2d44f504f7f0\",\n+        ),\n+        (\n+            128,\n+            \"ca2385773319124534111a36d0581fc3f00815e907034b90\\\n+            cff9c3a861e126a741d5dfcff65a417b6d7296863ac0ec17\",\n+            \"1dffd5e3adb71d45d2245939665521ae001a317a03720a45732ba1900ca3b835\\\n+            1fc5c9b4ca513eba6f80bc7b1d1fdad4abd13491cb824d61b08d8c0e1561b3f7\",\n+        ),\n+        (\n+            129,\n+            \"ef49ae5b9ad51433d00323528d81ea8d2e4d2b507dbd9f1c\\\n+            b84f952b66249a788b1c89fcdb77a0db9f1feb901d47fc73\",\n+            \"1d9da57fbbdab09afb3506ab2d223d06109d65c1c8ad197f50138f714bc4c3f2\\\n+            fe5787922639c680acad1c651f955990425954ce2cba0c5cc83f2667d878eb0f\",\n+        ),\n+    ];\n+\n+    for (len, expected384, expected512) in vectors {\n+        for split in 0..=len {\n+            let (prefix, suffix) = input[..len].split_at(split);\n+            let mut sha384 = Sha384::new();\n+            let mut sha512 = Sha512::new();\n+            sha384.update(prefix).unwrap();\n+            sha512.update(prefix).unwrap();\n+            sha384.update(b\"\").unwrap();\n+            sha512.update(b\"\").unwrap();\n+            sha384.update(suffix).unwrap();\n+            sha512.update(suffix).unwrap();\n+\n+            assert_eq!(\n+                hex(&sha384.finalize()),\n+                expected384,\n+                \"SHA-384, {len} bytes, split at {split}\"\n+            );\n+            assert_eq!(\n+                hex(&sha512.finalize()),\n+                expected512,\n+                \"SHA-512, {len} bytes, split at {split}\"\n+            );\n+        }\n+    }\n+}\n+\n+#[test]\n+fn repeatedly_hashes_fixed_size_digests_across_all_variants() {\n+    let mut digest = Sha512::digest(b\"pdfmod\").unwrap();\n+    for _ in 0..32 {\n+        let sha256 = Sha256::digest(&digest).unwrap();\n+        let sha384 = Sha384::digest(&sha256).unwrap();\n+        digest = Sha512::digest(&sha384).unwrap();\n+    }\n+\n+    // 3 種の出力長を使う 96 回の再ハッシュを Python の hashlib で照合した値。\n+    assert_eq!(\n+        hex(&digest),\n+        \"a34b2d4717ea2c3755f06d798c8e1483903898c8eca55c4fb2f5c4ce9da2e011\\\n+        3d9832f4365701f7d705d7f3b460c6a3c30a1ee047badc05d961095db11384aa\"\n+    );\n+}",
+          "patchLines": 224,
+          "truncated": false
+        }
+      ]
+    },
+    {
+      "sha": "7fed39c8514f887a3fd96f1c24e5a355d9e5f88e",
+      "merge": false,
+      "author": "DIO0550",
+      "date": "2026-11-15T00:50:29+09:00",
+      "subject": "📝 [Doc]: #641 R6の鍵導出とSHA-2の役割を解説する",
+      "body": "- 暗号化辞書の抜粋と、R6で3種のSHA-2を使う流れを示す\n- ブロック境界、長さ欄、逐次入力の例を説明する\n\n背景:\n暗号化辞書のガイドからR6のハッシュ処理をたどれるようにする。\n\n採用理由:\n既存の解説に追記して、/R・crypt filterとハッシュの使われ方を\n同じページで確認できるようにする。\n\n影響とトレードオフ:\nハッシュを使う鍵導出の手順を説明し、実装した内部APIの範囲も示す。",
+      "files": [
+        {
+          "path": "docs/guides/README.md",
+          "status": "M",
+          "oldPath": null,
+          "additions": 1,
+          "deletions": 1,
+          "patch": "@@ -16,7 +16,7 @@ PDF機能の実装に合わせて、仕様の読み方と実装の振る舞い\n | [テキスト文字列](text-strings.html) | PDFDocEncoding・UTF-16BE・UTF-8、BOM判定、未割当バイト、サロゲート、不正入力の拒否／置換、バイト列との型境界 | [Issue #637](https://github.com/DIO0550/pdfmod/issues/637) / `rust/crates/core/src/text_string.rs` |\n | [日付文字列](date-format.html) | ISO 32000-1 / ISO 32000-2 構文、D: 接頭辞、階層的省略、タイムゾーン形式（' 区切り・Z）、うるう年・カレンダー厳格検証 | [Issue #638](https://github.com/DIO0550/pdfmod/issues/638) / `rust/crates/core/src/date.rs` |\n | [字句トークンと描画命令の境界](token-layers.html) | 字句解析と演算子の再分類、LexicalTokenとContentStreamToken、巻き戻しと画像辞書の型境界、Operator.value、正常例・未知の命令・壊れた画像 | [Issue #308](https://github.com/DIO0550/pdfmod/issues/308) / `packages/core/src/pdf/types/token/index.ts` |\n-| [暗号化辞書](encryption-dictionary.html) | Standard の6組と方式ごとの型・生成処理、crypt filter と Identity、鍵長の単位正規化、符号なし権限、未対応辞書の保持、間接参照と解析の境界、旧形式のMD5とRC4 | [Issue #651](https://github.com/DIO0550/pdfmod/issues/651) / [Issue #639](https://github.com/DIO0550/pdfmod/issues/639) / [Issue #640](https://github.com/DIO0550/pdfmod/issues/640) / `packages/core/src/pdf/encryption/index.ts` / `rust/crates/core/src/encrypt.rs` / `rust/crates/core/src/encrypt/md5.rs` / `rust/crates/core/src/encrypt/rc4.rs` |\n+| [暗号化辞書](encryption-dictionary.html) | Standard の6組と方式ごとの型・生成処理、crypt filter と Identity、鍵長の単位正規化、符号なし権限、未対応辞書の保持、間接参照と解析の境界、旧形式のMD5とRC4、リビジョン6のSHA-2 | [Issue #651](https://github.com/DIO0550/pdfmod/issues/651) / [Issue #639](https://github.com/DIO0550/pdfmod/issues/639) / [Issue #640](https://github.com/DIO0550/pdfmod/issues/640) / [Issue #641](https://github.com/DIO0550/pdfmod/issues/641) / `packages/core/src/pdf/encryption/index.ts` / `rust/crates/core/src/encrypt.rs` / `rust/crates/core/src/encrypt/md5.rs` / `rust/crates/core/src/encrypt/rc4.rs` / `rust/crates/core/src/encrypt/sha2.rs` |\n | [拡張グラフィックス状態](ext-gstate.html) | gs の名前解決、各パラメータ、Font の辞書指定、透明度、q/Q、警告と回復 | [Issue #667](https://github.com/DIO0550/pdfmod/issues/667) / `packages/core/src/content-stream/ext-gstate/index.ts` |\n | [パターンとシェーディング](patterns-shadings.html) | PatternType・ShadingType、着色と基底色、scn / SCN / sh、間接参照、Functionの未評価保持、警告と回復 | [Issue #677](https://github.com/DIO0550/pdfmod/issues/677) / `packages/core/src/content-stream/paint-resources/` / `packages/core/src/document/resources/pattern/` / `packages/core/src/document/resources/shading/` |\n ",
+          "patchLines": 9,
+          "truncated": false
+        },
+        {
+          "path": "docs/guides/encryption-dictionary.html",
+          "status": "M",
+          "oldPath": null,
+          "additions": 39,
+          "deletions": 1,
+          "patch": "@@ -164,7 +164,8 @@ nav a { font-size: 16px; } table { font-size: 17px; } th { font-size: 15px; }\n <a href=\"#algorithms\"><span>03</span>有効な6組</a><a href=\"#filters\"><span>04</span>crypt filter と単位</a>\n <a href=\"#permissions\"><span>05</span>権限のビット表現</a><a href=\"#examples\"><span>06</span>正常・未対応・不正</a>\n <a href=\"#implementation\"><span>07</span>解析の境界</a><a href=\"#algorithm-types\"><span>08</span>方式ごとの型と責務</a>\n-<a href=\"#legacy-md5\"><span>09</span>旧リビジョンのMD5</a><a href=\"#legacy-rc4\"><span>10</span>旧形式のRC4</a></nav></aside>\n+<a href=\"#legacy-md5\"><span>09</span>旧リビジョンのMD5</a><a href=\"#legacy-rc4\"><span>10</span>旧形式のRC4</a>\n+<a href=\"#revision6-sha2\"><span>11</span>リビジョン6のSHA-2</a></nav></aside>\n <main id=\"top\"><div class=\"wrap\"><header class=\"hero\"><div class=\"eyebrow\">PDF INTERNALS / ENCRYPTION DICTIONARY</div>\n <h1>暗号化辞書を読む</h1><p class=\"lead\">PDFの <code>/Encrypt</code> は、暗号化の方式と鍵の材料を記述します。アルゴリズムの版、crypt filter、権限を、解釈できる型へ変換する仕組みを見ていきます。</p></header>\n <section class=\"section\" id=\"overview\"><div class=\"section-heading\"><span class=\"number\">01</span><h2>暗号化の起点</h2></div>\n@@ -388,5 +389,42 @@ assert_eq!(digest, <span class=\"type\">Md5</span>::digest(<span class=\"string\">b\"\n <p>Rustの内部型 <code>Rc4</code> は5〜16バイトの鍵を受け取ります。例えば4バイトや17バイトを渡すと <code>None</code> が返ります。<code>apply</code> は渡したデータをその場で書き換え、同じ状態で続けて呼ぶと次のバイトから処理します。空のデータでは鍵ストリームは進みません。</p>\n <div class=\"note\"><strong>Rustで使える処理</strong>鍵とバイト列を渡してRC4を適用できます。PDFの読み込み中に鍵を求め、暗号化された文字列やストリームに適用する処理は後続の実装です。</div>\n </section>\n+<section class=\"section\" id=\"revision6-sha2\">\n+<div class=\"section-heading\"><span class=\"number\">11</span><h2>リビジョン6の鍵導出とSHA-2</h2></div>\n+<p>標準セキュリティハンドラのリビジョン6では、パスワードとソルト（PDFに保存するランダムなバイト列）から、ファイル暗号鍵を取り出すための中間値を求めます。この処理で使うSHA-2は、バイト列から固定長のダイジェストを求めるハッシュ関数の系列です。</p>\n+<h3>暗号化辞書からリビジョン6を判定する</h3>\n+<p>以下は暗号化辞書とトレイラから方式の選択に関わる項目を抜き出した例です。<code>/Encrypt 8 0 R</code> は暗号化辞書への参照です。<code>/R 6</code> はリビジョン6のパスワード処理を選び、<code>/CFM /AESV3</code> は通常の文字列とストリームに使うAES-256を指定します。</p>\n+<pre><code><span class=\"comment\">% 暗号化辞書とトレイラの抜粋</span>\n+<span class=\"value\">8 0</span> <span class=\"pdf-syntax\">obj</span>\n+<span class=\"pdf-syntax\">&lt;&lt;</span> <span class=\"key\">/Filter</span> <span class=\"key\">/Standard</span> <span class=\"key\">/V</span> <span class=\"value\">5</span> <span class=\"key\">/R</span> <span class=\"value\">6</span>\n+   <span class=\"key\">/CF</span> <span class=\"pdf-syntax\">&lt;&lt;</span> <span class=\"key\">/StdCF</span> <span class=\"pdf-syntax\">&lt;&lt;</span> <span class=\"key\">/CFM</span> <span class=\"key\">/AESV3</span> <span class=\"pdf-syntax\">&gt;&gt;</span> <span class=\"pdf-syntax\">&gt;&gt;</span>\n+   <span class=\"key\">/StrF</span> <span class=\"key\">/StdCF</span> <span class=\"key\">/StmF</span> <span class=\"key\">/StdCF</span> <span class=\"pdf-syntax\">&gt;&gt;</span>\n+<span class=\"pdf-syntax\">endobj</span>\n+<span class=\"pdf-syntax\">trailer</span>\n+<span class=\"pdf-syntax\">&lt;&lt;</span> <span class=\"key\">/Encrypt</span> <span class=\"pdf-syntax\">8 0 R</span> <span class=\"pdf-syntax\">&gt;&gt;</span></code></pre>\n+<h3>鍵を取り出す手順で3種類を使い分ける</h3>\n+<ol class=\"steps\">\n+  <li>パスワードとソルトをSHA-256に掛け、最初の中間値を得ます。所有者のパスワードを使う場合は、入力に <code>/U</code> の全48バイトも含めます。</li>\n+  <li>中間値を使ったAES-128-CBC処理の結果から、次に使うSHA-256・SHA-384・SHA-512のいずれかを選びます。AESの出力全体を選んだハッシュに掛けて、次の中間値を更新します。この手順を少なくとも64回繰り返します。</li>\n+  <li>鍵導出に使うソルトで得た中間値の先頭32バイトを使い、利用者なら <code>/UE</code>、所有者なら <code>/OE</code> を復号して、ファイル暗号鍵を取り出します。</li>\n+</ol>\n+<h3>入力の切れ目とパディング</h3>\n+<p>ハッシュは入力を固定長のブロックに切り、ブロックごとに状態を更新します。<code>update</code> はブロックに満たない末尾だけを保持します。入力が完了すると、<code>finalize</code> が終端の <code>80</code>（16進数）、必要なゼロ、元のビット長を順に補います。</p>\n+<div class=\"table-wrap\" tabindex=\"0\" role=\"region\" aria-label=\"SHA-2のブロック長と出力長\">\n+<table><thead><tr><th scope=\"col\">方式</th><th scope=\"col\">ブロック長</th><th scope=\"col\">ビット長の欄</th><th scope=\"col\">ダイジェスト</th></tr></thead>\n+<tbody><tr><td>SHA-256</td><td>64バイト</td><td>8バイト</td><td>32バイト</td></tr>\n+<tr><td>SHA-384</td><td>128バイト</td><td>16バイト</td><td>48バイト</td></tr>\n+<tr><td>SHA-512</td><td>128バイト</td><td>16バイト</td><td>64バイト</td></tr></tbody></table>\n+</div>\n+<p>SHA-256では末尾が55バイトなら同じブロックに終端と長さが収まり、56バイトなら長さを次のブロックに置きます。SHA-384とSHA-512では境界が111バイトと112バイトです。SHA-384はSHA-512と同じ圧縮処理を専用の初期値から実行し、最終状態の先頭6ワードを出力します。</p>\n+<p>次は分けて渡した <code>abc</code> のハッシュを返すRustの例です。一括入力の <code>Sha256::digest(b\"abc\")</code> と同じ32バイトになります。</p>\n+<pre><code><span class=\"keyword\">fn</span> hash_abc() -&gt; <span class=\"type\">Option</span>&lt;[<span class=\"type\">u8</span>; <span class=\"value\">32</span>]&gt; {\n+    <span class=\"keyword\">let mut</span> sha = <span class=\"type\">Sha256</span>::new();\n+    sha.update(<span class=\"string\">b\"a\"</span>)?;\n+    sha.update(<span class=\"string\">b\"bc\"</span>)?;\n+    <span class=\"type\">Some</span>(sha.finalize())\n+}</code></pre>\n+<div class=\"note\"><strong>Rustで使える処理</strong>3種類のSHA-2は固定長の配列だけで計算するため、ハッシュを繰り返すたびにヒープを確保する必要はありません。PDFのパスワード検証とファイル暗号鍵の取り出しは、このハッシュ処理を使う後続の実装です。</div>\n+</section>\n <footer><a href=\"#top\">最上部へ</a> · <a href=\"README.md\">解説一覧</a></footer></div></main>\n </body></html>",
+          "patchLines": 53,
+          "truncated": false,
+          "hunkOpeningLines": [
+            {
+              "old": null,
+              "new": null
+            },
+            {
+              "old": null,
+              "new": null
+            }
+          ]
+        },
+        {
+          "path": "docs/specs/02b_encryption.md",
+          "status": "M",
+          "oldPath": null,
+          "additions": 19,
+          "deletions": 2,
+          "patch": "@@ -2,7 +2,7 @@\n \n ISO 32000-1:2008 §7.6 / ISO 32000-2:2020 §7.6\n \n-> 本書は暗号化辞書の構造と、Rust が内部で使う MD5・RC4 を扱う。\n+> 本書は暗号化辞書の構造と、Rust が内部で使う MD5・RC4・SHA-2 を扱う。\n \n ## 1. 暗号化辞書の位置づけ\n \n@@ -109,7 +109,7 @@ ISO 32000-1 表 20（共通）・表 21（標準ハンドラ）。\n - `/Filter` `/V` `/R` の欠落や、Standard と名乗る辞書の構造不正は `EncryptError` として位置情報付きで報告する\n - `/O` `/U` `/OE` `/UE` `/Perms` は長さを検証せずバイト列のまま保持する（検証は鍵導出の実装の責務）\n - 暗号化辞書の中に書かれた間接参照（`/Length 5 0 R` など）は解決しない\n-- PDF 読み込み時の復号・鍵導出・パスワード認証は未実装。RC4 のバイト列変換は §8 を参照\n+- PDF 読み込み時の復号・鍵導出・パスワード認証は未実装。プリミティブは §7–9 を参照\n \n ### TypeScript と Rust の共通解析方針\n \n@@ -139,3 +139,20 @@ ISO 32000-1:2008 §7.6.2 の旧形式では、`/V 1`・`/V 2`、または `/V 4`\n 3. 各入力バイトと鍵ストリームを XOR する。同じ鍵から初期化して同じ位置の鍵ストリームを再生成すれば、もう一度の XOR で元のバイト列に戻る。暗号化と復号は同一の処理になる。\n \n Rust の内部型 `encrypt::rc4::Rc4` は 5〜16 バイトの鍵を受け取り、範囲外なら `None` を返す。`apply` は受け取ったスライスをその場で更新し、分割入力には同じ鍵ストリームを継続する。空スライスでは状態が進まない。鍵導出と PDF 読み込みへの接続は後続の作業。\n+\n+## 9. リビジョン6の鍵導出に使う SHA-2\n+\n+ISO 32000-2:2020 §7.6.4.3 の Algorithm 2.A は、SHA-256 で中間値を作り、AES の出力に応じて SHA-256・SHA-384・SHA-512 を切り替えながら反復する。\n+\n+Rust の `encrypt::sha2` は FIPS 180-4 §5.1–5.3、§6.2、§6.4–6.5 のバイト列ハッシュを内部型で提供する。\n+\n+| 方式 | ブロック長 | 元のビット長の欄 | ダイジェスト長 |\n+| --- | --- | --- | --- |\n+| SHA-256 | 64 バイト | 8 バイト | 32 バイト |\n+| SHA-384 | 128 バイト | 16 バイト | 48 バイト |\n+| SHA-512 | 128 バイト | 16 バイト | 64 バイト |\n+\n+`update` は入力を順に受け取り、完全なブロックを処理して末尾を保持する。元のビット長が欄に収まらない場合は、状態を維持して `None` を返す。\n+`finalize` は終端の `80`（16進数）、ゼロ、元のビット長のビッグエンディアン表現を補い、ダイジェストを固定長配列で返す。\n+SHA-384 は SHA-512 と圧縮処理を共有し、専用の初期値から計算した最終状態の先頭6ワードを出力する。\n+`digest` は一続きの入力を受け取り、逐次入力と同様にヒープ確保なしでハッシュする。R6 の鍵導出への接続は #663 で扱う。",
+          "patchLines": 39,
+          "truncated": false
+        }
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "from": "docs/guides/encryption-dictionary.html",
+      "to": "README.md",
+      "status": "kept"
+    },
+    {
+      "from": "docs/guides/encryption-dictionary.html",
+      "to": "docs/guides/README.md",
+      "status": "kept"
+    }
+  ]
+}
