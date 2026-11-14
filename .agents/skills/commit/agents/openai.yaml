@@ -1,0 +1,4 @@
+interface:
+  display_name: "コミット規則"
+  short_description: "絵文字+タグ形式のコミットメッセージと分割の規則"
+  default_prompt: "$commit に従って、今の変更をコミットしてください。"
