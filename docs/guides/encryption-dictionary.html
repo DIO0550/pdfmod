@@ -403,6 +403,7 @@ assert_eq!(digest, <span class="type">Md5</span>::digest(<span class="string">b"
 <span class="pdf-syntax">trailer</span>
 <span class="pdf-syntax">&lt;&lt;</span> <span class="key">/Encrypt</span> <span class="pdf-syntax">8 0 R</span> <span class="pdf-syntax">&gt;&gt;</span></code></pre>
 <h3>鍵を取り出す手順で3種類を使い分ける</h3>
+<p>ファイル暗号鍵を取り出す Algorithm 2.A は、中間値を求めるために Algorithm 2.B を呼び出します。最初の2ステップが Algorithm 2.B のハッシュ計算です。</p>
 <ol class="steps">
   <li>パスワードとソルトをSHA-256に掛け、最初の中間値を得ます。所有者のパスワードを使う場合は、入力に <code>/U</code> の全48バイトも含めます。</li>
   <li>中間値を使ったAES-128-CBC処理の結果から、次に使うSHA-256・SHA-384・SHA-512のいずれかを選びます。AESの出力全体を選んだハッシュに掛けて、次の中間値を更新します。この手順を少なくとも64回繰り返します。</li>
