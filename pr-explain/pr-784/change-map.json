@@ -4,7 +4,7 @@
   "headBranch": "feature/641-rust-sha2",
   "baseBranch": "main",
   "mergeBase": "1b78638c35e5e2fa034cf5205001282f36d77b12",
-  "head": "7fed39c8514f887a3fd96f1c24e5a355d9e5f88e",
+  "head": "0b848bd29e53aadca0d526abbb526a7797e15b3a",
   "groups": [
     {
       "label": "Rust",
@@ -40,7 +40,7 @@
           "path": "rust/crates/core/src/encrypt/sha2/sha256.rs",
           "status": "A",
           "oldPath": null,
-          "additions": 200,
+          "additions": 202,
           "deletions": 0,
           "changed": true,
           "target": null
@@ -49,7 +49,7 @@
           "path": "rust/crates/core/src/encrypt/sha2/sha512.rs",
           "status": "A",
           "oldPath": null,
-          "additions": 276,
+          "additions": 280,
           "deletions": 0,
           "changed": true,
           "target": null
@@ -81,7 +81,7 @@
           "path": "docs/guides/encryption-dictionary.html",
           "status": "M",
           "oldPath": null,
-          "additions": 39,
+          "additions": 40,
           "deletions": 1,
           "changed": true,
           "target": null
@@ -95,7 +95,7 @@
           "path": "docs/specs/02b_encryption.md",
           "status": "M",
           "oldPath": null,
-          "additions": 19,
+          "additions": 20,
           "deletions": 2,
           "changed": true,
           "target": null
@@ -274,6 +274,72 @@
           "deletions": 2,
           "patch": "@@ -2,7 +2,7 @@\n \n ISO 32000-1:2008 §7.6 / ISO 32000-2:2020 §7.6\n \n-> 本書は暗号化辞書の構造と、Rust が内部で使う MD5・RC4 を扱う。\n+> 本書は暗号化辞書の構造と、Rust が内部で使う MD5・RC4・SHA-2 を扱う。\n \n ## 1. 暗号化辞書の位置づけ\n \n@@ -109,7 +109,7 @@ ISO 32000-1 表 20（共通）・表 21（標準ハンドラ）。\n - `/Filter` `/V` `/R` の欠落や、Standard と名乗る辞書の構造不正は `EncryptError` として位置情報付きで報告する\n - `/O` `/U` `/OE` `/UE` `/Perms` は長さを検証せずバイト列のまま保持する（検証は鍵導出の実装の責務）\n - 暗号化辞書の中に書かれた間接参照（`/Length 5 0 R` など）は解決しない\n-- PDF 読み込み時の復号・鍵導出・パスワード認証は未実装。RC4 のバイト列変換は §8 を参照\n+- PDF 読み込み時の復号・鍵導出・パスワード認証は未実装。プリミティブは §7–9 を参照\n \n ### TypeScript と Rust の共通解析方針\n \n@@ -139,3 +139,20 @@ ISO 32000-1:2008 §7.6.2 の旧形式では、`/V 1`・`/V 2`、または `/V 4`\n 3. 各入力バイトと鍵ストリームを XOR する。同じ鍵から初期化して同じ位置の鍵ストリームを再生成すれば、もう一度の XOR で元のバイト列に戻る。暗号化と復号は同一の処理になる。\n \n Rust の内部型 `encrypt::rc4::Rc4` は 5〜16 バイトの鍵を受け取り、範囲外なら `None` を返す。`apply` は受け取ったスライスをその場で更新し、分割入力には同じ鍵ストリームを継続する。空スライスでは状態が進まない。鍵導出と PDF 読み込みへの接続は後続の作業。\n+\n+## 9. リビジョン6の鍵導出に使う SHA-2\n+\n+ISO 32000-2:2020 §7.6.4.3 の Algorithm 2.A は、SHA-256 で中間値を作り、AES の出力に応じて SHA-256・SHA-384・SHA-512 を切り替えながら反復する。\n+\n+Rust の `encrypt::sha2` は FIPS 180-4 §5.1–5.3、§6.2、§6.4–6.5 のバイト列ハッシュを内部型で提供する。\n+\n+| 方式 | ブロック長 | 元のビット長の欄 | ダイジェスト長 |\n+| --- | --- | --- | --- |\n+| SHA-256 | 64 バイト | 8 バイト | 32 バイト |\n+| SHA-384 | 128 バイト | 16 バイト | 48 バイト |\n+| SHA-512 | 128 バイト | 16 バイト | 64 バイト |\n+\n+`update` は入力を順に受け取り、完全なブロックを処理して末尾を保持する。元のビット長が欄に収まらない場合は、状態を維持して `None` を返す。\n+`finalize` は終端の `80`（16進数）、ゼロ、元のビット長のビッグエンディアン表現を補い、ダイジェストを固定長配列で返す。\n+SHA-384 は SHA-512 と圧縮処理を共有し、専用の初期値から計算した最終状態の先頭6ワードを出力する。\n+`digest` は一続きの入力を受け取り、逐次入力と同様にヒープ確保なしでハッシュする。R6 の鍵導出への接続は #663 で扱う。",
           "patchLines": 39,
+          "truncated": false
+        }
+      ]
+    },
+    {
+      "sha": "3b4e60ca6098392eb8a36159fdd938707817c367",
+      "merge": false,
+      "author": "DIO0550",
+      "date": "2026-11-15T01:01:27+09:00",
+      "subject": "🐛 [Bug Fix]: #641 SHA-2の戻り値の見落としを防ぐ",
+      "body": "- 3方式の逐次入力と一括入力をmust_useにする",
+      "files": [
+        {
+          "path": "rust/crates/core/src/encrypt/sha2/sha256.rs",
+          "status": "M",
+          "oldPath": null,
+          "additions": 2,
+          "deletions": 0,
+          "patch": "@@ -104,6 +104,7 @@ impl Sha256 {\n     }\n \n     /// 入力を追加する。合計ビット長が 2^64 以上になると、状態を維持して `None` を返す。\n+    #[must_use]\n     pub(in crate::encrypt) fn update(&mut self, input: &[u8]) -> Option<()> {\n         let input_bits = u64::try_from(input.len()).ok()?.checked_mul(8)?;\n         self.bit_len = self.bit_len.checked_add(input_bits)?;\n@@ -129,6 +130,7 @@ impl Sha256 {\n     }\n \n     /// 一続きの入力をヒープ確保なしでハッシュする。ビット長が 2^64 以上なら `None`。\n+    #[must_use]\n     pub(in crate::encrypt) fn digest(input: &[u8]) -> Option<[u8; DIGEST_LEN]> {\n         let mut sha = Self::new();\n         sha.update(input)?;",
+          "patchLines": 16,
+          "truncated": false
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/sha2/sha512.rs",
+          "status": "M",
+          "oldPath": null,
+          "additions": 4,
+          "deletions": 0,
+          "patch": "@@ -125,6 +125,7 @@ impl Sha384 {\n     }\n \n     /// 入力を追加する。合計ビット長が 2^128 以上になると、状態を維持して `None` を返す。\n+    #[must_use]\n     pub(in crate::encrypt) fn update(&mut self, input: &[u8]) -> Option<()> {\n         self.0.update(input)\n     }\n@@ -136,6 +137,7 @@ impl Sha384 {\n     }\n \n     /// 一続きの入力をヒープ確保なしでハッシュする。ビット長が 2^128 以上なら `None`。\n+    #[must_use]\n     pub(in crate::encrypt) fn digest(input: &[u8]) -> Option<[u8; SHA384_DIGEST_LEN]> {\n         let mut sha = Self::new();\n         sha.update(input)?;\n@@ -153,6 +155,7 @@ impl Sha512 {\n     }\n \n     /// 入力を追加する。合計ビット長が 2^128 以上になると、状態を維持して `None` を返す。\n+    #[must_use]\n     pub(in crate::encrypt) fn update(&mut self, input: &[u8]) -> Option<()> {\n         self.0.update(input)\n     }\n@@ -164,6 +167,7 @@ impl Sha512 {\n     }\n \n     /// 一続きの入力をヒープ確保なしでハッシュする。ビット長が 2^128 以上なら `None`。\n+    #[must_use]\n     pub(in crate::encrypt) fn digest(input: &[u8]) -> Option<[u8; SHA512_DIGEST_LEN]> {\n         let mut sha = Self::new();\n         sha.update(input)?;",
+          "patchLines": 32,
+          "truncated": false
+        }
+      ]
+    },
+    {
+      "sha": "0b848bd29e53aadca0d526abbb526a7797e15b3a",
+      "merge": false,
+      "author": "DIO0550",
+      "date": "2026-11-15T01:01:43+09:00",
+      "subject": "📝 [Doc]: #641 R6の反復ハッシュの番号を明記する",
+      "body": "- Algorithm 2.Aから呼ぶAlgorithm 2.Bを仕様書とガイドに記す",
+      "files": [
+        {
+          "path": "docs/guides/encryption-dictionary.html",
+          "status": "M",
+          "oldPath": null,
+          "additions": 1,
+          "deletions": 0,
+          "patch": "@@ -403,6 +403,7 @@ assert_eq!(digest, <span class=\"type\">Md5</span>::digest(<span class=\"string\">b\"\n <span class=\"pdf-syntax\">trailer</span>\n <span class=\"pdf-syntax\">&lt;&lt;</span> <span class=\"key\">/Encrypt</span> <span class=\"pdf-syntax\">8 0 R</span> <span class=\"pdf-syntax\">&gt;&gt;</span></code></pre>\n <h3>鍵を取り出す手順で3種類を使い分ける</h3>\n+<p>ファイル暗号鍵を取り出す Algorithm 2.A は、中間値を求めるために Algorithm 2.B を呼び出します。最初の2ステップが Algorithm 2.B のハッシュ計算です。</p>\n <ol class=\"steps\">\n   <li>パスワードとソルトをSHA-256に掛け、最初の中間値を得ます。所有者のパスワードを使う場合は、入力に <code>/U</code> の全48バイトも含めます。</li>\n   <li>中間値を使ったAES-128-CBC処理の結果から、次に使うSHA-256・SHA-384・SHA-512のいずれかを選びます。AESの出力全体を選んだハッシュに掛けて、次の中間値を更新します。この手順を少なくとも64回繰り返します。</li>",
+          "patchLines": 8,
+          "truncated": false,
+          "hunkOpeningLines": [
+            {
+              "old": null,
+              "new": null
+            }
+          ]
+        },
+        {
+          "path": "docs/specs/02b_encryption.md",
+          "status": "M",
+          "oldPath": null,
+          "additions": 2,
+          "deletions": 1,
+          "patch": "@@ -142,7 +142,8 @@ Rust の内部型 `encrypt::rc4::Rc4` は 5〜16 バイトの鍵を受け取り\n \n ## 9. リビジョン6の鍵導出に使う SHA-2\n \n-ISO 32000-2:2020 §7.6.4.3 の Algorithm 2.A は、SHA-256 で中間値を作り、AES の出力に応じて SHA-256・SHA-384・SHA-512 を切り替えながら反復する。\n+ISO 32000-2:2020 §7.6.4.3 の Algorithm 2.A は、ファイル暗号鍵を求める途中で Algorithm 2.B を呼ぶ。\n+Algorithm 2.B は、SHA-256 で中間値を作り、AES の出力に応じて SHA-256・SHA-384・SHA-512 を切り替えながら反復する。\n \n Rust の `encrypt::sha2` は FIPS 180-4 §5.1–5.3、§6.2、§6.4–6.5 のバイト列ハッシュを内部型で提供する。\n ",
+          "patchLines": 10,
           "truncated": false
         }
       ]
