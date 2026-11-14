@@ -4,7 +4,7 @@
   "headBranch": "claude/project-thread-lqy3l4",
   "baseBranch": "main",
   "mergeBase": "57fafec36c50642e5ca76340696fe8c427296aa7",
-  "head": "d5a08f71ab11a98c11ec305897f7dc3cbfc72873",
+  "head": "c2fd8471e683e7a552ef91a1479c879de0c3fcff",
   "groups": [
     {
       "label": "CI・開発支援",
@@ -13,7 +13,7 @@
           "path": ".agents/skills/commit/SKILL.md",
           "status": "A",
           "oldPath": null,
-          "additions": 76,
+          "additions": 77,
           "deletions": 0,
           "changed": true,
           "target": null
@@ -85,6 +85,26 @@
           "deletions": 0,
           "patch": "@@ -43,6 +43,10 @@ PR作成・振る舞いが変わるpush・reopen時は [PR解説の作成手順]\n 「変更の経緯」はコミット要約だけで済ませず、各処理の入力・変更内容・結果・理由を差分行の `notes` で説明する。全コミット・変更ファイル・各差分の注釈を検査し、ブラウザで処理ごとの説明を確認する。\n これはPDF仕様の `docs/guides/` の解説とは別であり、生成物はPRブランチへコミットしない。\n \n+## コミット\n+\n+コミットする前に [commit](.agents/skills/commit/SKILL.md) スキルを読み、絵文字+タグ形式（`✨ [New Feature]:` 等）で書く。\n+\n ## 開発スキル\n \n TypeScript を変更する作業では、以下を **Skill ツールで実行**する（memory があっても省略せず最新版を読み込む）。",
           "patchLines": 11,
+          "truncated": false
+        }
+      ]
+    },
+    {
+      "sha": "c2fd8471e683e7a552ef91a1479c879de0c3fcff",
+      "merge": false,
+      "author": "Claude",
+      "date": "2026-11-14T14:41:27Z",
+      "subject": "📝 [Doc]: #783 commitスキルの本文例と単位・分割の記述を実態に合わせる",
+      "body": "- 本文例の循環 Form の扱いを、警告付きでスキップする実装に合わせた\n- 表に無い種類は外部の yml ではなく表の中で一番近いものを選ぶようにした\n- subject と本文の長さの単位を桁にそろえた\n- テストは確かめる実装と同じコミットに入れると明記した\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_018ajQ2QX6fhjmav5C27AWLn",
+      "files": [
+        {
+          "path": ".agents/skills/commit/SKILL.md",
+          "status": "M",
+          "oldPath": null,
+          "additions": 6,
+          "deletions": 5,
+          "patch": "@@ -16,7 +16,7 @@ Claude Code ではプラグインの `/commit` がそのまま使える。この\n \n - **`feat(core):` のような Conventional Commits 形式は使わない。** 過去の履歴に混在しているが、今後は絵文字形式に統一する\n - Issue があれば番号を書く（複数可）。無ければ省く\n-- subject は日本語で「何を・どうした」を書く。72字以内\n+- subject は日本語で「何を・どうした」を書く。72桁以内（全角は約36字）\n \n | 用途 | 形式 | | 用途 | 形式 |\n |:-|:-|:-|:-|:-|\n@@ -28,7 +28,7 @@ Claude Code ではプラグインの `/commit` がそのまま使える。この\n | 雑務 | `🔨 [Chore]:` | | 型定義 | `🏷️ [Types]:` |\n | Lint修正 | `🚨 [Lint]:` | | 破壊的変更 | `💥 [Breaking]:` |\n \n-表に無い種類は d-market-git の `plugins/git-workflow-plugin/skills/commit-template/references/default-template.yml` の `types` から選ぶ。`📖 [Doc]` `🐛 [Fix]` のような表に無い綴りを作らない。\n+表に無い種類は使わず、表の中で一番近いものを選ぶ。`📖 [Doc]` `🐛 [Fix]` のような表に無い綴りを作らない。\n \n ## 本文\n \n@@ -47,11 +47,11 @@ subject の後に空行を1行置き、次の順で書く。\n Form XObject の中身が描画・テキスト抽出の対象から漏れていた。\n \n 採用理由:\n-リソースの探索範囲をスタックで持ち、Form を抜けたら元に戻す形にした。\n-ページの Resources を書き換える案は、同じ Form を複数回参照したとき壊れる。\n+実行中の Form を記録し、Form を抜けたら元のリソースに戻す形にした。\n \n 影響とトレードオフ:\n-Form が自身を参照する PDF は循環として Result.err を返す。\n+Form が自身を参照する PDF は、循環した呼び出しを FORM_XOBJECT_CYCLE\n+警告付きでスキップする。\n ```\n \n - 見出しは `<見出し>:` を単独行に置く。**行頭 `#` は使わない**（git がコメント行として消す）\n@@ -68,6 +68,7 @@ PRのレビュー指摘を直すコミットには、上の本文の規則（意\n \n - 1コミット = 1つの最小単位の変更。大きいより小さいを優先する（目安 50 行以下）\n - 次は必ず分ける: 複数機能 / バグ修正と新機能 / リファクタリングと機能追加 / ドキュメントと実装\n+- テストは、それが確かめる実装と同じコミットに入れる（テストだけのコミットは未実装の import で typecheck が落ちるため）\n - 各コミットで `pnpm run typecheck` と、Rust を触ったなら `cargo build` が通る状態にする\n \n ## 禁止",
+          "patchLines": 41,
           "truncated": false
         }
       ]
