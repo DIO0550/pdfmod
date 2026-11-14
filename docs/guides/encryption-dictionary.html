@@ -164,7 +164,7 @@ nav a { font-size: 16px; } table { font-size: 17px; } th { font-size: 15px; }
 <a href="#algorithms"><span>03</span>有効な6組</a><a href="#filters"><span>04</span>crypt filter と単位</a>
 <a href="#permissions"><span>05</span>権限のビット表現</a><a href="#examples"><span>06</span>正常・未対応・不正</a>
 <a href="#implementation"><span>07</span>解析の境界</a><a href="#algorithm-types"><span>08</span>方式ごとの型と責務</a>
-<a href="#legacy-md5"><span>09</span>旧リビジョンのMD5</a></nav></aside>
+<a href="#legacy-md5"><span>09</span>旧リビジョンのMD5</a><a href="#legacy-rc4"><span>10</span>旧形式のRC4</a></nav></aside>
 <main id="top"><div class="wrap"><header class="hero"><div class="eyebrow">PDF INTERNALS / ENCRYPTION DICTIONARY</div>
 <h1>暗号化辞書を読む</h1><p class="lead">PDFの <code>/Encrypt</code> は、暗号化の方式と鍵の材料を記述します。アルゴリズムの版、crypt filter、権限を、解釈できる型へ変換する仕組みを見ていきます。</p></header>
 <section class="section" id="overview"><div class="section-heading"><span class="number">01</span><h2>暗号化の起点</h2></div>
@@ -316,7 +316,7 @@ nav a { font-size: 16px; } table { font-size: 17px; } th { font-size: 15px; }
 } <span class="keyword">as const</span>;</code></pre>
 <p>成功した戻り値は <code>StandardAlgorithm</code> 全体ではなく <code>V5R6</code> です。呼び出し側は、もう一度方式を調べずに <code>keys</code> や固定値256の <code>keyLength</code> を扱えます。可変鍵長の読み取りは <code>KeyLength.fromEncryptionDictionary</code>、AESの追加鍵の読み取りは <code>AesKeyMaterial.fromDictionary</code> が共有します。</p>
 <ol class="steps"><li><strong>PDFの辞書を読む入口</strong><p>外部入力には <code>EncryptDictionary.fromDictionary</code> を使います。ハンドラ名と /V・/R の判定、方式の生成、共通キーの読み取りをつなぎます。</p></li><li><strong>選択された方式の項目を読む</strong><p>各方式の <code>fromDictionary</code> は方式固有の項目を読みます。/V・/R 自体の再判定や、共通の /O・/U・/P の検証は担当しません。</p></li><li><strong>正常・省略・不正を値として返す</strong><p>V2R3で /Length 128 は128ビット、省略は40ビット、/Length 44 はキー /Length と辞書開始位置を持つエラーになります。生成処理を分けても、この解析方針は変わりません。</p></li></ol>
-<div class="note"><strong>版の選択と、バイト列の暗号処理は別の責務</strong>V4R4ではcrypt filterから暗号方式を選びます。ここで分離したのは辞書を解釈する型と生成処理です。パスワード認証・鍵導出・RC4やAESによる復号は未実装です。鍵材料のバイト列の長さも、この段階では検証しません。</div>
+<div class="note"><strong>辞書の解析が担当する範囲</strong>V4R4ではcrypt filterから暗号方式を選びます。辞書解析は鍵材料のバイト列をそのまま保持します。Rustのバイト列変換は <a href="#legacy-rc4">RC4の解説</a> で扱います。</div>
 </section>
 <section class="section" id="legacy-md5">
 <div class="section-heading"><span class="number">09</span><h2>旧リビジョンの鍵導出とMD5</h2></div>
@@ -359,6 +359,34 @@ assert_eq!(digest, <span class="type">Md5</span>::digest(<span class="string">b"
 </div>
 <p>Rust実装では内部の <code>Md5</code> がブロック処理を担当します。状態、バッファー、出力は固定長なので、50回の反復で前のダイジェストの一部を渡すたびにヒープを確保する必要はありません。辞書から鍵を導出し、パスワードを認証してPDFを復号する処理は後続の実装です。</p>
 <div class="note warning"><strong>既存PDFとの互換性に限って使用</strong>MD5の衝突耐性は失われています。旧形式の読み取りに限って使い、新規用途には使いません。</div>
+</section>
+<section class="section" id="legacy-rc4">
+<div class="section-heading"><span class="number">10</span><h2>旧形式の暗号化とRC4</h2></div>
+<p>RC4は、鍵から生成したバイト列を入力に1バイトずつ重ねるストリーム暗号です。暗号化辞書で <code>/V 1</code> または <code>/V 2</code> を指定した旧形式ではRC4を使います。<code>/V 4</code> ではcrypt filterの <code>/CFM /V2</code> がRC4を選びます。</p>
+<h3>辞書から対象の方式を読む</h3>
+<p>以下は暗号化辞書と文字列オブジェクトの抜粋です。<code>/StrF</code> が指す <code>/StdCF</code> の <code>/CFM</code> は <code>/V2</code> なので、通常の文字列にRC4を使います。<code>/StmF /Identity</code> は通常のストリームを暗号化しない指定です。</p>
+<pre><code><span class="comment">% 暗号化辞書と文字列の抜粋</span>
+<span class="value">8 0</span> <span class="pdf-syntax">obj</span>
+<span class="pdf-syntax">&lt;&lt;</span> <span class="key">/Filter</span> <span class="key">/Standard</span> <span class="key">/V</span> <span class="value">4</span> <span class="key">/R</span> <span class="value">4</span> <span class="key">/Length</span> <span class="value">128</span>
+   <span class="key">/CF</span> <span class="pdf-syntax">&lt;&lt;</span> <span class="key">/StdCF</span> <span class="pdf-syntax">&lt;&lt;</span> <span class="key">/CFM</span> <span class="key">/V2</span> <span class="key">/Length</span> <span class="value">16</span> <span class="pdf-syntax">&gt;&gt;</span> <span class="pdf-syntax">&gt;&gt;</span>
+   <span class="key">/StrF</span> <span class="key">/StdCF</span> <span class="key">/StmF</span> <span class="key">/Identity</span> <span class="pdf-syntax">&gt;&gt;</span>
+<span class="pdf-syntax">endobj</span>
+
+<span class="value">9 0</span> <span class="pdf-syntax">obj</span>
+<span class="pdf-syntax">&lt;&lt;</span> <span class="key">/Subject</span> <span class="string">&lt;A1076C&gt;</span> <span class="pdf-syntax">&gt;&gt;</span>
+<span class="pdf-syntax">endobj</span></code></pre>
+<p>辞書直下の <code>/Length 128</code> はビット、crypt filter内の <code>/Length 16</code> はバイト単位です。<code>&lt;A1076C&gt;</code> は暗号化された文字列を表す例です。この文字列を読むときは、ファイル暗号鍵とオブジェクト番号 <code>9</code>・世代番号 <code>0</code> から求めた鍵を使います。</p>
+<h3>同じXORで暗号化と復号を行う</h3>
+<ol class="steps">
+  <li><strong>鍵スケジューリング（KSA）</strong> 0から255までの値を並べた置換表を作り、鍵のバイトを順に繰り返し使って表の要素を交換します。</li>
+  <li><strong>疑似乱数生成（PRGA）</strong> 2つの添字を0から進め、置換表の要素を交換しながら入力1バイトごとに鍵ストリームを1バイト取り出します。添字の加算結果が256以上なら256を引きます。</li>
+  <li><strong>XOR（排他的論理和）</strong> 入力と鍵ストリームの各ビットを比較し、異なる位置を1にします。同じ鍵から初期化して同じ位置の鍵ストリームをもう一度XORすると、元の値に戻ります。</li>
+</ol>
+<pre><code><span class="comment">% 1バイトで見るXORの例（16進数）</span>
+暗号化  <span class="value">41</span> XOR <span class="value">1F</span> = <span class="value">5E</span>
+復号    <span class="value">5E</span> XOR <span class="value">1F</span> = <span class="value">41</span></code></pre>
+<p>Rustの内部型 <code>Rc4</code> は5〜16バイトの鍵を受け取ります。例えば4バイトや17バイトを渡すと <code>None</code> が返ります。<code>apply</code> は渡したデータをその場で書き換え、同じ状態で続けて呼ぶと次のバイトから処理します。空のデータでは鍵ストリームは進みません。</p>
+<div class="note"><strong>Rustで使える処理</strong>鍵とバイト列を渡してRC4を適用できます。PDFの読み込み中に鍵を求め、暗号化された文字列やストリームに適用する処理は後続の実装です。</div>
 </section>
 <footer><a href="#top">最上部へ</a> · <a href="README.md">解説一覧</a></footer></div></main>
 </body></html>

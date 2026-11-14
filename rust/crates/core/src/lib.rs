@@ -14,7 +14,8 @@
 //! [`PdfDocument`] は借用バイト列から文書を開き、[`PdfPage`] の属性を必要時に解決する入口。
 //! `catalog` / `page_tree` / `document_info` は文書構造、`resolver` は間接参照の遅延解決を提供する。
 //! byte_offset / encrypt / error / file / filter / lexer / object / parser / xref の各モジュールは実装済み。
-//! `encrypt` は暗号化辞書（`/Encrypt`）の型表現を提供する（復号処理は未実装）。
+//! `encrypt` は暗号化辞書（`/Encrypt`）の型表現を提供し、旧形式向けの MD5 と RC4 を内部に持つ。
+//! PDF 読み込み時の復号は未実装。
 //! `file` はヘッダ解析と startxref の末尾スキャンを提供する。
 //! `filter` は `/FlateDecode`（zlib / DEFLATE）の展開と Predictor（PNG / TIFF）の適用を提供する。
 //! 他のフィルタは後続 PR で追加する。
