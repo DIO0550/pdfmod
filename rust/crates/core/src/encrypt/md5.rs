@@ -1,9 +1,10 @@
 //! RFC 1321 の MD5。旧式 PDF の標準セキュリティハンドラとの互換性に限って使い、
 //! 衝突耐性が失われているため新規用途には使わない。
 
+use crate::encrypt::block_buffer::BlockBuffer;
+
 const BLOCK_LEN: usize = 64;
 const DIGEST_LEN: usize = 16;
-const LENGTH_OFFSET: usize = BLOCK_LEN - size_of::<u64>();
 
 const INITIAL_STATE: [u32; 4] = [0x6745_2301, 0xefcd_ab89, 0x98ba_dcfe, 0x1032_5476];
 
@@ -82,10 +83,10 @@ const STEP_CONSTANTS: [u32; 64] = [
     0xeb86_d391,
 ];
 
-/// MD5 の逐次計算状態。バッファ先頭の `byte_len % 64` バイトが未処理の入力。
+/// MD5 の逐次計算状態。未処理の末尾はバッファに保持し、入力のバイト数は下位 64 ビットを記録する。
 pub(super) struct Md5 {
     state: [u32; 4],
-    buffer: [u8; BLOCK_LEN],
+    buffer: BlockBuffer<BLOCK_LEN>,
     byte_len: u64,
 }
 
@@ -94,58 +95,31 @@ impl Md5 {
     pub(super) fn new() -> Self {
         Self {
             state: INITIAL_STATE,
-            buffer: [0; BLOCK_LEN],
+            buffer: BlockBuffer::new(),
             byte_len: 0,
         }
     }
 
     /// 入力を追加し、そろった 64 バイトのブロックを処理する。
-    pub(super) fn update(&mut self, mut input: &[u8]) {
-        let buffered_len = self.buffered_len();
-
+    pub(super) fn update(&mut self, input: &[u8]) {
         // usize が 32 ビットの環境でも、入力長を 64 ビットへゼロ拡張する。
         let len_bytes = input.len().to_le_bytes();
         let mut input_len = [0; size_of::<u64>()];
         input_len[..len_bytes.len()].copy_from_slice(&len_bytes);
         self.byte_len = self.byte_len.wrapping_add(u64::from_le_bytes(input_len));
 
-        if buffered_len != 0 {
-            let space = &mut self.buffer[buffered_len..];
-            let copy_len = input.len().min(space.len());
-            let (prefix, rest) = input.split_at(copy_len);
-            space[..copy_len].copy_from_slice(prefix);
-
-            if copy_len < space.len() {
-                return;
-            }
-
-            Self::compress(&mut self.state, &self.buffer);
-            input = rest;
-        }
-
-        let (blocks, tail) = input.as_chunks::<BLOCK_LEN>();
-        for block in blocks {
-            Self::compress(&mut self.state, block);
-        }
-        self.buffer[..tail.len()].copy_from_slice(tail);
+        self.buffer
+            .update(input, |block| Self::compress(&mut self.state, block));
     }
 
     /// RFC 1321 §3.1–3.2 のパディングと入力長を付け、16 バイトを返す。
     #[must_use]
     pub(super) fn finalize(mut self) -> [u8; DIGEST_LEN] {
-        let buffered_len = self.buffered_len();
-        self.buffer[buffered_len] = 0x80;
-        self.buffer[buffered_len + 1..].fill(0);
-
-        // 終端とビット長が収まらないときは、ビット長を次のブロックに置く。
-        if buffered_len >= LENGTH_OFFSET {
-            Self::compress(&mut self.state, &self.buffer);
-            self.buffer.fill(0);
-        }
-
+        // RFC 1321 §3.2 は入力のビット長の下位 64 ビットをリトルエンディアンで記録する。
         let bit_len = self.byte_len.wrapping_mul(8);
-        self.buffer[LENGTH_OFFSET..].copy_from_slice(&bit_len.to_le_bytes());
-        Self::compress(&mut self.state, &self.buffer);
+        self.buffer.finalize(bit_len.to_le_bytes(), |block| {
+            Self::compress(&mut self.state, block);
+        });
 
         let mut digest = [0; DIGEST_LEN];
         let (output_words, _) = digest.as_chunks_mut::<4>();
@@ -161,12 +135,6 @@ impl Md5 {
         let mut md5 = Self::new();
         md5.update(input);
         md5.finalize()
-    }
-
-    fn buffered_len(&self) -> usize {
-        // 256 は 64 の倍数なので、下位 1 バイトから剰余を求められる。
-        let [low_byte, ..] = self.byte_len.to_le_bytes();
-        usize::from(low_byte) % BLOCK_LEN
     }
 
     fn compress(state: &mut [u32; 4], block: &[u8; BLOCK_LEN]) {
