@@ -80,12 +80,11 @@ fn rejects_a_partial_ciphertext_block_after_the_iv() {
 }
 
 #[test]
-fn rejects_zero_oversized_and_mismatched_padding() {
+fn rejects_zero_and_mismatched_padding() {
     let aes = Aes::new_128(&hex(KEY_128));
     // OpenSSL の -nopad で、仕様に合わない末尾を持つ平文をそのまま暗号化した。
     let cases = [
         ("末尾が 00", "097fac153c4a60c65da846f2c62b7594"),
-        ("末尾が 11", "59672297a6e1eea1bfa25f9998b916a2"),
         ("末尾が 01 02", "29f3f44782f54428d32dcaf8321b118d"),
     ];
 
@@ -97,4 +96,19 @@ fn rejects_zero_oversized_and_mismatched_padding() {
             "{reason} の場合"
         );
     }
+}
+
+#[test]
+fn rejects_a_full_final_block_claiming_seventeen_padding_bytes() {
+    let aes = Aes::new_128(&hex(KEY_128));
+    // 平文は 32 バイト、最終ブロックはすべて 0x11。末尾の一致や減算だけでは弾けない。
+    let input = pdf_ciphertext(&[
+        hex("0f7108e8240171ebadaae9bf29a4fa21"),
+        hex("2402865661d1b8b69c7054849c76fcef"),
+    ]);
+
+    assert_eq!(
+        aes.decrypt_pdf_cbc(&input),
+        Err(AesCbcError::InvalidPadding)
+    );
 }

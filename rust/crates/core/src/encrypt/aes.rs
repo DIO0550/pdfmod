@@ -100,7 +100,11 @@ impl Aes {
             return Err(AesCbcError::InvalidPadding);
         }
 
-        plaintext.truncate(plaintext.len() - padding_len);
+        let unpadded_len = plaintext
+            .len()
+            .checked_sub(padding_len)
+            .ok_or(AesCbcError::InvalidPadding)?;
+        plaintext.truncate(unpadded_len);
         Ok(plaintext)
     }
 }

@@ -20,13 +20,45 @@ pub(super) struct RoundKeys(ExpandedKeys);
 impl RoundKeys {
     pub(super) fn new_128(key: &[u8; KEY_128_LEN]) -> Self {
         let mut rounds = [[0; WORDS_PER_ROUND]; ROUND_KEYS_128];
-        Self::expand(rounds.as_flattened_mut(), key.as_chunks::<WORD_LEN>().0);
+        let [first, remaining @ ..] = &mut rounds;
+        let (key_words, _) = key.as_chunks::<WORD_LEN>();
+        for (word, bytes) in first.iter_mut().zip(key_words) {
+            *word = u32::from_be_bytes(*bytes);
+        }
+
+        let mut previous = *first;
+        let mut round_constant = 1;
+        for next in remaining {
+            *next = Self::expand_with_round_constant(previous, &previous, &mut round_constant);
+            previous = *next;
+        }
+
         Self(ExpandedKeys::Aes128(rounds))
     }
 
     pub(super) fn new_256(key: &[u8; KEY_256_LEN]) -> Self {
         let mut rounds = [[0; WORDS_PER_ROUND]; ROUND_KEYS_256];
-        Self::expand(rounds.as_flattened_mut(), key.as_chunks::<WORD_LEN>().0);
+        let [first, second, middle @ .., last] = &mut rounds;
+        let (key_words, _) = key.as_chunks::<WORD_LEN>();
+        for (word, bytes) in first.iter_mut().chain(second.iter_mut()).zip(key_words) {
+            *word = u32::from_be_bytes(*bytes);
+        }
+
+        let mut older = *first;
+        let mut previous = *second;
+        let mut round_constant = 1;
+        // AES-256 はラウンド定数を使う鍵と、SubWord だけを使う鍵を交互に作る。
+        let (pairs, _) = middle.as_chunks_mut::<2>();
+        for [even, odd] in pairs {
+            *even = Self::expand_with_round_constant(older, &previous, &mut round_constant);
+            let [.., last_word] = *even;
+            *odd = Self::xor_chain(previous, Self::sub_word(last_word));
+
+            older = *even;
+            previous = *odd;
+        }
+        *last = Self::expand_with_round_constant(older, &previous, &mut round_constant);
+
         Self(ExpandedKeys::Aes256(rounds))
     }
 
@@ -38,27 +70,24 @@ impl RoundKeys {
         }
     }
 
-    fn expand(words: &mut [u32], key_words: &[[u8; WORD_LEN]]) {
-        for (word, key_word) in words.iter_mut().zip(key_words) {
-            *word = u32::from_be_bytes(*key_word);
-        }
+    fn expand_with_round_constant(
+        base: RoundKey,
+        previous: &RoundKey,
+        round_constant: &mut u8,
+    ) -> RoundKey {
+        let [.., last_word] = *previous;
+        let transformed =
+            Self::sub_word(last_word.rotate_left(8)) ^ (u32::from(*round_constant) << 24);
+        *round_constant = double(*round_constant);
+        Self::xor_chain(base, transformed)
+    }
 
-        // 呼び出し元が 4 または 8 ワードの鍵を渡す。過去のワードは必ず計算済み。
-        let key_word_count = key_words.len();
-        let mut round_constant = 1;
-        for index in key_word_count..words.len() {
-            let mut previous = words[index - 1];
-            let position = index % key_word_count;
-            if position == 0 {
-                previous =
-                    Self::sub_word(previous.rotate_left(8)) ^ (u32::from(round_constant) << 24);
-                round_constant = double(round_constant);
-            } else if key_word_count == KEY_256_LEN / WORD_LEN && position == 4 {
-                previous = Self::sub_word(previous);
-            }
-
-            words[index] = words[index - key_word_count] ^ previous;
+    fn xor_chain(mut base: RoundKey, mut previous_word: u32) -> RoundKey {
+        for word in &mut base {
+            *word ^= previous_word;
+            previous_word = *word;
         }
+        base
     }
 
     fn sub_word(word: u32) -> u32 {
