@@ -2,7 +2,7 @@
   "version": 1,
   "pr": 784,
   "issue": 641,
-  "sha": "8811f548cbbf37165fc507a434a0c57a94b70062",
+  "sha": "369328eecd1ea0e314b93802843ecaaa740d8fa3",
   "overview": {
     "title": "PDFリビジョン6で使う3種類のSHA-2",
     "lead": "PDFのAES-256鍵を取り出す手順では、途中のバイト列に応じてSHA-256、SHA-384、SHA-512を使い分けます。固定長バッファ、圧縮、出力の順で追うと、入力を分けて渡せる仕組みが分かります。",
@@ -78,6 +78,11 @@
       "path": "docs/guides/encryption-dictionary.html",
       "name": "PDF仕様の解説",
       "role": "リビジョン6の辞書の値と鍵を取り出す手順を説明する。"
+    },
+    {
+      "path": "docs/development/pr-explain.md",
+      "name": "PR解説の作成手順",
+      "role": "初めて読む構文から実コードへ進める解説の書き方を定める。"
     }
   ],
   "commitStories": [
@@ -554,6 +559,28 @@
           "side": "new"
         }
       ]
+    },
+    {
+      "sha": "369328eecd1ea0e314b93802843ecaaa740d8fa3",
+      "phase": "fin",
+      "role": "毎回のPR解説に初心者向けの構文を取り上げる",
+      "why": "SHA-256の式を読む前に、型をどこから使えるかを指定する最初の1行でつまずくことがあります。語と記号の意味から、短い例と実際の差分へ進めるようにします。",
+      "notes": [
+        {
+          "path": "docs/development/pr-explain.md",
+          "start": 56,
+          "end": 61,
+          "text": "各PRで初学者がつまずきそうな構文を選び、語と記号の意味、短いコード例、実装内での役割の順に説明する手順を定めます。",
+          "side": "new"
+        },
+        {
+          "path": "docs/development/pr-explain.md",
+          "start": 122,
+          "end": 122,
+          "text": "公開前に初心者向けの構文解説を開き、例から対応する差分の行までたどれるかを確認します。",
+          "side": "new"
+        }
+      ]
     }
   ],
   "suites": [
@@ -778,6 +805,106 @@
     ]
   },
   "primers": [
+    {
+      "kind": "language",
+      "id": "rust-visibility",
+      "category": "Rust · モジュール",
+      "label": "pub(in crate::encrypt) の読み方",
+      "gist": "「このクレートの encrypt モジュールと、その中にあるモジュールから使える」と読みます。",
+      "passages": [
+        {
+          "kind": "text",
+          "text": "`mod` は名前を付けてコードをまとめる仕組みです。そのまとまりをモジュールと呼び、入れ子にできます。`crate`（クレート）は Rust がひとまとまりとしてコンパイルする単位で、この実装では `pdfmod-core` のライブラリです。"
+        },
+        {
+          "kind": "text",
+          "text": "`crate::encrypt` の `crate` は現在のクレートの出発点を指します。このライブラリでは `lib.rs` が出発点です。`::` は名前を区切る記号で、`encrypt` はその直下のモジュールです。"
+        },
+        {
+          "kind": "text",
+          "text": "`pub` は公開する指定です。`pub(in …)` の `in` の後には、その定義を囲むモジュールを指定します。指定したモジュール自身と、その配下にあるモジュールから使えます。"
+        },
+        {
+          "kind": "declaration",
+          "code": "mod encrypt {\n    pub(crate) mod hash {\n        pub(in crate::encrypt) fn helper() {}\n    }\n\n    pub(crate) fn run() {\n        hash::helper(); // encrypt の中なので呼べる\n    }\n}\n\nfn main() {\n    encrypt::run();\n    // encrypt::hash::helper(); // コメントを外すとコンパイルエラー\n}"
+        },
+        {
+          "kind": "text",
+          "text": "例の `pub(crate)` は今のクレート内で使える指定です。`run` は `encrypt` の中にあるので `hash::helper()` を呼べます。`main` は `encrypt` の外にあるので、`encrypt::run()` は呼べますが、`helper` を直接呼ぶ行はコンパイルエラーになります。"
+        },
+        {
+          "kind": "excerpt",
+          "excerpt": {
+            "path": "rust/crates/core/src/encrypt/sha2/sha256.rs",
+            "start": 89,
+            "end": 104,
+            "emphasis": [
+              {
+                "start": 90,
+                "end": 90
+              },
+              {
+                "start": 98,
+                "end": 98
+              }
+            ],
+            "text": "/// SHA-256 の逐次計算状態。入力のビット長は 64 ビット以内で、末尾はバッファに保持する。\npub(in crate::encrypt) struct Sha256 {\n    state: [u32; 8],\n    buffer: BlockBuffer<BLOCK_LEN>,\n    bit_len: u64,\n}\n\nimpl Sha256 {\n    /// SHA-256 の初期値から計算を始める。\n    pub(in crate::encrypt) fn new() -> Self {\n        Self {\n            state: INITIAL_STATE,\n            buffer: BlockBuffer::new(),\n            bit_len: 0,\n        }\n    }"
+          }
+        },
+        {
+          "kind": "text",
+          "text": "この PR では、`struct Sha256` がハッシュの途中状態をまとめる型で、`fn new` がその状態を作ります。どちらにも同じ指定があるので、たとえば `encrypt::standard` から `Sha256::new()` を使えます。`document` は `encrypt` の外にあり、直接使える範囲から外れます。"
+        },
+        {
+          "kind": "excerpt",
+          "excerpt": {
+            "path": "rust/crates/core/src/encrypt/sha2.rs",
+            "start": 1,
+            "end": 5,
+            "emphasis": [
+              {
+                "start": 3,
+                "end": 3
+              }
+            ],
+            "text": "//! FIPS 180-4 の SHA-256 / SHA-384 / SHA-512。AES-256 の鍵導出に使う。\n\npub(super) mod sha256;\npub(super) mod sha512;\n"
+          }
+        },
+        {
+          "kind": "text",
+          "text": "`super` は一つ上の親モジュールを指します。`sha2` に書かれた `pub(super) mod sha256;` は、親の `encrypt` とその配下に `sha256` を公開します。Rust は利用する型や関数に加えて、そこへたどる途中のモジュールの公開範囲も確認します。"
+        }
+      ],
+      "occurrences": [
+        {
+          "path": "rust/crates/core/src/encrypt/sha2/sha256.rs",
+          "text": "Sha256 と new の利用範囲を encrypt 内にそろえる",
+          "lineRange": {
+            "start": 89,
+            "end": 104
+          }
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/sha2.rs",
+          "text": "親の encrypt へ sha256 モジュールを公開する",
+          "lineRange": {
+            "start": 3,
+            "end": 3
+          }
+        },
+        {
+          "path": "rust/crates/core/src/lib.rs",
+          "text": "クレートの出発点で encrypt モジュールを宣言する",
+          "lineRange": {
+            "start": 32,
+            "end": 32
+          }
+        }
+      ],
+      "seeAlso": [
+        "array-chunks"
+      ]
+    },
     {
       "kind": "language",
       "id": "array-chunks",
@@ -1036,6 +1163,7 @@
         }
       ],
       "seeAlso": [
+        "rust-visibility",
         "sha384-output",
         "sha2-padding"
       ]
