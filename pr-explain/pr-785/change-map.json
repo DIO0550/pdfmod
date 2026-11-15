@@ -4,7 +4,7 @@
   "headBranch": "feature/642-rust-aes-decrypt",
   "baseBranch": "main",
   "mergeBase": "839d4c5ca683e0b89d2b8886c042bc7ee27c8e00",
-  "head": "a609c719a1a19de8383711c630a2660cef571f99",
+  "head": "3064bd44322a6e82d5ce57b060a554ccba5cc7d2",
   "groups": [
     {
       "label": "Rust",
@@ -22,7 +22,7 @@
           "path": "rust/crates/core/src/encrypt/aes.rs",
           "status": "A",
           "oldPath": null,
-          "additions": 109,
+          "additions": 113,
           "deletions": 0,
           "changed": true,
           "target": null
@@ -49,7 +49,7 @@
           "path": "rust/crates/core/src/encrypt/aes/round_keys.rs",
           "status": "A",
           "oldPath": null,
-          "additions": 67,
+          "additions": 96,
           "deletions": 0,
           "changed": true,
           "target": null
@@ -94,7 +94,7 @@
           "path": "rust/crates/core/src/encrypt/aes/tests/pdf_cbc.rs",
           "status": "A",
           "oldPath": null,
-          "additions": 100,
+          "additions": 114,
           "deletions": 0,
           "changed": true,
           "target": "rust/crates/core/src/encrypt/aes.rs"
@@ -180,6 +180,10 @@
       },
       {
         "file": "rust/crates/core/src/encrypt/aes/tests/pdf_cbc.rs",
+        "name": "rejects_a_full_final_block_claiming_seventeen_padding_bytes"
+      },
+      {
+        "file": "rust/crates/core/src/encrypt/aes/tests/pdf_cbc.rs",
         "name": "rejects_a_partial_ciphertext_block_after_the_iv"
       },
       {
@@ -188,7 +192,7 @@
       },
       {
         "file": "rust/crates/core/src/encrypt/aes/tests/pdf_cbc.rs",
-        "name": "rejects_zero_oversized_and_mismatched_padding"
+        "name": "rejects_zero_and_mismatched_padding"
       },
       {
         "file": "rust/crates/core/src/encrypt/aes/tests/pdf_cbc.rs",
@@ -400,6 +404,66 @@
           "deletions": 0,
           "patch": "@@ -157,3 +157,17 @@ Rust の `encrypt::sha2` は FIPS 180-4 §5.1–5.3、§6.2、§6.4–6.5 のバ\n `finalize` は終端の `80`（16進数）、ゼロ、元のビット長のビッグエンディアン表現を補い、ダイジェストを固定長配列で返す。\n SHA-384 は SHA-512 と圧縮処理を共有し、専用の初期値から計算した最終状態の先頭6ワードを出力する。\n `digest` は一続きの入力を受け取り、逐次入力と同様にヒープ確保なしでハッシュする。R6 の鍵導出への接続は #663 で扱う。\n+\n+## 10. AES-128 / AES-256 の復号\n+\n+ISO 32000-1:2008 / ISO 32000-2:2020 §7.6 の crypt filter で `/CFM /AESV2` は AES-128、`/CFM /AESV3` は AES-256 を表す。鍵長はそれぞれ 16・32 バイトで、AES のブロック長はどちらも 16 バイト（FIPS 197 §5.2–5.3）。\n+\n+| 対象 | 方式 | 初期化ベクトル（IV） | パディング |\n+| --- | --- | --- | --- |\n+| `/AESV2` の文字列・ストリーム | AES-128-CBC | データの先頭 16 バイト | 末尾の 1〜16 バイトを検証して除去 |\n+| `/AESV3` の文字列・ストリーム | AES-256-CBC | データの先頭 16 バイト | 末尾の 1〜16 バイトを検証して除去 |\n+| `/Perms` | AES-256-ECB | なし | なし。16 バイトをすべて保持 |\n+\n+CBC は 1 ブロックごとに AES の逆変換を行い、その結果を 1 ブロック目では IV、2 ブロック目以降では直前の暗号文と XOR する（NIST SP 800-38A §6.2）。パディングは追加したバイト数 `n` を末尾に `n` 個並べる。平文が空の場合も `10`（16 進数）が 16 個並ぶため、IV と暗号文を合わせて 32 バイトを要する。\n+\n+Rust の内部型 `encrypt::aes::Aes` は鍵を固定長配列で受け取り、AES-128 用に 11 個、AES-256 用に 15 個のラウンド鍵を作る。`decrypt_pdf_cbc` は IV の不足、暗号文が空、16 バイト単位の端数があるときに `InvalidLength`、復号後のパディングが不正なときに `InvalidPadding` を返す。`decrypt_ecb_block` は `/Perms` に使う固定長の復号を提供する。パスワード認証・鍵導出との接続は #663・#675、文字列・ストリームの読み込みへの接続は #683 で扱う。",
           "patchLines": 18,
+          "truncated": false
+        }
+      ]
+    },
+    {
+      "sha": "6d64205e865eac42d89c324211e2783d6c0de0aa",
+      "merge": false,
+      "author": "DIO0550",
+      "date": "2026-11-15T11:49:18+09:00",
+      "subject": "🐛 [Bug Fix]: #642 AESの鍵拡張とパディングの境界を守る",
+      "body": "- 鍵拡張を固定長のラウンド鍵単位で進める\n- 復号後の出力長をチェック付きの減算で確定する\n- 最終ブロックの全バイトが 0x11 のケースで上限を検証する",
+      "files": [
+        {
+          "path": "rust/crates/core/src/encrypt/aes.rs",
+          "status": "M",
+          "oldPath": null,
+          "additions": 5,
+          "deletions": 1,
+          "patch": "@@ -100,7 +100,11 @@ impl Aes {\n             return Err(AesCbcError::InvalidPadding);\n         }\n \n-        plaintext.truncate(plaintext.len() - padding_len);\n+        let unpadded_len = plaintext\n+            .len()\n+            .checked_sub(padding_len)\n+            .ok_or(AesCbcError::InvalidPadding)?;\n+        plaintext.truncate(unpadded_len);\n         Ok(plaintext)\n     }\n }",
+          "patchLines": 13,
+          "truncated": false
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/aes/round_keys.rs",
+          "status": "M",
+          "oldPath": null,
+          "additions": 50,
+          "deletions": 21,
+          "patch": "@@ -20,13 +20,45 @@ pub(super) struct RoundKeys(ExpandedKeys);\n impl RoundKeys {\n     pub(super) fn new_128(key: &[u8; KEY_128_LEN]) -> Self {\n         let mut rounds = [[0; WORDS_PER_ROUND]; ROUND_KEYS_128];\n-        Self::expand(rounds.as_flattened_mut(), key.as_chunks::<WORD_LEN>().0);\n+        let [first, remaining @ ..] = &mut rounds;\n+        let (key_words, _) = key.as_chunks::<WORD_LEN>();\n+        for (word, bytes) in first.iter_mut().zip(key_words) {\n+            *word = u32::from_be_bytes(*bytes);\n+        }\n+\n+        let mut previous = *first;\n+        let mut round_constant = 1;\n+        for next in remaining {\n+            *next = Self::expand_with_round_constant(previous, &previous, &mut round_constant);\n+            previous = *next;\n+        }\n+\n         Self(ExpandedKeys::Aes128(rounds))\n     }\n \n     pub(super) fn new_256(key: &[u8; KEY_256_LEN]) -> Self {\n         let mut rounds = [[0; WORDS_PER_ROUND]; ROUND_KEYS_256];\n-        Self::expand(rounds.as_flattened_mut(), key.as_chunks::<WORD_LEN>().0);\n+        let [first, second, middle @ .., last] = &mut rounds;\n+        let (key_words, _) = key.as_chunks::<WORD_LEN>();\n+        for (word, bytes) in first.iter_mut().chain(second.iter_mut()).zip(key_words) {\n+            *word = u32::from_be_bytes(*bytes);\n+        }\n+\n+        let mut older = *first;\n+        let mut previous = *second;\n+        let mut round_constant = 1;\n+        // AES-256 はラウンド定数を使う鍵と、SubWord だけを使う鍵を交互に作る。\n+        let (pairs, _) = middle.as_chunks_mut::<2>();\n+        for [even, odd] in pairs {\n+            *even = Self::expand_with_round_constant(older, &previous, &mut round_constant);\n+            let [.., last_word] = *even;\n+            *odd = Self::xor_chain(previous, Self::sub_word(last_word));\n+\n+            older = *even;\n+            previous = *odd;\n+        }\n+        *last = Self::expand_with_round_constant(older, &previous, &mut round_constant);\n+\n         Self(ExpandedKeys::Aes256(rounds))\n     }\n \n@@ -38,27 +70,24 @@ impl RoundKeys {\n         }\n     }\n \n-    fn expand(words: &mut [u32], key_words: &[[u8; WORD_LEN]]) {\n-        for (word, key_word) in words.iter_mut().zip(key_words) {\n-            *word = u32::from_be_bytes(*key_word);\n-        }\n-\n-        // 呼び出し元が 4 または 8 ワードの鍵を渡す。過去のワードは必ず計算済み。\n-        let key_word_count = key_words.len();\n-        let mut round_constant = 1;\n-        for index in key_word_count..words.len() {\n-            let mut previous = words[index - 1];\n-            let position = index % key_word_count;\n-            if position == 0 {\n-                previous =\n-                    Self::sub_word(previous.rotate_left(8)) ^ (u32::from(round_constant) << 24);\n-                round_constant = double(round_constant);\n-            } else if key_word_count == KEY_256_LEN / WORD_LEN && position == 4 {\n-                previous = Self::sub_word(previous);\n-            }\n+    fn expand_with_round_constant(\n+        base: RoundKey,\n+        previous: &RoundKey,\n+        round_constant: &mut u8,\n+    ) -> RoundKey {\n+        let [.., last_word] = *previous;\n+        let transformed =\n+            Self::sub_word(last_word.rotate_left(8)) ^ (u32::from(*round_constant) << 24);\n+        *round_constant = double(*round_constant);\n+        Self::xor_chain(base, transformed)\n+    }\n \n-            words[index] = words[index - key_word_count] ^ previous;\n+    fn xor_chain(mut base: RoundKey, mut previous_word: u32) -> RoundKey {\n+        for word in &mut base {\n+            *word ^= previous_word;\n+            previous_word = *word;\n         }\n+        base\n     }\n \n     fn sub_word(word: u32) -> u32 {",
+          "patchLines": 92,
+          "truncated": false
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/aes/tests/pdf_cbc.rs",
+          "status": "M",
+          "oldPath": null,
+          "additions": 16,
+          "deletions": 2,
+          "patch": "@@ -80,12 +80,11 @@ fn rejects_a_partial_ciphertext_block_after_the_iv() {\n }\n \n #[test]\n-fn rejects_zero_oversized_and_mismatched_padding() {\n+fn rejects_zero_and_mismatched_padding() {\n     let aes = Aes::new_128(&hex(KEY_128));\n     // OpenSSL の -nopad で、仕様に合わない末尾を持つ平文をそのまま暗号化した。\n     let cases = [\n         (\"末尾が 00\", \"097fac153c4a60c65da846f2c62b7594\"),\n-        (\"末尾が 11\", \"59672297a6e1eea1bfa25f9998b916a2\"),\n         (\"末尾が 01 02\", \"29f3f44782f54428d32dcaf8321b118d\"),\n     ];\n \n@@ -98,3 +97,18 @@ fn rejects_zero_oversized_and_mismatched_padding() {\n         );\n     }\n }\n+\n+#[test]\n+fn rejects_a_full_final_block_claiming_seventeen_padding_bytes() {\n+    let aes = Aes::new_128(&hex(KEY_128));\n+    // 平文は 32 バイト、最終ブロックはすべて 0x11。末尾の一致や減算だけでは弾けない。\n+    let input = pdf_ciphertext(&[\n+        hex(\"0f7108e8240171ebadaae9bf29a4fa21\"),\n+        hex(\"2402865661d1b8b69c7054849c76fcef\"),\n+    ]);\n+\n+    assert_eq!(\n+        aes.decrypt_pdf_cbc(&input),\n+        Err(AesCbcError::InvalidPadding)\n+    );\n+}",
+          "patchLines": 33,
+          "truncated": false
+        }
+      ]
+    },
+    {
+      "sha": "3064bd44322a6e82d5ce57b060a554ccba5cc7d2",
+      "merge": false,
+      "author": "DIO0550",
+      "date": "2026-11-15T11:49:30+09:00",
+      "subject": "📝 [Doc]: #642 AESV2とAESV3の規格を明記する",
+      "body": "- ISO 32000-1 の AESV2 と Adobe 拡張・ISO 32000-2 の AESV3 を説明する",
+      "files": [
+        {
+          "path": "docs/specs/02b_encryption.md",
+          "status": "M",
+          "oldPath": null,
+          "additions": 1,
+          "deletions": 1,
+          "patch": "@@ -160,7 +160,7 @@ SHA-384 は SHA-512 と圧縮処理を共有し、専用の初期値から計算\n \n ## 10. AES-128 / AES-256 の復号\n \n-ISO 32000-1:2008 / ISO 32000-2:2020 §7.6 の crypt filter で `/CFM /AESV2` は AES-128、`/CFM /AESV3` は AES-256 を表す。鍵長はそれぞれ 16・32 バイトで、AES のブロック長はどちらも 16 バイト（FIPS 197 §5.2–5.3）。\n+ISO 32000-1:2008 §7.6 の crypt filter では `/CFM /AESV2` が AES-128 を表す。`/CFM /AESV3` は AES-256 を表し、リビジョン5は Adobe ExtensionLevel 3、リビジョン6は ISO 32000-2:2020 §7.6.4.3 で定義される。両リビジョンの `/Perms` は権限を暗号化した16バイトの値。AES の鍵長はそれぞれ 16・32 バイトで、ブロック長はどちらも 16 バイト（FIPS 197 §5.2–5.3）。\n \n | 対象 | 方式 | 初期化ベクトル（IV） | パディング |\n | --- | --- | --- | --- |",
+          "patchLines": 9,
           "truncated": false
         }
       ]
