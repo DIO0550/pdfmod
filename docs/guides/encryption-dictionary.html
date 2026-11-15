@@ -165,7 +165,7 @@ nav a { font-size: 16px; } table { font-size: 17px; } th { font-size: 15px; }
 <a href="#permissions"><span>05</span>権限のビット表現</a><a href="#examples"><span>06</span>正常・未対応・不正</a>
 <a href="#implementation"><span>07</span>解析の境界</a><a href="#algorithm-types"><span>08</span>方式ごとの型と責務</a>
 <a href="#legacy-md5"><span>09</span>旧リビジョンのMD5</a><a href="#legacy-rc4"><span>10</span>旧形式のRC4</a>
-<a href="#revision6-sha2"><span>11</span>リビジョン6のSHA-2</a></nav></aside>
+<a href="#revision6-sha2"><span>11</span>リビジョン6のSHA-2</a><a href="#aes-decryption"><span>12</span>AESのCBC・ECB復号</a></nav></aside>
 <main id="top"><div class="wrap"><header class="hero"><div class="eyebrow">PDF INTERNALS / ENCRYPTION DICTIONARY</div>
 <h1>暗号化辞書を読む</h1><p class="lead">PDFの <code>/Encrypt</code> は、暗号化の方式と鍵の材料を記述します。アルゴリズムの版、crypt filter、権限を、解釈できる型へ変換する仕組みを見ていきます。</p></header>
 <section class="section" id="overview"><div class="section-heading"><span class="number">01</span><h2>暗号化の起点</h2></div>
@@ -426,6 +426,49 @@ assert_eq!(digest, <span class="type">Md5</span>::digest(<span class="string">b"
     <span class="type">Some</span>(sha.finalize())
 }</code></pre>
 <div class="note"><strong>Rustで使える処理</strong>3種類のSHA-2は固定長の配列だけで計算するため、ハッシュを繰り返すたびにヒープを確保する必要はありません。PDFのパスワード検証とファイル暗号鍵の取り出しは、このハッシュ処理を使う後続の実装です。</div>
+</section>
+<section class="section" id="aes-decryption">
+<div class="section-heading"><span class="number">12</span><h2>AESのCBC・ECB復号</h2></div>
+<p>AESはデータを16バイトずつのブロックに分けて処理します。AES-128とAES-256の数字は鍵のビット数です。鍵の長さはそれぞれ16バイトと32バイトで、どちらもデータのブロック長は16バイトです。</p>
+<h3>文字列の方式を辞書から読む</h3>
+<p>以下は暗号化辞書と暗号化された文字列の抜粋です。<code>/StrF</code> と <code>/StmF</code> は文字列とストリームに適用するフィルタ名です。どちらも <code>/CF</code> 内の <code>/StdCF</code> を指すため、<code>/CFM /AESV3</code> が選ばれます。<code>/CFM /AESV2</code> を選ぶ形式では同じブロック構造をAES-128で処理します。</p>
+<pre><code><span class="comment">% 暗号化辞書の抜粋</span>
+<span class="value">8 0</span> <span class="pdf-syntax">obj</span>
+<span class="pdf-syntax">&lt;&lt;</span> <span class="key">/Filter</span> <span class="key">/Standard</span> <span class="key">/V</span> <span class="value">5</span> <span class="key">/R</span> <span class="value">6</span>
+   <span class="key">/CF</span> <span class="pdf-syntax">&lt;&lt;</span> <span class="key">/StdCF</span> <span class="pdf-syntax">&lt;&lt;</span> <span class="key">/CFM</span> <span class="key">/AESV3</span> <span class="pdf-syntax">&gt;&gt; &gt;&gt;</span>
+   <span class="key">/StrF</span> <span class="key">/StdCF</span> <span class="key">/StmF</span> <span class="key">/StdCF</span>
+   <span class="key">/P</span> <span class="value">-4</span> <span class="key">/Perms</span> <span class="string">&lt;D2FFE8BC214EBC01DFF5AF20C2B755C8&gt;</span> <span class="pdf-syntax">&gt;&gt;</span>
+<span class="pdf-syntax">endobj</span>
+
+<span class="comment">% 暗号化文字列の抜粋。各行が16バイト</span>
+<span class="value">9 0</span> <span class="pdf-syntax">obj</span>
+<span class="pdf-syntax">&lt;&lt;</span> <span class="key">/Subject</span> <span class="string">&lt;A0A1A2A3A4A5A6A7A8A9AAABACADAEAF
+                AA21CE5618972CF6990C87A0B04065EB
+                1DA720B04E5DDED942A216C5B4F681DF&gt;</span> <span class="pdf-syntax">&gt;&gt;</span>
+<span class="pdf-syntax">endobj</span></code></pre>
+<h3>CBCで先頭の16バイトを使う</h3>
+<p>16進文字列の2桁が1バイトです。上の <code>/Subject</code> をバイト列として読むと48バイトになります。先頭の <code>A0</code> から <code>AF</code> までの16バイトがIV（初期化ベクトル）で、続く32バイトが暗号文です。IVは最初のブロックを復号するときのXORに使う値です。</p>
+<ol class="steps">
+  <li><strong>1ブロック目</strong> AESで1ブロック復号し、その結果とIVを位置ごとにXORします。</li>
+  <li><strong>2ブロック目以降</strong> AESで復号した結果と、直前の<strong>暗号文</strong>のブロックをXORします。この連鎖をCBC（Cipher Block Chaining）と呼びます。</li>
+  <li><strong>パディングを外す</strong> 追加したバイト数を末尾の1バイトで読み取り、末尾にその値が同じ回数だけ並んでいることを確認して取り除きます。この例は末尾の <code>0F</code> が15個なので、32バイトから15バイトを除き、<code>PDF stream block!</code> の17バイトが残ります。</li>
+</ol>
+<div class="table-wrap" tabindex="0" role="region" aria-label="PDFのCBC入力ごとの結果">
+<table><thead><tr><th scope="col">IVと暗号文</th><th scope="col">復号・検証の結果</th></tr></thead>
+<tbody>
+<tr><td>16バイトのIVと1ブロック。復号後の末尾16バイトがすべて <code>10</code>（16進数）</td><td>空の平文を返す。元データの長さが16の倍数なら、16バイト分のパディングを追加する。</td></tr>
+<tr><td>空、IVだけ、または暗号文が16バイト単位の途中で終わる</td><td>長さのエラーを返す。IVに加え、16バイトの暗号文が1ブロック以上必要。</td></tr>
+<tr><td>復号後の末尾が <code>00</code>、<code>11</code> 以上、または <code>01 02</code> で終わる</td><td>パディングのエラーを返す。<code>02</code> で終わる場合は末尾が <code>02 02</code> で揃う必要がある。</td></tr>
+</tbody></table>
+</div>
+<h3>権限の <code>/Perms</code> は1ブロックのECB</h3>
+<p>リビジョン5・6の <code>/Perms</code> は、ファイル暗号鍵を使ってAES-256のECB（Electronic Codebook）で復号します。ECBは各ブロックに直接AESを適用します。<code>/Perms</code> はIVもパディングも付かない16バイトで、復号後の全16バイトを権限の検証側に渡します。上の例では復号した先頭4バイト <code>FC FF FF FF</code> がリトルエンディアンの <code>/P -4</code> です。</p>
+<h3>Rustで16バイトを切り出す</h3>
+<pre><code><span class="keyword">let</span> <span class="type">Some</span>((iv, ciphertext)) = input.split_first_chunk::&lt;<span class="value">BLOCK_LEN</span>&gt;() <span class="keyword">else</span> {
+    <span class="keyword">return</span> <span class="type">Err</span>(<span class="type">AesCbcError</span>::InvalidLength);
+};</code></pre>
+<p><code>::&lt;BLOCK_LEN&gt;</code> は切り出す個数をコンパイル時に指定する書き方で、ここでは16です。成功を表す <code>Some((iv, ciphertext))</code> から2つの値を取り出します。<code>iv</code> は <code>&amp;[u8; 16]</code>（16バイトちょうどの配列への参照）、<code>ciphertext</code> は <code>&amp;[u8]</code>（残りのバイト列への参照）です。例えば <code>b"abcde".split_first_chunk::&lt;2&gt;()</code> なら、同じ元データから <code>ab</code> と <code>cde</code> を借ります。指定した長さに満たない場合は <code>None</code> となり、<code>else</code> の処理に進みます。</p>
+<div class="note"><strong>Rustで使える処理</strong>同じ鍵から作ったラウンド鍵をCBCとECBで共有します。パスワードからの鍵導出と、PDF読み込み中に対象を選び復号する処理は後続の実装です。</div>
 </section>
 <footer><a href="#top">最上部へ</a> · <a href="README.md">解説一覧</a></footer></div></main>
 </body></html>
