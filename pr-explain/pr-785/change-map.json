@@ -1,0 +1,420 @@
+{
+  "version": 2,
+  "pr": 785,
+  "headBranch": "feature/642-rust-aes-decrypt",
+  "baseBranch": "main",
+  "mergeBase": "839d4c5ca683e0b89d2b8886c042bc7ee27c8e00",
+  "head": "a609c719a1a19de8383711c630a2660cef571f99",
+  "groups": [
+    {
+      "label": "Rust",
+      "files": [
+        {
+          "path": "rust/crates/core/src/encrypt.rs",
+          "status": "M",
+          "oldPath": null,
+          "additions": 9,
+          "deletions": 1,
+          "changed": true,
+          "target": null
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/aes.rs",
+          "status": "A",
+          "oldPath": null,
+          "additions": 109,
+          "deletions": 0,
+          "changed": true,
+          "target": null
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/aes/block.rs",
+          "status": "A",
+          "oldPath": null,
+          "additions": 71,
+          "deletions": 0,
+          "changed": true,
+          "target": null
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/aes/byte.rs",
+          "status": "A",
+          "oldPath": null,
+          "additions": 51,
+          "deletions": 0,
+          "changed": true,
+          "target": null
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/aes/round_keys.rs",
+          "status": "A",
+          "oldPath": null,
+          "additions": 67,
+          "deletions": 0,
+          "changed": true,
+          "target": null
+        },
+        {
+          "path": "rust/crates/core/src/lib.rs",
+          "status": "M",
+          "oldPath": null,
+          "additions": 1,
+          "deletions": 1,
+          "changed": true,
+          "target": null
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/aes/tests.rs",
+          "status": "A",
+          "oldPath": null,
+          "additions": 11,
+          "deletions": 0,
+          "changed": true,
+          "target": "rust/crates/core/src/encrypt/aes.rs"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/aes/tests/cbc.rs",
+          "status": "A",
+          "oldPath": null,
+          "additions": 48,
+          "deletions": 0,
+          "changed": true,
+          "target": "rust/crates/core/src/encrypt/aes.rs"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/aes/tests/ecb.rs",
+          "status": "A",
+          "oldPath": null,
+          "additions": 38,
+          "deletions": 0,
+          "changed": true,
+          "target": "rust/crates/core/src/encrypt/aes.rs"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/aes/tests/pdf_cbc.rs",
+          "status": "A",
+          "oldPath": null,
+          "additions": 100,
+          "deletions": 0,
+          "changed": true,
+          "target": "rust/crates/core/src/encrypt/aes.rs"
+        }
+      ]
+    },
+    {
+      "label": "PDF 仕様の解説",
+      "files": [
+        {
+          "path": "docs/guides/README.md",
+          "status": "M",
+          "oldPath": null,
+          "additions": 1,
+          "deletions": 1,
+          "changed": true,
+          "target": null
+        },
+        {
+          "path": "docs/guides/encryption-dictionary.html",
+          "status": "M",
+          "oldPath": null,
+          "additions": 44,
+          "deletions": 1,
+          "changed": true,
+          "target": null
+        }
+      ]
+    },
+    {
+      "label": "仕様・設計",
+      "files": [
+        {
+          "path": "docs/specs/02b_encryption.md",
+          "status": "M",
+          "oldPath": null,
+          "additions": 14,
+          "deletions": 0,
+          "changed": true,
+          "target": null
+        }
+      ]
+    },
+    {
+      "label": "設定・その他",
+      "files": [
+        {
+          "path": "README.md",
+          "changed": false
+        }
+      ]
+    }
+  ],
+  "tests": {
+    "added": [
+      {
+        "file": "rust/crates/core/src/encrypt/aes/tests/cbc.rs",
+        "name": "decrypts_nist_cbc_aes128_vector"
+      },
+      {
+        "file": "rust/crates/core/src/encrypt/aes/tests/cbc.rs",
+        "name": "decrypts_nist_cbc_aes256_vector"
+      },
+      {
+        "file": "rust/crates/core/src/encrypt/aes/tests/ecb.rs",
+        "name": "decrypts_all_sixteen_bytes_of_pdf_permissions"
+      },
+      {
+        "file": "rust/crates/core/src/encrypt/aes/tests/ecb.rs",
+        "name": "decrypts_fips_197_aes128_block"
+      },
+      {
+        "file": "rust/crates/core/src/encrypt/aes/tests/ecb.rs",
+        "name": "decrypts_fips_197_aes256_block"
+      },
+      {
+        "file": "rust/crates/core/src/encrypt/aes/tests/pdf_cbc.rs",
+        "name": "decrypts_a_full_padding_block_to_empty_plaintext"
+      },
+      {
+        "file": "rust/crates/core/src/encrypt/aes/tests/pdf_cbc.rs",
+        "name": "decrypts_pdf_aes256_with_prefixed_iv_and_padding"
+      },
+      {
+        "file": "rust/crates/core/src/encrypt/aes/tests/pdf_cbc.rs",
+        "name": "rejects_a_partial_ciphertext_block_after_the_iv"
+      },
+      {
+        "file": "rust/crates/core/src/encrypt/aes/tests/pdf_cbc.rs",
+        "name": "rejects_missing_or_incomplete_iv_and_iv_without_ciphertext"
+      },
+      {
+        "file": "rust/crates/core/src/encrypt/aes/tests/pdf_cbc.rs",
+        "name": "rejects_zero_oversized_and_mismatched_padding"
+      },
+      {
+        "file": "rust/crates/core/src/encrypt/aes/tests/pdf_cbc.rs",
+        "name": "removes_a_whole_padding_block_from_aligned_plaintext"
+      },
+      {
+        "file": "rust/crates/core/src/encrypt/aes/tests/pdf_cbc.rs",
+        "name": "strips_one_padding_byte_and_keeps_the_same_value_in_plaintext"
+      }
+    ],
+    "removed": [],
+    "files": [
+      "rust/crates/core/src/encrypt.rs",
+      "rust/crates/core/src/encrypt/aes.rs",
+      "rust/crates/core/src/encrypt/aes/block.rs",
+      "rust/crates/core/src/encrypt/aes/byte.rs",
+      "rust/crates/core/src/encrypt/aes/round_keys.rs",
+      "rust/crates/core/src/encrypt/aes/tests.rs",
+      "rust/crates/core/src/encrypt/aes/tests/cbc.rs",
+      "rust/crates/core/src/encrypt/aes/tests/ecb.rs",
+      "rust/crates/core/src/encrypt/aes/tests/pdf_cbc.rs",
+      "rust/crates/core/src/lib.rs"
+    ]
+  },
+  "commits": [
+    {
+      "sha": "aec3fc92236bbe1afff06de536c423f5ec387e95",
+      "merge": false,
+      "author": "DIO0550",
+      "date": "2026-11-15T11:36:56+09:00",
+      "subject": "✨ [New Feature]: #642 AESの鍵拡張とECB復号を実装する",
+      "body": "- 16・32バイトの鍵を11・15個のラウンド鍵へ拡張する\n- AESの逆変換で1ブロックを復号し、FIPS 197と権限ブロックで検証する\n\n背景:\n暗号化辞書から得られるAES方式に対応する復号部品が必要だった。\n\n採用理由:\nECBとCBCで同じ逆変換を使えるよう、鍵の保持とブロックの逆変換を分けた。\n固定長の配列で鍵とブロックの長さを受け渡し時に表す。\n\n影響とトレードオフ:\n復号部品は暗号化モジュールの内部から使う。ラウンド鍵は鍵ごとに一度作る。\n\n参考:\nFIPS 197 §5.2–5.3、初版 Appendix C.1 / C.3。",
+      "files": [
+        {
+          "path": "rust/crates/core/src/encrypt.rs",
+          "status": "M",
+          "oldPath": null,
+          "additions": 9,
+          "deletions": 1,
+          "patch": "@@ -3,7 +3,7 @@\n //!\n //! `/Filter /Standard` の暗号化辞書のみを型として解釈し、`/V` と `/R` の\n //! 取りうる組み合わせだけを [`StandardAlgorithm`] のバリアントで表現する。\n-//! 鍵導出に使う MD5・SHA-2 と、バイト列に適用する RC4 を内部で実装する。\n+//! 鍵導出に使う MD5・SHA-2 と、バイト列に適用する RC4・AES を内部で実装する。\n //!\n //! # スコープ外（#604）\n //!\n@@ -17,6 +17,14 @@\n //!\n //! [`StandardAlgorithm`]: algorithm::StandardAlgorithm\n \n+#[cfg_attr(\n+    not(test),\n+    expect(\n+        dead_code,\n+        reason = \"AES の鍵導出と PDF 復号 (#663、#683) から呼び出す\"\n+    )\n+)]\n+mod aes;\n pub mod algorithm;\n mod block_buffer;\n pub mod crypt_filter;",
+          "patchLines": 24,
+          "truncated": false
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/aes.rs",
+          "status": "A",
+          "oldPath": null,
+          "additions": 42,
+          "deletions": 0,
+          "patch": "@@ -0,0 +1,42 @@\n+//! FIPS 197 の AES-128 / AES-256 を使った PDF 復号のための内部実装。\n+\n+mod block;\n+mod byte;\n+mod round_keys;\n+\n+use self::block::BlockState;\n+use self::round_keys::RoundKeys;\n+\n+const BLOCK_LEN: usize = 16;\n+const KEY_128_LEN: usize = 16;\n+const KEY_256_LEN: usize = 32;\n+type Block = [u8; BLOCK_LEN];\n+\n+/// 128 ビットまたは 256 ビットの鍵から拡張したラウンド鍵を保持する。\n+pub(super) struct Aes {\n+    round_keys: RoundKeys,\n+}\n+\n+impl Aes {\n+    /// AES-128 の鍵を拡張する。\n+    pub(super) fn new_128(key: &[u8; KEY_128_LEN]) -> Self {\n+        Self {\n+            round_keys: RoundKeys::new_128(key),\n+        }\n+    }\n+\n+    /// AES-256 の鍵を拡張する。\n+    pub(super) fn new_256(key: &[u8; KEY_256_LEN]) -> Self {\n+        Self {\n+            round_keys: RoundKeys::new_256(key),\n+        }\n+    }\n+\n+    /// `/Perms` など、IV とパディングを持たない 1 ブロックを復号する。\n+    pub(super) fn decrypt_ecb_block(&self, ciphertext: &Block) -> Block {\n+        BlockState::decrypt(*ciphertext, &self.round_keys)\n+    }\n+}\n+\n+#[cfg(test)]\n+mod tests;",
+          "patchLines": 43,
+          "truncated": false
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/aes/block.rs",
+          "status": "A",
+          "oldPath": null,
+          "additions": 71,
+          "deletions": 0,
+          "patch": "@@ -0,0 +1,71 @@\n+//! FIPS 197 §5.3 の逆変換で 1 ブロックを復号する。\n+\n+use super::byte::{double, inverse_substitute};\n+use super::round_keys::{RoundKey, RoundKeys, WORD_LEN};\n+use super::Block;\n+\n+/// AES の状態。連続する 4 バイトが 4 行 × 4 列のうちの 1 列を表す。\n+pub(super) struct BlockState(Block);\n+\n+impl BlockState {\n+    /// 暗号化の末尾から先頭へ、ラウンド鍵を逆順に使う。\n+    pub(super) fn decrypt(ciphertext: Block, round_keys: &RoundKeys) -> Block {\n+        let (first, middle, last) = round_keys.split();\n+        let mut state = Self(ciphertext);\n+        state.add_round_key(last);\n+\n+        for key in middle.iter().rev() {\n+            state.inv_shift_rows();\n+            state.inv_sub_bytes();\n+            state.add_round_key(key);\n+            state.inv_mix_columns();\n+        }\n+\n+        state.inv_shift_rows();\n+        state.inv_sub_bytes();\n+        state.add_round_key(first);\n+        state.0\n+    }\n+\n+    fn add_round_key(&mut self, key: &RoundKey) {\n+        let (columns, _) = self.0.as_chunks_mut::<WORD_LEN>();\n+        for (column, word) in columns.iter_mut().zip(key) {\n+            for (byte, key_byte) in column.iter_mut().zip(word.to_be_bytes()) {\n+                *byte ^= key_byte;\n+            }\n+        }\n+    }\n+\n+    fn inv_shift_rows(&mut self) {\n+        // 行 r を右へ r 列分戻す。各出力位置から移動前の列を求める。\n+        self.0 = std::array::from_fn(|index| {\n+            let row = index % WORD_LEN;\n+            let column = index / WORD_LEN;\n+            let source_column = (column + WORD_LEN - row) % WORD_LEN;\n+            self.0[source_column * WORD_LEN + row]\n+        });\n+    }\n+\n+    fn inv_sub_bytes(&mut self) {\n+        self.0 = self.0.map(inverse_substitute);\n+    }\n+\n+    fn inv_mix_columns(&mut self) {\n+        let (columns, _) = self.0.as_chunks_mut::<WORD_LEN>();\n+        for column in columns {\n+            let [a, b, c, d] = *column;\n+            // 対向する行の差を 4 倍して補正し、通常の MixColumns を適用すると逆行列になる。\n+            let even = double(double(a ^ c));\n+            let odd = double(double(b ^ d));\n+            let [a, b, c, d] = [a ^ even, b ^ odd, c ^ even, d ^ odd];\n+            let sum = a ^ b ^ c ^ d;\n+\n+            *column = [\n+                a ^ sum ^ double(a ^ b),\n+                b ^ sum ^ double(b ^ c),\n+                c ^ sum ^ double(c ^ d),\n+                d ^ sum ^ double(d ^ a),\n+            ];\n+        }\n+    }\n+}",
+          "patchLines": 72,
+          "truncated": false
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/aes/byte.rs",
+          "status": "A",
+          "oldPath": null,
+          "additions": 51,
+          "deletions": 0,
+          "patch": "@@ -0,0 +1,51 @@\n+//! AES の 1 バイトに対する置換と有限体の演算。\n+\n+// FIPS 197 の S-box。逆置換表もこの表からコンパイル時に求める。\n+const S_BOX: [u8; 256] = [\n+    0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,\n+    0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0,\n+    0xb7, 0xfd, 0x93, 0x26, 0x36, 0x3f, 0xf7, 0xcc, 0x34, 0xa5, 0xe5, 0xf1, 0x71, 0xd8, 0x31, 0x15,\n+    0x04, 0xc7, 0x23, 0xc3, 0x18, 0x96, 0x05, 0x9a, 0x07, 0x12, 0x80, 0xe2, 0xeb, 0x27, 0xb2, 0x75,\n+    0x09, 0x83, 0x2c, 0x1a, 0x1b, 0x6e, 0x5a, 0xa0, 0x52, 0x3b, 0xd6, 0xb3, 0x29, 0xe3, 0x2f, 0x84,\n+    0x53, 0xd1, 0x00, 0xed, 0x20, 0xfc, 0xb1, 0x5b, 0x6a, 0xcb, 0xbe, 0x39, 0x4a, 0x4c, 0x58, 0xcf,\n+    0xd0, 0xef, 0xaa, 0xfb, 0x43, 0x4d, 0x33, 0x85, 0x45, 0xf9, 0x02, 0x7f, 0x50, 0x3c, 0x9f, 0xa8,\n+    0x51, 0xa3, 0x40, 0x8f, 0x92, 0x9d, 0x38, 0xf5, 0xbc, 0xb6, 0xda, 0x21, 0x10, 0xff, 0xf3, 0xd2,\n+    0xcd, 0x0c, 0x13, 0xec, 0x5f, 0x97, 0x44, 0x17, 0xc4, 0xa7, 0x7e, 0x3d, 0x64, 0x5d, 0x19, 0x73,\n+    0x60, 0x81, 0x4f, 0xdc, 0x22, 0x2a, 0x90, 0x88, 0x46, 0xee, 0xb8, 0x14, 0xde, 0x5e, 0x0b, 0xdb,\n+    0xe0, 0x32, 0x3a, 0x0a, 0x49, 0x06, 0x24, 0x5c, 0xc2, 0xd3, 0xac, 0x62, 0x91, 0x95, 0xe4, 0x79,\n+    0xe7, 0xc8, 0x37, 0x6d, 0x8d, 0xd5, 0x4e, 0xa9, 0x6c, 0x56, 0xf4, 0xea, 0x65, 0x7a, 0xae, 0x08,\n+    0xba, 0x78, 0x25, 0x2e, 0x1c, 0xa6, 0xb4, 0xc6, 0xe8, 0xdd, 0x74, 0x1f, 0x4b, 0xbd, 0x8b, 0x8a,\n+    0x70, 0x3e, 0xb5, 0x66, 0x48, 0x03, 0xf6, 0x0e, 0x61, 0x35, 0x57, 0xb9, 0x86, 0xc1, 0x1d, 0x9e,\n+    0xe1, 0xf8, 0x98, 0x11, 0x69, 0xd9, 0x8e, 0x94, 0x9b, 0x1e, 0x87, 0xe9, 0xce, 0x55, 0x28, 0xdf,\n+    0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16,\n+];\n+\n+const INV_S_BOX: [u8; 256] = inverse_s_box();\n+\n+const fn inverse_s_box() -> [u8; 256] {\n+    let mut inverse = [0; S_BOX.len()];\n+    let mut byte = 0_u8;\n+    loop {\n+        inverse[S_BOX[byte as usize] as usize] = byte;\n+        if byte == u8::MAX {\n+            return inverse;\n+        }\n+        byte += 1;\n+    }\n+}\n+\n+/// 鍵拡張の SubWord に使う正方向の置換。\n+pub(in crate::encrypt::aes) fn substitute(byte: u8) -> u8 {\n+    S_BOX[usize::from(byte)]\n+}\n+\n+/// InvSubBytes に使う逆方向の置換。\n+pub(in crate::encrypt::aes) fn inverse_substitute(byte: u8) -> u8 {\n+    INV_S_BOX[usize::from(byte)]\n+}\n+\n+/// AES の有限体で 2 倍する。最上位ビットがあれば還元多項式の下位 8 ビットを XOR する。\n+pub(in crate::encrypt::aes) fn double(byte: u8) -> u8 {\n+    let reduction_mask = 0_u8.wrapping_sub(byte >> 7);\n+    (byte << 1) ^ (0x1b & reduction_mask)\n+}",
+          "patchLines": 52,
+          "truncated": false
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/aes/round_keys.rs",
+          "status": "A",
+          "oldPath": null,
+          "additions": 67,
+          "deletions": 0,
+          "patch": "@@ -0,0 +1,67 @@\n+//! FIPS 197 §5.2 の鍵拡張。1 ワードは 4 バイト、1 ラウンド鍵は 4 ワード。\n+\n+use super::byte::{double, substitute};\n+use super::{KEY_128_LEN, KEY_256_LEN};\n+\n+pub(super) const WORD_LEN: usize = 4;\n+const WORDS_PER_ROUND: usize = 4;\n+const ROUND_KEYS_128: usize = 11;\n+const ROUND_KEYS_256: usize = 15;\n+pub(super) type RoundKey = [u32; WORDS_PER_ROUND];\n+\n+enum ExpandedKeys {\n+    Aes128([RoundKey; ROUND_KEYS_128]),\n+    Aes256([RoundKey; ROUND_KEYS_256]),\n+}\n+\n+/// 初回の鍵に加え、AES-128 では 10、AES-256 では 14 ラウンド分の鍵を持つ。\n+pub(super) struct RoundKeys(ExpandedKeys);\n+\n+impl RoundKeys {\n+    pub(super) fn new_128(key: &[u8; KEY_128_LEN]) -> Self {\n+        let mut rounds = [[0; WORDS_PER_ROUND]; ROUND_KEYS_128];\n+        Self::expand(rounds.as_flattened_mut(), key.as_chunks::<WORD_LEN>().0);\n+        Self(ExpandedKeys::Aes128(rounds))\n+    }\n+\n+    pub(super) fn new_256(key: &[u8; KEY_256_LEN]) -> Self {\n+        let mut rounds = [[0; WORDS_PER_ROUND]; ROUND_KEYS_256];\n+        Self::expand(rounds.as_flattened_mut(), key.as_chunks::<WORD_LEN>().0);\n+        Self(ExpandedKeys::Aes256(rounds))\n+    }\n+\n+    /// 最初と最後の鍵を分け、個数の異なる中間ラウンド鍵をスライスとして返す。\n+    pub(super) fn split(&self) -> (&RoundKey, &[RoundKey], &RoundKey) {\n+        match &self.0 {\n+            ExpandedKeys::Aes128([first, middle @ .., last]) => (first, middle, last),\n+            ExpandedKeys::Aes256([first, middle @ .., last]) => (first, middle, last),\n+        }\n+    }\n+\n+    fn expand(words: &mut [u32], key_words: &[[u8; WORD_LEN]]) {\n+        for (word, key_word) in words.iter_mut().zip(key_words) {\n+            *word = u32::from_be_bytes(*key_word);\n+        }\n+\n+        // 呼び出し元が 4 または 8 ワードの鍵を渡す。過去のワードは必ず計算済み。\n+        let key_word_count = key_words.len();\n+        let mut round_constant = 1;\n+        for index in key_word_count..words.len() {\n+            let mut previous = words[index - 1];\n+            let position = index % key_word_count;\n+            if position == 0 {\n+                previous =\n+                    Self::sub_word(previous.rotate_left(8)) ^ (u32::from(round_constant) << 24);\n+                round_constant = double(round_constant);\n+            } else if key_word_count == KEY_256_LEN / WORD_LEN && position == 4 {\n+                previous = Self::sub_word(previous);\n+            }\n+\n+            words[index] = words[index - key_word_count] ^ previous;\n+        }\n+    }\n+\n+    fn sub_word(word: u32) -> u32 {\n+        u32::from_be_bytes(word.to_be_bytes().map(substitute))\n+    }\n+}",
+          "patchLines": 68,
+          "truncated": false
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/aes/tests.rs",
+          "status": "A",
+          "oldPath": null,
+          "additions": 9,
+          "deletions": 0,
+          "patch": "@@ -0,0 +1,9 @@\n+mod ecb;\n+\n+const KEY_128: &str = \"000102030405060708090a0b0c0d0e0f\";\n+const KEY_256: &str = \"000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f\";\n+\n+fn hex<const N: usize>(input: &str) -> [u8; N] {\n+    assert_eq!(input.len(), N * 2);\n+    std::array::from_fn(|index| u8::from_str_radix(&input[index * 2..index * 2 + 2], 16).unwrap())\n+}",
+          "patchLines": 10,
+          "truncated": false
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/aes/tests/ecb.rs",
+          "status": "A",
+          "oldPath": null,
+          "additions": 38,
+          "deletions": 0,
+          "patch": "@@ -0,0 +1,38 @@\n+use super::{hex, KEY_128, KEY_256};\n+use crate::encrypt::aes::Aes;\n+\n+#[test]\n+fn decrypts_fips_197_aes128_block() {\n+    // FIPS 197 Appendix C.1。\n+    let aes = Aes::new_128(&hex(KEY_128));\n+    let ciphertext = hex(\"69c4e0d86a7b0430d8cdb78070b4c55a\");\n+\n+    assert_eq!(\n+        aes.decrypt_ecb_block(&ciphertext),\n+        hex(\"00112233445566778899aabbccddeeff\")\n+    );\n+}\n+\n+#[test]\n+fn decrypts_fips_197_aes256_block() {\n+    // FIPS 197 Appendix C.3。\n+    let aes = Aes::new_256(&hex(KEY_256));\n+    let ciphertext = hex(\"8ea2b7ca516745bfeafc49904b496089\");\n+\n+    assert_eq!(\n+        aes.decrypt_ecb_block(&ciphertext),\n+        hex(\"00112233445566778899aabbccddeeff\")\n+    );\n+}\n+\n+#[test]\n+fn decrypts_all_sixteen_bytes_of_pdf_permissions() {\n+    // /P -4、メタデータ暗号化ありの権限ブロックを OpenSSL の AES-256-ECB で暗号化した。\n+    let aes = Aes::new_256(&hex(KEY_256));\n+    let ciphertext = hex(\"d2ffe8bc214ebc01dff5af20c2b755c8\");\n+\n+    assert_eq!(\n+        aes.decrypt_ecb_block(&ciphertext),\n+        hex(\"fcffffffffffffff5461646200010203\")\n+    );\n+}",
+          "patchLines": 39,
+          "truncated": false
+        },
+        {
+          "path": "rust/crates/core/src/lib.rs",
+          "status": "M",
+          "oldPath": null,
+          "additions": 1,
+          "deletions": 1,
+          "patch": "@@ -14,7 +14,7 @@\n //! [`PdfDocument`] は借用バイト列から文書を開き、[`PdfPage`] の属性を必要時に解決する入口。\n //! `catalog` / `page_tree` / `document_info` は文書構造、`resolver` は間接参照の遅延解決を提供する。\n //! byte_offset / encrypt / error / file / filter / lexer / object / parser / xref の各モジュールは実装済み。\n-//! `encrypt` は暗号化辞書（`/Encrypt`）の型表現を提供し、旧形式向けの MD5 と RC4 を内部に持つ。\n+//! `encrypt` は暗号化辞書（`/Encrypt`）の型表現を提供し、MD5・SHA-2・RC4・AES を内部に持つ。\n //! PDF 読み込み時の復号は未実装。\n //! `file` はヘッダ解析と startxref の末尾スキャンを提供する。\n //! `filter` は `/FlateDecode`（zlib / DEFLATE）の展開と Predictor（PNG / TIFF）の適用を提供する。",
+          "patchLines": 9,
+          "truncated": false
+        }
+      ]
+    },
+    {
+      "sha": "ed8160f323deb36e058fe44780d0024d703c2751",
+      "merge": false,
+      "author": "DIO0550",
+      "date": "2026-11-15T11:37:08+09:00",
+      "subject": "✨ [New Feature]: #642 PDFのAES-CBC復号を実装する",
+      "body": "- 先頭のIVと完全な暗号文ブロックを切り分けてCBC復号する\n- PKCS#7の末尾を検証し、長さとパディングの異常を区別する\n- NISTのCBCベクタとPDF固有の境界・異常系を確認する\n\n背景:\nAESで暗号化したPDFの文字列・ストリームは、先頭にIVを持つ。\n\n採用理由:\n既知のIVを受け取るCBC演算からPDF固有の切り分けを分け、両方を検証した。\n\n影響とトレードオフ:\n呼び出し側は空の平文を得た成功と暗号文の欠落を区別できる。\nCBCの結果は所有するバイト列として返す。\n\n参考:\nISO 32000 §7.6、NIST SP 800-38A §6.2 / F.2.2 / F.2.6。",
+      "files": [
+        {
+          "path": "rust/crates/core/src/encrypt/aes.rs",
+          "status": "M",
+          "oldPath": null,
+          "additions": 67,
+          "deletions": 0,
+          "patch": "@@ -4,6 +4,8 @@ mod block;\n mod byte;\n mod round_keys;\n \n+use std::mem::size_of_val;\n+\n use self::block::BlockState;\n use self::round_keys::RoundKeys;\n \n@@ -12,6 +14,15 @@ const KEY_128_LEN: usize = 16;\n const KEY_256_LEN: usize = 32;\n type Block = [u8; BLOCK_LEN];\n \n+/// PDF の IV 付き AES-CBC を復号できない理由。\n+#[derive(Debug, PartialEq, Eq)]\n+pub(super) enum AesCbcError {\n+    /// 16 バイトの IV または 1 ブロック以上の完全な暗号文が欠けている。\n+    InvalidLength,\n+    /// 復号後の末尾に正しい PKCS#7 パディングがない。\n+    InvalidPadding,\n+}\n+\n /// 128 ビットまたは 256 ビットの鍵から拡張したラウンド鍵を保持する。\n pub(super) struct Aes {\n     round_keys: RoundKeys,\n@@ -36,6 +47,62 @@ impl Aes {\n     pub(super) fn decrypt_ecb_block(&self, ciphertext: &Block) -> Block {\n         BlockState::decrypt(*ciphertext, &self.round_keys)\n     }\n+\n+    /// IV を含まない完全なブロック列を、指定された IV で CBC 復号する（SP 800-38A §6.2）。\n+    /// 入力ブロック数に対応する平文をそのまま返し、パディングは取り除かない。\n+    pub(super) fn decrypt_cbc_blocks(&self, iv: &Block, ciphertext: &[Block]) -> Vec<u8> {\n+        let mut plaintext = Vec::with_capacity(size_of_val(ciphertext));\n+        let mut previous = iv;\n+        for block in ciphertext {\n+            let mut output = self.decrypt_ecb_block(block);\n+            for (byte, &previous_byte) in output.iter_mut().zip(previous) {\n+                *byte ^= previous_byte;\n+            }\n+\n+            plaintext.extend_from_slice(&output);\n+            previous = block;\n+        }\n+\n+        plaintext\n+    }\n+\n+    /// PDF の AESV2/AESV3 の文字列・ストリームを復号する（ISO 32000 §7.6）。\n+    /// IV の不足・暗号文が空または端数ありなら `InvalidLength`、不正な末尾なら `InvalidPadding`。\n+    pub(super) fn decrypt_pdf_cbc(&self, input: &[u8]) -> Result<Vec<u8>, AesCbcError> {\n+        let Some((iv, ciphertext)) = input.split_first_chunk::<BLOCK_LEN>() else {\n+            return Err(AesCbcError::InvalidLength);\n+        };\n+        let (blocks, remainder) = ciphertext.as_chunks::<BLOCK_LEN>();\n+        if blocks.is_empty() || !remainder.is_empty() {\n+            return Err(AesCbcError::InvalidLength);\n+        }\n+\n+        Self::remove_pdf_padding(self.decrypt_cbc_blocks(iv, blocks))\n+    }\n+\n+    fn remove_pdf_padding(mut plaintext: Vec<u8>) -> Result<Vec<u8>, AesCbcError> {\n+        let Some((_, last_block)) = plaintext.split_last_chunk::<BLOCK_LEN>() else {\n+            return Err(AesCbcError::InvalidPadding);\n+        };\n+        let [.., padding_byte] = *last_block;\n+        let padding_len = usize::from(padding_byte);\n+        // 1 バイト目の不一致で打ち切らず、末尾のブロック全体で一致を調べる。\n+        let padding_matches =\n+            last_block\n+                .iter()\n+                .rev()\n+                .enumerate()\n+                .fold(true, |matches, (offset, &byte)| {\n+                    let outside_padding = offset >= padding_len;\n+                    matches & (outside_padding | (byte == padding_byte))\n+                });\n+        if !(1..=BLOCK_LEN).contains(&padding_len) || !padding_matches {\n+            return Err(AesCbcError::InvalidPadding);\n+        }\n+\n+        plaintext.truncate(plaintext.len() - padding_len);\n+        Ok(plaintext)\n+    }\n }\n \n #[cfg(test)]",
+          "patchLines": 88,
+          "truncated": false
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/aes/tests.rs",
+          "status": "M",
+          "oldPath": null,
+          "additions": 2,
+          "deletions": 0,
+          "patch": "@@ -1,4 +1,6 @@\n+mod cbc;\n mod ecb;\n+mod pdf_cbc;\n \n const KEY_128: &str = \"000102030405060708090a0b0c0d0e0f\";\n const KEY_256: &str = \"000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f\";",
+          "patchLines": 7,
+          "truncated": false
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/aes/tests/cbc.rs",
+          "status": "A",
+          "oldPath": null,
+          "additions": 48,
+          "deletions": 0,
+          "patch": "@@ -0,0 +1,48 @@\n+use super::hex;\n+use crate::encrypt::aes::{Aes, BLOCK_LEN};\n+\n+const IV: &str = \"000102030405060708090a0b0c0d0e0f\";\n+const PLAINTEXT: &str = concat!(\n+    \"6bc1bee22e409f96e93d7e117393172a\",\n+    \"ae2d8a571e03ac9c9eb76fac45af8e51\",\n+    \"30c81c46a35ce411e5fbc1191a0a52ef\",\n+    \"f69f2445df4f9b17ad2b417be66c3710\",\n+);\n+\n+#[test]\n+fn decrypts_nist_cbc_aes128_vector() {\n+    // NIST SP 800-38A F.2.2。パディングなしの 4 ブロック。\n+    let aes = Aes::new_128(&hex(\"2b7e151628aed2a6abf7158809cf4f3c\"));\n+    let ciphertext = hex::<64>(concat!(\n+        \"7649abac8119b246cee98e9b12e9197d\",\n+        \"5086cb9b507219ee95db113a917678b2\",\n+        \"73bed6b8e3c1743b7116e69e22229516\",\n+        \"3ff1caa1681fac09120eca307586e1a7\",\n+    ));\n+    let (blocks, _) = ciphertext.as_chunks::<BLOCK_LEN>();\n+\n+    assert_eq!(\n+        aes.decrypt_cbc_blocks(&hex(IV), blocks),\n+        hex::<64>(PLAINTEXT)\n+    );\n+}\n+\n+#[test]\n+fn decrypts_nist_cbc_aes256_vector() {\n+    // NIST SP 800-38A F.2.6。AES-128 と同じ平文と IV を使う。\n+    let aes = Aes::new_256(&hex(\n+        \"603deb1015ca71be2b73aef0857d77811f352c073b6108d72d9810a30914dff4\",\n+    ));\n+    let ciphertext = hex::<64>(concat!(\n+        \"f58c4c04d6e5f1ba779eabfb5f7bfbd6\",\n+        \"9cfc4e967edb808d679f777bc6702c7d\",\n+        \"39f23369a9d9bacfa530e26304231461\",\n+        \"b2eb05e2c39be9fcda6c19078c6a9d1b\",\n+    ));\n+    let (blocks, _) = ciphertext.as_chunks::<BLOCK_LEN>();\n+\n+    assert_eq!(\n+        aes.decrypt_cbc_blocks(&hex(IV), blocks),\n+        hex::<64>(PLAINTEXT)\n+    );\n+}",
+          "patchLines": 49,
+          "truncated": false
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/aes/tests/pdf_cbc.rs",
+          "status": "A",
+          "oldPath": null,
+          "additions": 100,
+          "deletions": 0,
+          "patch": "@@ -0,0 +1,100 @@\n+use super::{hex, KEY_128, KEY_256};\n+use crate::encrypt::aes::{Aes, AesCbcError, Block};\n+\n+const IV: &str = \"a0a1a2a3a4a5a6a7a8a9aaabacadaeaf\";\n+\n+// CBC の各暗号文は OpenSSL で生成し、PDF の形式に合わせて先頭に IV を付ける。\n+fn pdf_ciphertext(blocks: &[Block]) -> Vec<u8> {\n+    let mut input = Vec::from(hex::<16>(IV));\n+    input.extend_from_slice(blocks.as_flattened());\n+    input\n+}\n+\n+#[test]\n+fn decrypts_pdf_aes256_with_prefixed_iv_and_padding() {\n+    let aes = Aes::new_256(&hex(KEY_256));\n+    let input = pdf_ciphertext(&[\n+        hex(\"aa21ce5618972cf6990c87a0b04065eb\"),\n+        hex(\"1da720b04e5dded942a216c5b4f681df\"),\n+    ]);\n+\n+    assert_eq!(aes.decrypt_pdf_cbc(&input).unwrap(), b\"PDF stream block!\");\n+}\n+\n+#[test]\n+fn removes_a_whole_padding_block_from_aligned_plaintext() {\n+    let aes = Aes::new_128(&hex(KEY_128));\n+    let input = pdf_ciphertext(&[\n+        hex(\"0f7108e8240171ebadaae9bf29a4fa21\"),\n+        hex(\"efc6d88a11d76f86b901e934bbb2cd7e\"),\n+    ]);\n+\n+    assert_eq!(aes.decrypt_pdf_cbc(&input).unwrap(), b\"0123456789ABCDEF\");\n+}\n+\n+#[test]\n+fn strips_one_padding_byte_and_keeps_the_same_value_in_plaintext() {\n+    let aes = Aes::new_128(&hex(KEY_128));\n+    let input = pdf_ciphertext(&[hex(\"c7c80bc82ca98d60ad992f01fb77b468\")]);\n+\n+    assert_eq!(aes.decrypt_pdf_cbc(&input).unwrap(), b\"0123456789ABCD\\x01\");\n+}\n+\n+#[test]\n+fn decrypts_a_full_padding_block_to_empty_plaintext() {\n+    let aes = Aes::new_128(&hex(KEY_128));\n+    let input = pdf_ciphertext(&[hex(\"e315209ed0e7c94f74a65c99f6eadc1e\")]);\n+\n+    assert!(aes.decrypt_pdf_cbc(&input).unwrap().is_empty());\n+}\n+\n+#[test]\n+fn rejects_missing_or_incomplete_iv_and_iv_without_ciphertext() {\n+    let aes = Aes::new_128(&hex(KEY_128));\n+    let iv = hex::<16>(IV);\n+\n+    for len in [0, 1, 15, 16] {\n+        assert_eq!(\n+            aes.decrypt_pdf_cbc(&iv[..len]),\n+            Err(AesCbcError::InvalidLength),\n+            \"入力が {len} バイトの場合\"\n+        );\n+    }\n+}\n+\n+#[test]\n+fn rejects_a_partial_ciphertext_block_after_the_iv() {\n+    let aes = Aes::new_128(&hex(KEY_128));\n+    let input = pdf_ciphertext(&[\n+        hex(\"0f7108e8240171ebadaae9bf29a4fa21\"),\n+        hex(\"efc6d88a11d76f86b901e934bbb2cd7e\"),\n+    ]);\n+\n+    for len in [17, 31, 33, 47] {\n+        assert_eq!(\n+            aes.decrypt_pdf_cbc(&input[..len]),\n+            Err(AesCbcError::InvalidLength),\n+            \"入力が {len} バイトの場合\"\n+        );\n+    }\n+}\n+\n+#[test]\n+fn rejects_zero_oversized_and_mismatched_padding() {\n+    let aes = Aes::new_128(&hex(KEY_128));\n+    // OpenSSL の -nopad で、仕様に合わない末尾を持つ平文をそのまま暗号化した。\n+    let cases = [\n+        (\"末尾が 00\", \"097fac153c4a60c65da846f2c62b7594\"),\n+        (\"末尾が 11\", \"59672297a6e1eea1bfa25f9998b916a2\"),\n+        (\"末尾が 01 02\", \"29f3f44782f54428d32dcaf8321b118d\"),\n+    ];\n+\n+    for (reason, ciphertext) in cases {\n+        let input = pdf_ciphertext(&[hex(ciphertext)]);\n+        assert_eq!(\n+            aes.decrypt_pdf_cbc(&input),\n+            Err(AesCbcError::InvalidPadding),\n+            \"{reason} の場合\"\n+        );\n+    }\n+}",
+          "patchLines": 101,
+          "truncated": false
+        }
+      ]
+    },
+    {
+      "sha": "a609c719a1a19de8383711c630a2660cef571f99",
+      "merge": false,
+      "author": "DIO0550",
+      "date": "2026-11-15T11:37:21+09:00",
+      "subject": "📝 [Doc]: #642 PDFのAES復号を図解する",
+      "body": "- PDFの暗号化文字列からIV、CBCの連鎖、パディングを順に説明する\n- /Permsの1ブロックを例にECBとCBCの適用先を示す\n- Rustで固定長の先頭チャンクを借りる書き方を説明する\n\n背景:\nPDFのAES暗号文と権限の暗号化コピーで、データの配置が異なる。\n\n採用理由:\n暗号化辞書の解説へ実際に復号できる抜粋を加え、\n辞書の指定とバイト列の形を一緒に追えるようにした。\n\n影響とトレードオフ:\n構文色は静的なCSSとspanで付ける。",
+      "files": [
+        {
+          "path": "docs/guides/README.md",
+          "status": "M",
+          "oldPath": null,
+          "additions": 1,
+          "deletions": 1,
+          "patch": "@@ -16,7 +16,7 @@ PDF機能の実装に合わせて、仕様の読み方と実装の振る舞い\n | [テキスト文字列](text-strings.html) | PDFDocEncoding・UTF-16BE・UTF-8、BOM判定、未割当バイト、サロゲート、不正入力の拒否／置換、バイト列との型境界 | [Issue #637](https://github.com/DIO0550/pdfmod/issues/637) / `rust/crates/core/src/text_string.rs` |\n | [日付文字列](date-format.html) | ISO 32000-1 / ISO 32000-2 構文、D: 接頭辞、階層的省略、タイムゾーン形式（' 区切り・Z）、うるう年・カレンダー厳格検証 | [Issue #638](https://github.com/DIO0550/pdfmod/issues/638) / `rust/crates/core/src/date.rs` |\n | [字句トークンと描画命令の境界](token-layers.html) | 字句解析と演算子の再分類、LexicalTokenとContentStreamToken、巻き戻しと画像辞書の型境界、Operator.value、正常例・未知の命令・壊れた画像 | [Issue #308](https://github.com/DIO0550/pdfmod/issues/308) / `packages/core/src/pdf/types/token/index.ts` |\n-| [暗号化辞書](encryption-dictionary.html) | Standard の6組と方式ごとの型・生成処理、crypt filter と Identity、鍵長の単位正規化、符号なし権限、未対応辞書の保持、間接参照と解析の境界、旧形式のMD5とRC4、リビジョン6のSHA-2 | [Issue #651](https://github.com/DIO0550/pdfmod/issues/651) / [Issue #639](https://github.com/DIO0550/pdfmod/issues/639) / [Issue #640](https://github.com/DIO0550/pdfmod/issues/640) / [Issue #641](https://github.com/DIO0550/pdfmod/issues/641) / `packages/core/src/pdf/encryption/index.ts` / `rust/crates/core/src/encrypt.rs` / `rust/crates/core/src/encrypt/md5.rs` / `rust/crates/core/src/encrypt/rc4.rs` / `rust/crates/core/src/encrypt/sha2.rs` |\n+| [暗号化辞書](encryption-dictionary.html) | Standard の6組と方式ごとの型・生成処理、crypt filter と Identity、鍵長の単位正規化、符号なし権限、未対応辞書の保持、間接参照と解析の境界、旧形式のMD5とRC4、リビジョン6のSHA-2、AESのIV・パディング・権限ブロック | [Issue #651](https://github.com/DIO0550/pdfmod/issues/651) / [Issue #639](https://github.com/DIO0550/pdfmod/issues/639) / [Issue #640](https://github.com/DIO0550/pdfmod/issues/640) / [Issue #641](https://github.com/DIO0550/pdfmod/issues/641) / [Issue #642](https://github.com/DIO0550/pdfmod/issues/642) / `packages/core/src/pdf/encryption/index.ts` / `rust/crates/core/src/encrypt.rs` / `rust/crates/core/src/encrypt/md5.rs` / `rust/crates/core/src/encrypt/rc4.rs` / `rust/crates/core/src/encrypt/sha2.rs` / `rust/crates/core/src/encrypt/aes.rs` |\n | [拡張グラフィックス状態](ext-gstate.html) | gs の名前解決、各パラメータ、Font の辞書指定、透明度、q/Q、警告と回復 | [Issue #667](https://github.com/DIO0550/pdfmod/issues/667) / `packages/core/src/content-stream/ext-gstate/index.ts` |\n | [パターンとシェーディング](patterns-shadings.html) | PatternType・ShadingType、着色と基底色、scn / SCN / sh、間接参照、Functionの未評価保持、警告と回復 | [Issue #677](https://github.com/DIO0550/pdfmod/issues/677) / `packages/core/src/content-stream/paint-resources/` / `packages/core/src/document/resources/pattern/` / `packages/core/src/document/resources/shading/` |\n ",
+          "patchLines": 9,
+          "truncated": false
+        },
+        {
+          "path": "docs/guides/encryption-dictionary.html",
+          "status": "M",
+          "oldPath": null,
+          "additions": 44,
+          "deletions": 1,
+          "patch": "@@ -165,7 +165,7 @@ nav a { font-size: 16px; } table { font-size: 17px; } th { font-size: 15px; }\n <a href=\"#permissions\"><span>05</span>権限のビット表現</a><a href=\"#examples\"><span>06</span>正常・未対応・不正</a>\n <a href=\"#implementation\"><span>07</span>解析の境界</a><a href=\"#algorithm-types\"><span>08</span>方式ごとの型と責務</a>\n <a href=\"#legacy-md5\"><span>09</span>旧リビジョンのMD5</a><a href=\"#legacy-rc4\"><span>10</span>旧形式のRC4</a>\n-<a href=\"#revision6-sha2\"><span>11</span>リビジョン6のSHA-2</a></nav></aside>\n+<a href=\"#revision6-sha2\"><span>11</span>リビジョン6のSHA-2</a><a href=\"#aes-decryption\"><span>12</span>AESのCBC・ECB復号</a></nav></aside>\n <main id=\"top\"><div class=\"wrap\"><header class=\"hero\"><div class=\"eyebrow\">PDF INTERNALS / ENCRYPTION DICTIONARY</div>\n <h1>暗号化辞書を読む</h1><p class=\"lead\">PDFの <code>/Encrypt</code> は、暗号化の方式と鍵の材料を記述します。アルゴリズムの版、crypt filter、権限を、解釈できる型へ変換する仕組みを見ていきます。</p></header>\n <section class=\"section\" id=\"overview\"><div class=\"section-heading\"><span class=\"number\">01</span><h2>暗号化の起点</h2></div>\n@@ -427,5 +427,48 @@ assert_eq!(digest, <span class=\"type\">Md5</span>::digest(<span class=\"string\">b\"\n }</code></pre>\n <div class=\"note\"><strong>Rustで使える処理</strong>3種類のSHA-2は固定長の配列だけで計算するため、ハッシュを繰り返すたびにヒープを確保する必要はありません。PDFのパスワード検証とファイル暗号鍵の取り出しは、このハッシュ処理を使う後続の実装です。</div>\n </section>\n+<section class=\"section\" id=\"aes-decryption\">\n+<div class=\"section-heading\"><span class=\"number\">12</span><h2>AESのCBC・ECB復号</h2></div>\n+<p>AESはデータを16バイトずつのブロックに分けて処理します。AES-128とAES-256の数字は鍵のビット数です。鍵の長さはそれぞれ16バイトと32バイトで、どちらもデータのブロック長は16バイトです。</p>\n+<h3>文字列の方式を辞書から読む</h3>\n+<p>以下は暗号化辞書と暗号化された文字列の抜粋です。<code>/StrF</code> と <code>/StmF</code> は文字列とストリームに適用するフィルタ名です。どちらも <code>/CF</code> 内の <code>/StdCF</code> を指すため、<code>/CFM /AESV3</code> が選ばれます。<code>/CFM /AESV2</code> を選ぶ形式では同じブロック構造をAES-128で処理します。</p>\n+<pre><code><span class=\"comment\">% 暗号化辞書の抜粋</span>\n+<span class=\"value\">8 0</span> <span class=\"pdf-syntax\">obj</span>\n+<span class=\"pdf-syntax\">&lt;&lt;</span> <span class=\"key\">/Filter</span> <span class=\"key\">/Standard</span> <span class=\"key\">/V</span> <span class=\"value\">5</span> <span class=\"key\">/R</span> <span class=\"value\">6</span>\n+   <span class=\"key\">/CF</span> <span class=\"pdf-syntax\">&lt;&lt;</span> <span class=\"key\">/StdCF</span> <span class=\"pdf-syntax\">&lt;&lt;</span> <span class=\"key\">/CFM</span> <span class=\"key\">/AESV3</span> <span class=\"pdf-syntax\">&gt;&gt; &gt;&gt;</span>\n+   <span class=\"key\">/StrF</span> <span class=\"key\">/StdCF</span> <span class=\"key\">/StmF</span> <span class=\"key\">/StdCF</span>\n+   <span class=\"key\">/P</span> <span class=\"value\">-4</span> <span class=\"key\">/Perms</span> <span class=\"string\">&lt;D2FFE8BC214EBC01DFF5AF20C2B755C8&gt;</span> <span class=\"pdf-syntax\">&gt;&gt;</span>\n+<span class=\"pdf-syntax\">endobj</span>\n+\n+<span class=\"comment\">% 暗号化文字列の抜粋。各行が16バイト</span>\n+<span class=\"value\">9 0</span> <span class=\"pdf-syntax\">obj</span>\n+<span class=\"pdf-syntax\">&lt;&lt;</span> <span class=\"key\">/Subject</span> <span class=\"string\">&lt;A0A1A2A3A4A5A6A7A8A9AAABACADAEAF\n+                AA21CE5618972CF6990C87A0B04065EB\n+                1DA720B04E5DDED942A216C5B4F681DF&gt;</span> <span class=\"pdf-syntax\">&gt;&gt;</span>\n+<span class=\"pdf-syntax\">endobj</span></code></pre>\n+<h3>CBCで先頭の16バイトを使う</h3>\n+<p>16進文字列の2桁が1バイトです。上の <code>/Subject</code> をバイト列として読むと48バイトになります。先頭の <code>A0</code> から <code>AF</code> までの16バイトがIV（初期化ベクトル）で、続く32バイトが暗号文です。IVは最初のブロックを復号するときのXORに使う値です。</p>\n+<ol class=\"steps\">\n+  <li><strong>1ブロック目</strong> AESで1ブロック復号し、その結果とIVを位置ごとにXORします。</li>\n+  <li><strong>2ブロック目以降</strong> AESで復号した結果と、直前の<strong>暗号文</strong>のブロックをXORします。この連鎖をCBC（Cipher Block Chaining）と呼びます。</li>\n+  <li><strong>パディングを外す</strong> 追加したバイト数を末尾の1バイトで読み取り、末尾にその値が同じ回数だけ並んでいることを確認して取り除きます。この例は末尾の <code>0F</code> が15個なので、32バイトから15バイトを除き、<code>PDF stream block!</code> の17バイトが残ります。</li>\n+</ol>\n+<div class=\"table-wrap\" tabindex=\"0\" role=\"region\" aria-label=\"PDFのCBC入力ごとの結果\">\n+<table><thead><tr><th scope=\"col\">IVと暗号文</th><th scope=\"col\">復号・検証の結果</th></tr></thead>\n+<tbody>\n+<tr><td>16バイトのIVと1ブロック。復号後の末尾16バイトがすべて <code>10</code>（16進数）</td><td>空の平文を返す。元データの長さが16の倍数なら、16バイト分のパディングを追加する。</td></tr>\n+<tr><td>空、IVだけ、または暗号文が16バイト単位の途中で終わる</td><td>長さのエラーを返す。IVに加え、16バイトの暗号文が1ブロック以上必要。</td></tr>\n+<tr><td>復号後の末尾が <code>00</code>、<code>11</code> 以上、または <code>01 02</code> で終わる</td><td>パディングのエラーを返す。<code>02</code> で終わる場合は末尾が <code>02 02</code> で揃う必要がある。</td></tr>\n+</tbody></table>\n+</div>\n+<h3>権限の <code>/Perms</code> は1ブロックのECB</h3>\n+<p>リビジョン5・6の <code>/Perms</code> は、ファイル暗号鍵を使ってAES-256のECB（Electronic Codebook）で復号します。ECBは各ブロックに直接AESを適用します。<code>/Perms</code> はIVもパディングも付かない16バイトで、復号後の全16バイトを権限の検証側に渡します。上の例では復号した先頭4バイト <code>FC FF FF FF</code> がリトルエンディアンの <code>/P -4</code> です。</p>\n+<h3>Rustで16バイトを切り出す</h3>\n+<pre><code><span class=\"keyword\">let</span> <span class=\"type\">Some</span>((iv, ciphertext)) = input.split_first_chunk::&lt;<span class=\"value\">BLOCK_LEN</span>&gt;() <span class=\"keyword\">else</span> {\n+    <span class=\"keyword\">return</span> <span class=\"type\">Err</span>(<span class=\"type\">AesCbcError</span>::InvalidLength);\n+};</code></pre>\n+<p><code>::&lt;BLOCK_LEN&gt;</code> は切り出す個数をコンパイル時に指定する書き方で、ここでは16です。成功を表す <code>Some((iv, ciphertext))</code> から2つの値を取り出します。<code>iv</code> は <code>&amp;[u8; 16]</code>（16バイトちょうどの配列への参照）、<code>ciphertext</code> は <code>&amp;[u8]</code>（残りのバイト列への参照）です。例えば <code>b\"abcde\".split_first_chunk::&lt;2&gt;()</code> なら、同じ元データから <code>ab</code> と <code>cde</code> を借ります。指定した長さに満たない場合は <code>None</code> となり、<code>else</code> の処理に進みます。</p>\n+<div class=\"note\"><strong>Rustで使える処理</strong>同じ鍵から作ったラウンド鍵をCBCとECBで共有します。パスワードからの鍵導出と、PDF読み込み中に対象を選び復号する処理は後続の実装です。</div>\n+</section>\n <footer><a href=\"#top\">最上部へ</a> · <a href=\"README.md\">解説一覧</a></footer></div></main>\n </body></html>",
+          "patchLines": 58,
+          "truncated": false,
+          "hunkOpeningLines": [
+            {
+              "old": null,
+              "new": null
+            },
+            {
+              "old": null,
+              "new": null
+            }
+          ]
+        },
+        {
+          "path": "docs/specs/02b_encryption.md",
+          "status": "M",
+          "oldPath": null,
+          "additions": 14,
+          "deletions": 0,
+          "patch": "@@ -157,3 +157,17 @@ Rust の `encrypt::sha2` は FIPS 180-4 §5.1–5.3、§6.2、§6.4–6.5 のバ\n `finalize` は終端の `80`（16進数）、ゼロ、元のビット長のビッグエンディアン表現を補い、ダイジェストを固定長配列で返す。\n SHA-384 は SHA-512 と圧縮処理を共有し、専用の初期値から計算した最終状態の先頭6ワードを出力する。\n `digest` は一続きの入力を受け取り、逐次入力と同様にヒープ確保なしでハッシュする。R6 の鍵導出への接続は #663 で扱う。\n+\n+## 10. AES-128 / AES-256 の復号\n+\n+ISO 32000-1:2008 / ISO 32000-2:2020 §7.6 の crypt filter で `/CFM /AESV2` は AES-128、`/CFM /AESV3` は AES-256 を表す。鍵長はそれぞれ 16・32 バイトで、AES のブロック長はどちらも 16 バイト（FIPS 197 §5.2–5.3）。\n+\n+| 対象 | 方式 | 初期化ベクトル（IV） | パディング |\n+| --- | --- | --- | --- |\n+| `/AESV2` の文字列・ストリーム | AES-128-CBC | データの先頭 16 バイト | 末尾の 1〜16 バイトを検証して除去 |\n+| `/AESV3` の文字列・ストリーム | AES-256-CBC | データの先頭 16 バイト | 末尾の 1〜16 バイトを検証して除去 |\n+| `/Perms` | AES-256-ECB | なし | なし。16 バイトをすべて保持 |\n+\n+CBC は 1 ブロックごとに AES の逆変換を行い、その結果を 1 ブロック目では IV、2 ブロック目以降では直前の暗号文と XOR する（NIST SP 800-38A §6.2）。パディングは追加したバイト数 `n` を末尾に `n` 個並べる。平文が空の場合も `10`（16 進数）が 16 個並ぶため、IV と暗号文を合わせて 32 バイトを要する。\n+\n+Rust の内部型 `encrypt::aes::Aes` は鍵を固定長配列で受け取り、AES-128 用に 11 個、AES-256 用に 15 個のラウンド鍵を作る。`decrypt_pdf_cbc` は IV の不足、暗号文が空、16 バイト単位の端数があるときに `InvalidLength`、復号後のパディングが不正なときに `InvalidPadding` を返す。`decrypt_ecb_block` は `/Perms` に使う固定長の復号を提供する。パスワード認証・鍵導出との接続は #663・#675、文字列・ストリームの読み込みへの接続は #683 で扱う。",
+          "patchLines": 18,
+          "truncated": false
+        }
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "from": "docs/guides/encryption-dictionary.html",
+      "to": "README.md",
+      "status": "kept"
+    },
+    {
+      "from": "docs/guides/encryption-dictionary.html",
+      "to": "docs/guides/README.md",
+      "status": "kept"
+    }
+  ]
+}
