@@ -1,0 +1,981 @@
+{
+  "version": 1,
+  "pr": 786,
+  "sha": "266ee0766ff8a292c7bd4c4954dbd7abc75ce832",
+  "issue": 662,
+  "overview": {
+    "title": "旧リビジョンの暗号化PDFからファイル暗号鍵を導出する",
+    "lead": "Rustの標準セキュリティハンドラにAlgorithm 2を追加します。暗号化辞書とトレイラから入力を取り出し、パスワードのバイト列からファイル暗号鍵を求めます。",
+    "before": [
+      {
+        "text": "暗号化辞書とトレイラを読み取れました。パスワードと辞書の値を組み合わせて鍵を計算する入口が必要でした。"
+      }
+    ],
+    "after": [
+      {
+        "text": "R2〜R4から鍵長と再ハッシュ回数を決め、ファイル暗号鍵を返します。",
+        "message": "derive"
+      },
+      {
+        "text": "トレイラの永続IDが欠けている場合は、呼び出し側が識別できるエラーを返します。"
+      }
+    ],
+    "highlights": [
+      {
+        "title": "鍵の材料を読む",
+        "text": "トレイラの永続IDと暗号化辞書の値を参照します。",
+        "go": {
+          "kind": "flow",
+          "id": "r4-flow"
+        }
+      },
+      {
+        "title": "保存された照合値で確認する",
+        "text": "別実装で生成したPDFから取得した鍵と利用者の照合値を期待値にします。",
+        "go": {
+          "kind": "file",
+          "path": "rust/crates/core/src/encrypt/legacy_key/tests/vectors.rs"
+        }
+      }
+    ]
+  },
+  "concepts": [
+    {
+      "path": "rust/crates/core/src/encrypt/legacy_key.rs",
+      "name": "ファイル暗号鍵の導出",
+      "role": "標準セキュリティハンドラからAlgorithm 2の鍵を求める。",
+      "change": "リビジョン、ID、鍵長、メタデータ指定を取り扱う。"
+    },
+    {
+      "path": "rust/crates/core/src/encrypt/md5.rs",
+      "name": "MD5",
+      "role": "MD5の16バイト出力を計算する。",
+      "change": "出力の長さを暗号化モジュール内で共有する。"
+    },
+    {
+      "path": "rust/crates/core/src/xref/trailer/file_id.rs",
+      "name": "トレイラのファイルID",
+      "role": "永続IDと変更IDを区別して保持する。"
+    },
+    {
+      "path": "rust/crates/core/src/encrypt/rc4.rs",
+      "name": "RC4",
+      "role": "鍵を使ってバイト列にRC4を適用する。"
+    },
+    {
+      "path": "rust/crates/core/src/encrypt/legacy_key/tests/vectors.rs",
+      "name": "既知の鍵と照合値",
+      "role": "PDFの抜粋から鍵を求め、既知の鍵と辞書の照合値に照らし合わせる。"
+    },
+    {
+      "path": "rust/crates/core/src/encrypt/legacy_key/tests/inputs.rs",
+      "name": "境界入力のテスト",
+      "role": "欠落やバイト数の境界、同じビットパターンの入力を確認する。"
+    },
+    {
+      "path": "docs/guides/encryption-dictionary.html",
+      "name": "暗号化辞書のHTML解説",
+      "role": "色分けしたR4 PDF抜粋と結果から鍵導出を読み解く。"
+    }
+  ],
+  "messages": [
+    {
+      "id": "derive",
+      "from": "rust/crates/core/src/encrypt/legacy_key/tests/vectors.rs",
+      "to": "rust/crates/core/src/encrypt/legacy_key.rs",
+      "kind": "qry",
+      "name": "鍵を導出する",
+      "code": "handler.derive_legacy_file_key(password, Some(id))",
+      "via": "call",
+      "payload": "パスワードのバイト列とトレイラのID",
+      "returns": "ファイル暗号鍵、または導出できない理由",
+      "status": "added"
+    },
+    {
+      "id": "read-id",
+      "from": "rust/crates/core/src/encrypt/legacy_key.rs",
+      "to": "rust/crates/core/src/xref/trailer/file_id.rs",
+      "kind": "qry",
+      "name": "永続IDを借りる",
+      "code": "file_id.permanent()",
+      "via": "call",
+      "payload": "解析済みのIDペア",
+      "returns": "トレイラの第1要素のバイト列",
+      "status": "added"
+    },
+    {
+      "id": "initial-digest",
+      "from": "rust/crates/core/src/encrypt/legacy_key.rs",
+      "to": "rust/crates/core/src/encrypt/md5.rs",
+      "kind": "qry",
+      "name": "入力を順にハッシュする",
+      "code": "md5.update(...) / md5.finalize()",
+      "via": "call",
+      "payload": "整えたパスワード、/O、/P、永続ID、R4の条件付き固定値",
+      "returns": "16バイトの初回ダイジェスト",
+      "status": "added"
+    },
+    {
+      "id": "rehash",
+      "from": "rust/crates/core/src/encrypt/legacy_key.rs",
+      "to": "rust/crates/core/src/encrypt/md5.rs",
+      "kind": "qry",
+      "name": "前の出力の先頭部分を掛け直す",
+      "code": "Md5::digest(key.as_bytes())",
+      "via": "call",
+      "payload": "直前の出力のうち鍵長に相当する部分",
+      "returns": "次の16バイトのダイジェスト",
+      "status": "added"
+    },
+    {
+      "id": "check-u",
+      "from": "rust/crates/core/src/encrypt/legacy_key/tests/vectors.rs",
+      "to": "rust/crates/core/src/encrypt/rc4.rs",
+      "kind": "qry",
+      "name": "利用者の照合値を検証する",
+      "code": "Rc4::new(...).apply(...)",
+      "via": "call",
+      "payload": "導出した鍵で計算した照合材料",
+      "returns": "PDFに保存された /U と比較するバイト列",
+      "status": "added"
+    }
+  ],
+  "flows": [
+    {
+      "id": "r4-flow",
+      "label": "R4のファイル暗号鍵を求め、テストで照合する",
+      "steps": [
+        "derive",
+        "read-id",
+        "initial-digest",
+        "rehash",
+        "check-u"
+      ]
+    }
+  ],
+  "commitStories": [
+    {
+      "sha": "28b7463bdb4141122796e047dcfe29359d2e58d3",
+      "phase": "core",
+      "role": "標準ハンドラにR2〜R4の鍵導出を加える",
+      "why": "暗号化辞書の解析で取り出した材料を再利用し、パスワード認証が利用できる鍵を得るため。",
+      "flows": [
+        "r4-flow"
+      ],
+      "review": [
+        "リビジョンの違いで、鍵長・再ハッシュ・メタデータ指定がどう変わるか",
+        "トレイラにIDがない場合、呼び出し側へどう伝えるか"
+      ],
+      "notes": [
+        {
+          "path": "rust/crates/core/src/encrypt.rs",
+          "start": 6,
+          "end": 11,
+          "text": "暗号化モジュールの対応範囲にR2〜R4の鍵導出を加えます。R5・R6の鍵導出とパスワード認証は後続です。"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt.rs",
+          "start": 33,
+          "end": 34,
+          "text": "導出した鍵と失敗理由の型を公開モジュールから参照できます。MD5が実処理から呼ばれるため、後続用の未使用コード属性を外します。"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/md5.rs",
+          "start": 7,
+          "end": 7,
+          "text": "MD5の固定出力16バイトを暗号化モジュール内で共有し、鍵の領域と長さ検証に同じ値を使います。"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/legacy_key.rs",
+          "start": 10,
+          "end": 16,
+          "text": "仕様のパスワード用32バイト列、R4の固定値4バイト、再ハッシュ回数50を定義します。"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/legacy_key.rs",
+          "start": 18,
+          "end": 32,
+          "text": "鍵長と16バイトの領域を持ちます。公開アクセサは鍵長に相当する先頭だけを借用で返します。"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/legacy_key.rs",
+          "start": 34,
+          "end": 42,
+          "text": "デバッグ表示には鍵長を載せ、鍵のバイト列を表示から除きます。"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/legacy_key.rs",
+          "start": 44,
+          "end": 61,
+          "text": "対象外のリビジョン、欠落したID、/Oの長さ違い、ダイジェストに収まらない鍵長を区別して返します。"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/legacy_key.rs",
+          "start": 63,
+          "end": 83,
+          "text": "ハンドラとパスワード、トレイラから借りたIDを受け取ります。R2では初回のMD5で足り、R3・R4ではさらに50回適用します。R5・R6には別の導出手順があるためここで終了します。"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/legacy_key.rs",
+          "start": 85,
+          "end": 92,
+          "text": "IDがなければ欠落エラーを返し、/Oは長さ32の参照に変換します。辞書解析で読み取ったバイト列の実際の長さをここで検証します。"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/legacy_key.rs",
+          "start": 94,
+          "end": 97,
+          "text": "辞書解析で決まった鍵長を取得し、MD5が返す16バイトに収まることを確認します。この確認が鍵の先頭を取り出すときの範囲を保証します。"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/legacy_key.rs",
+          "start": 99,
+          "end": 104,
+          "text": "32バイトのパスワード、/O、/Pの4バイト、永続IDを順にMD5に渡します。更新で変わるIDには依存せず、中間の連結バッファも必要ありません。"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/legacy_key.rs",
+          "start": 105,
+          "end": 107,
+          "text": "R4でメタデータを暗号化しない設定だけ、最初のMD5の入力末尾にFFを4バイト足します。"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/legacy_key.rs",
+          "start": 109,
+          "end": 116,
+          "text": "初回のダイジェストを鍵の保持領域へ入れます。R3・R4の各反復は先頭の鍵長分を入力にし、最後に残ったダイジェストから鍵を返します。"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/legacy_key.rs",
+          "start": 120,
+          "end": 127,
+          "text": "入力の後ろに標準パディングの列をつなぎ、固定長配列の32枠に順に書き込みます。32枠が埋まった時点で止まるので、長い入力の余分なバイトを切り詰めます。"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/legacy_key/tests.rs",
+          "start": 8,
+          "end": 16,
+          "text": "qpdfで生成したPDFからトレイラを用意し、既存のトレイラ解析を通します。IDの解釈を本番と共通にします。"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/legacy_key/tests/vectors.rs",
+          "start": 8,
+          "end": 25,
+          "text": "qpdfで生成したR2〜R4 PDFの辞書と、そのqpdfが報告した鍵を固定データとして置きます。"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/legacy_key/tests/vectors.rs",
+          "start": 27,
+          "end": 38,
+          "text": "空パスワードのR2は5バイトを返し、R3の128ビット鍵は16バイトを返すことを確認します。R2の辞書に別の長さを書いた場合も境界を検証します。"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/legacy_key/tests/vectors.rs",
+          "start": 40,
+          "end": 61,
+          "text": "pypdf由来の64ビットと40ビットの既知値を使い、各反復が16バイト全体に掛かる誤りや、R3で50回の反復が省略される誤りを検出します。"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/legacy_key/tests/vectors.rs",
+          "start": 63,
+          "end": 79,
+          "text": "同じ材料のR4でメタデータを暗号化しない設定と省略時の設定を比べ、それぞれの既知の照合値に一致することを確認します。"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/legacy_key/tests/vectors.rs",
+          "start": 81,
+          "end": 89,
+          "text": "PDFの生バイトから辞書とトレイラを読み取り、導出した鍵を外部実装の鍵と比較します。"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/legacy_key/tests/vectors.rs",
+          "start": 91,
+          "end": 99,
+          "text": "R2ではパディングをRC4で暗号化し、辞書に保存された利用者の照合値全体と比べます。"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/legacy_key/tests/vectors.rs",
+          "start": 101,
+          "end": 112,
+          "text": "R3・R4ではパディングと永続IDのMD5に20回RC4を適用します。辞書の利用者照合値のうち、仕様が比較対象にする先頭16バイトを照合します。"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/legacy_key/tests/inputs.rs",
+          "start": 8,
+          "end": 19,
+          "text": "/Pの符号なし表記を解析し、符号付きの既知PDFと同じ鍵を得ます。"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/legacy_key/tests/inputs.rs",
+          "start": 21,
+          "end": 34,
+          "text": "トレイラに同じ永続IDと別の変更IDを渡し、更新後のIDが鍵に影響しないことを確認します。"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/legacy_key/tests/inputs.rs",
+          "start": 36,
+          "end": 59,
+          "text": "欠落した/IDは専用のエラーになり、長さが0でも要素が存在するIDは鍵計算へ進みます。"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/legacy_key/tests/inputs.rs",
+          "start": 61,
+          "end": 72,
+          "text": "既知の32バイトの後ろにバイナリを追加し、余分な部分を切り詰めても同じ鍵が得られることを確認します。"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/legacy_key/tests/inputs.rs",
+          "start": 74,
+          "end": 93,
+          "text": "31バイトと33バイトの/Oを含む辞書の解析に成功した後、導出時に実際の長さをエラーとして返すことを確かめます。"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/legacy_key/tests/inputs.rs",
+          "start": 95,
+          "end": 111,
+          "text": "R5・R6の辞書を指定すると、R2〜R4の導出では対象外のリビジョンとして扱われることを確認します。"
+        }
+      ]
+    },
+    {
+      "sha": "266ee0766ff8a292c7bd4c4954dbd7abc75ce832",
+      "phase": "fin",
+      "role": "実際のPDFとRustコードから鍵導出を説明する",
+      "why": "PDFの各値がいつ読み取られ、鍵やエラーにどうつながるかを読者が追えるようにするため。",
+      "notes": [
+        {
+          "path": "docs/guides/README.md",
+          "start": 19,
+          "end": 19,
+          "text": "解説一覧からRustの鍵導出の読み方に移動できるようリンクを追加します。"
+        },
+        {
+          "path": "docs/guides/encryption-dictionary.html",
+          "start": 167,
+          "end": 167,
+          "text": "目次で、MD5の説明と旧リビジョンの鍵導出が同じ節にあると分かるようにします。"
+        },
+        {
+          "path": "docs/guides/encryption-dictionary.html",
+          "start": 326,
+          "end": 333,
+          "text": "既知のR4 PDFにある完全な/O・/U値と、権限やメタデータ設定を色分けした抜粋に差し替えます。"
+        },
+        {
+          "path": "docs/guides/encryption-dictionary.html",
+          "start": 334,
+          "end": 339,
+          "text": "暗号化辞書への参照とIDペアを示し、第1要素の入力上の役割を説明します。"
+        },
+        {
+          "path": "docs/guides/encryption-dictionary.html",
+          "start": 342,
+          "end": 344,
+          "text": "短いパスワードのバイト列、/Pの変換結果、R4の4バイト追加の順を、実際の値で示します。"
+        },
+        {
+          "path": "docs/guides/encryption-dictionary.html",
+          "start": 345,
+          "end": 353,
+          "text": "リビジョン別に出力鍵長と再ハッシュ回数を示し、R4例の導出結果と/U照合を添えます。"
+        },
+        {
+          "path": "docs/guides/encryption-dictionary.html",
+          "start": 356,
+          "end": 360,
+          "text": "Rustの呼び出しに出てくるバイト文字列、Option、借用、疑問符を用語から説明し、ID欠落・/O不正と認証の関係を示します。"
+        },
+        {
+          "path": "docs/guides/encryption-dictionary.html",
+          "start": 381,
+          "end": 381,
+          "text": "MD5節の現在の実装に応じて、同じダイジェスト領域を再利用する点を説明します。"
+        },
+        {
+          "path": "docs/guides/encryption-dictionary.html",
+          "start": 491,
+          "end": 491,
+          "text": "AES節では、AES-256のファイル暗号鍵導出とファイル内の対象を選ぶ復号を後続として明記します。"
+        },
+        {
+          "path": "docs/specs/02b_encryption.md",
+          "start": 5,
+          "end": 5,
+          "text": "文書冒頭の対象に旧リビジョンの鍵導出を加えます。"
+        },
+        {
+          "path": "docs/specs/02b_encryption.md",
+          "start": 112,
+          "end": 112,
+          "text": "Rustで導出できるリビジョンの説明からAlgorithm 2の節に案内します。"
+        },
+        {
+          "path": "docs/specs/02b_encryption.md",
+          "start": 141,
+          "end": 141,
+          "text": "RC4の節は、認証とPDF読み込みへの接続を後続の作業として示します。"
+        },
+        {
+          "path": "docs/specs/02b_encryption.md",
+          "start": 175,
+          "end": 180,
+          "text": "Algorithm 2の入力順序とパスワードの端数、/Pと永続IDのバイト表現を記録します。"
+        },
+        {
+          "path": "docs/specs/02b_encryption.md",
+          "start": 181,
+          "end": 182,
+          "text": "メタデータの条件と50回反復の範囲を仕様書に示します。鍵長の決まりもここから読めます。"
+        },
+        {
+          "path": "docs/specs/02b_encryption.md",
+          "start": 184,
+          "end": 184,
+          "text": "辞書から取り出した値のうち、鍵導出時にエラーになる条件と空のIDの扱いを記録します。"
+        }
+      ]
+    }
+  ],
+  "suites": [
+    {
+      "id": "vectors",
+      "label": "既知の鍵と利用者の照合値",
+      "file": "rust/crates/core/src/encrypt/legacy_key/tests/vectors.rs"
+    },
+    {
+      "id": "inputs",
+      "label": "鍵導出の境界入力",
+      "file": "rust/crates/core/src/encrypt/legacy_key/tests/inputs.rs"
+    }
+  ],
+  "tests": [
+    {
+      "id": "r2-empty",
+      "suite": "vectors",
+      "name": "r2_uses_five_bytes_and_matches_all_of_u_for_an_empty_password",
+      "techniques": [
+        "boundary",
+        "regression"
+      ],
+      "given": "R2と空の利用者パスワード",
+      "when": "元の辞書と鍵長を書き換えた辞書から鍵を導出する",
+      "then": "どちらも同じ5バイトで、利用者照合値の全32バイトと一致する",
+      "why": "R2は仕様で鍵長が固定され、空入力は規定の32バイトで埋まる。",
+      "commit": "28b7463bdb4141122796e047dcfe29359d2e58d3",
+      "excerpt": {
+        "path": "rust/crates/core/src/encrypt/legacy_key/tests/vectors.rs",
+        "start": 28,
+        "end": 33,
+        "text": "fn r2_uses_five_bytes_and_matches_all_of_u_for_an_empty_password() {\n    assert_key_and_user_entry(R2.as_bytes(), b\"\", R2_KEY);\n\n    let ignored_length = R2.replace(\"/Length 40\", \"/Length 128\");\n    assert_key_and_user_entry(ignored_length.as_bytes(), b\"\", R2_KEY);\n}"
+      },
+      "targets": [
+        "rust/crates/core/src/encrypt/legacy_key.rs"
+      ],
+      "covers": [
+        "derive",
+        "check-u"
+      ]
+    },
+    {
+      "id": "r3-128",
+      "suite": "vectors",
+      "name": "r3_matches_u_for_a_128_bit_key",
+      "techniques": [
+        "regression"
+      ],
+      "given": "128ビットを指定するR3と長さ32バイトのパスワード",
+      "when": "鍵を導出して照合値を再計算する",
+      "then": "既知の16バイトの鍵と利用者照合値の先頭が一致する",
+      "why": "一般的なR3の128ビット鍵で反復後の結果を確かめる。",
+      "commit": "28b7463bdb4141122796e047dcfe29359d2e58d3",
+      "excerpt": {
+        "path": "rust/crates/core/src/encrypt/legacy_key/tests/vectors.rs",
+        "start": 36,
+        "end": 38,
+        "text": "fn r3_matches_u_for_a_128_bit_key() {\n    assert_key_and_user_entry(R3, R3_PASSWORD, R3_KEY);\n}"
+      },
+      "targets": [
+        "rust/crates/core/src/encrypt/legacy_key.rs"
+      ],
+      "covers": [
+        "rehash",
+        "check-u"
+      ]
+    },
+    {
+      "id": "r3-64",
+      "suite": "vectors",
+      "name": "r3_rehashes_only_the_eight_key_bytes_for_length_64",
+      "techniques": [
+        "boundary",
+        "regression"
+      ],
+      "given": "鍵長64ビットのR3辞書",
+      "when": "直前の結果の先頭8バイトを使う鍵導出を行う",
+      "then": "pypdfの8バイトの既知鍵に一致する",
+      "why": "16バイト全体をハッシュした場合と結果を区別できる。",
+      "commit": "28b7463bdb4141122796e047dcfe29359d2e58d3",
+      "excerpt": {
+        "path": "rust/crates/core/src/encrypt/legacy_key/tests/vectors.rs",
+        "start": 41,
+        "end": 48,
+        "text": "fn r3_rehashes_only_the_eight_key_bytes_for_length_64() {\n    // pypdf AlgV4 で求めた /O、/U、鍵を使い、16 バイト全体を再ハッシュすると検出する。\n    let dictionary = b\"<< /Filter /Standard /V 2 /R 3 /Length 64 /P -4\n        /O <808b6846e0e99aee3b4dec725c7deb74982fc6c0b56891fc8add0a28ba8cdfe2>\n        /U <6a5ab84c371817650499ca0001d73d7228bf4e5e4e758a4164004e56fffa0108> >>\";\n\n    assert_key_and_user_entry(dictionary, b\"user\", b\"\\xb6\\x33\\xf3\\x0b\\x9f\\xfd\\x9d\\x54\");\n}"
+      },
+      "targets": [
+        "rust/crates/core/src/encrypt/legacy_key.rs"
+      ],
+      "covers": [
+        "rehash",
+        "check-u"
+      ]
+    },
+    {
+      "id": "r3-40",
+      "suite": "vectors",
+      "name": "r3_uses_five_bytes_for_v1_and_when_v2_omits_length",
+      "techniques": [
+        "boundary",
+        "equivalence"
+      ],
+      "given": "リビジョン3のV1と、鍵長省略のV2",
+      "when": "それぞれ5バイトの鍵を求める",
+      "then": "両方が50回反復した既知値と一致する",
+      "why": "鍵長が同じR2とR3で、再ハッシュ回数が違うことを検証する。",
+      "commit": "28b7463bdb4141122796e047dcfe29359d2e58d3",
+      "excerpt": {
+        "path": "rust/crates/core/src/encrypt/legacy_key/tests/vectors.rs",
+        "start": 51,
+        "end": 61,
+        "text": "fn r3_uses_five_bytes_for_v1_and_when_v2_omits_length() {\n    // pypdf AlgV4 で求めた /O、/U、鍵。両方とも R3 の 50 回反復が必要。\n    let v1 = \"<< /Filter /Standard /V 1 /R 3 /P -4 /EncryptMetadata false\n        /O <3c482162008fafcb228b7db3c43a1090bc5b56e9b1556e89fc0656fd291f4908>\n        /U <d3b1553015c7d57ed4c8a35b0f084ee928bf4e5e4e758a4164004e56fffa0108> >>\";\n    let v2 = v1.replace(\"/V 1\", \"/V 2\");\n    let expected = b\"\\x01\\x85\\x6e\\x76\\xcd\";\n\n    assert_key_and_user_entry(v1.as_bytes(), b\"user\", expected);\n    assert_key_and_user_entry(v2.as_bytes(), b\"user\", expected);\n}"
+      },
+      "targets": [
+        "rust/crates/core/src/encrypt/legacy_key.rs"
+      ],
+      "covers": [
+        "rehash",
+        "check-u"
+      ]
+    },
+    {
+      "id": "r4-clear",
+      "suite": "vectors",
+      "name": "r4_matches_u_when_metadata_is_clear",
+      "techniques": [
+        "regression"
+      ],
+      "given": "メタデータ暗号化を省くR4のPDF",
+      "when": "短い利用者パスワードから鍵を求める",
+      "then": "qpdfの鍵と利用者照合値に一致する",
+      "why": "最初のMD5に条件付きで4バイトが足される分岐を確認する。",
+      "commit": "28b7463bdb4141122796e047dcfe29359d2e58d3",
+      "excerpt": {
+        "path": "rust/crates/core/src/encrypt/legacy_key/tests/vectors.rs",
+        "start": 64,
+        "end": 66,
+        "text": "fn r4_matches_u_when_metadata_is_clear() {\n    assert_key_and_user_entry(R4_CLEAR_METADATA.as_bytes(), b\"user\", R4_CLEAR_METADATA_KEY);\n}"
+      },
+      "targets": [
+        "rust/crates/core/src/encrypt/legacy_key.rs"
+      ],
+      "covers": [
+        "initial-digest",
+        "check-u"
+      ]
+    },
+    {
+      "id": "r4-default",
+      "suite": "vectors",
+      "name": "r4_matches_u_when_metadata_is_encrypted_by_default",
+      "techniques": [
+        "equivalence",
+        "regression"
+      ],
+      "given": "メタデータ設定を省略したR4のPDF",
+      "when": "既定の設定で鍵を求める",
+      "then": "メタデータ暗号化ありの既知鍵と照合値に一致する",
+      "why": "省略時の既定値を守り、常に4バイトを足す誤りを検出する。",
+      "commit": "28b7463bdb4141122796e047dcfe29359d2e58d3",
+      "excerpt": {
+        "path": "rust/crates/core/src/encrypt/legacy_key/tests/vectors.rs",
+        "start": 69,
+        "end": 79,
+        "text": "fn r4_matches_u_when_metadata_is_encrypted_by_default() {\n    let dictionary = R4_CLEAR_METADATA\n        .replace(\" /EncryptMetadata false\", \"\")\n        .replace(\n            \"3250600e32dc6a8eae7dc501b5ba8e52\",\n            \"e250eb5d8e3c3f343517acaccb13a1bb\",\n        );\n    let expected = b\"\\x08\\x7e\\xdb\\xc7\\x0b\\x1e\\x23\\x18\\x0c\\xdb\\xf4\\x85\\xf8\\x2f\\x3a\\xb3\";\n\n    assert_key_and_user_entry(dictionary.as_bytes(), b\"user\", expected);\n}"
+      },
+      "targets": [
+        "rust/crates/core/src/encrypt/legacy_key.rs"
+      ],
+      "covers": [
+        "initial-digest",
+        "check-u"
+      ]
+    },
+    {
+      "id": "unsigned-p",
+      "suite": "inputs",
+      "name": "unsigned_permissions_give_the_same_key_as_signed_permissions",
+      "techniques": [
+        "equivalence"
+      ],
+      "given": "符号付きの権限 -3392 を 4294963904 と書いた辞書",
+      "when": "辞書を解析し、鍵を導出する",
+      "then": "元の符号付き表記と同じ既知鍵が出る",
+      "why": "両方の表記が同じリトルエンディアン4バイトになることを確認する。",
+      "commit": "28b7463bdb4141122796e047dcfe29359d2e58d3",
+      "excerpt": {
+        "path": "rust/crates/core/src/encrypt/legacy_key/tests/inputs.rs",
+        "start": 9,
+        "end": 19,
+        "text": "fn unsigned_permissions_give_the_same_key_as_signed_permissions() {\n    let unsigned = R4_CLEAR_METADATA.replace(\"/P -3392\", \"/P 4294963904\");\n    let encryption = encrypt(unsigned.as_bytes());\n    let handler = encryption.as_standard().expect(\"標準ハンドラを取得できる\");\n    let trailer = parse_trailer(TRAILER);\n    let key = handler\n        .derive_legacy_file_key(b\"user\", trailer.id())\n        .expect(\"符号なし表記でも鍵を導出できる\");\n\n    assert_eq!(key.as_bytes(), R4_CLEAR_METADATA_KEY);\n}"
+      },
+      "targets": [
+        "rust/crates/core/src/encrypt/legacy_key.rs"
+      ],
+      "covers": [
+        "initial-digest"
+      ]
+    },
+    {
+      "id": "changing-id",
+      "suite": "inputs",
+      "name": "derives_the_same_key_when_only_the_changing_id_is_replaced",
+      "techniques": [
+        "equivalence"
+      ],
+      "given": "第2要素だけが変わったトレイラ",
+      "when": "元と同じパスワードで鍵を求める",
+      "then": "元のPDFの鍵と一致する",
+      "why": "MD5にトレイラの永続IDだけを入力することを確認する。",
+      "commit": "28b7463bdb4141122796e047dcfe29359d2e58d3",
+      "excerpt": {
+        "path": "rust/crates/core/src/encrypt/legacy_key/tests/inputs.rs",
+        "start": 22,
+        "end": 34,
+        "text": "fn derives_the_same_key_when_only_the_changing_id_is_replaced() {\n    let encryption = encrypt(R2.as_bytes());\n    let handler = encryption.as_standard().expect(\"標準ハンドラを取得できる\");\n    let trailer = parse_trailer(\n        b\"trailer << /Root 1 0 R /Size 6 /Encrypt 5 0 R\n            /ID [<31415926535897932384626433832795> (updated)] >>\",\n    );\n    let key = handler\n        .derive_legacy_file_key(b\"\", trailer.id())\n        .expect(\"更新後のトレイラでも鍵を導出できる\");\n\n    assert_eq!(key.as_bytes(), R2_KEY);\n}"
+      },
+      "targets": [
+        "rust/crates/core/src/encrypt/legacy_key.rs"
+      ],
+      "covers": [
+        "read-id"
+      ]
+    },
+    {
+      "id": "absent-id",
+      "suite": "inputs",
+      "name": "reports_a_missing_file_id_at_derivation",
+      "techniques": [
+        "error"
+      ],
+      "given": "暗号化辞書がありIDのないトレイラ",
+      "when": "鍵を導出する",
+      "then": "欠落を表す専用エラーが出る",
+      "why": "IDの欠落を空のデータへの置き換えで隠さないようにする。",
+      "commit": "28b7463bdb4141122796e047dcfe29359d2e58d3",
+      "excerpt": {
+        "path": "rust/crates/core/src/encrypt/legacy_key/tests/inputs.rs",
+        "start": 37,
+        "end": 46,
+        "text": "fn reports_a_missing_file_id_at_derivation() {\n    let encryption = encrypt(R2.as_bytes());\n    let handler = encryption.as_standard().expect(\"標準ハンドラを取得できる\");\n    let trailer = parse_trailer(b\"trailer << /Root 1 0 R /Size 6 /Encrypt 5 0 R >>\");\n    let error = handler\n        .derive_legacy_file_key(b\"\", trailer.id())\n        .expect_err(\"/ID が欠けていると鍵は導出できない\");\n\n    assert_eq!(error, LegacyFileKeyError::MissingFileId);\n}"
+      },
+      "targets": [
+        "rust/crates/core/src/encrypt/legacy_key.rs"
+      ],
+      "covers": [
+        "derive"
+      ]
+    },
+    {
+      "id": "empty-id",
+      "suite": "inputs",
+      "name": "accepts_a_present_file_id_with_an_empty_permanent_entry",
+      "techniques": [
+        "boundary"
+      ],
+      "given": "空の2要素があるトレイラ",
+      "when": "空バイト列として鍵の入力へ渡す",
+      "then": "永続IDを0バイトとした既知鍵に一致する",
+      "why": "値が存在する場合と欠落した場合を検証する。",
+      "commit": "28b7463bdb4141122796e047dcfe29359d2e58d3",
+      "excerpt": {
+        "path": "rust/crates/core/src/encrypt/legacy_key/tests/inputs.rs",
+        "start": 49,
+        "end": 59,
+        "text": "fn accepts_a_present_file_id_with_an_empty_permanent_entry() {\n    let encryption = encrypt(R2.as_bytes());\n    let handler = encryption.as_standard().expect(\"標準ハンドラを取得できる\");\n    let trailer = parse_trailer(b\"trailer << /Root 1 0 R /Size 6 /Encrypt 5 0 R /ID [<> ()] >>\");\n    let key = handler\n        .derive_legacy_file_key(b\"\", trailer.id())\n        .expect(\"空の永続 ID で鍵を導出できる\");\n\n    // 永続 ID が空の場合の鍵は pypdf AlgV4 で確認した。\n    assert_eq!(key.as_bytes(), b\"\\xc1\\xdc\\xdc\\xa0\\x2b\");\n}"
+      },
+      "targets": [
+        "rust/crates/core/src/encrypt/legacy_key.rs"
+      ],
+      "covers": [
+        "read-id"
+      ]
+    },
+    {
+      "id": "long-password",
+      "suite": "inputs",
+      "name": "truncates_the_password_after_32_bytes",
+      "techniques": [
+        "boundary"
+      ],
+      "given": "既知の32バイトのパスワードに文字とバイナリを足した入力",
+      "when": "鍵を求める",
+      "then": "先頭の32バイトで導出した鍵と一致する",
+      "why": "パスワードの上限をバイト数で適用することを確かめる。",
+      "commit": "28b7463bdb4141122796e047dcfe29359d2e58d3",
+      "excerpt": {
+        "path": "rust/crates/core/src/encrypt/legacy_key/tests/inputs.rs",
+        "start": 62,
+        "end": 72,
+        "text": "fn truncates_the_password_after_32_bytes() {\n    let encryption = encrypt(R3);\n    let handler = encryption.as_standard().expect(\"標準ハンドラを取得できる\");\n    let trailer = parse_trailer(TRAILER);\n    let long_password = [R3_PASSWORD.as_slice(), b\"\\x00\\xffextra\"].concat();\n    let key = handler\n        .derive_legacy_file_key(&long_password, trailer.id())\n        .expect(\"32 バイト超の入力でも鍵を導出できる\");\n\n    assert_eq!(key.as_bytes(), R3_KEY);\n}"
+      },
+      "targets": [
+        "rust/crates/core/src/encrypt/legacy_key.rs"
+      ],
+      "covers": [
+        "initial-digest"
+      ]
+    },
+    {
+      "id": "owner-length",
+      "suite": "inputs",
+      "name": "reports_short_and_long_owner_entries_at_derivation",
+      "techniques": [
+        "error",
+        "boundary"
+      ],
+      "given": "31バイトと33バイトの所有者項目",
+      "when": "辞書解析後に鍵導出を呼ぶ",
+      "then": "実際の長さを持つエラーがどちらにも返る",
+      "why": "32バイトの前後を選び、余分または不足した材料による鍵計算を防ぐ。",
+      "commit": "28b7463bdb4141122796e047dcfe29359d2e58d3",
+      "excerpt": {
+        "path": "rust/crates/core/src/encrypt/legacy_key/tests/inputs.rs",
+        "start": 75,
+        "end": 93,
+        "text": "fn reports_short_and_long_owner_entries_at_derivation() {\n    let trailer = parse_trailer(TRAILER);\n    for actual in [31, 33] {\n        let dictionary = format!(\n            \"<< /Filter /Standard /V 1 /R 2 /P -4 /O <{}> /U () >>\",\n            \"00\".repeat(actual)\n        );\n        let encryption = encrypt(dictionary.as_bytes());\n        let handler = encryption.as_standard().expect(\"標準ハンドラを取得できる\");\n        let error = handler\n            .derive_legacy_file_key(b\"\", trailer.id())\n            .expect_err(\"/O が 32 バイト以外では鍵を導出できない\");\n\n        assert_eq!(\n            error,\n            LegacyFileKeyError::InvalidOwnerEntryLength { actual }\n        );\n    }\n}"
+      },
+      "targets": [
+        "rust/crates/core/src/encrypt/legacy_key.rs"
+      ],
+      "covers": [
+        "derive"
+      ]
+    },
+    {
+      "id": "later-revisions",
+      "suite": "inputs",
+      "name": "reports_r5_and_r6_as_outside_algorithm_2",
+      "techniques": [
+        "error"
+      ],
+      "given": "リビジョン5と6の暗号化辞書",
+      "when": "旧リビジョン用の鍵導出を呼ぶ",
+      "then": "対象外のリビジョンを示すエラーが返る",
+      "why": "AES-256のファイル鍵は別の導出手順を使う。",
+      "commit": "28b7463bdb4141122796e047dcfe29359d2e58d3",
+      "excerpt": {
+        "path": "rust/crates/core/src/encrypt/legacy_key/tests/inputs.rs",
+        "start": 96,
+        "end": 111,
+        "text": "fn reports_r5_and_r6_as_outside_algorithm_2() {\n    let trailer = parse_trailer(TRAILER);\n    for revision in [5, 6] {\n        let dictionary = format!(\n            \"<< /Filter /Standard /V 5 /R {revision} /P -4 /CF << >>\n                /O () /U () /OE () /UE () /Perms () >>\"\n        );\n        let encryption = encrypt(dictionary.as_bytes());\n        let handler = encryption.as_standard().expect(\"標準ハンドラを取得できる\");\n        let error = handler\n            .derive_legacy_file_key(b\"\", trailer.id())\n            .expect_err(\"R5 と R6 は別のアルゴリズムを使う\");\n\n        assert_eq!(error, LegacyFileKeyError::UnsupportedRevision);\n    }\n}"
+      },
+      "targets": [
+        "rust/crates/core/src/encrypt/legacy_key.rs"
+      ],
+      "covers": [
+        "derive"
+      ]
+    }
+  ],
+  "impact": {
+    "title": "既知のパスワードと辞書から文書の鍵を得る",
+    "lead": "旧形式の暗号化PDFに対して鍵を計算でき、文書の識別子が欠けていればその理由を判別できます。",
+    "changed": {
+      "before": [
+        {
+          "text": "暗号化方式と鍵の材料を調べられました。"
+        }
+      ],
+      "after": [
+        {
+          "text": "リビジョン2〜4のファイル暗号鍵を取得できます。",
+          "message": "derive"
+        }
+      ]
+    },
+    "added": [
+      {
+        "label": "トレイラのIDが欠けている",
+        "before": [],
+        "after": [
+          {
+            "text": "鍵を計算する段階で、文書の識別子が欠けていると分かるエラーを返します。"
+          }
+        ],
+        "tests": [
+          "absent-id"
+        ]
+      },
+      {
+        "label": "パスワードが32バイトを超える",
+        "before": [],
+        "after": [
+          {
+            "text": "先頭の32バイトを使ってファイル暗号鍵を計算します。"
+          }
+        ],
+        "tests": [
+          "long-password"
+        ]
+      }
+    ]
+  },
+  "primers": [
+    {
+      "kind": "language",
+      "id": "optional-borrow",
+      "category": "Rust · 借用とエラー処理",
+      "label": "Option<&FileId> と ?",
+      "gist": "IDが存在すれば借りて使い、欠けていれば導出を中止する書き方です。",
+      "passages": [
+        {
+          "kind": "text",
+          "text": "型は値の形を表します。FileId はファイル識別子を表す型です。Option<T> の < > の中には、値が存在するときの型を書きます。FileId の前の & は借用を表し、呼び出し側が持つ値を参照します。Some(id) はIDがある状態、Noneは欠けている状態です。"
+        },
+        {
+          "kind": "declaration",
+          "code": "let id: Option<&FileId> = trailer.id();\nlet id = id.ok_or(LegacyFileKeyError::MissingFileId)?;"
+        },
+        {
+          "kind": "text",
+          "text": "この2行は「トレイラからIDを借りる機会を得て、IDを借りられた場合に先へ進む」と読めます。ok_or は Some(id) を Ok(id) にし、Noneを渡されたエラーに変換します。:: は型の中の名前を指す区切りで、ここではエラーの種類を選んでいます。? は Ok なら中身を取り出し、Err ならこの関数をそこで終了して失敗を返します。"
+        },
+        {
+          "kind": "excerpt",
+          "excerpt": {
+            "path": "rust/crates/core/src/encrypt/legacy_key.rs",
+            "start": 85,
+            "end": 92,
+            "text": "        let file_id = file_id.ok_or(LegacyFileKeyError::MissingFileId)?;\n        let owner_entry = self.owner_key();\n        // Algorithm 3 の /O は 32 バイトに整えたパスワードの暗号化結果。\n        let owner_entry = <&[u8; PADDED_PASSWORD_LEN]>::try_from(owner_entry).map_err(|_| {\n            LegacyFileKeyError::InvalidOwnerEntryLength {\n                actual: owner_entry.len(),\n            }\n        })?;"
+          }
+        },
+        {
+          "kind": "text",
+          "text": "実コードではこの一行でIDの有無を判定します。その直後で /O のスライスを借り、<&[u8; PADDED_PASSWORD_LEN]>::try_from で長さ32の配列への参照に変換します。u8は1バイトの整数、[u8; 32] は長さ32の配列です。長さが異なる場合は map_err で失敗に実際のバイト数を付けて返します。"
+        }
+      ],
+      "occurrences": [
+        {
+          "path": "rust/crates/core/src/encrypt/legacy_key.rs",
+          "lineRange": {
+            "start": 69,
+            "end": 92
+          },
+          "text": "任意のファイルIDを受け取り、Noneを鍵導出のエラーに変える箇所"
+        }
+      ],
+      "seeAlso": [
+        "pdf-algorithm-2"
+      ]
+    },
+    {
+      "kind": "pdf",
+      "id": "pdf-algorithm-2",
+      "category": "PDF · 暗号化辞書とトレイラ",
+      "label": "Algorithm 2の鍵材料",
+      "gist": "辞書の/O、/P、永続IDとパスワードのバイト列を使って、文書の暗号鍵を求めます。",
+      "passages": [
+        {
+          "kind": "declaration",
+          "code": "% qpdf で生成した R4 PDF の抜粋\n5 0 obj\n<< /Filter /Standard /V 4 /R 4 /Length 128\n   /O <0ba3835f88f90388e74e54584125ce142be0de24c6b0d37746e075b891756671>\n   /U <3250600e32dc6a8eae7dc501b5ba8e520122456a91bae5134273a6db134c87c4>\n   /P -3392 /EncryptMetadata false >>\nendobj\ntrailer\n<< /Encrypt 5 0 R\n   /ID [<31415926535897932384626433832795> <31415926535897932384626433832795>] >>"
+        },
+        {
+          "kind": "text",
+          "text": "<< と >> の間はキーと値を持つ辞書です。/Encrypt 5 0 R は、ファイル末尾のトレイラから暗号化辞書のオブジェクト5を参照します。/Filter /Standard はパスワードを使う方式で、/R 4 はそのリビジョンです。/Length 128 の単位はビットなので、鍵は16バイトになります。"
+        },
+        {
+          "kind": "text",
+          "text": "/O と /U は16進数2桁を1バイトとする文字列です。/O は鍵導出、/U は鍵を使った利用者パスワードの検証に用います。/P -3392 の4バイトは下位バイトから C0 F2 FF FF と並びます。/ID の第1要素は更新後も維持される永続IDで、第2要素は変更IDです。"
+        },
+        {
+          "kind": "excerpt",
+          "excerpt": {
+            "path": "rust/crates/core/src/encrypt/legacy_key.rs",
+            "start": 99,
+            "end": 116,
+            "text": "        let mut md5 = Md5::new();\n        md5.update(&padded_password(password));\n        md5.update(owner_entry);\n        md5.update(&self.permissions().bits().to_le_bytes());\n        md5.update(file_id.permanent());\n\n        if matches!(algorithm, StandardAlgorithm::V4R4 { .. }) && !self.encrypt_metadata() {\n            md5.update(&CLEAR_METADATA_BYTES);\n        }\n\n        let mut key = LegacyFileKey {\n            digest: md5.finalize(),\n            length,\n        };\n        for _ in 0..rehash_count {\n            key.digest = Md5::digest(key.as_bytes());\n        }\n        Ok(key)"
+          }
+        },
+        {
+          "kind": "text",
+          "text": "パスワードを32バイトとし、/O、/P、永続IDの順でMD5へ渡します。この例はメタデータが暗号化されないR4なので、その後ろに FF FF FF FF を加えます。MD5の最初の16バイト出力を得た後、R3・R4では鍵長相当の先頭バイトを50回再ハッシュします。"
+        },
+        {
+          "kind": "spec",
+          "text": "ISO 32000-1:2008 §7.6.3.3 Algorithm 2・4・5 と §14.4。pdfmodはトレイラにIDが欠けている場合、鍵導出を専用エラーとして返します。"
+        }
+      ],
+      "occurrences": [
+        {
+          "path": "rust/crates/core/src/encrypt/legacy_key.rs",
+          "lineRange": {
+            "start": 99,
+            "end": 116
+          },
+          "text": "暗号化辞書とトレイラの値をMD5へ順に渡す箇所"
+        }
+      ],
+      "seeAlso": [
+        "digest-prefix"
+      ]
+    },
+    {
+      "kind": "codebase",
+      "id": "digest-prefix",
+      "category": "pdfmod · 鍵の長さ",
+      "label": "固定長の領域と鍵の先頭部分",
+      "gist": "MD5は毎回16バイトを返します。仕様で選んだ鍵長に相当する先頭部分を取り出します。",
+      "passages": [
+        {
+          "kind": "excerpt",
+          "excerpt": {
+            "path": "rust/crates/core/src/encrypt/legacy_key.rs",
+            "start": 21,
+            "end": 32,
+            "text": "pub struct LegacyFileKey {\n    digest: [u8; DIGEST_LEN],\n    length: KeyLength,\n}\n\nimpl LegacyFileKey {\n    /// ファイル暗号鍵をバイト列で返す。\n    #[must_use]\n    pub fn as_bytes(&self) -> &[u8] {\n        &self.digest[..usize::from(self.length.bytes())]\n    }\n}"
+          }
+        },
+        {
+          "kind": "text",
+          "text": "16バイトの配列に現在のダイジェストを保持し、保存した鍵長で先頭を切り出します。R2は先頭5バイトが結果です。R3・R4では同じ先頭部分を次のMD5の入力にも使います。例えば64ビットの鍵を導出する場合、16バイトのうち先頭8バイトです。"
+        },
+        {
+          "kind": "excerpt",
+          "excerpt": {
+            "path": "rust/crates/core/src/encrypt/legacy_key.rs",
+            "start": 94,
+            "end": 116,
+            "text": "        let length = algorithm.key_length();\n        if usize::from(length.bytes()) > DIGEST_LEN {\n            return Err(LegacyFileKeyError::InvalidKeyLength { length });\n        }\n\n        let mut md5 = Md5::new();\n        md5.update(&padded_password(password));\n        md5.update(owner_entry);\n        md5.update(&self.permissions().bits().to_le_bytes());\n        md5.update(file_id.permanent());\n\n        if matches!(algorithm, StandardAlgorithm::V4R4 { .. }) && !self.encrypt_metadata() {\n            md5.update(&CLEAR_METADATA_BYTES);\n        }\n\n        let mut key = LegacyFileKey {\n            digest: md5.finalize(),\n            length,\n        };\n        for _ in 0..rehash_count {\n            key.digest = Md5::digest(key.as_bytes());\n        }\n        Ok(key)"
+          }
+        }
+      ],
+      "occurrences": [
+        {
+          "path": "rust/crates/core/src/encrypt/legacy_key.rs",
+          "lineRange": {
+            "start": 109,
+            "end": 116
+          },
+          "text": "同じ鍵長を使い、ダイジェストを繰り返し更新する箇所"
+        }
+      ],
+      "status": "added",
+      "tests": [
+        "r3-64",
+        "r3-40"
+      ],
+      "flows": [
+        "r4-flow"
+      ]
+    }
+  ]
+}
