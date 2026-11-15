@@ -2,7 +2,7 @@
   "version": 1,
   "pr": 784,
   "issue": 641,
-  "sha": "0b848bd29e53aadca0d526abbb526a7797e15b3a",
+  "sha": "8811f548cbbf37165fc507a434a0c57a94b70062",
   "overview": {
     "title": "PDFリビジョン6で使う3種類のSHA-2",
     "lead": "PDFのAES-256鍵を取り出す手順では、途中のバイト列に応じてSHA-256、SHA-384、SHA-512を使い分けます。固定長バッファ、圧縮、出力の順で追うと、入力を分けて渡せる仕組みが分かります。",
@@ -25,7 +25,7 @@
         "text": "完全なブロックを圧縮へ渡し、末尾だけを保持します。",
         "go": {
           "kind": "file",
-          "path": "rust/crates/core/src/encrypt/sha2/block_buffer.rs"
+          "path": "rust/crates/core/src/encrypt/block_buffer.rs"
         }
       },
       {
@@ -47,12 +47,17 @@
     {
       "path": "rust/crates/core/src/encrypt/sha2.rs",
       "name": "SHA-2の構成",
-      "role": "共通の末尾バッファと2種類のワード幅の実装を束ねる。"
+      "role": "2種類のワード幅の実装を束ねる。"
     },
     {
-      "path": "rust/crates/core/src/encrypt/sha2/block_buffer.rs",
+      "path": "rust/crates/core/src/encrypt/block_buffer.rs",
       "name": "ブロック分割とパディング",
-      "role": "入力末尾を保持し、完全なブロックを圧縮関数へ渡す。終端と長さの欄を組み立てる。"
+      "role": "MD5とSHA-2の入力末尾を保持し、指定されたバイト順で最終ブロックを組み立てる。"
+    },
+    {
+      "path": "rust/crates/core/src/encrypt/md5.rs",
+      "name": "MD5",
+      "role": "64バイトのブロック分割を共有し、入力長をリトルエンディアンで渡す。"
     },
     {
       "path": "rust/crates/core/src/encrypt/sha2/sha256.rs",
@@ -86,181 +91,211 @@
           "path": "rust/crates/core/src/encrypt.rs",
           "start": 4,
           "end": 7,
-          "text": "暗号化辞書の型変換と合わせて、鍵導出が使うSHA-2を内部で実装する位置を明記します。"
+          "text": "暗号化辞書の型変換と合わせて、鍵導出が使うSHA-2を内部で実装する位置を明記します。",
+          "side": "new"
         },
         {
           "path": "rust/crates/core/src/encrypt.rs",
           "start": 38,
           "end": 43,
-          "text": "SHA-2を暗号化モジュールの内部に登録します。鍵導出が接続されるまではテストから3方式の入口を呼び出します。"
+          "text": "SHA-2を暗号化モジュールの内部に登録します。鍵導出が接続されるまではテストから3方式の入口を呼び出します。",
+          "side": "new"
         },
         {
           "path": "rust/crates/core/src/encrypt/sha2.rs",
           "start": 1,
           "end": 8,
-          "text": "32ビットの実装、64ビットの実装、共通の末尾バッファに分けます。方式の型は暗号化モジュール内の処理から使います。"
+          "text": "32ビットの実装、64ビットの実装、共通の末尾バッファに分けます。方式の型は暗号化モジュール内の処理から使います。",
+          "side": "new"
         },
         {
           "path": "rust/crates/core/src/encrypt/sha2/block_buffer.rs",
           "start": 3,
           "end": 18,
-          "text": "ブロック長を64または128バイトに固定し、未処理バイト数が0の配列を用意します。"
+          "text": "ブロック長を64または128バイトに固定し、未処理バイト数が0の配列を用意します。",
+          "side": "new"
         },
         {
           "path": "rust/crates/core/src/encrypt/sha2/block_buffer.rs",
           "start": 20,
           "end": 35,
-          "text": "前回の末尾を新しい入力で埋めます。埋まらなければ長さだけ進め、埋まればそのブロックを圧縮して入力の残りを処理します。"
+          "text": "前回の末尾を新しい入力で埋めます。埋まらなければ長さだけ進め、埋まればそのブロックを圧縮して入力の残りを処理します。",
+          "side": "new"
         },
         {
           "path": "rust/crates/core/src/encrypt/sha2/block_buffer.rs",
           "start": 37,
           "end": 42,
-          "text": "残りを完全な配列の参照と端数に分けます。完全なブロックは借用して圧縮し、次回に必要な末尾をコピーします。"
+          "text": "残りを完全な配列の参照と端数に分けます。完全なブロックは借用して圧縮し、次回に必要な末尾をコピーします。",
+          "side": "new"
         },
         {
           "path": "rust/crates/core/src/encrypt/sha2/block_buffer.rs",
           "start": 45,
           "end": 63,
-          "text": "末尾の直後へ0x80を置き、残りをゼロにします。長さ欄が終端と重なるときは先に1ブロックを圧縮し、次のブロック末尾へ長さを書きます。"
+          "text": "末尾の直後へ0x80を置き、残りをゼロにします。長さ欄が終端と重なるときは先に1ブロックを圧縮し、次のブロック末尾へ長さを書きます。",
+          "side": "new"
         },
         {
           "path": "rust/crates/core/src/encrypt/sha2/sha256.rs",
           "start": 5,
           "end": 18,
-          "text": "SHA-256のブロック長と出力長を固定し、8個の32ビットワードをFIPSの初期値で用意します。"
+          "text": "SHA-256のブロック長と出力長を固定し、8個の32ビットワードをFIPSの初期値で用意します。",
+          "side": "new"
         },
         {
           "path": "rust/crates/core/src/encrypt/sha2/sha256.rs",
           "start": 21,
           "end": 87,
-          "text": "SHA-256の64ラウンドで加算する32ビットの定数を順に保持します。"
+          "text": "SHA-256の64ラウンドで加算する32ビットの定数を順に保持します。",
+          "side": "new"
         },
         {
           "path": "rust/crates/core/src/encrypt/sha2/sha256.rs",
           "start": 89,
           "end": 114,
-          "text": "入力長をビットに換算し、累積の64ビット欄に収まる場合に圧縮を進めます。加算に失敗するときはそれまでの状態を維持します。"
+          "text": "入力長をビットに換算し、累積の64ビット欄に収まる場合に圧縮を進めます。加算に失敗するときはそれまでの状態を維持します。",
+          "side": "new"
         },
         {
           "path": "rust/crates/core/src/encrypt/sha2/sha256.rs",
           "start": 117,
           "end": 136,
-          "text": "長さをビッグエンディアンで渡し、圧縮後の8ワードを32バイトに直します。一括入力も同じ更新と終端処理を通ります。"
+          "text": "長さをビッグエンディアンで渡し、圧縮後の8ワードを32バイトに直します。一括入力も同じ更新と終端処理を通ります。",
+          "side": "new"
         },
         {
           "path": "rust/crates/core/src/encrypt/sha2/sha256.rs",
           "start": 138,
           "end": 156,
-          "text": "64バイトを16個の32ビットワードとして読み、回転・シフト・加算で64個のメッセージワードへ展開します。"
+          "text": "64バイトを16個の32ビットワードとして読み、回転・シフト・加算で64個のメッセージワードへ展開します。",
+          "side": "new"
         },
         {
           "path": "rust/crates/core/src/encrypt/sha2/sha256.rs",
           "start": 158,
           "end": 181,
-          "text": "ラウンドごとに2つの一時和を作って8つの作業変数を進めます。最終ラウンド後の値を以前の状態へ加え、次のブロックへ渡します。"
+          "text": "ラウンドごとに2つの一時和を作って8つの作業変数を進めます。最終ラウンド後の値を以前の状態へ加え、次のブロックへ渡します。",
+          "side": "new"
         },
         {
           "path": "rust/crates/core/src/encrypt/sha2/sha256.rs",
           "start": 184,
           "end": 200,
-          "text": "長さ欄の上限付近を再現します。16ビットの追加は拒否され、残り8ビットの入力は受理されます。"
+          "text": "長さ欄の上限付近を再現します。16ビットの追加は拒否され、残り8ビットの入力は受理されます。",
+          "side": "new"
         },
         {
           "path": "rust/crates/core/src/encrypt/sha2/sha512.rs",
           "start": 5,
           "end": 32,
-          "text": "SHA-384とSHA-512の初期値を別に持ちます。ブロック長は共通の128バイトで、出力長は48バイトと64バイトです。"
+          "text": "SHA-384とSHA-512の初期値を別に持ちます。ブロック長は共通の128バイトで、出力長は48バイトと64バイトです。",
+          "side": "new"
         },
         {
           "path": "rust/crates/core/src/encrypt/sha2/sha512.rs",
           "start": 34,
           "end": 77,
-          "text": "64ビットの圧縮処理で使うラウンド定数の前半を定義します。"
+          "text": "64ビットの圧縮処理で使うラウンド定数の前半を定義します。",
+          "side": "new"
         },
         {
           "path": "rust/crates/core/src/encrypt/sha2/sha512.rs",
           "start": 78,
           "end": 116,
-          "text": "同じ配列に後半の定数を並べ、80ラウンドぶんの定数を揃えます。"
+          "text": "同じ配列に後半の定数を並べ、80ラウンドぶんの定数を揃えます。",
+          "side": "new"
         },
         {
           "path": "rust/crates/core/src/encrypt/sha2/sha512.rs",
           "start": 118,
           "end": 143,
-          "text": "SHA-384は専用の初期値で共有状態を作ります。逐次入力と一括入力から先頭6ワード分のダイジェストを得られます。"
+          "text": "SHA-384は専用の初期値で共有状態を作ります。逐次入力と一括入力から先頭6ワード分のダイジェストを得られます。",
+          "side": "new"
         },
         {
           "path": "rust/crates/core/src/encrypt/sha2/sha512.rs",
           "start": 146,
           "end": 172,
-          "text": "SHA-512は専用の初期値で共有状態を作り、最終化で全8ワード分の配列を返します。"
+          "text": "SHA-512は専用の初期値で共有状態を作り、最終化で全8ワード分の配列を返します。",
+          "side": "new"
         },
         {
           "path": "rust/crates/core/src/encrypt/sha2/sha512.rs",
           "start": 174,
           "end": 197,
-          "text": "累積ビット長を128ビットで保持します。長さを加算できた入力だけをバッファへ渡し、完成したブロックを圧縮します。"
+          "text": "累積ビット長を128ビットで保持します。長さを加算できた入力だけをバッファへ渡し、完成したブロックを圧縮します。",
+          "side": "new"
         },
         {
           "path": "rust/crates/core/src/encrypt/sha2/sha512.rs",
           "start": 199,
           "end": 212,
-          "text": "パディング後の状態から出力配列へ先頭のワードを書きます。48または64バイトの配列長がワード数を決めます。"
+          "text": "パディング後の状態から出力配列へ先頭のワードを書きます。48または64バイトの配列長がワード数を決めます。",
+          "side": "new"
         },
         {
           "path": "rust/crates/core/src/encrypt/sha2/sha512.rs",
           "start": 214,
           "end": 232,
-          "text": "128バイトの入力を16個の64ビットワードとして読み、80個のラウンド用ワードを作ります。"
+          "text": "128バイトの入力を16個の64ビットワードとして読み、80個のラウンド用ワードを作ります。",
+          "side": "new"
         },
         {
           "path": "rust/crates/core/src/encrypt/sha2/sha512.rs",
           "start": 234,
           "end": 257,
-          "text": "メッセージワードと定数から80回状態を更新します。加算を64ビットで折り返し、最終ラウンド後の変数を元の状態に足し込みます。"
+          "text": "メッセージワードと定数から80回状態を更新します。加算を64ビットで折り返し、最終ラウンド後の変数を元の状態に足し込みます。",
+          "side": "new"
         },
         {
           "path": "rust/crates/core/src/encrypt/sha2/sha512.rs",
           "start": 260,
           "end": 276,
-          "text": "128ビットの長さ欄の上限付近で、失敗した入力が長さを変更せず、残り1バイトを受理できることを確認します。"
+          "text": "128ビットの長さ欄の上限付近で、失敗した入力が長さを変更せず、残り1バイトを受理できることを確認します。",
+          "side": "new"
         },
         {
           "path": "rust/crates/core/src/encrypt/sha2/tests.rs",
           "start": 6,
           "end": 12,
-          "text": "固定長ダイジェストを16進文字列に変換し、既知ベクタの表記でバイト順も比較します。"
+          "text": "固定長ダイジェストを16進文字列に変換し、既知ベクタの表記でバイト順も比較します。",
+          "side": "new"
         },
         {
           "path": "rust/crates/core/src/encrypt/sha2/tests.rs",
           "start": 14,
           "end": 65,
-          "text": "短文・長文のNISTベクタと空入力を3方式で照合します。空入力にも終端と長さが含まれます。"
+          "text": "短文・長文のNISTベクタと空入力を3方式で照合します。空入力にも終端と長さが含まれます。",
+          "side": "new"
         },
         {
           "path": "rust/crates/core/src/encrypt/sha2/tests.rs",
           "start": 67,
           "end": 94,
-          "text": "1000バイトを1000回渡し、100万バイトの既知ダイジェストになることを確かめます。"
+          "text": "1000バイトを1000回渡し、100万バイトの既知ダイジェストになることを確かめます。",
+          "side": "new"
         },
         {
           "path": "rust/crates/core/src/encrypt/sha2/tests.rs",
           "start": 96,
           "end": 138,
-          "text": "SHA-256の55・56・64バイト前後を全位置で分割し、空入力を途中に挟んでも基準値と一致することを確認します。"
+          "text": "SHA-256の55・56・64バイト前後を全位置で分割し、空入力を途中に挟んでも基準値と一致することを確認します。",
+          "side": "new"
         },
         {
           "path": "rust/crates/core/src/encrypt/sha2/tests.rs",
           "start": 140,
           "end": 206,
-          "text": "SHA-384とSHA-512の111・112・128バイト前後を全位置で分割し、各方式の基準値と照合します。"
+          "text": "SHA-384とSHA-512の111・112・128バイト前後を全位置で分割し、各方式の基準値と照合します。",
+          "side": "new"
         },
         {
           "path": "rust/crates/core/src/encrypt/sha2/tests.rs",
           "start": 208,
           "end": 223,
-          "text": "32・48・64バイトの出力を順に次のハッシュへ渡す処理を32周し、96回後の結果を基準値と照合します。"
+          "text": "32・48・64バイトの出力を順に次のハッシュへ渡す処理を32周し、96回後の結果を基準値と照合します。",
+          "side": "new"
         }
       ]
     },
@@ -274,55 +309,64 @@
           "path": "docs/guides/README.md",
           "start": 19,
           "end": 19,
-          "text": "暗号化辞書の一覧にリビジョン6のSHA-2と対応する実装を追加します。"
+          "text": "暗号化辞書の一覧にリビジョン6のSHA-2と対応する実装を追加します。",
+          "side": "new"
         },
         {
           "path": "docs/guides/encryption-dictionary.html",
           "start": 167,
           "end": 168,
-          "text": "暗号化辞書ガイドの目次から、リビジョン6を説明する節へ移動できます。"
+          "text": "暗号化辞書ガイドの目次から、リビジョン6を説明する節へ移動できます。",
+          "side": "new"
         },
         {
           "path": "docs/guides/encryption-dictionary.html",
           "start": 392,
           "end": 404,
-          "text": "色分けした辞書とトレイラで、暗号化辞書への参照、リビジョン、文字列とストリーム用のAES-256指定を読み分けます。"
+          "text": "色分けした辞書とトレイラで、暗号化辞書への参照、リビジョン、文字列とストリーム用のAES-256指定を読み分けます。",
+          "side": "new"
         },
         {
           "path": "docs/guides/encryption-dictionary.html",
           "start": 405,
           "end": 410,
-          "text": "最初のSHA-256、AESの出力による方式の切り替え、利用者と所有者それぞれの鍵の取り出しを順に説明します。"
+          "text": "最初のSHA-256、AESの出力による方式の切り替え、利用者と所有者それぞれの鍵の取り出しを順に説明します。",
+          "side": "new"
         },
         {
           "path": "docs/guides/encryption-dictionary.html",
           "start": 411,
           "end": 418,
-          "text": "方式ごとのブロック長と長さ欄を比較します。末尾55／56バイトと111／112バイトで、長さを置くブロックが切り替わります。"
+          "text": "方式ごとのブロック長と長さ欄を比較します。末尾55／56バイトと111／112バイトで、長さを置くブロックが切り替わります。",
+          "side": "new"
         },
         {
           "path": "docs/guides/encryption-dictionary.html",
           "start": 419,
           "end": 428,
-          "text": "Rustで入力を2回に分け、一括計算と同じダイジェストになる例を示します。R6の鍵導出がこの処理を使う位置を説明します。"
+          "text": "Rustで入力を2回に分け、一括計算と同じダイジェストになる例を示します。R6の鍵導出がこの処理を使う位置を説明します。",
+          "side": "new"
         },
         {
           "path": "docs/specs/02b_encryption.md",
           "start": 3,
           "end": 5,
-          "text": "暗号化仕様の冒頭に、既存のMD5・RC4とともに内部SHA-2を扱うことを記します。"
+          "text": "暗号化仕様の冒頭に、既存のMD5・RC4とともに内部SHA-2を扱うことを記します。",
+          "side": "new"
         },
         {
           "path": "docs/specs/02b_encryption.md",
           "start": 110,
           "end": 112,
-          "text": "PDF読み込み時の機能境界から、実装が揃った暗号プリミティブの節へ案内します。"
+          "text": "PDF読み込み時の機能境界から、実装が揃った暗号プリミティブの節へ案内します。",
+          "side": "new"
         },
         {
           "path": "docs/specs/02b_encryption.md",
           "start": 143,
           "end": 158,
-          "text": "R6で使う方式、ブロック長、出力長、入力長上限、固定長配列を用いた終端処理を記録します。"
+          "text": "R6で使う方式、ブロック長、出力長、入力長上限、固定長配列を用いた終端処理を記録します。",
+          "side": "new"
         }
       ]
     },
@@ -336,37 +380,43 @@
           "path": "rust/crates/core/src/encrypt/sha2/sha256.rs",
           "start": 106,
           "end": 108,
-          "text": "SHA-256の逐次入力に属性を付けます。呼び出し側が上限超過の結果を捨てると警告が出ます。"
+          "text": "SHA-256の逐次入力に属性を付けます。呼び出し側が上限超過の結果を捨てると警告が出ます。",
+          "side": "new"
         },
         {
           "path": "rust/crates/core/src/encrypt/sha2/sha256.rs",
           "start": 132,
           "end": 134,
-          "text": "一括計算の出力または上限超過を受け取らずに捨てる呼び出しに、警告を出します。"
+          "text": "一括計算の出力または上限超過を受け取らずに捨てる呼び出しに、警告を出します。",
+          "side": "new"
         },
         {
           "path": "rust/crates/core/src/encrypt/sha2/sha512.rs",
           "start": 127,
           "end": 129,
-          "text": "SHA-384の逐次入力も、共有状態から返る入力長の検査結果を呼び出し側へ伝えます。"
+          "text": "SHA-384の逐次入力も、共有状態から返る入力長の検査結果を呼び出し側へ伝えます。",
+          "side": "new"
         },
         {
           "path": "rust/crates/core/src/encrypt/sha2/sha512.rs",
           "start": 139,
           "end": 141,
-          "text": "SHA-384の一括計算の48バイトの出力または上限超過を捨てたときに警告します。"
+          "text": "SHA-384の一括計算の48バイトの出力または上限超過を捨てたときに警告します。",
+          "side": "new"
         },
         {
           "path": "rust/crates/core/src/encrypt/sha2/sha512.rs",
           "start": 157,
           "end": 159,
-          "text": "SHA-512の逐次入力で返る結果を捨てると警告を出します。"
+          "text": "SHA-512の逐次入力で返る結果を捨てると警告を出します。",
+          "side": "new"
         },
         {
           "path": "rust/crates/core/src/encrypt/sha2/sha512.rs",
           "start": 169,
           "end": 171,
-          "text": "SHA-512の一括計算の64バイトの出力または上限超過を捨てたときに警告します。"
+          "text": "SHA-512の一括計算の64バイトの出力または上限超過を捨てたときに警告します。",
+          "side": "new"
         }
       ]
     },
@@ -380,13 +430,128 @@
           "path": "docs/guides/encryption-dictionary.html",
           "start": 405,
           "end": 408,
-          "text": "ガイドの手順の前に、鍵を求める2.Aが反復ハッシュの2.Bを呼び出す関係を記します。"
+          "text": "ガイドの手順の前に、鍵を求める2.Aが反復ハッシュの2.Bを呼び出す関係を記します。",
+          "side": "new"
         },
         {
           "path": "docs/specs/02b_encryption.md",
           "start": 143,
           "end": 146,
-          "text": "仕様書のSHA-2節で、AESの出力からハッシュの種類を選ぶ手順をAlgorithm 2.Bとして記します。"
+          "text": "仕様書のSHA-2節で、AESの出力からハッシュの種類を選ぶ手順をAlgorithm 2.Bとして記します。",
+          "side": "new"
+        }
+      ]
+    },
+    {
+      "sha": "8811f548cbbf37165fc507a434a0c57a94b70062",
+      "phase": "revise",
+      "role": "MD5とSHA-2のパディングを共通化する",
+      "why": "入力をブロックに切る処理と、終端・ゼロ・長さを配置する規則が共通です。長さのエンコードと圧縮処理を各方式に置き、長さ欄のバイト順や上限の違いを守ります。",
+      "notes": [
+        {
+          "path": "rust/crates/core/src/encrypt.rs",
+          "start": 21,
+          "end": 21,
+          "text": "共通バッファを暗号化モジュール内に登録し、MD5とSHA-2の両方が参照できるようにします。",
+          "side": "new"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/block_buffer.rs",
+          "start": 1,
+          "end": 1,
+          "text": "MD5とSHA-2で共有するバッファを、両方の親モジュールへ移します。",
+          "side": "new"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/block_buffer.rs",
+          "start": 10,
+          "end": 10,
+          "text": "64バイトと128バイトのブロックを同じ構築関数で扱います。MD5はSHA-256と同じ64バイトです。",
+          "side": "new"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/block_buffer.rs",
+          "start": 45,
+          "end": 48,
+          "text": "呼び出し側がビット長を方式ごとのバイト順で配列に変換して渡します。ブロック長ごとの長さ欄はコンパイル時に決まります。",
+          "side": "new"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/block_buffer.rs",
+          "start": 62,
+          "end": 62,
+          "text": "受け取った長さを最終ブロックの末尾にその順序でコピーし、呼び出し側の圧縮処理に渡します。",
+          "side": "new"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/md5.rs",
+          "start": 4,
+          "end": 5,
+          "text": "暗号化モジュールのバッファを参照します。長さ欄を置くオフセットは共通バッファで求めます。",
+          "side": "new"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/md5.rs",
+          "start": 86,
+          "end": 90,
+          "text": "MD5の未処理末尾を共通バッファに保持します。合計入力長の下位64ビットを保持するカウンタはMD5に置きます。",
+          "side": "new"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/md5.rs",
+          "start": 98,
+          "end": 98,
+          "text": "MD5の圧縮状態とともに空の64バイトバッファを初期化します。",
+          "side": "new"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/md5.rs",
+          "start": 104,
+          "end": 112,
+          "text": "入力長を加え、バッファから受け取る完全なブロックをMD5の圧縮関数へ渡します。次回入力まで必要な末尾の管理はバッファが担当します。",
+          "side": "new"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/md5.rs",
+          "start": 118,
+          "end": 122,
+          "text": "元のビット長の下位64ビットをリトルエンディアンに変換して渡し、MD5の圧縮関数でパディング済みのブロックを処理します。",
+          "side": "new"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/md5.rs",
+          "start": 166,
+          "end": 170,
+          "text": "末尾のバイト数を長さカウンタから求める旧メソッドを削除します。共通バッファが入力から直接、未処理末尾の長さを管理します。",
+          "side": "old"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/md5/tests.rs",
+          "start": 82,
+          "end": 93,
+          "text": "ビット長の上位が切り捨てられる状況を作り、56と64バイトに分けた入力で既知のダイジェストと一致することを確認します。",
+          "side": "new"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/sha2.rs",
+          "start": 3,
+          "end": 3,
+          "text": "SHA-2内のバッファ宣言を削除します。新しい参照先は暗号化モジュールです。",
+          "side": "old"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/sha2/sha256.rs",
+          "start": 3,
+          "end": 3,
+          "text": "SHA-256は共有バッファを使います。64ビットの長さをビッグエンディアンで渡す処理はSHA-256が持ちます。",
+          "side": "new"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/sha2/sha512.rs",
+          "start": 3,
+          "end": 3,
+          "text": "SHA-384とSHA-512も共有バッファを使います。128ビットの長さをビッグエンディアンで渡す処理は64ビットワードの実装が持ちます。",
+          "side": "new"
         }
       ]
     }
@@ -406,6 +571,11 @@
       "id": "limit512",
       "label": "128ビットの長さ欄",
       "file": "rust/crates/core/src/encrypt/sha2/sha512.rs"
+    },
+    {
+      "id": "md5",
+      "label": "MD5の長さ欄",
+      "file": "rust/crates/core/src/encrypt/md5/tests.rs"
     }
   ],
   "tests": [
@@ -565,6 +735,26 @@
         "end": 276,
         "text": "#[cfg(test)]\nmod tests {\n    use super::{Sha512, BLOCK_LEN};\n\n    #[test]\n    fn rejects_updates_past_the_128_bit_length_field() {\n        let mut sha = Sha512::new();\n        sha.update(&[0; BLOCK_LEN - 2]).unwrap();\n        sha.0.bit_len = u128::MAX - 15;\n\n        assert_eq!(sha.update(b\"ab\"), None);\n        assert_eq!(sha.0.bit_len, u128::MAX - 15);\n        assert_eq!(sha.update(b\"a\"), Some(()));"
       }
+    },
+    {
+      "id": "md5-length",
+      "suite": "md5",
+      "name": "encodes_only_the_low_64_bits_of_the_bit_length",
+      "techniques": [
+        "boundary",
+        "regression"
+      ],
+      "why": "共通化後もMD5のビット長を下位64ビットで記録することを確かめるため。",
+      "given": "長さカウンタの上位と、aを120バイト並べた入力。",
+      "when": "56バイトと64バイトに分けて入力し、最後の2ブロックを圧縮する。",
+      "then": "120バイトの既知ダイジェストに一致する。",
+      "commit": "8811f548cbbf37165fc507a434a0c57a94b70062",
+      "excerpt": {
+        "path": "rust/crates/core/src/encrypt/md5/tests.rs",
+        "start": 82,
+        "end": 93,
+        "text": "#[test]\nfn encodes_only_the_low_64_bits_of_the_bit_length() {\n    let mut md5 = Md5::new();\n    // ビット長の上位を模擬する。先行バイト数は 64 の倍数なので、未処理の末尾は空のまま。\n    md5.byte_len = 1 << 61;\n\n    let input = [b'a'; 120];\n    md5.update(&input[..56]);\n    md5.update(&input[56..]);\n\n    assert_eq!(hex(md5.finalize()), \"5f61c0ccad4cac44c75ff505e1f1e537\");\n}"
+      }
     }
   ],
   "impact": {
@@ -602,7 +792,7 @@
         {
           "kind": "excerpt",
           "excerpt": {
-            "path": "rust/crates/core/src/encrypt/sha2/block_buffer.rs",
+            "path": "rust/crates/core/src/encrypt/block_buffer.rs",
             "start": 21,
             "end": 43,
             "emphasis": [
@@ -621,7 +811,7 @@
       ],
       "occurrences": [
         {
-          "path": "rust/crates/core/src/encrypt/sha2/block_buffer.rs",
+          "path": "rust/crates/core/src/encrypt/block_buffer.rs",
           "text": "完全な入力ブロックを処理する箇所",
           "lineRange": {
             "start": 37,
@@ -648,7 +838,7 @@
         {
           "kind": "excerpt",
           "excerpt": {
-            "path": "rust/crates/core/src/encrypt/sha2/block_buffer.rs",
+            "path": "rust/crates/core/src/encrypt/block_buffer.rs",
             "start": 45,
             "end": 64,
             "emphasis": [
@@ -657,7 +847,7 @@
                 "end": 62
               }
             ],
-            "text": "    /// 元のビット長（8 または 16 バイトのビッグエンディアン表現）を末尾に付ける。\n    pub(super) fn finalize<const LENGTH_LEN: usize>(\n        mut self,\n        bit_len: [u8; LENGTH_LEN],\n        mut compress: impl FnMut(&[u8; BLOCK_LEN]),\n    ) {\n        const { assert!(LENGTH_LEN == BLOCK_LEN / 8) };\n\n        self.bytes[self.len] = 0x80;\n        self.bytes[self.len + 1..].fill(0);\n\n        let length_offset = BLOCK_LEN - LENGTH_LEN;\n        if self.len >= length_offset {\n            compress(&self.bytes);\n            self.bytes.fill(0);\n        }\n\n        self.bytes[length_offset..].copy_from_slice(&bit_len);\n        compress(&self.bytes);\n    }"
+            "text": "    /// 呼び出し側で方式に応じてエンコードしたビット長を、最終ブロックの末尾に置く。\n    pub(super) fn finalize<const LENGTH_LEN: usize>(\n        mut self,\n        encoded_bit_len: [u8; LENGTH_LEN],\n        mut compress: impl FnMut(&[u8; BLOCK_LEN]),\n    ) {\n        const { assert!(LENGTH_LEN == BLOCK_LEN / 8) };\n\n        self.bytes[self.len] = 0x80;\n        self.bytes[self.len + 1..].fill(0);\n\n        let length_offset = BLOCK_LEN - LENGTH_LEN;\n        if self.len >= length_offset {\n            compress(&self.bytes);\n            self.bytes.fill(0);\n        }\n\n        self.bytes[length_offset..].copy_from_slice(&encoded_bit_len);\n        compress(&self.bytes);\n    }"
           }
         },
         {
@@ -686,11 +876,30 @@
         {
           "kind": "spec",
           "text": "FIPS 180-4 §5.1–5.2。長さはバイト数を8倍し、上位のバイトから順に書きます。"
+        },
+        {
+          "kind": "text",
+          "text": "同じバッファを使うMD5では、RFC 1321 §3.2 に従って長さの下位64ビットを下位バイトから書きます。バイト順はバッファへ渡す前に決まります。"
+        },
+        {
+          "kind": "excerpt",
+          "excerpt": {
+            "path": "rust/crates/core/src/encrypt/md5.rs",
+            "start": 115,
+            "end": 129,
+            "emphasis": [
+              {
+                "start": 118,
+                "end": 122
+              }
+            ],
+            "text": "    /// RFC 1321 §3.1–3.2 のパディングと入力長を付け、16 バイトを返す。\n    #[must_use]\n    pub(super) fn finalize(mut self) -> [u8; DIGEST_LEN] {\n        // RFC 1321 §3.2 は入力のビット長の下位 64 ビットをリトルエンディアンで記録する。\n        let bit_len = self.byte_len.wrapping_mul(8);\n        self.buffer.finalize(bit_len.to_le_bytes(), |block| {\n            Self::compress(&mut self.state, block);\n        });\n\n        let mut digest = [0; DIGEST_LEN];\n        let (output_words, _) = digest.as_chunks_mut::<4>();\n        for (output, word) in output_words.iter_mut().zip(self.state) {\n            *output = word.to_le_bytes();\n        }\n        digest"
+          }
         }
       ],
       "occurrences": [
         {
-          "path": "rust/crates/core/src/encrypt/sha2/block_buffer.rs",
+          "path": "rust/crates/core/src/encrypt/block_buffer.rs",
           "text": "2つのブロック長で共有するパディング",
           "lineRange": {
             "start": 45,
@@ -700,7 +909,8 @@
       ],
       "tests": [
         "break256",
-        "break512"
+        "break512",
+        "md5-length"
       ]
     },
     {
