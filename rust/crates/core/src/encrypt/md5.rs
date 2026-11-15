@@ -4,7 +4,7 @@
 use crate::encrypt::block_buffer::BlockBuffer;
 
 const BLOCK_LEN: usize = 64;
-const DIGEST_LEN: usize = 16;
+pub(super) const DIGEST_LEN: usize = 16;
 
 const INITIAL_STATE: [u32; 4] = [0x6745_2301, 0xefcd_ab89, 0x98ba_dcfe, 0x1032_5476];
 
