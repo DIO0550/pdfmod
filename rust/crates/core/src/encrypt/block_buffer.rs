@@ -1,4 +1,4 @@
-//! SHA-2 のブロック分割とパディング（FIPS 180-4 §5.1–5.2）。
+//! MD5 と SHA-2 のブロック分割とパディング（RFC 1321 §3.1–3.2、FIPS 180-4 §5.1–5.2）。
 
 /// 64 または 128 バイトのブロックを扱い、先頭 `len < BLOCK_LEN` バイトに未処理の末尾を保持する。
 pub(super) struct BlockBuffer<const BLOCK_LEN: usize> {
@@ -7,7 +7,7 @@ pub(super) struct BlockBuffer<const BLOCK_LEN: usize> {
 }
 
 impl<const BLOCK_LEN: usize> BlockBuffer<BLOCK_LEN> {
-    /// SHA-2 が使う 64 バイトまたは 128 バイトの空バッファを作る。
+    /// 64 バイトまたは 128 バイトの空バッファを作る。
     pub(super) fn new() -> Self {
         const { assert!(matches!(BLOCK_LEN, 64 | 128)) };
 
@@ -42,10 +42,10 @@ impl<const BLOCK_LEN: usize> BlockBuffer<BLOCK_LEN> {
         self.len = tail.len();
     }
 
-    /// 元のビット長（8 または 16 バイトのビッグエンディアン表現）を末尾に付ける。
+    /// 呼び出し側で方式に応じてエンコードしたビット長を、最終ブロックの末尾に置く。
     pub(super) fn finalize<const LENGTH_LEN: usize>(
         mut self,
-        bit_len: [u8; LENGTH_LEN],
+        encoded_bit_len: [u8; LENGTH_LEN],
         mut compress: impl FnMut(&[u8; BLOCK_LEN]),
     ) {
         const { assert!(LENGTH_LEN == BLOCK_LEN / 8) };
@@ -59,7 +59,7 @@ impl<const BLOCK_LEN: usize> BlockBuffer<BLOCK_LEN> {
             self.bytes.fill(0);
         }
 
-        self.bytes[length_offset..].copy_from_slice(&bit_len);
+        self.bytes[length_offset..].copy_from_slice(&encoded_bit_len);
         compress(&self.bytes);
     }
 }

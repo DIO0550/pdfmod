@@ -18,6 +18,7 @@
 //! [`StandardAlgorithm`]: algorithm::StandardAlgorithm
 
 pub mod algorithm;
+mod block_buffer;
 pub mod crypt_filter;
 pub mod error;
 pub mod key;

@@ -80,6 +80,19 @@ fn keeps_partial_blocks_across_many_updates() {
 }
 
 #[test]
+fn encodes_only_the_low_64_bits_of_the_bit_length() {
+    let mut md5 = Md5::new();
+    // ビット長の上位を模擬する。先行バイト数は 64 の倍数なので、未処理の末尾は空のまま。
+    md5.byte_len = 1 << 61;
+
+    let input = [b'a'; 120];
+    md5.update(&input[..56]);
+    md5.update(&input[56..]);
+
+    assert_eq!(hex(md5.finalize()), "5f61c0ccad4cac44c75ff505e1f1e537");
+}
+
+#[test]
 fn rehashes_a_digest_prefix_fifty_times() {
     for (prefix_len, expected) in [
         (5, "f84aa1ebc58926bf6db85f0634deed3b"),

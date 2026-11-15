@@ -1,6 +1,6 @@
 //! 64 ビットワードで計算する SHA-384 / SHA-512（FIPS 180-4 §6.4–6.5）。
 
-use super::block_buffer::BlockBuffer;
+use crate::encrypt::block_buffer::BlockBuffer;
 
 const BLOCK_LEN: usize = 128;
 const SHA384_DIGEST_LEN: usize = 48;

@@ -1,6 +1,6 @@
 //! 32 ビットワードで計算する SHA-256（FIPS 180-4 §6.2）。
 
-use super::block_buffer::BlockBuffer;
+use crate::encrypt::block_buffer::BlockBuffer;
 
 const BLOCK_LEN: usize = 64;
 const DIGEST_LEN: usize = 32;
