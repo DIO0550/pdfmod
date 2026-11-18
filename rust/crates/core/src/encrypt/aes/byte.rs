@@ -34,7 +34,7 @@ const fn inverse_s_box() -> [u8; 256] {
     }
 }
 
-/// 鍵拡張の SubWord に使う正方向の置換。
+/// 暗号化の SubBytes と鍵拡張の SubWord に使う正方向の置換。
 pub(in crate::encrypt::aes) fn substitute(byte: u8) -> u8 {
     S_BOX[usize::from(byte)]
 }
