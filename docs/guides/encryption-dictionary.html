@@ -165,14 +165,15 @@ nav a { font-size: 16px; } table { font-size: 17px; } th { font-size: 15px; }
 <a href="#permissions"><span>05</span>権限のビット表現</a><a href="#examples"><span>06</span>正常・未対応・不正</a>
 <a href="#implementation"><span>07</span>解析の境界</a><a href="#algorithm-types"><span>08</span>方式ごとの型と責務</a>
 <a href="#legacy-md5"><span>09</span>旧リビジョンの鍵導出とMD5</a><a href="#legacy-rc4"><span>10</span>旧形式のRC4</a>
-<a href="#revision6-sha2"><span>11</span>リビジョン6のSHA-2</a><a href="#aes-decryption"><span>12</span>AESのCBC・ECB復号</a></nav></aside>
+<a href="#revision6-sha2"><span>11</span>リビジョン6のSHA-2</a><a href="#aes-decryption"><span>12</span>AESのCBC・ECB復号</a>
+<a href="#aes256-file-key"><span>13</span>AES-256のファイル暗号鍵</a></nav></aside>
 <main id="top"><div class="wrap"><header class="hero"><div class="eyebrow">PDF INTERNALS / ENCRYPTION DICTIONARY</div>
 <h1>暗号化辞書を読む</h1><p class="lead">PDFの <code>/Encrypt</code> は、暗号化の方式と鍵の材料を記述します。アルゴリズムの版、crypt filter、権限を、解釈できる型へ変換する仕組みを見ていきます。</p></header>
 <section class="section" id="overview"><div class="section-heading"><span class="number">01</span><h2>暗号化の起点</h2></div>
 <p>トレイラの <code>/Encrypt</code> が暗号化辞書を指します。直接辞書でも間接参照でも書けます。暗号化辞書自体は復号前に読む必要があるため、オブジェクトストリームには格納できません。</p>
 <div class="grid"><div class="card"><h3>セキュリティハンドラ</h3><p>Security handler はパスワードなどからアクセスを認証する方式です。<code>/Filter /Standard</code> はパスワードベースの標準ハンドラを表します。</p></div>
-<div class="card"><h3>暗号化される値</h3><p>対象は文字列とストリームです。辞書のキー名、名前オブジェクト、数値は暗号化されません。暗号化文書のトレイラには鍵導出に使用する <code>/ID</code> が必要です。</p></div></div>
-<div class="note"><strong>辞書から読み取れること</strong>辞書の型変換では方式と鍵の材料が得られます。旧リビジョンのファイル暗号鍵を求めるときは、その材料を後段の鍵導出に渡します。</div></section>
+<div class="card"><h3>暗号化される値</h3><p>対象は文字列とストリームです。辞書のキー名、名前オブジェクト、数値は暗号化されません。暗号化文書のトレイラには <code>/ID</code> が必要です。リビジョン2〜4では、その第1要素を鍵導出に使います。</p></div></div>
+<div class="note"><strong>辞書から読み取れること</strong>辞書の型変換では方式と鍵の材料が得られます。Rustでは、リビジョンに応じた鍵導出にその材料を渡します。</div></section>
 <section class="section" id="syntax"><div class="section-heading"><span class="number">02</span><h2>辞書を読む</h2></div>
 <p>以下は説明用の抜粋です。暗号鍵の材料は短縮しており、完全なPDFや復号可能な鍵の例ではありません。</p>
 <pre><code><span class="keyword">trailer</span>
@@ -445,7 +446,7 @@ assert_eq!(digest, <span class="type">Md5</span>::digest(<span class="string">b"
     sha.update(<span class="string">b"bc"</span>)?;
     <span class="type">Some</span>(sha.finalize())
 }</code></pre>
-<div class="note"><strong>Rustで使える処理</strong>3種類のSHA-2は固定長の配列だけで計算するため、ハッシュを繰り返すたびにヒープを確保する必要はありません。PDFのパスワード検証とファイル暗号鍵の取り出しは、このハッシュ処理を使う後続の実装です。</div>
+<div class="note"><strong>Rustで使える処理</strong>3種類のSHA-2は固定長の配列だけで計算するため、ハッシュを繰り返すたびにヒープを確保する必要はありません。<a href="#aes256-file-key">ファイル暗号鍵の取り出し</a>では、検証用と鍵用のソルトを使い分けます。</div>
 </section>
 <section class="section" id="aes-decryption">
 <div class="section-heading"><span class="number">12</span><h2>AESのCBC・ECB復号</h2></div>
@@ -488,7 +489,39 @@ assert_eq!(digest, <span class="type">Md5</span>::digest(<span class="string">b"
     <span class="keyword">return</span> <span class="type">Err</span>(<span class="type">AesCbcError</span>::InvalidLength);
 };</code></pre>
 <p><code>::&lt;BLOCK_LEN&gt;</code> は切り出す個数をコンパイル時に指定する書き方で、ここでは16です。成功を表す <code>Some((iv, ciphertext))</code> から2つの値を取り出します。<code>iv</code> は <code>&amp;[u8; 16]</code>（16バイトちょうどの配列への参照）、<code>ciphertext</code> は <code>&amp;[u8]</code>（残りのバイト列への参照）です。例えば <code>b"abcde".split_first_chunk::&lt;2&gt;()</code> なら、同じ元データから <code>ab</code> と <code>cde</code> を借ります。指定した長さに満たない場合は <code>None</code> となり、<code>else</code> の処理に進みます。</p>
-<div class="note"><strong>Rustで使える処理</strong>同じ鍵から作ったラウンド鍵をCBCとECBで共有します。AES-256のファイル暗号鍵の導出と、PDF読み込み中に対象を選び復号する処理は後続の実装です。</div>
+<div class="note"><strong>Rustで使える処理</strong>同じ鍵から作ったラウンド鍵をCBCとECBで共有します。次の節では、暗号化されたファイル鍵にCBCを、権限のコピーにECBを適用します。</div>
+</section>
+<section class="section" id="aes256-file-key">
+<div class="section-heading"><span class="number">13</span><h2>2つのパスワードから同じファイル暗号鍵を取り出す</h2></div>
+<p>リビジョン5・6のPDFを作るとき、作成ソフトは文書用に32バイトの鍵を1つ用意します。その鍵を利用者用、所有者用の中間鍵でそれぞれ暗号化して辞書に保存します。開く人が使うパスワードが違っても、取り出す文書の鍵は同じです。</p>
+<h3>空パスワードで開けるPDFの辞書を読む</h3>
+<p>次はテストに使った1ページのPDFからの抜粋です。16進文字列の途中の改行は読みやすくするための空白です。<code>/U</code> の3行は、順に32バイトの検証値、8バイトの検証用ソルト、8バイトの鍵用ソルトです。</p>
+<pre><code><span class="comment">% トレイラが /Encrypt 6 0 R で参照する辞書の抜粋</span>
+<span class="value">6 0</span> <span class="pdf-syntax">obj</span>
+<span class="pdf-syntax">&lt;&lt;</span> <span class="key">/Filter</span> <span class="key">/Standard</span> <span class="key">/V</span> <span class="value">5</span> <span class="key">/R</span> <span class="value">6</span>
+   <span class="key">/U</span> <span class="string">&lt;9c5dcd0995ef2b1ad7dae7144b6739ab9a6d8e445d13dae58a17b2cbf5e0ce7a
+       6eddfcaa734bd957
+       e33b9b10decee021&gt;</span>
+   <span class="key">/UE</span> <span class="string">&lt;cb5e761235424db4edc8969c2b38c0a3e4159502e5a5e3cb09269b026eb6cad3&gt;</span>
+   <span class="key">/P</span> <span class="value">-4</span> <span class="key">/Perms</span> <span class="string">&lt;69dba27236cca1287cf8fc3c155f6b58&gt;</span> <span class="pdf-syntax">&gt;&gt;</span>
+<span class="pdf-syntax">endobj</span></code></pre>
+<div class="table-wrap" tabindex="0" role="region" aria-label="利用者と所有者の鍵の材料">
+<table><thead><tr><th scope="col">役割</th><th scope="col">検証値とソルト</th><th scope="col">各ハッシュの追加データ</th><th scope="col">暗号化された文書の鍵</th></tr></thead>
+<tbody><tr><th scope="row">利用者</th><td><code>/U</code></td><td>空のバイト列</td><td><code>/UE</code></td></tr>
+<tr><th scope="row">所有者</th><td><code>/O</code></td><td><code>/U</code> の全48バイト</td><td><code>/OE</code></td></tr></tbody></table></div>
+<ol class="steps">
+<li><strong>候補のパスワードを照合する。</strong> この例の利用者パスワードは空です。検証用ソルトを加えてR6のハッシュを計算すると、72ラウンドで <code>/U</code> の1行目と一致します。違うパスワードならここでエラーを返します。</li>
+<li><strong>文書の鍵を取り出す。</strong> 同じ空パスワードに3行目の鍵用ソルトを加えると、69ラウンドで別の32バイトの値が得られます。これを中間鍵にして <code>/UE</code> をAES-256-CBCで復号します。IVは16個のゼロ、入力は2ブロックちょうどです。末尾も鍵の一部として残します。</li>
+<li><strong>権限を照合する。</strong> 取り出した鍵で <code>/Perms</code> をECB復号すると、先頭から <code>FC FF FF FF</code>（<code>/P -4</code>）、<code>FF FF FF FF</code>（固定値）、<code>T</code>（メタデータ暗号化あり）、<code>adb</code>（固定文字列）が並びます。残りの4バイトは乱数です。固定部分も辞書の値も合うと、検証済みの鍵が返ります。</li>
+</ol>
+<h3>R6はどのラウンドで止まるか</h3>
+<p>R5はパスワード、ソルト、役割に応じた追加データをSHA-256で1回処理します。R6はこの値を出発点にします。各ラウンドで「パスワード・直前のハッシュ全体・追加データ」を64回並べてAES-128-CBCで暗号化します。その暗号文の先頭16バイトを整数として3で割った余りが0、1、2の順に、SHA-256、SHA-384、SHA-512を選び、暗号文全体を次のハッシュに渡します。</p>
+<p>64ラウンド以降で、暗号文の末尾1バイトが「完了ラウンド数 − 32」以下になると終了します。例えば64ラウンド目で末尾が32なら終了、33なら継続です。最終ハッシュの先頭32バイトを使います。</p>
+<h3>Rustの <code>&amp;str</code> と127バイトの境界</h3>
+<pre><code><span class="keyword">let</span> bytes = prepared_password.as_bytes();
+<span class="keyword">let</span> password = bytes.get(..<span class="value">MAX_PASSWORD_BYTES</span>).unwrap_or(bytes);</code></pre>
+<p><code>&amp;str</code> はUTF-8文字列を借りる型です。<code>as_bytes()</code> で同じメモリをバイト列として読み、<code>..127</code> で先頭から127番目までを選びます。短ければ <code>get</code> が <code>None</code> を返し、<code>unwrap_or(bytes)</code> が元の全体を選びます。たとえばASCIIの <code>a</code> 125個に3バイトの「界」を続けると、「界」の先頭2バイトまでがハッシュに入ります。</p>
+<div class="note"><strong>文字を整える段階</strong>SASLprepは、空白の置換、Unicode正規化、禁止文字の検査など、パスワードの表記を整える手順です。pdfmodのRust APIでは呼び出し側でこの処理を済ませます。準備済みの空文字列は <code>derive_aes256_file_key(PasswordRole::User, "")</code> と渡せます。</div>
 </section>
 <footer><a href="#top">最上部へ</a> · <a href="README.md">解説一覧</a></footer></div></main>
 </body></html>
