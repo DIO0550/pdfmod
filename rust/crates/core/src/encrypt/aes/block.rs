@@ -14,13 +14,13 @@ impl BlockState {
         state.add_round_key(first);
 
         for key in middle {
-            state.0 = state.0.map(substitute);
+            state.0 = substitute(state.0);
             state.shift_rows();
             state.mix_columns();
             state.add_round_key(key);
         }
 
-        state.0 = state.0.map(substitute);
+        state.0 = substitute(state.0);
         state.shift_rows();
         state.add_round_key(last);
         state.0
@@ -74,7 +74,7 @@ impl BlockState {
     }
 
     fn inv_sub_bytes(&mut self) {
-        self.0 = self.0.map(inverse_substitute);
+        self.0 = inverse_substitute(self.0);
     }
 
     fn inv_mix_columns(&mut self) {

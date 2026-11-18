@@ -1,47 +1,99 @@
-//! AES の 1 バイトに対する置換と有限体の演算。
+//! AES のバイト置換と有限体 GF(2⁸) の演算（FIPS 197 §4・§5）。
+//! 秘密値を表の添字に使わず、16 バイトそれぞれに同じ固定手順を適用する。
 
-// FIPS 197 の S-box。逆置換表もこの表からコンパイル時に求める。
-const S_BOX: [u8; 256] = [
-    0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
-    0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0,
-    0xb7, 0xfd, 0x93, 0x26, 0x36, 0x3f, 0xf7, 0xcc, 0x34, 0xa5, 0xe5, 0xf1, 0x71, 0xd8, 0x31, 0x15,
-    0x04, 0xc7, 0x23, 0xc3, 0x18, 0x96, 0x05, 0x9a, 0x07, 0x12, 0x80, 0xe2, 0xeb, 0x27, 0xb2, 0x75,
-    0x09, 0x83, 0x2c, 0x1a, 0x1b, 0x6e, 0x5a, 0xa0, 0x52, 0x3b, 0xd6, 0xb3, 0x29, 0xe3, 0x2f, 0x84,
-    0x53, 0xd1, 0x00, 0xed, 0x20, 0xfc, 0xb1, 0x5b, 0x6a, 0xcb, 0xbe, 0x39, 0x4a, 0x4c, 0x58, 0xcf,
-    0xd0, 0xef, 0xaa, 0xfb, 0x43, 0x4d, 0x33, 0x85, 0x45, 0xf9, 0x02, 0x7f, 0x50, 0x3c, 0x9f, 0xa8,
-    0x51, 0xa3, 0x40, 0x8f, 0x92, 0x9d, 0x38, 0xf5, 0xbc, 0xb6, 0xda, 0x21, 0x10, 0xff, 0xf3, 0xd2,
-    0xcd, 0x0c, 0x13, 0xec, 0x5f, 0x97, 0x44, 0x17, 0xc4, 0xa7, 0x7e, 0x3d, 0x64, 0x5d, 0x19, 0x73,
-    0x60, 0x81, 0x4f, 0xdc, 0x22, 0x2a, 0x90, 0x88, 0x46, 0xee, 0xb8, 0x14, 0xde, 0x5e, 0x0b, 0xdb,
-    0xe0, 0x32, 0x3a, 0x0a, 0x49, 0x06, 0x24, 0x5c, 0xc2, 0xd3, 0xac, 0x62, 0x91, 0x95, 0xe4, 0x79,
-    0xe7, 0xc8, 0x37, 0x6d, 0x8d, 0xd5, 0x4e, 0xa9, 0x6c, 0x56, 0xf4, 0xea, 0x65, 0x7a, 0xae, 0x08,
-    0xba, 0x78, 0x25, 0x2e, 0x1c, 0xa6, 0xb4, 0xc6, 0xe8, 0xdd, 0x74, 0x1f, 0x4b, 0xbd, 0x8b, 0x8a,
-    0x70, 0x3e, 0xb5, 0x66, 0x48, 0x03, 0xf6, 0x0e, 0x61, 0x35, 0x57, 0xb9, 0x86, 0xc1, 0x1d, 0x9e,
-    0xe1, 0xf8, 0x98, 0x11, 0x69, 0xd9, 0x8e, 0x94, 0x9b, 0x1e, 0x87, 0xe9, 0xce, 0x55, 0x28, 0xdf,
-    0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16,
-];
+use super::Block;
 
-const INV_S_BOX: [u8; 256] = inverse_s_box();
+const LOW_BITS: u128 = u128::from_le_bytes([1; 16]);
 
-const fn inverse_s_box() -> [u8; 256] {
-    let mut inverse = [0; S_BOX.len()];
-    let mut byte = 0_u8;
-    loop {
-        inverse[S_BOX[byte as usize] as usize] = byte;
-        if byte == u8::MAX {
-            return inverse;
+/// 16 個の独立した 8 ビットの体要素。各バイト境界を保って並列に計算する。
+#[derive(Clone, Copy)]
+struct ByteLanes(u128);
+
+impl ByteLanes {
+    fn substitute(self) -> Self {
+        let x = self.inverse();
+        Self(
+            x.0 ^ x.rotate(1)
+                ^ x.rotate(2)
+                ^ x.rotate(3)
+                ^ x.rotate(4)
+                ^ u128::from_le_bytes([0x63; 16]),
+        )
+    }
+
+    fn inverse_substitute(self) -> Self {
+        let x = self.rotate(1) ^ self.rotate(3) ^ self.rotate(6) ^ u128::from_le_bytes([0x05; 16]);
+        Self(x).inverse()
+    }
+
+    /// 各バイトを独立に左ローテートする。shift はアフィン変換の定数 (1〜6)。
+    fn rotate(self, shift: u32) -> u128 {
+        let low_mask = LOW_BITS * ((1 << shift) - 1);
+        ((self.0 << shift) & !low_mask) | ((self.0 >> (8 - shift)) & low_mask)
+    }
+
+    /// 非ゼロの要素の逆数は x^254。ゼロにも同じ演算を行い、AES の規定どおりゼロを得る。
+    fn inverse(self) -> Self {
+        let x2 = self.square();
+        let x3 = x2.multiply(self);
+        let x12 = x3.square().square();
+        let x15 = x12.multiply(x3);
+        let x240 = x15.square().square().square().square();
+        x240.multiply(x12).multiply(x2)
+    }
+
+    fn multiply(self, rhs: Self) -> Self {
+        let mut a = self.0;
+        let mut b = rhs.0;
+        let mut product = 0;
+        for _ in 0..8 {
+            // 乗数の 1 ビットを各バイトの 00 / FF に広げ、分岐せず部分積を選ぶ。
+            let mask = (b & LOW_BITS).wrapping_mul(0xff);
+            product ^= a & mask;
+            // x を掛けたときの桁上がりは、AES の多項式 0x11B で還元する。
+            let carry = (a >> 7) & LOW_BITS;
+            a = ((a << 1) & !LOW_BITS) ^ carry.wrapping_mul(0x1b);
+            b >>= 1;
         }
-        byte += 1;
+        Self(product)
+    }
+
+    fn square(self) -> Self {
+        // GF(2) では (a+b)² = a²+b²。各ビットの x^(2i) を 0x11B で還元して足す。
+        let bit = |i: u32| (self.0 >> i) & LOW_BITS;
+        Self(
+            bit(0)
+                ^ (bit(1) << 2)
+                ^ (bit(2) << 4)
+                ^ (bit(3) << 6)
+                ^ bit(4).wrapping_mul(0x1b)
+                ^ bit(5).wrapping_mul(0x6c)
+                ^ bit(6).wrapping_mul(0xab)
+                ^ bit(7).wrapping_mul(0x9a),
+        )
     }
 }
 
-/// 暗号化の SubBytes と鍵拡張の SubWord に使う正方向の置換。
-pub(in crate::encrypt::aes) fn substitute(byte: u8) -> u8 {
-    S_BOX[usize::from(byte)]
+/// AES の SubBytes をブロック全体へ適用する。
+pub(in crate::encrypt::aes) fn substitute(block: Block) -> Block {
+    ByteLanes(u128::from_le_bytes(block))
+        .substitute()
+        .0
+        .to_le_bytes()
 }
 
-/// InvSubBytes に使う逆方向の置換。
-pub(in crate::encrypt::aes) fn inverse_substitute(byte: u8) -> u8 {
-    INV_S_BOX[usize::from(byte)]
+/// AES の InvSubBytes をブロック全体へ適用する。
+pub(in crate::encrypt::aes) fn inverse_substitute(block: Block) -> Block {
+    ByteLanes(u128::from_le_bytes(block))
+        .inverse_substitute()
+        .0
+        .to_le_bytes()
+}
+
+/// 鍵拡張の SubWord。下位 4 バイトに同じ正方向の置換を適用する。
+pub(in crate::encrypt::aes) fn substitute_word(word: u32) -> u32 {
+    let [a, b, c, d, ..] = ByteLanes(u128::from(word)).substitute().0.to_le_bytes();
+    u32::from_le_bytes([a, b, c, d])
 }
 
 /// AES の有限体で 2 倍する。最上位ビットがあれば還元多項式の下位 8 ビットを XOR する。
@@ -49,3 +101,6 @@ pub(in crate::encrypt::aes) fn double(byte: u8) -> u8 {
     let reduction_mask = 0_u8.wrapping_sub(byte >> 7);
     (byte << 1) ^ (0x1b & reduction_mask)
 }
+
+#[cfg(test)]
+mod tests;
