@@ -4,7 +4,7 @@
   "headBranch": "feat/663-aes256-file-key",
   "baseBranch": "main",
   "mergeBase": "cc7d8223bf87ed7e66b99775ae114c530b951adc",
-  "head": "311f3bdcbd2a97ad8f4839da9b78851f5075f5f1",
+  "head": "75cc53dc04540dac07472e37f672c5895f917491",
   "groups": [
     {
       "label": "Rust",
@@ -31,8 +31,8 @@
           "path": "rust/crates/core/src/encrypt/aes/block.rs",
           "status": "M",
           "oldPath": null,
-          "additions": 38,
-          "deletions": 3,
+          "additions": 39,
+          "deletions": 4,
           "changed": true,
           "target": null
         },
@@ -40,8 +40,17 @@
           "path": "rust/crates/core/src/encrypt/aes/byte.rs",
           "status": "M",
           "oldPath": null,
-          "additions": 1,
-          "deletions": 1,
+          "additions": 93,
+          "deletions": 38,
+          "changed": true,
+          "target": null
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/aes/round_keys.rs",
+          "status": "M",
+          "oldPath": null,
+          "additions": 3,
+          "deletions": 7,
           "changed": true,
           "target": null
         },
@@ -71,6 +80,15 @@
           "deletions": 3,
           "changed": true,
           "target": null
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/aes/byte/tests.rs",
+          "status": "A",
+          "oldPath": null,
+          "additions": 38,
+          "deletions": 0,
+          "changed": true,
+          "target": "rust/crates/core/src/encrypt/aes/byte.rs"
         },
         {
           "path": "rust/crates/core/src/encrypt/aes/tests/cbc.rs",
@@ -178,6 +196,10 @@
   "tests": {
     "added": [
       {
+        "file": "rust/crates/core/src/encrypt/aes/byte/tests.rs",
+        "name": "forward_inverse_and_key_expansion_match_the_fips_s_box_for_all_bytes"
+      },
+      {
         "file": "rust/crates/core/src/encrypt/aes/tests/cbc.rs",
         "name": "encrypts_nist_cbc_aes128_vector_without_padding"
       },
@@ -228,6 +250,8 @@
       "rust/crates/core/src/encrypt/aes.rs",
       "rust/crates/core/src/encrypt/aes/block.rs",
       "rust/crates/core/src/encrypt/aes/byte.rs",
+      "rust/crates/core/src/encrypt/aes/byte/tests.rs",
+      "rust/crates/core/src/encrypt/aes/round_keys.rs",
       "rust/crates/core/src/encrypt/aes/tests/cbc.rs",
       "rust/crates/core/src/encrypt/aes256_key.rs",
       "rust/crates/core/src/encrypt/aes256_key/hash.rs",
@@ -438,6 +462,56 @@
           "deletions": 5,
           "patch": "@@ -2,7 +2,7 @@\n \n ISO 32000-1:2008 §7.6 / ISO 32000-2:2020 §7.6\n \n-> 本書は暗号化辞書の構造、Rust の暗号化プリミティブ、R2〜R4 のファイル暗号鍵の導出を扱う。\n+> 本書は暗号化辞書の構造、Rust の暗号化プリミティブ、R2〜R6 のファイル暗号鍵の導出を扱う。\n \n ## 1. 暗号化辞書の位置づけ\n \n@@ -10,7 +10,7 @@ ISO 32000-1:2008 §7.6 / ISO 32000-2:2020 §7.6\n \n - `/Encrypt` の値は**間接参照でも直接辞書でも**書ける\n - 暗号化辞書自体はオブジェクトストリームに格納できない（暗号化の起点であり、復号前に読める必要があるため）\n-- 暗号化された文書ではトレイラの `/ID` が必須（鍵導出の入力になる）\n+- 暗号化された文書ではトレイラの `/ID` が必須。R2〜R4 では永続 ID を鍵導出に使う\n - 暗号化の対象は文字列とストリームであり、辞書のキー名・数値・名前オブジェクトは暗号化されない\n \n セキュリティハンドラは `/Filter` で識別する。ISO が定義するのは**標準セキュリティハンドラ** `/Standard`（パスワードベース）で、公開鍵ベースの `/Adobe.PubSec` などはハンドラ固有の追加キー（`/Recipients` など）を持つ。\n@@ -109,7 +109,7 @@ ISO 32000-1 表 20（共通）・表 21（標準ハンドラ）。\n - `/Filter` `/V` `/R` の欠落や、Standard と名乗る辞書の構造不正は `EncryptError` として位置情報付きで報告する\n - `/O` `/U` `/OE` `/UE` `/Perms` は長さを検証せずバイト列のまま保持する（検証は鍵導出の実装の責務）\n - 暗号化辞書の中に書かれた間接参照（`/Length 5 0 R` など）は解決しない\n-- Rust の R2〜R4 のファイル暗号鍵導出は §11 を参照。R5・R6 の鍵導出、パスワード認証、PDF 読み込み時の復号は後続の作業\n+- Rust の 鍵導出は R2〜R4 が §11、R5・R6 が §12。役割を自動判定する認証入口は #675、文字列・ストリームの復号は #683 で扱う\n \n ### TypeScript と Rust の共通解析方針\n \n@@ -156,7 +156,7 @@ Rust の `encrypt::sha2` は FIPS 180-4 §5.1–5.3、§6.2、§6.4–6.5 のバ\n `update` は入力を順に受け取り、完全なブロックを処理して末尾を保持する。元のビット長が欄に収まらない場合は、状態を維持して `None` を返す。\n `finalize` は終端の `80`（16進数）、ゼロ、元のビット長のビッグエンディアン表現を補い、ダイジェストを固定長配列で返す。\n SHA-384 は SHA-512 と圧縮処理を共有し、専用の初期値から計算した最終状態の先頭6ワードを出力する。\n-`digest` は一続きの入力を受け取り、逐次入力と同様にヒープ確保なしでハッシュする。R6 の鍵導出への接続は #663 で扱う。\n+`digest` は一続きの入力を受け取り、逐次入力と同様にヒープ確保なしでハッシュする。R6 での反復と終了条件は §12 に示す。\n \n ## 10. AES-128 / AES-256 の復号\n \n@@ -170,7 +170,7 @@ ISO 32000-1:2008 §7.6 の crypt filter では `/CFM /AESV2` が AES-128 を表\n \n CBC は 1 ブロックごとに AES の逆変換を行い、その結果を 1 ブロック目では IV、2 ブロック目以降では直前の暗号文と XOR する（NIST SP 800-38A §6.2）。パディングは追加したバイト数 `n` を末尾に `n` 個並べる。平文が空の場合も `10`（16 進数）が 16 個並ぶため、IV と暗号文を合わせて 32 バイトを要する。\n \n-Rust の内部型 `encrypt::aes::Aes` は鍵を固定長配列で受け取り、AES-128 用に 11 個、AES-256 用に 15 個のラウンド鍵を作る。`decrypt_pdf_cbc` は IV の不足、暗号文が空、16 バイト単位の端数があるときに `InvalidLength`、復号後のパディングが不正なときに `InvalidPadding` を返す。`decrypt_ecb_block` は `/Perms` に使う固定長の復号を提供する。パスワード認証・鍵導出との接続は #663・#675、文字列・ストリームの読み込みへの接続は #683 で扱う。\n+Rust の内部型 `encrypt::aes::Aes` は鍵を固定長配列で受け取り、AES-128 用に 11 個、AES-256 用に 15 個のラウンド鍵を作る。`decrypt_pdf_cbc` は IV の不足、暗号文が空、16 バイト単位の端数があるときに `InvalidLength`、復号後のパディングが不正なときに `InvalidPadding` を返す。`decrypt_ecb_block` は `/Perms` に使う固定長の復号を提供する。R5・R6 の鍵導出では §12 のとおり CBC と ECB を使う。文字列・ストリームの読み込みへの接続は #683 で扱う。\n \n ## 11. R2〜R4 のファイル暗号鍵を導出する\n \n@@ -182,3 +182,20 @@ ISO 32000-1:2008 §7.6.3.3 Algorithm 2 を `StandardSecurityHandler::derive_lega\n 4. R3・R4 では、直前のダイジェストの先頭 `n` バイトに MD5 をさらに 50 回適用する。最後に残ったダイジェストの先頭 `n` バイトが鍵になる。R2 と `/V 1 /R 3` の `n` は 5。 `/V 2 /R 3` と `/V 4 /R 4` は辞書直下の `/Length` のビット数を 8 で割る。省略時は 5 バイト。\n \n 鍵導出時は `/ID` が欠けていれば `MissingFileId`、`/O` が 32 バイトでなければ `InvalidOwnerEntryLength` を返す。空の永続 ID を含む 2 要素の `/ID` は受理する。 `/U` によるパスワード認証は #675 で扱う。\n+\n+## 12. R5・R6 の AES-256 ファイル暗号鍵と権限の検証\n+\n+`StandardSecurityHandler::derive_aes256_file_key(role, prepared_password)` は指定された役割で Algorithm 2.A を適用する。パスワードの文字列は呼び出し側で準備する。pdfmod は SASLprep（RFC 4013 の文字マッピング、NFKC 正規化、禁止文字・双方向性の検査）を実装しない。受け取った UTF-8 の先頭 127 **バイト**を使い、末尾が文字の途中でもその位置で切る。空文字列は 0 バイトの入力になる。\n+\n+| 役割 | 検証値とソルトを読む項目 | 各ハッシュに加える利用者情報 | 復号する項目 |\n+| --- | --- | --- | --- |\n+| 利用者 | `/U` | 空 | `/UE` |\n+| 所有者 | `/O` | `/U` の全 48 バイト | `/OE` |\n+\n+1. 検証値とソルトの項目は 48 バイト。先頭 32 バイトが期待するハッシュ、次の 8 バイトが検証用ソルト、最後の 8 バイトが鍵用ソルト。役割ごとに読む項目の長さを導出時に確認する。\n+2. パスワード、検証用ソルト、利用者情報をこの順にハッシュして先頭 32 バイトと比較する。合致したら鍵用ソルトに替えて再計算し、32 バイトの中間鍵を得る。R5 はどちらも SHA-256、R6 は次の反復を使う。\n+3. R6 の Algorithm 2.B は上記の連結の SHA-256 を初期値 `K` とする。各ラウンドで「パスワード、現在の `K` 全体、利用者情報」を 64 回並べ、`K[0..16]` を鍵、`K[16..32]` を IV として AES-128-CBC（パディングなし）で暗号化する。暗号文の先頭 16 バイトをビッグエンディアン整数として 3 で割った余りが 0 / 1 / 2 のとき、暗号文全体を SHA-256 / SHA-384 / SHA-512 に掛け、新しい `K` を得る。完了したラウンド数が 64 以上かつ「末尾の暗号文バイト + 32」以上で終了し、最後の `K` の先頭 32 バイトを使う。\n+4. 中間鍵で `/UE` または `/OE` の 32 バイトを AES-256-CBC で復号する。IV は全バイトがゼロ、パディングなし。得られた鍵で 16 バイトの `/Perms` を AES-256-ECB で復号する。\n+5. 権限ブロックの先頭 4 バイトが `/P` のリトルエンディアン表現、次が `FF FF FF FF`、次が `/EncryptMetadata` に応じた ASCII の `T` / `F`、次の 3 バイトが `adb` であることを確認する。末尾 4 バイトは乱数。照合できた場合にだけファイル暗号鍵を返す。\n+\n+パスワード不一致は `IncorrectPassword`、権限ブロック不一致は `InvalidPermissions`、辞書項目の長さ不正はキー名と実際の長さを含む `InvalidEntryLength` で区別する。R2〜R4 は §11 の入口を使う。",
           "patchLines": 66,
+          "truncated": false
+        }
+      ]
+    },
+    {
+      "sha": "75cc53dc04540dac07472e37f672c5895f917491",
+      "merge": false,
+      "author": "DIO0550",
+      "date": "2026-11-19T00:44:59+09:00",
+      "subject": "🐛 [Bug Fix]: #663 AES置換から秘密値による表参照を除く",
+      "body": "- 順置換と逆置換を有限体の逆数とアフィン変換で計算する\n- 状態の16バイトと鍵展開の4バイトに同じ固定手順を使う\n- 参照表をテストに置き、全256入力の順逆変換と鍵展開を照合する",
+      "files": [
+        {
+          "path": "rust/crates/core/src/encrypt/aes/block.rs",
+          "status": "M",
+          "oldPath": null,
+          "additions": 3,
+          "deletions": 3,
+          "patch": "@@ -14,13 +14,13 @@ impl BlockState {\n         state.add_round_key(first);\n \n         for key in middle {\n-            state.0 = state.0.map(substitute);\n+            state.0 = substitute(state.0);\n             state.shift_rows();\n             state.mix_columns();\n             state.add_round_key(key);\n         }\n \n-        state.0 = state.0.map(substitute);\n+        state.0 = substitute(state.0);\n         state.shift_rows();\n         state.add_round_key(last);\n         state.0\n@@ -74,7 +74,7 @@ impl BlockState {\n     }\n \n     fn inv_sub_bytes(&mut self) {\n-        self.0 = self.0.map(inverse_substitute);\n+        self.0 = inverse_substitute(self.0);\n     }\n \n     fn inv_mix_columns(&mut self) {",
+          "patchLines": 25,
+          "truncated": false
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/aes/byte.rs",
+          "status": "M",
+          "oldPath": null,
+          "additions": 93,
+          "deletions": 38,
+          "patch": "@@ -1,47 +1,99 @@\n-//! AES の 1 バイトに対する置換と有限体の演算。\n-\n-// FIPS 197 の S-box。逆置換表もこの表からコンパイル時に求める。\n-const S_BOX: [u8; 256] = [\n-    0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,\n-    0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0,\n-    0xb7, 0xfd, 0x93, 0x26, 0x36, 0x3f, 0xf7, 0xcc, 0x34, 0xa5, 0xe5, 0xf1, 0x71, 0xd8, 0x31, 0x15,\n-    0x04, 0xc7, 0x23, 0xc3, 0x18, 0x96, 0x05, 0x9a, 0x07, 0x12, 0x80, 0xe2, 0xeb, 0x27, 0xb2, 0x75,\n-    0x09, 0x83, 0x2c, 0x1a, 0x1b, 0x6e, 0x5a, 0xa0, 0x52, 0x3b, 0xd6, 0xb3, 0x29, 0xe3, 0x2f, 0x84,\n-    0x53, 0xd1, 0x00, 0xed, 0x20, 0xfc, 0xb1, 0x5b, 0x6a, 0xcb, 0xbe, 0x39, 0x4a, 0x4c, 0x58, 0xcf,\n-    0xd0, 0xef, 0xaa, 0xfb, 0x43, 0x4d, 0x33, 0x85, 0x45, 0xf9, 0x02, 0x7f, 0x50, 0x3c, 0x9f, 0xa8,\n-    0x51, 0xa3, 0x40, 0x8f, 0x92, 0x9d, 0x38, 0xf5, 0xbc, 0xb6, 0xda, 0x21, 0x10, 0xff, 0xf3, 0xd2,\n-    0xcd, 0x0c, 0x13, 0xec, 0x5f, 0x97, 0x44, 0x17, 0xc4, 0xa7, 0x7e, 0x3d, 0x64, 0x5d, 0x19, 0x73,\n-    0x60, 0x81, 0x4f, 0xdc, 0x22, 0x2a, 0x90, 0x88, 0x46, 0xee, 0xb8, 0x14, 0xde, 0x5e, 0x0b, 0xdb,\n-    0xe0, 0x32, 0x3a, 0x0a, 0x49, 0x06, 0x24, 0x5c, 0xc2, 0xd3, 0xac, 0x62, 0x91, 0x95, 0xe4, 0x79,\n-    0xe7, 0xc8, 0x37, 0x6d, 0x8d, 0xd5, 0x4e, 0xa9, 0x6c, 0x56, 0xf4, 0xea, 0x65, 0x7a, 0xae, 0x08,\n-    0xba, 0x78, 0x25, 0x2e, 0x1c, 0xa6, 0xb4, 0xc6, 0xe8, 0xdd, 0x74, 0x1f, 0x4b, 0xbd, 0x8b, 0x8a,\n-    0x70, 0x3e, 0xb5, 0x66, 0x48, 0x03, 0xf6, 0x0e, 0x61, 0x35, 0x57, 0xb9, 0x86, 0xc1, 0x1d, 0x9e,\n-    0xe1, 0xf8, 0x98, 0x11, 0x69, 0xd9, 0x8e, 0x94, 0x9b, 0x1e, 0x87, 0xe9, 0xce, 0x55, 0x28, 0xdf,\n-    0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16,\n-];\n-\n-const INV_S_BOX: [u8; 256] = inverse_s_box();\n-\n-const fn inverse_s_box() -> [u8; 256] {\n-    let mut inverse = [0; S_BOX.len()];\n-    let mut byte = 0_u8;\n-    loop {\n-        inverse[S_BOX[byte as usize] as usize] = byte;\n-        if byte == u8::MAX {\n-            return inverse;\n+//! AES のバイト置換と有限体 GF(2⁸) の演算（FIPS 197 §4・§5）。\n+//! 秘密値を表の添字に使わず、16 バイトそれぞれに同じ固定手順を適用する。\n+\n+use super::Block;\n+\n+const LOW_BITS: u128 = u128::from_le_bytes([1; 16]);\n+\n+/// 16 個の独立した 8 ビットの体要素。各バイト境界を保って並列に計算する。\n+#[derive(Clone, Copy)]\n+struct ByteLanes(u128);\n+\n+impl ByteLanes {\n+    fn substitute(self) -> Self {\n+        let x = self.inverse();\n+        Self(\n+            x.0 ^ x.rotate(1)\n+                ^ x.rotate(2)\n+                ^ x.rotate(3)\n+                ^ x.rotate(4)\n+                ^ u128::from_le_bytes([0x63; 16]),\n+        )\n+    }\n+\n+    fn inverse_substitute(self) -> Self {\n+        let x = self.rotate(1) ^ self.rotate(3) ^ self.rotate(6) ^ u128::from_le_bytes([0x05; 16]);\n+        Self(x).inverse()\n+    }\n+\n+    /// 各バイトを独立に左ローテートする。shift はアフィン変換の定数 (1〜6)。\n+    fn rotate(self, shift: u32) -> u128 {\n+        let low_mask = LOW_BITS * ((1 << shift) - 1);\n+        ((self.0 << shift) & !low_mask) | ((self.0 >> (8 - shift)) & low_mask)\n+    }\n+\n+    /// 非ゼロの要素の逆数は x^254。ゼロにも同じ演算を行い、AES の規定どおりゼロを得る。\n+    fn inverse(self) -> Self {\n+        let x2 = self.square();\n+        let x3 = x2.multiply(self);\n+        let x12 = x3.square().square();\n+        let x15 = x12.multiply(x3);\n+        let x240 = x15.square().square().square().square();\n+        x240.multiply(x12).multiply(x2)\n+    }\n+\n+    fn multiply(self, rhs: Self) -> Self {\n+        let mut a = self.0;\n+        let mut b = rhs.0;\n+        let mut product = 0;\n+        for _ in 0..8 {\n+            // 乗数の 1 ビットを各バイトの 00 / FF に広げ、分岐せず部分積を選ぶ。\n+            let mask = (b & LOW_BITS).wrapping_mul(0xff);\n+            product ^= a & mask;\n+            // x を掛けたときの桁上がりは、AES の多項式 0x11B で還元する。\n+            let carry = (a >> 7) & LOW_BITS;\n+            a = ((a << 1) & !LOW_BITS) ^ carry.wrapping_mul(0x1b);\n+            b >>= 1;\n         }\n-        byte += 1;\n+        Self(product)\n+    }\n+\n+    fn square(self) -> Self {\n+        // GF(2) では (a+b)² = a²+b²。各ビットの x^(2i) を 0x11B で還元して足す。\n+        let bit = |i: u32| (self.0 >> i) & LOW_BITS;\n+        Self(\n+            bit(0)\n+                ^ (bit(1) << 2)\n+                ^ (bit(2) << 4)\n+                ^ (bit(3) << 6)\n+                ^ bit(4).wrapping_mul(0x1b)\n+                ^ bit(5).wrapping_mul(0x6c)\n+                ^ bit(6).wrapping_mul(0xab)\n+                ^ bit(7).wrapping_mul(0x9a),\n+        )\n     }\n }\n \n-/// 暗号化の SubBytes と鍵拡張の SubWord に使う正方向の置換。\n-pub(in crate::encrypt::aes) fn substitute(byte: u8) -> u8 {\n-    S_BOX[usize::from(byte)]\n+/// AES の SubBytes をブロック全体へ適用する。\n+pub(in crate::encrypt::aes) fn substitute(block: Block) -> Block {\n+    ByteLanes(u128::from_le_bytes(block))\n+        .substitute()\n+        .0\n+        .to_le_bytes()\n+}\n+\n+/// AES の InvSubBytes をブロック全体へ適用する。\n+pub(in crate::encrypt::aes) fn inverse_substitute(block: Block) -> Block {\n+    ByteLanes(u128::from_le_bytes(block))\n+        .inverse_substitute()\n+        .0\n+        .to_le_bytes()\n }\n \n-/// InvSubBytes に使う逆方向の置換。\n-pub(in crate::encrypt::aes) fn inverse_substitute(byte: u8) -> u8 {\n-    INV_S_BOX[usize::from(byte)]\n+/// 鍵拡張の SubWord。下位 4 バイトに同じ正方向の置換を適用する。\n+pub(in crate::encrypt::aes) fn substitute_word(word: u32) -> u32 {\n+    let [a, b, c, d, ..] = ByteLanes(u128::from(word)).substitute().0.to_le_bytes();\n+    u32::from_le_bytes([a, b, c, d])\n }\n \n /// AES の有限体で 2 倍する。最上位ビットがあれば還元多項式の下位 8 ビットを XOR する。\n@@ -49,3 +101,6 @@ pub(in crate::encrypt::aes) fn double(byte: u8) -> u8 {\n     let reduction_mask = 0_u8.wrapping_sub(byte >> 7);\n     (byte << 1) ^ (0x1b & reduction_mask)\n }\n+\n+#[cfg(test)]\n+mod tests;",
+          "patchLines": 145,
+          "truncated": false
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/aes/byte/tests.rs",
+          "status": "A",
+          "oldPath": null,
+          "additions": 38,
+          "deletions": 0,
+          "patch": "@@ -0,0 +1,38 @@\n+use super::{inverse_substitute, substitute, substitute_word};\n+\n+// FIPS 197 の参照表はテストの期待値にだけ使う。\n+const S_BOX: [u8; 256] = [\n+    0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,\n+    0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0,\n+    0xb7, 0xfd, 0x93, 0x26, 0x36, 0x3f, 0xf7, 0xcc, 0x34, 0xa5, 0xe5, 0xf1, 0x71, 0xd8, 0x31, 0x15,\n+    0x04, 0xc7, 0x23, 0xc3, 0x18, 0x96, 0x05, 0x9a, 0x07, 0x12, 0x80, 0xe2, 0xeb, 0x27, 0xb2, 0x75,\n+    0x09, 0x83, 0x2c, 0x1a, 0x1b, 0x6e, 0x5a, 0xa0, 0x52, 0x3b, 0xd6, 0xb3, 0x29, 0xe3, 0x2f, 0x84,\n+    0x53, 0xd1, 0x00, 0xed, 0x20, 0xfc, 0xb1, 0x5b, 0x6a, 0xcb, 0xbe, 0x39, 0x4a, 0x4c, 0x58, 0xcf,\n+    0xd0, 0xef, 0xaa, 0xfb, 0x43, 0x4d, 0x33, 0x85, 0x45, 0xf9, 0x02, 0x7f, 0x50, 0x3c, 0x9f, 0xa8,\n+    0x51, 0xa3, 0x40, 0x8f, 0x92, 0x9d, 0x38, 0xf5, 0xbc, 0xb6, 0xda, 0x21, 0x10, 0xff, 0xf3, 0xd2,\n+    0xcd, 0x0c, 0x13, 0xec, 0x5f, 0x97, 0x44, 0x17, 0xc4, 0xa7, 0x7e, 0x3d, 0x64, 0x5d, 0x19, 0x73,\n+    0x60, 0x81, 0x4f, 0xdc, 0x22, 0x2a, 0x90, 0x88, 0x46, 0xee, 0xb8, 0x14, 0xde, 0x5e, 0x0b, 0xdb,\n+    0xe0, 0x32, 0x3a, 0x0a, 0x49, 0x06, 0x24, 0x5c, 0xc2, 0xd3, 0xac, 0x62, 0x91, 0x95, 0xe4, 0x79,\n+    0xe7, 0xc8, 0x37, 0x6d, 0x8d, 0xd5, 0x4e, 0xa9, 0x6c, 0x56, 0xf4, 0xea, 0x65, 0x7a, 0xae, 0x08,\n+    0xba, 0x78, 0x25, 0x2e, 0x1c, 0xa6, 0xb4, 0xc6, 0xe8, 0xdd, 0x74, 0x1f, 0x4b, 0xbd, 0x8b, 0x8a,\n+    0x70, 0x3e, 0xb5, 0x66, 0x48, 0x03, 0xf6, 0x0e, 0x61, 0x35, 0x57, 0xb9, 0x86, 0xc1, 0x1d, 0x9e,\n+    0xe1, 0xf8, 0x98, 0x11, 0x69, 0xd9, 0x8e, 0x94, 0x9b, 0x1e, 0x87, 0xe9, 0xce, 0x55, 0x28, 0xdf,\n+    0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16,\n+];\n+\n+#[test]\n+fn forward_inverse_and_key_expansion_match_the_fips_s_box_for_all_bytes() {\n+    for (group, expected) in S_BOX.as_chunks::<16>().0.iter().enumerate() {\n+        let input = std::array::from_fn(|lane| u8::try_from(group * 16 + lane).unwrap());\n+        assert_eq!(substitute(input), *expected);\n+        assert_eq!(inverse_substitute(*expected), input);\n+\n+        let words = input.as_chunks::<4>().0;\n+        for (word, substituted) in words.iter().zip(expected.as_chunks::<4>().0) {\n+            assert_eq!(\n+                substitute_word(u32::from_be_bytes(*word)).to_be_bytes(),\n+                *substituted\n+            );\n+        }\n+    }\n+}",
+          "patchLines": 39,
+          "truncated": false
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/aes/round_keys.rs",
+          "status": "M",
+          "oldPath": null,
+          "additions": 3,
+          "deletions": 7,
+          "patch": "@@ -1,6 +1,6 @@\n //! FIPS 197 §5.2 の鍵拡張。1 ワードは 4 バイト、1 ラウンド鍵は 4 ワード。\n \n-use super::byte::{double, substitute};\n+use super::byte::{double, substitute_word};\n use super::{KEY_128_LEN, KEY_256_LEN};\n \n pub(super) const WORD_LEN: usize = 4;\n@@ -52,7 +52,7 @@ impl RoundKeys {\n         for [even, odd] in pairs {\n             *even = Self::expand_with_round_constant(older, &previous, &mut round_constant);\n             let [.., last_word] = *even;\n-            *odd = Self::xor_chain(previous, Self::sub_word(last_word));\n+            *odd = Self::xor_chain(previous, substitute_word(last_word));\n \n             older = *even;\n             previous = *odd;\n@@ -77,7 +77,7 @@ impl RoundKeys {\n     ) -> RoundKey {\n         let [.., last_word] = *previous;\n         let transformed =\n-            Self::sub_word(last_word.rotate_left(8)) ^ (u32::from(*round_constant) << 24);\n+            substitute_word(last_word.rotate_left(8)) ^ (u32::from(*round_constant) << 24);\n         *round_constant = double(*round_constant);\n         Self::xor_chain(base, transformed)\n     }\n@@ -89,8 +89,4 @@ impl RoundKeys {\n         }\n         base\n     }\n-\n-    fn sub_word(word: u32) -> u32 {\n-        u32::from_be_bytes(word.to_be_bytes().map(substitute))\n-    }\n }",
+          "patchLines": 35,
           "truncated": false
         }
       ]
