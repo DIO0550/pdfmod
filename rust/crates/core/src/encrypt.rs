@@ -3,12 +3,12 @@
 //!
 //! `/Filter /Standard` の暗号化辞書のみを型として解釈し、`/V` と `/R` の
 //! 取りうる組み合わせだけを [`StandardAlgorithm`] のバリアントで表現する。
-//! 鍵導出に使う MD5・SHA-2 と、バイト列に適用する RC4・AES を内部で実装する。
+//! R2〜R4 のファイル暗号鍵を導出し、MD5・SHA-2・RC4・AES を内部で実装する。
 //!
-//! # スコープ外（#604）
+//! # スコープ外
 //!
 //! - PDF 読み込み時の文字列・ストリームの復号
-//! - 鍵導出・パスワード認証（`/O` `/U` からの検証）
+//! - R5・R6 の鍵導出とパスワード認証（`/O` `/U` からの検証）
 //! - 公開鍵ハンドラ `/Adobe.PubSec` 固有キー（`/Recipients` `/SubFilter`）の解釈
 //! - 暗号化辞書の中に書かれた間接参照の解決（`/Length 5 0 R` など）
 //!
@@ -30,10 +30,7 @@ mod block_buffer;
 pub mod crypt_filter;
 pub mod error;
 pub mod key;
-#[cfg_attr(
-    not(test),
-    expect(dead_code, reason = "鍵導出の実装 (#662) から呼び出す")
-)]
+pub mod legacy_key;
 mod md5;
 pub mod permissions;
 #[cfg_attr(

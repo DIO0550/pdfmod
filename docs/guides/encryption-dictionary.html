@@ -164,7 +164,7 @@ nav a { font-size: 16px; } table { font-size: 17px; } th { font-size: 15px; }
 <a href="#algorithms"><span>03</span>有効な6組</a><a href="#filters"><span>04</span>crypt filter と単位</a>
 <a href="#permissions"><span>05</span>権限のビット表現</a><a href="#examples"><span>06</span>正常・未対応・不正</a>
 <a href="#implementation"><span>07</span>解析の境界</a><a href="#algorithm-types"><span>08</span>方式ごとの型と責務</a>
-<a href="#legacy-md5"><span>09</span>旧リビジョンのMD5</a><a href="#legacy-rc4"><span>10</span>旧形式のRC4</a>
+<a href="#legacy-md5"><span>09</span>旧リビジョンの鍵導出とMD5</a><a href="#legacy-rc4"><span>10</span>旧形式のRC4</a>
 <a href="#revision6-sha2"><span>11</span>リビジョン6のSHA-2</a><a href="#aes-decryption"><span>12</span>AESのCBC・ECB復号</a></nav></aside>
 <main id="top"><div class="wrap"><header class="hero"><div class="eyebrow">PDF INTERNALS / ENCRYPTION DICTIONARY</div>
 <h1>暗号化辞書を読む</h1><p class="lead">PDFの <code>/Encrypt</code> は、暗号化の方式と鍵の材料を記述します。アルゴリズムの版、crypt filter、権限を、解釈できる型へ変換する仕組みを見ていきます。</p></header>
@@ -323,21 +323,41 @@ nav a { font-size: 16px; } table { font-size: 17px; } th { font-size: 15px; }
 <div class="section-heading"><span class="number">09</span><h2>旧リビジョンの鍵導出とMD5</h2></div>
 <p>標準セキュリティハンドラのリビジョン2〜4では、パスワードとPDFに記録された値からファイル暗号鍵を導出します。この手順で使うMD5は、任意長のバイト列を16バイトのダイジェストに変換するハッシュ関数です。</p>
 <h3>PDFから取り出す鍵の材料</h3>
-<p>次の抜粋はリビジョン4で使う項目です。<code>/O</code> と <code>/ID</code> の16進文字列は、説明用に短縮しています。</p>
-<pre><code><span class="comment">% 鍵導出に使う項目の抜粋</span>
-<span class="value">8 0</span> <span class="pdf-syntax">obj</span>
+<p>qpdfで生成したリビジョン4のPDFから、暗号化辞書とトレイラを抜粋します。トレイラはPDF末尾にある辞書です。<code>/Encrypt 5 0 R</code> は、オブジェクト番号5・世代番号0の暗号化辞書を参照します。</p>
+<pre><code><span class="comment">% 利用者パスワード user で開けるテスト用 PDF の抜粋</span>
+<span class="value">5 0</span> <span class="pdf-syntax">obj</span>
 <span class="pdf-syntax">&lt;&lt;</span> <span class="key">/Filter</span> <span class="key">/Standard</span> <span class="key">/V</span> <span class="value">4</span> <span class="key">/R</span> <span class="value">4</span> <span class="key">/Length</span> <span class="value">128</span>
-   <span class="key">/O</span> <span class="string">&lt;00FF&gt;</span> <span class="key">/P</span> <span class="value">-4</span> <span class="key">/EncryptMetadata</span> <span class="keyword">false</span> <span class="pdf-syntax">&gt;&gt;</span>
+   <span class="key">/O</span> <span class="string">&lt;0ba3835f88f90388e74e54584125ce142be0de24c6b0d37746e075b891756671&gt;</span>
+   <span class="key">/U</span> <span class="string">&lt;3250600e32dc6a8eae7dc501b5ba8e520122456a91bae5134273a6db134c87c4&gt;</span>
+   <span class="key">/P</span> <span class="value">-3392</span> <span class="key">/EncryptMetadata</span> <span class="keyword">false</span>
+   <span class="key">/CF</span> <span class="pdf-syntax">&lt;&lt;</span> <span class="key">/StdCF</span> <span class="pdf-syntax">&lt;&lt;</span> <span class="key">/AuthEvent</span> <span class="key">/DocOpen</span> <span class="key">/CFM</span> <span class="key">/AESV2</span> <span class="key">/Length</span> <span class="value">16</span> <span class="pdf-syntax">&gt;&gt; &gt;&gt;</span>
+   <span class="key">/StmF</span> <span class="key">/StdCF</span> <span class="key">/StrF</span> <span class="key">/StdCF</span> <span class="pdf-syntax">&gt;&gt;</span>
 <span class="pdf-syntax">endobj</span>
 <span class="pdf-syntax">trailer</span>
-<span class="pdf-syntax">&lt;&lt;</span> <span class="key">/Encrypt</span> <span class="value">8 0</span> <span class="pdf-syntax">R</span>
-   <span class="key">/ID</span> <span class="pdf-syntax">[</span><span class="string">&lt;00112233&gt;</span> <span class="string">&lt;44556677&gt;</span><span class="pdf-syntax">]</span> <span class="pdf-syntax">&gt;&gt;</span></code></pre>
+<span class="pdf-syntax">&lt;&lt;</span> <span class="key">/Root</span> <span class="value">1 0</span> <span class="pdf-syntax">R</span> <span class="key">/Size</span> <span class="value">6</span> <span class="key">/Encrypt</span> <span class="value">5 0</span> <span class="pdf-syntax">R</span>
+   <span class="key">/ID</span> <span class="pdf-syntax">[</span><span class="string">&lt;31415926535897932384626433832795&gt;</span> <span class="string">&lt;31415926535897932384626433832795&gt;</span><span class="pdf-syntax">]</span> <span class="pdf-syntax">&gt;&gt;</span></code></pre>
+<p><code>&lt;0ba3…&gt;</code> は2桁で1バイトを表す16進文字列です。<code>/ID</code> の第1要素はPDFを更新しても変わらない永続IDで、鍵の材料に使います。第2要素は更新に合わせて変わるIDです。</p>
+<h3>Algorithm 2 で鍵を導出する</h3>
 <ol class="steps">
-  <li>32バイトに調整したパスワード、<code>/O</code> の生バイト、<code>/P</code> の4バイトのリトルエンディアン表現、<code>/ID</code> 配列の先頭のバイト列を順にMD5へ渡します。</li>
+  <li>パスワードを32バイトにそろえます。<code>user</code> の4バイト <code>75 73 65 72</code> の後ろに、規定のバイト列の先頭28バイトを付けます。入力が32バイト以上なら先頭32バイトを使います。</li>
+  <li>整えたパスワード、<code>/O</code> の32バイト、<code>/P</code> の4バイト、永続IDを順にMD5へ渡します。リトルエンディアンは数値の下位バイトから並べる方式で、<code>/P -3392</code> は <code>C0 F2 FF FF</code> になります。pdfmodが受理する符号なし表記 <code>4294963904</code> も同じ4バイトになります。</li>
   <li>リビジョン4で <code>/EncryptMetadata false</code> の場合は、<code>FF FF FF FF</code> を加えてから最初のダイジェストを得ます。</li>
-  <li>リビジョン3と4では、直前のダイジェストの先頭からファイル暗号鍵と同じ長さのバイト列を取り出し、MD5に掛ける処理をさらに50回繰り返します。例の <code>/Length 128</code> は16バイトに相当します。</li>
-  <li>最後のダイジェストの先頭から、ファイル暗号鍵に必要なバイト数を取り出します。リビジョン2では5バイト固定です。</li>
+  <li>リビジョン3と4では、直前のダイジェストの先頭 <code>n</code> バイトをMD5に掛け直す処理を50回繰り返します。例えば <code>/Length 64</code> の場合、<code>n</code> は8です。</li>
+  <li>最後のダイジェストの先頭 <code>n</code> バイトがファイル暗号鍵です。この例では16バイトの <code>2d3657bf2eed39f71c700423877a4e15</code> が得られます。テストでは、鍵を使って計算した値を辞書の <code>/U</code> と照合します。</li>
 </ol>
+<div class="table-wrap" tabindex="0" role="region" aria-label="リビジョン別のファイル暗号鍵の長さと反復回数">
+<table><thead><tr><th scope="col">辞書の指定</th><th scope="col">鍵長 n</th><th scope="col">最初の MD5 の後に繰り返す回数</th></tr></thead>
+<tbody>
+<tr><td><code>/V 1 /R 2</code></td><td>5バイト固定</td><td>0回</td></tr>
+<tr><td><code>/V 1 /R 3</code></td><td>5バイト固定</td><td>50回</td></tr>
+<tr><td><code>/V 2 /R 3</code>、<code>/V 4 /R 4</code></td><td>辞書直下の <code>/Length</code> を8で割る。省略時は5バイト</td><td>50回</td></tr>
+</tbody></table>
+</div>
+<h3 id="legacy-file-key">Rustでファイル暗号鍵を導出する</h3>
+<pre><code><span class="keyword">let</span> key = handler.derive_legacy_file_key(<span class="string">b"user"</span>, trailer.id())?;
+<span class="keyword">let</span> key_bytes = key.as_bytes();</code></pre>
+<p><code>b"user"</code> は文字列の内容をバイトで表すRustの書き方です。<code>trailer.id()</code> は <code>Option&lt;&amp;FileId&gt;</code> を返します。<code>Option</code> は値がある <code>Some</code> と欠けている <code>None</code> を表し、<code>&amp;</code> は値を借りる記号です。ここでの <code>?</code> は、成功時に鍵を取り出し、失敗時に呼び出し元へ理由を返します。</p>
+<p>導出処理は、トレイラに <code>/ID</code> がなければ <code>MissingFileId</code>、<code>/O</code> が32バイトでなければ <code>InvalidOwnerEntryLength</code> を返します。<code>/ID [&lt;&gt; &lt;&gt;]</code> は2つの要素を持つので、長さ0の永続IDとして扱います。パスワードの認証は、導出した鍵を <code>/U</code> と照合する後続の手順です。</p>
 <h3>分割しても同じダイジェストを得る</h3>
 <p>MD5は64バイトがそろうたびに、4バイトずつ16個の整数へ読み替えます。各ブロックでビット演算、32ビットの加算、左回転を繰り返し、4個の32ビット整数からなる状態を更新します。<code>update</code> は64バイトに満たない末尾を保持するため、下の2通りの渡し方で同じダイジェストが得られます。</p>
 <pre><code><span class="keyword">let mut</span> md5 = <span class="type">Md5</span>::new();
@@ -358,7 +378,7 @@ assert_eq!(digest, <span class="type">Md5</span>::digest(<span class="string">b"
 </tbody>
 </table>
 </div>
-<p>Rust実装では内部の <code>Md5</code> がブロック処理を担当します。状態、バッファー、出力は固定長なので、50回の反復で前のダイジェストの一部を渡すたびにヒープを確保する必要はありません。辞書から鍵を導出し、パスワードを認証してPDFを復号する処理は後続の実装です。</p>
+<p>Rust実装では内部の <code>Md5</code> がブロック処理を担当します。状態、バッファー、出力は固定長なので、50回の反復で前のダイジェストの一部を渡すたびにヒープを確保する必要はありません。</p>
 <div class="note warning"><strong>既存PDFとの互換性に限って使用</strong>MD5の衝突耐性は失われています。旧形式の読み取りに限って使い、新規用途には使いません。</div>
 </section>
 <section class="section" id="legacy-rc4">
@@ -468,7 +488,7 @@ assert_eq!(digest, <span class="type">Md5</span>::digest(<span class="string">b"
     <span class="keyword">return</span> <span class="type">Err</span>(<span class="type">AesCbcError</span>::InvalidLength);
 };</code></pre>
 <p><code>::&lt;BLOCK_LEN&gt;</code> は切り出す個数をコンパイル時に指定する書き方で、ここでは16です。成功を表す <code>Some((iv, ciphertext))</code> から2つの値を取り出します。<code>iv</code> は <code>&amp;[u8; 16]</code>（16バイトちょうどの配列への参照）、<code>ciphertext</code> は <code>&amp;[u8]</code>（残りのバイト列への参照）です。例えば <code>b"abcde".split_first_chunk::&lt;2&gt;()</code> なら、同じ元データから <code>ab</code> と <code>cde</code> を借ります。指定した長さに満たない場合は <code>None</code> となり、<code>else</code> の処理に進みます。</p>
-<div class="note"><strong>Rustで使える処理</strong>同じ鍵から作ったラウンド鍵をCBCとECBで共有します。パスワードからの鍵導出と、PDF読み込み中に対象を選び復号する処理は後続の実装です。</div>
+<div class="note"><strong>Rustで使える処理</strong>同じ鍵から作ったラウンド鍵をCBCとECBで共有します。AES-256のファイル暗号鍵の導出と、PDF読み込み中に対象を選び復号する処理は後続の実装です。</div>
 </section>
 <footer><a href="#top">最上部へ</a> · <a href="README.md">解説一覧</a></footer></div></main>
 </body></html>
