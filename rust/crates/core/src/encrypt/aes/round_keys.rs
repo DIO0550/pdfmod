@@ -1,6 +1,6 @@
 //! FIPS 197 §5.2 の鍵拡張。1 ワードは 4 バイト、1 ラウンド鍵は 4 ワード。
 
-use super::byte::{double, substitute};
+use super::byte::{double, substitute_word};
 use super::{KEY_128_LEN, KEY_256_LEN};
 
 pub(super) const WORD_LEN: usize = 4;
@@ -52,7 +52,7 @@ impl RoundKeys {
         for [even, odd] in pairs {
             *even = Self::expand_with_round_constant(older, &previous, &mut round_constant);
             let [.., last_word] = *even;
-            *odd = Self::xor_chain(previous, Self::sub_word(last_word));
+            *odd = Self::xor_chain(previous, substitute_word(last_word));
 
             older = *even;
             previous = *odd;
@@ -77,7 +77,7 @@ impl RoundKeys {
     ) -> RoundKey {
         let [.., last_word] = *previous;
         let transformed =
-            Self::sub_word(last_word.rotate_left(8)) ^ (u32::from(*round_constant) << 24);
+            substitute_word(last_word.rotate_left(8)) ^ (u32::from(*round_constant) << 24);
         *round_constant = double(*round_constant);
         Self::xor_chain(base, transformed)
     }
@@ -88,9 +88,5 @@ impl RoundKeys {
             previous_word = *word;
         }
         base
-    }
-
-    fn sub_word(word: u32) -> u32 {
-        u32::from_be_bytes(word.to_be_bytes().map(substitute))
     }
 }

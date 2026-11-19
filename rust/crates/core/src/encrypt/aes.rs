@@ -4,8 +4,6 @@ mod block;
 mod byte;
 mod round_keys;
 
-use std::mem::size_of_val;
-
 use self::block::BlockState;
 use self::round_keys::RoundKeys;
 
@@ -48,22 +46,31 @@ impl Aes {
         BlockState::decrypt(*ciphertext, &self.round_keys)
     }
 
-    /// IV を含まない完全なブロック列を、指定された IV で CBC 復号する（SP 800-38A §6.2）。
-    /// 入力ブロック数に対応する平文をそのまま返し、パディングは取り除かない。
-    pub(super) fn decrypt_cbc_blocks(&self, iv: &Block, ciphertext: &[Block]) -> Vec<u8> {
-        let mut plaintext = Vec::with_capacity(size_of_val(ciphertext));
-        let mut previous = iv;
-        for block in ciphertext {
-            let mut output = self.decrypt_ecb_block(block);
-            for (byte, &previous_byte) in output.iter_mut().zip(previous) {
-                *byte ^= previous_byte;
-            }
-
-            plaintext.extend_from_slice(&output);
-            previous = block;
+    /// Algorithm 2.B の作業ブロック列を CBC で暗号化する。パディングは付けない。
+    pub(super) fn encrypt_cbc_blocks(&self, iv: &Block, blocks: &mut [Block]) {
+        let mut previous = *iv;
+        for block in blocks {
+            Self::xor_block(block, &previous);
+            *block = BlockState::encrypt(*block, &self.round_keys);
+            previous = *block;
         }
+    }
 
-        plaintext
+    /// 完全なブロック列を CBC でその場で復号する（SP 800-38A §6.2）。パディングは保持する。
+    pub(super) fn decrypt_cbc_blocks(&self, iv: &Block, blocks: &mut [Block]) {
+        let mut previous = *iv;
+        for block in blocks {
+            let ciphertext = *block;
+            *block = self.decrypt_ecb_block(&ciphertext);
+            Self::xor_block(block, &previous);
+            previous = ciphertext;
+        }
+    }
+
+    fn xor_block(block: &mut Block, mask: &Block) {
+        for (byte, mask_byte) in block.iter_mut().zip(mask) {
+            *byte ^= mask_byte;
+        }
     }
 
     /// PDF の AESV2/AESV3 の文字列・ストリームを復号する（ISO 32000 §7.6）。
@@ -72,12 +79,13 @@ impl Aes {
         let Some((iv, ciphertext)) = input.split_first_chunk::<BLOCK_LEN>() else {
             return Err(AesCbcError::InvalidLength);
         };
-        let (blocks, remainder) = ciphertext.as_chunks::<BLOCK_LEN>();
-        if blocks.is_empty() || !remainder.is_empty() {
+        if ciphertext.is_empty() || !ciphertext.len().is_multiple_of(BLOCK_LEN) {
             return Err(AesCbcError::InvalidLength);
         }
 
-        Self::remove_pdf_padding(self.decrypt_cbc_blocks(iv, blocks))
+        let mut plaintext = ciphertext.to_vec();
+        self.decrypt_cbc_blocks(iv, plaintext.as_chunks_mut::<BLOCK_LEN>().0);
+        Self::remove_pdf_padding(plaintext)
     }
 
     fn remove_pdf_padding(mut plaintext: Vec<u8>) -> Result<Vec<u8>, AesCbcError> {
