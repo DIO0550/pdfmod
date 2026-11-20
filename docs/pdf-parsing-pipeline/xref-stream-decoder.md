@@ -1,175 +1,97 @@
 # XRef Stream Decoder
 
-解凍済み xref ストリームデータからエントリをデコードし、`XRefTable` を返すモジュール。
+> **上位目次**: [PDF解析パイプライン仕様](./index.md) / [xref 解析仕様（統括）](./xref-parser-spec.md)  
+> **対応規格**: ISO 32000-1:2008 §7.5.8（[02. 物理ファイル構造 §4.2](../specs/02_file_structure.md#42-xrefストリームpdf-15以降)）  
+> **実装ファイル**: `packages/core/src/xref/stream/parser/index.ts`
 
-## PDF仕様解説
+展開済みの xref ストリームバイト列から各エントリをデコードし、`XRefTable` を構築する低レベルモジュールです。辞書解析・`/Type /XRef` 検証・ストリーム展開・trailer 抽出は上位の `XRefStreamParser`（[flatedecode-stream-parser.md](./flatedecode-stream-parser.md)）が担当します。
 
-### xref ストリームの役割（ISO 32000-1 §7.5.8）
+---
 
-xref ストリームは PDF 1.5 で導入された相互参照テーブルのバイナリ形式。テキスト形式の xref テーブルと同じ役割を持つが、ストリームオブジェクト内にバイナリデータとして格納される。ストリームオブジェクトの辞書部分に `/Type /XRef` を持つ。
+## PDF 仕様の要点
 
-導入の背景:
-- ファイルサイズ削減（バイナリ形式 + 圧縮対応）
-- Type 2 エントリによるオブジェクトストリーム内オブジェクトの参照が可能
+### `/W` 配列とバイナリエントリ構造
 
-### xref ストリーム辞書の必須エントリ
+`/W [w0 w1 w2]` は各エントリの 3 フィールドのバイト幅を指定します。各フィールドは**ビッグエンディアン符号なし整数**として読み取ります。
 
-| キー | 型 | 必須 | 説明 |
-|:-----|:---|:-----|:-----|
-| `/Type` | 名前 | 必須 | 常に `/XRef` |
-| `/Size` | 整数 | 必須 | テーブル内の最大オブジェクト番号 + 1 |
-| `/W` | 配列 | 必須 | 各フィールドのバイト幅 `[w0, w1, w2]` |
-| `/Index` | 配列 | 任意 | サブセクション範囲 `[firstObj count ...]`。省略時 `[0 Size]` |
-| `/Prev` | 整数 | 任意 | 前の xref セクションのバイトオフセット |
-
-### /W 配列によるフィールド定義
-
-`/W [w0 w1 w2]` — 各エントリは `w0 + w1 + w2` バイトで構成される。各フィールドはビッグエンディアン符号なし整数としてデコードする。
-
-| フィールド | バイト幅 | Type 0 (フリー) | Type 1 (通常) | Type 2 (圧縮) |
-|:-----------|:---------|:----------------|:-------------|:-------------|
-| Type | w0 | 0 | 1 | 2 |
-| Field2 | w1 | 次のフリーobj番号 | バイトオフセット | 親ストリームobj番号 |
-| Field3 | w2 | 世代番号 | 世代番号 | ストリーム内インデックス |
-
-具体的なバイト列の例:
-
-```
-/W [1 3 1] の場合、1エントリ = 5バイト:
-+------+---------+---------+
-| Type | Field2  | Field3  |
-| 1B   | 3B      | 1B      |
-+------+---------+---------+
-例: 01 00 00 09 00
-    Type=1, offset=9, gen=0 → XRefUsedEntry { type:1, offset:9, gen:0 }
+```text
+例: /W [1 3 1] → 1 エントリ = 5 バイト
++----------+--------------------+----------+
+| Type(1B) |     Field2 (3B)    | Field3(1B)|
++----------+--------------------+----------+
+    01           00 00 09            00
+  → XRefUsedEntry { type: 1, offset: 9, generationNumber: 0 }
 ```
 
-### デフォルト値ルール
+| フィールド | バイト幅 | Type 0（空き） | Type 1（通常） | Type 2（圧縮） | 幅 0 時の既定値 |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| Type | `w0` | `0` | `1` | `2` | `1`（ISO Table 18） |
+| Field2 | `w1` | 次空き obj 番号 | バイトオフセット | 親 ObjStm 番号 | `0` |
+| Field3 | `w2` | 世代番号 | 世代番号 | ストリーム内インデックス | `0`（ISO Table 18） |
 
-| 条件 | デフォルト値 | 根拠 |
-|:-----|:------------|:-----|
-| w0=0（Type フィールド省略） | Type = 1（通常オブジェクト） | ISO 32000-1 Table 18 |
-| w1=0（Field2 フィールド省略） | Field2 = 0 | フィールド幅 0 は値 0 として扱う |
-| w2=0（Field3 フィールド省略） | Field3 = 0 | ISO 32000-1 Table 18 |
+> 本モジュールは**構造デコードのみ**を担当し、意味論的検証は上位の責務とします。
 
-構造デコードのみを行い、意味論的検証は上位の責務とする。例: Type 2 で streamObject=0 は構造上デコード成功とする。
+### `/Index` 配列とテキスト形式との比較
 
-### /Index 配列によるサブセクション
+- `/Index [firstObj count ...]` のペア列で対象オブジェクト番号範囲を指定します（省略時は `[0, /Size]`）。
+- 例: `/Size 20 /Index [0 5 10 3]` → オブジェクト `0`〜`4`（5 個）と `10`〜`12`（3 個）の計 8 エントリが順に格納されます。
 
-`/Index [firstObj count firstObj count ...]` のペア列形式で、ストリームに含まれるオブジェクト範囲を指定する。省略時のデフォルトは `[0 Size]`。
+| 観点 | テキスト形式 xref | ストリーム形式 xref |
+| :--- | :--- | :--- |
+| 格納形式 | プレーンテキスト（固定 20 バイト） | バイナリ（`/W` で可変幅・圧縮可能） |
+| `Type=2`（ObjStm） | 非対応 | 対応 |
+| trailer | 直後に別セクション | ストリーム辞書に統合 |
 
-```
-/Size 20  /Index [0 5 10 3]
-→ サブセクション1: オブジェクト 0〜4 (5個)
-  サブセクション2: オブジェクト 10〜12 (3個)
-  合計8エントリ分のデータがストリームに格納される
-```
+---
 
-ストリームデータ内のエントリ順序は /Index のペア順に連続して配置される。
+## 実装仕様
 
-### テキスト形式 xref との対応表
+### `decodeXRefStreamEntries(params)`
 
-| 観点 | テキスト形式 (xref table) | ストリーム形式 (xref stream) |
-|:-----|:------------------------|:---------------------------|
-| 格納場所 | プレーンテキスト | ストリームオブジェクト内バイナリ |
-| エントリ幅 | 固定 20 バイト | /W 配列で可変 |
-| 圧縮 | 不可 | FlateDecode 等で圧縮可能 |
-| Type 2 サポート | なし | あり（オブジェクトストリーム内エントリ） |
-| trailer | 別セクション | ストリーム辞書に統合 |
+内部 API（`@pdfmod/core` からは直接 export しない）。
 
-## 実装解説
-
-### decodeXRefStreamEntries 関数
-
-**入力**: `XRefStreamParams`（下記の入力型を参照）
-**出力**: 成功時は `XRefTable`、失敗時は `PdfParseError` を Err で返す
-
-内部 API であり、`@pdfmod/core` からは直接 import しない。解凍済みバイト列のデコードのみを担当し、辞書解析・`/Type /XRef` 検証・ストリーム展開・trailer 抽出は上位の `XRefStreamParser`（xref ストリーム全体のパーサ。[xref-parser-spec.md](./xref-parser-spec.md) のモジュール構成を参照）が担当する。
-
-### XRefStreamParams 入力型
+#### 入力型 `XRefStreamParams`
 
 | フィールド | 型 | 必須 | 説明 |
-|:-----------|:---|:-----|:-----|
-| data | バイト列 | 必須 | 解凍済みストリームバイト列 |
-| w | 整数 3 要素の配列 | 必須 | `/W` 配列（各フィールドのバイト幅） |
-| size | 整数 | 必須 | `/Size` 値 |
-| index | 整数の配列 | 任意 | `/Index` 配列（省略可） |
-| baseOffset | バイトオフセット(ByteOffset) | 任意 | ストリームのPDFファイル内開始オフセット（エラー報告用、省略時は0） |
+| :--- | :--- | :--- | :--- |
+| `data` | バイト列 | **必須** | 展開済みストリームバイト列 |
+| `w` | 整数 3 要素配列 | **必須** | `/W` 配列 `[w0, w1, w2]` |
+| `size` | 整数 | **必須** | `/Size` 値 |
+| `index` | 整数配列 | 任意 | `/Index` 配列（省略時は `[0, size]`） |
+| `baseOffset` | `ByteOffset` | 任意 | エラー報告用のストリーム開始オフセット（省略時 `0`） |
 
-### 処理アルゴリズム
+- **出力**: `Result<XRefTable, PdfParseError>`
 
-1. **入力バリデーション**
-   - /W 配列: 各要素が非負安全整数
-   - size: 非負安全整数
-   - entryWidth (`w[0]+w[1]+w[2]`): 安全整数であること
-2. **サブセクション解決**
-   - /Index 省略時は `[0, size]` をデフォルトとする
-   - /Index 配列: 偶数長、各 firstObj と count が非負安全整数、`firstObj + count <= size`
-   - totalEntries（各 count の合計）: 安全整数であること
-3. **データ長チェック**
-   - `data.length === totalEntries * entryWidth`（expectedBytes も安全整数であること）
-4. **エントリデコードループ**
-   - 各サブセクションの各エントリについて `decodeIntBE` で 3 フィールドを読み取り
-   - Type 別に XRefEntry（FreeEntry / UsedEntry / CompressedEntry）を構築
-   - ブランド型 `create()` でバリデーション
-   - `Map<ObjectNumber, XRefEntry>` に追加（重複キーは後勝ち）
-5. **結果返却**
-   - `Ok({ entries, size })`
+#### 処理アルゴリズム
 
-### 内部ヘルパー関数
+1. **入力バリデーション**: `/W` の各要素・`size` が非負安全整数であること、および `entryWidth = w[0] + w[1] + w[2]` が安全整数であることを確認。
+2. **サブセクション解決**: `/Index` 未指定なら `[0, size]`。要素数が偶数、各 `firstObj` / `count` が非負安全整数、`firstObj + count <= size`、総エントリ数 `totalEntries` が安全整数であることを検証。
+3. **データ長チェック**: `expectedBytes = totalEntries * entryWidth` が安全整数かつ `data.length === expectedBytes` を検証。
+4. **エントリデコード**: 各エントリの 3 フィールドをビッグエンディアン符号なし整数として読み取り（幅 `0` は `0`、計算結果が `MAX_SAFE_INTEGER` 超過で `Err`）、既定値適用・Type 分岐・ブランド型検証を経てマップへ登録（重複キーは後勝ち）。
+5. **結果返却**: `Ok({ entries, size })`。
 
-**decodeIntBE** — ビッグエンディアン符号なし整数デコード。幅 0 は値 0 を返す。`Number.MAX_SAFE_INTEGER` 超過で Err。
+#### エラーケース（エラーコード: `XREF_STREAM_INVALID`）
 
-```
-function decodeIntBE(data, offset, width):
-  if width === 0: return Ok(0)
-  value = 0
-  for i in 0..width-1:
-    value = value * 256 + data[offset + i]
-  if value > MAX_SAFE_INTEGER: return Err(...)
-  return Ok(value)
-```
+すべてのエラーは `throw` せず `Err({ code: "XREF_STREAM_INVALID", message, offset? })` で返します（`offset` は `baseOffset` + エントリ相対位置）。
 
-**decodeEntry** — 1 エントリのデコード。デフォルト値適用 → Type 分岐 → ブランド型バリデーション。
-
-**failXRefStream** — エラー生成ヘルパー。`message` + オプショナルな `offset`（`baseOffset` + エントリ内相対位置から算出した PDF ファイル内絶対バイトオフセット）を含む。
-
-## エラーケースと Result 型
-
-すべてのエラーは `throw` せず `Err({ code: "XREF_STREAM_INVALID", message, offset? })` で返す。
-
-| ケース | エラーメッセージ例 | 検出タイミング |
-|:-------|:-----------------|:-------------|
-| /W 配列に負の値・非整数・非安全整数 | `"/W array element must be non-negative safe integer"` | 入力バリデーション |
-| size が負数・非整数・非安全整数 | `"invalid /Size value"` | 入力バリデーション |
-| entryWidth が非安全整数 | `"entry width exceeds safe integer range"` | 入力バリデーション |
-| /Index 配列の要素数が奇数 | `"/Index array must have even number of elements"` | サブセクション解決 |
-| /Index の firstObj が不正 | `"/Index firstObj must be non-negative safe integer"` | サブセクション解決 |
-| /Index の count が不正 | `"/Index count must be non-negative safe integer"` | サブセクション解決 |
-| firstObj + count > size | `"/Index range exceeds /Size"` | サブセクション解決 |
-| totalEntries が非安全整数 | `"total entry count exceeds safe integer range"` | サブセクション解決 |
-| expectedBytes が非安全整数 | `"expected data length exceeds safe integer range"` | データ長チェック |
-| データ長不一致 | `"stream data length mismatch: expected N, got M"` | データ長チェック |
-| 不明な Type 値 | `"unknown xref entry type: N"` | エントリデコード |
-| decodeIntBE オーバーフロー | `"decoded integer exceeds safe integer range"` | エントリデコード |
-| ブランド型バリデーション失敗 | `"invalid ObjectNumber/ByteOffset/GenerationNumber: ..."` | エントリデコード |
+| 検出タイミング | ケース | メッセージ例 |
+| :--- | :--- | :--- |
+| 入力バリデーション | `/W` に負値・非整数・非安全整数 | `"/W array element must be non-negative safe integer"` |
+| 入力バリデーション | `size` が不正 | `"invalid /Size value"` |
+| 入力バリデーション | `entryWidth` が安全整数超過 | `"entry width exceeds safe integer range"` |
+| サブセクション解決 | `/Index` 要素数が奇数 | `"/Index array must have even number of elements"` |
+| サブセクション解決 | `firstObj` / `count` が不正 | `"/Index firstObj must be non-negative safe integer"` |
+| サブセクション解決 | `firstObj + count > size` | `"/Index range exceeds /Size"` |
+| サブセクション解決 | `totalEntries` が安全整数超過 | `"total entry count exceeds safe integer range"` |
+| データ長チェック | `expectedBytes` 超過 / データ長不一致 | `"stream data length mismatch: expected N, got M"` |
+| エントリデコード | 未知の Type 値 | `"unknown xref entry type: N"` |
+| エントリデコード | 整数デコードの安全整数超過 | `"decoded integer exceeds safe integer range"` |
+| エントリデコード | ブランド型バリデーション失敗 | `"invalid ObjectNumber/ByteOffset/GenerationNumber: ..."` |
 
 ## 上位モジュールとの関係
 
-### XRefStreamParser との関係
-
+```text
+scanStartXRef ──→ parseXRefTable   ──→ TrailerParser ──→ XRefMerger ──→ ObjectStore
+                  XRefStreamParser ────────────────────↗
+                       └─→ decodeXRefStreamEntries（本モジュール）
 ```
-scanStartXRef  -->  parseXRefTable   -->  TrailerParser  -->  ObjectStore
-                    XRefStreamParser -->  (trailer は辞書に統合)
-                         |
-                         v
-                    decodeXRefStreamEntries  ← 本モジュール
-```
-
-- `XRefStreamParser` はストリームオブジェクト全体のパース（辞書解析・`/Type /XRef` 検証・ストリーム展開）を行い、内部で `decodeXRefStreamEntries` を呼ぶ（[xref-parser-spec.md](./xref-parser-spec.md) のモジュール構成を参照）
-- `decodeXRefStreamEntries` は解凍済みデータのデコードに特化した低レベル関数であり、単体テストしやすい設計
-
-### XRefMerger との統合
-
-- xref ストリームは `/Prev` キーで前の xref セクションを参照でき、インクリメンタルアップデートに対応
-- `XRefMerger` が複数の xref テーブル/ストリームを `/Prev` チェーンで辿り統合する（[xref-merger-spec.md](./xref-merger-spec.md)）
