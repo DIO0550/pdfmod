@@ -1,7 +1,7 @@
 {
   "version": 1,
   "pr": 796,
-  "sha": "9d8d9965be628e46a4af1dd8ff2ed6374c5656e9",
+  "sha": "80e0b234c381c7ae9410ecb92073e47dd0ef9f2c",
   "overview": {
     "title": "specs と解析パイプライン仕様書を人間向けに読みやすく整理する",
     "lead": "docs/specs/ と docs/pdf-parsing-pipeline/ の全 26 仕様書を再構成し、docs/README.md の新設と重複ファイルの削除を行いました。ソースコードと規約が参照する節番号・ルール ID・エラー/警告コードはすべて維持しています。",
@@ -783,6 +783,56 @@
           "start": 3,
           "end": 78,
           "text": "実装ファイルパス・EOL バリエーション表・パース手順・エラー表の体裁を他仕様書と統一した。"
+        }
+      ]
+    },
+    {
+      "sha": "80e0b234c381c7ae9410ecb92073e47dd0ef9f2c",
+      "phase": "revise",
+      "role": "レビュー指摘を受け、RunLengthDecode・ハイブリッドxref・リニアライズ判定とロールバックの誤記を修正する",
+      "why": "仕様表どおりに実装すると RunLengthDecode の復号誤り、ハイブリッド参照での /Prev 取りこぼし、未更新リニアライズ PDF の誤判定やファイル切断が起きるため。",
+      "notes": [
+        {
+          "path": "docs/specs/07_compression_filters.md",
+          "side": "new",
+          "start": 221,
+          "end": 232,
+          "text": "ISO 32000-1 §7.4.5 に合わせ、0〜127 をそのままコピー（length + 1 バイト）、129〜255 を単一バイト反復（257 - length 回）へ入れ替え、具体例（01 41 42 80 → AB、FE 41 80 → AAA）を補った。"
+        },
+        {
+          "path": "docs/specs/08_incremental_update_linearization.md",
+          "side": "new",
+          "start": 77,
+          "end": 94,
+          "text": "/XRefStm を前リビジョンの反復条件に混ぜていた誤りを改め、同一リビジョンの補助ストリームをテキスト側より優先統合しつつ、次リビジョンへはテキスト trailer 側の /Prev のみを辿る手順に修正した。"
+        },
+        {
+          "path": "docs/specs/08_incremental_update_linearization.md",
+          "side": "new",
+          "start": 113,
+          "end": 125,
+          "text": "単純な「1 つ前の %%EOF で切断」をやめ、/Prev が指す前リビジョンの有効な xref とダミーでない startxref・%%EOF を確認できた場合に限ってロールバックする手順へ訂正した。"
+        },
+        {
+          "path": "docs/specs/08_incremental_update_linearization.md",
+          "side": "new",
+          "start": 159,
+          "end": 165,
+          "text": "未更新のリニアライズ済み PDF でも Part 1 xref の直後にトレイラ・startxref 0・%%EOF が置かれる Annex F の構造を図へ明示した。"
+        },
+        {
+          "path": "docs/specs/08_incremental_update_linearization.md",
+          "side": "new",
+          "start": 171,
+          "end": 175,
+          "text": "末尾側の startxref が Part 1 xref を指すことを図に明記し、Part 1 の startxref 0 と対比して読めるようにした。"
+        },
+        {
+          "path": "docs/specs/08_incremental_update_linearization.md",
+          "side": "new",
+          "start": 220,
+          "end": 234,
+          "text": "%%EOF の個数による増分更新判定を廃止し、ISO 32000-1 Annex F の /L（宣言サイズ）と 2 段階 xref 構造の整合性で Valid / LinearizedButModified / LinearizedButCorrupted を判定する表へ改めた。"
         }
       ]
     }
