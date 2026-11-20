@@ -166,14 +166,14 @@ nav a { font-size: 16px; } table { font-size: 17px; } th { font-size: 15px; }
 <a href="#implementation"><span>07</span>解析の境界</a><a href="#algorithm-types"><span>08</span>方式ごとの型と責務</a>
 <a href="#legacy-md5"><span>09</span>旧リビジョンの鍵導出とMD5</a><a href="#legacy-rc4"><span>10</span>旧形式のRC4</a>
 <a href="#revision6-sha2"><span>11</span>リビジョン6のSHA-2</a><a href="#aes-decryption"><span>12</span>AESのCBC・ECB復号</a>
-<a href="#aes256-file-key"><span>13</span>AES-256のファイル暗号鍵</a></nav></aside>
+<a href="#aes256-file-key"><span>13</span>AES-256のファイル暗号鍵</a><a href="#password-auth"><span>14</span>パスワード認証</a></nav></aside>
 <main id="top"><div class="wrap"><header class="hero"><div class="eyebrow">PDF INTERNALS / ENCRYPTION DICTIONARY</div>
 <h1>暗号化辞書を読む</h1><p class="lead">PDFの <code>/Encrypt</code> は、暗号化の方式と鍵の材料を記述します。アルゴリズムの版、crypt filter、権限を、解釈できる型へ変換する仕組みを見ていきます。</p></header>
 <section class="section" id="overview"><div class="section-heading"><span class="number">01</span><h2>暗号化の起点</h2></div>
 <p>トレイラの <code>/Encrypt</code> が暗号化辞書を指します。直接辞書でも間接参照でも書けます。暗号化辞書自体は復号前に読む必要があるため、オブジェクトストリームには格納できません。</p>
 <div class="grid"><div class="card"><h3>セキュリティハンドラ</h3><p>Security handler はパスワードなどからアクセスを認証する方式です。<code>/Filter /Standard</code> はパスワードベースの標準ハンドラを表します。</p></div>
 <div class="card"><h3>暗号化される値</h3><p>対象は文字列とストリームです。辞書のキー名、名前オブジェクト、数値は暗号化されません。暗号化文書のトレイラには <code>/ID</code> が必要です。リビジョン2〜4では、その第1要素を鍵導出に使います。</p></div></div>
-<div class="note"><strong>辞書から読み取れること</strong>辞書の型変換では方式と鍵の材料が得られます。Rustでは、リビジョンに応じた鍵導出にその材料を渡します。</div></section>
+<div class="note"><strong>辞書から読み取れること</strong>辞書の型変換では方式と鍵の材料が得られます。Rustでは、リビジョンに応じた鍵導出とパスワード認証にその材料を渡します。</div></section>
 <section class="section" id="syntax"><div class="section-heading"><span class="number">02</span><h2>辞書を読む</h2></div>
 <p>以下は説明用の抜粋です。暗号鍵の材料は短縮しており、完全なPDFや復号可能な鍵の例ではありません。</p>
 <pre><code><span class="keyword">trailer</span>
@@ -358,7 +358,7 @@ nav a { font-size: 16px; } table { font-size: 17px; } th { font-size: 15px; }
 <pre><code><span class="keyword">let</span> key = handler.derive_legacy_file_key(<span class="string">b"user"</span>, trailer.id())?;
 <span class="keyword">let</span> key_bytes = key.as_bytes();</code></pre>
 <p><code>b"user"</code> は文字列の内容をバイトで表すRustの書き方です。<code>trailer.id()</code> は <code>Option&lt;&amp;FileId&gt;</code> を返します。<code>Option</code> は値がある <code>Some</code> と欠けている <code>None</code> を表し、<code>&amp;</code> は値を借りる記号です。ここでの <code>?</code> は、成功時に鍵を取り出し、失敗時に呼び出し元へ理由を返します。</p>
-<p>導出処理は、トレイラに <code>/ID</code> がなければ <code>MissingFileId</code>、<code>/O</code> が32バイトでなければ <code>InvalidOwnerEntryLength</code> を返します。<code>/ID [&lt;&gt; &lt;&gt;]</code> は2つの要素を持つので、長さ0の永続IDとして扱います。パスワードの認証は、導出した鍵を <code>/U</code> と照合する後続の手順です。</p>
+<p>導出処理は、トレイラに <code>/ID</code> がなければ <code>MissingFileId</code>、<code>/O</code> が32バイトでなければ <code>InvalidOwnerEntryLength</code> を返します。<code>/ID [&lt;&gt; &lt;&gt;]</code> は2つの要素を持つので、長さ0の永続IDとして扱います。導出した鍵を <code>/U</code> や <code>/O</code> と照合する手順は <a href="#password-auth">パスワード認証</a> で扱います。</p>
 <h3>分割しても同じダイジェストを得る</h3>
 <p>MD5は64バイトがそろうたびに、4バイトずつ16個の整数へ読み替えます。各ブロックでビット演算、32ビットの加算、左回転を繰り返し、4個の32ビット整数からなる状態を更新します。<code>update</code> は64バイトに満たない末尾を保持するため、下の2通りの渡し方で同じダイジェストが得られます。</p>
 <pre><code><span class="keyword">let mut</span> md5 = <span class="type">Md5</span>::new();
@@ -408,7 +408,7 @@ assert_eq!(digest, <span class="type">Md5</span>::digest(<span class="string">b"
 暗号化  <span class="value">41</span> XOR <span class="value">1F</span> = <span class="value">5E</span>
 復号    <span class="value">5E</span> XOR <span class="value">1F</span> = <span class="value">41</span></code></pre>
 <p>Rustの内部型 <code>Rc4</code> は5〜16バイトの鍵を受け取ります。例えば4バイトや17バイトを渡すと <code>None</code> が返ります。<code>apply</code> は渡したデータをその場で書き換え、同じ状態で続けて呼ぶと次のバイトから処理します。空のデータでは鍵ストリームは進みません。</p>
-<div class="note"><strong>Rustで使える処理</strong>鍵とバイト列を渡してRC4を適用できます。PDFの読み込み中に鍵を求め、暗号化された文字列やストリームに適用する処理は後続の実装です。</div>
+<div class="note"><strong>Rustで使える処理</strong>鍵とバイト列を渡してRC4を適用でき、R2〜R4の <a href="#password-auth">パスワード認証</a> でも使います。PDFの読み込み中に鍵を求め、暗号化された文字列やストリームに適用する処理は後続の実装です。</div>
 </section>
 <section class="section" id="revision6-sha2">
 <div class="section-heading"><span class="number">11</span><h2>リビジョン6の鍵導出とSHA-2</h2></div>
@@ -521,7 +521,144 @@ assert_eq!(digest, <span class="type">Md5</span>::digest(<span class="string">b"
 <pre><code><span class="keyword">let</span> bytes = prepared_password.as_bytes();
 <span class="keyword">let</span> password = bytes.get(..<span class="value">MAX_PASSWORD_BYTES</span>).unwrap_or(bytes);</code></pre>
 <p><code>&amp;str</code> はUTF-8文字列を借りる型です。<code>as_bytes()</code> で同じメモリをバイト列として読み、<code>..127</code> で先頭から127番目までを選びます。短ければ <code>get</code> が <code>None</code> を返し、<code>unwrap_or(bytes)</code> が元の全体を選びます。たとえばASCIIの <code>a</code> 125個に3バイトの「界」を続けると、「界」の先頭2バイトまでがハッシュに入ります。</p>
-<div class="note"><strong>文字を整える段階</strong>SASLprepは、空白の置換、Unicode正規化、禁止文字の検査など、パスワードの表記を整える手順です。pdfmodのRust APIでは呼び出し側でこの処理を済ませます。準備済みの空文字列は <code>derive_aes256_file_key(PasswordRole::User, "")</code> と渡せます。</div>
+<div class="note"><strong>文字を整える段階</strong>SASLprepは、空白の置換、Unicode正規化、禁止文字の検査など、パスワードの表記を整える手順です。pdfmodのRust APIでは呼び出し側でこの処理を済ませます。準備済みの空文字列は <code>derive_aes256_file_key(PasswordRole::User, "")</code> と渡せます。役割を自動判定する認証入口は <a href="#password-auth">パスワード認証</a> で扱います。</div>
+</section>
+<section class="section" id="password-auth">
+<div class="section-heading"><span class="number">14</span><h2>パスワードを認証して鍵と役割を確定する</h2></div>
+<p>ファイル暗号鍵を導出できても、入力されたパスワードが正しいか、利用者か所有者のどちらに該当するかはまだ確定していません。<strong>パスワード認証（password authentication）</strong>は、暗号化辞書の <code>/U</code>・<code>/O</code> と突き合わせて、検証済みのファイル暗号鍵と役割を同時に確定する手順です。</p>
+<div class="grid">
+  <div class="card"><h3>利用者パスワード（user password）</h3><p>文書を開くためのパスワードです。空パスワード（長さ0）が設定されているPDFは入力なしで開けますが、<code>/P</code> の権限制限が適用されます。</p></div>
+  <div class="card"><h3>所有者パスワード（owner password）</h3><p>印刷や編集など <code>/P</code> の権限制限を解除して扱うためのパスワードです。利用者と所有者に同じパスワードを設定したPDFも存在します。</p></div>
+</div>
+<h3>パスワードの有無で変わる試行順序</h3>
+<p>PDFを開くとき、パスワードが省略された場合と明示的に渡された場合で、役割を試す順番が異なります。以下の図は <code>StandardSecurityHandler::authenticate</code> の判定分岐です。</p>
+<figure class="card">
+  <div class="card-label">役割の判定と空パスワード自動オープンの流れ</div>
+  <div class="flow">
+    <div class="flow-box secondary"><strong>入力：<code>password: Option&lt;&amp;[u8]&gt;</code></strong>R2〜R4はトレイラの <code>/ID</code> も受け取る（R5・R6は不要）</div>
+    <div class="branches">
+      <div>
+        <div class="flow-arrow">↓ <code>None</code>（未指定）</div>
+        <div class="flow-box"><strong>空パスワード <code>b""</code> で試行</strong>1. 利用者（<code>User</code>）<br>2. 所有者（<code>Owner</code>）<br><span class="meta">両方とも空でも <code>/P</code> の制限を優先</span></div>
+      </div>
+      <div>
+        <div class="flow-arrow">↓ <code>Some(bytes)</code>（明示指定）</div>
+        <div class="flow-box"><strong>指定バイト列で試行</strong>1. 所有者（<code>Owner</code>）<br>2. 利用者（<code>User</code>）<br><span class="meta">同一パスワード時に所有者権限を付与</span></div>
+      </div>
+    </div>
+    <div class="flow-arrow">↓ 1つ目が <code>IncorrectPassword</code> のときだけ2つ目へ進む（構造不正は即座にエラー返却）</div>
+    <div class="flow-box primary"><strong>検証通過：<code>AuthenticatedFileKey</code></strong>検証済みのファイル暗号鍵と確定した <code>PasswordRole</code> を返す</div>
+  </div>
+  <figcaption class="flow-caption">構造エラー（<code>/ID</code> 欠落、<code>/U</code>・<code>/O</code> の長さ不正、<code>/Perms</code> 不一致など）は別役割へフォールバックせずそのまま返します。</figcaption>
+</figure>
+<h3>リビジョン別の4つの認証アルゴリズム</h3>
+<p>標準セキュリティハンドラでは、リビジョンと役割の組み合わせに応じて Algorithm 6・7・11・12 を使い分けます。</p>
+<div class="table-wrap" tabindex="0" role="region" aria-label="リビジョンと役割ごとの認証アルゴリズム（小画面では横スクロールできます）">
+<table>
+  <thead><tr><th scope="col">リビジョン</th><th scope="col">役割</th><th scope="col">アルゴリズム</th><th scope="col">検証に使う項目と手順の要点</th></tr></thead>
+  <tbody>
+    <tr><td>R2（<code>/V 1 /R 2</code>）</td><td>利用者</td><td>Algorithm 6</td><td>Algorithm 2 の5バイト鍵で標準パディングをRC4暗号化し、<code>/U</code> の<strong>全32バイト</strong>と比較</td></tr>
+    <tr><td>R3・R4</td><td>利用者</td><td>Algorithm 6</td><td><code>MD5(標準パディング || /ID[0])</code> を鍵 XOR ラウンド <code>0..20</code> で20回RC4し、<code>/U</code> の<strong>先頭16バイト</strong>と比較</td></tr>
+    <tr><td>R2</td><td>所有者</td><td>Algorithm 7</td><td><code>MD5(32B整え済み所有者パスワード)</code> の先頭5バイトで <code>/O</code> を1回RC4復号し、復元した32バイトを Algorithm 6 へ渡す</td></tr>
+    <tr><td>R3・R4</td><td>所有者</td><td>Algorithm 7</td><td>Algorithm 3 手順1〜4（16バイト全体を50回MD5）の先頭 <code>n</code> バイトで <code>/O</code> を<strong>逆順</strong> <code>19..=0</code> の20回RC4復号し、復元した32バイトを Algorithm 6 へ渡す</td></tr>
+    <tr><td>R5・R6</td><td>利用者</td><td>Algorithm 11</td><td>UTF-8（最大127バイト）と <code>/U</code> の検証用ソルトでハッシュ照合 → 鍵用ソルトで <code>/UE</code> 復号 → <code>/Perms</code> 検証</td></tr>
+    <tr><td>R5・R6</td><td>所有者</td><td>Algorithm 12</td><td>UTF-8（最大127バイト）・<code>/O</code> のソルト・<code>/U</code> 全48バイトでハッシュ照合 → <code>/OE</code> 復号 → <code>/Perms</code> 検証</td></tr>
+  </tbody>
+</table>
+</div>
+<h3>R2〜R4 の <code>/O</code> 復元と <code>/U</code> 照合（Algorithm 6 / 7）</h3>
+<p>R2〜R4 では、所有者パスワードから直接ファイル暗号鍵を作るのではなく、<code>/O</code> を復号して<strong>32バイトのパディング済み利用者パスワード</strong>を取り出し、利用者側と同じ Algorithm 6 に通します。</p>
+<figure class="card">
+  <div class="card-label">Algorithm 6・7 のデータフロー（R2〜R4）</div>
+  <svg viewBox="0 0 820 276" role="img" aria-labelledby="alg67-title alg67-desc" style="width:100%;height:auto;display:block;">
+    <title id="alg67-title">Algorithm 6 と Algorithm 7 の認証フロー</title>
+    <desc id="alg67-desc">Algorithm 7 は所有者パスワードからMD5で所有者RC4鍵を作り、/O を復号して32バイトの利用者パスワードを復元し、Algorithm 2 と /U の定数時間比較へ渡します。Algorithm 6 は利用者パスワードを32バイトに整えて同じ経路で /U を照合します。</desc>
+    <rect x="16" y="20" width="220" height="80" rx="10" fill="#eaf1ff" stroke="#265bb3" stroke-width="1.5"/>
+    <text x="126" y="44" text-anchor="middle" font-size="13" font-weight="700" fill="#182f3c">Algorithm 7（所有者）</text>
+    <text x="126" y="66" text-anchor="middle" font-size="12" fill="#526b76">所有者パスワード → MD5</text>
+    <text x="126" y="85" text-anchor="middle" font-size="12" fill="#526b76">R3/R4は16B全体を50回再計算</text>
+    <line x1="236" y1="60" x2="274" y2="60" stroke="#526b76" stroke-width="1.8"/>
+    <polygon points="281,60 272,55 272,65" fill="#526b76"/>
+    <rect x="282" y="20" width="240" height="80" rx="10" fill="#fff4db" stroke="#c28c27" stroke-width="1.5"/>
+    <text x="402" y="44" text-anchor="middle" font-size="13" font-weight="700" fill="#182f3c">/O（32バイト）をRC4復号</text>
+    <text x="402" y="66" text-anchor="middle" font-size="12" fill="#526b76">R2: 1回 / R3・R4: 逆順20回</text>
+    <text x="402" y="85" text-anchor="middle" font-size="12" fill="#526b76">i = 19..0 の鍵 (key[j] XOR i)</text>
+    <line x1="402" y1="100" x2="402" y2="152" stroke="#526b76" stroke-width="1.8"/>
+    <polygon points="402,159 397,150 407,150" fill="#526b76"/>
+    <text x="414" y="135" text-anchor="start" font-size="12" fill="#526b76">復元した32Bを再パディングせず渡す</text>
+    <rect x="16" y="160" width="220" height="84" rx="10" fill="#e6f4ef" stroke="#067666" stroke-width="1.5"/>
+    <text x="126" y="186" text-anchor="middle" font-size="13" font-weight="700" fill="#182f3c">Algorithm 6（利用者）</text>
+    <text x="126" y="208" text-anchor="middle" font-size="12" fill="#526b76">利用者パスワード（生バイト）</text>
+    <text x="126" y="227" text-anchor="middle" font-size="12" fill="#526b76">規定パディングで32Bに整える</text>
+    <line x1="236" y1="202" x2="274" y2="202" stroke="#526b76" stroke-width="1.8"/>
+    <polygon points="281,202 272,197 272,207" fill="#526b76"/>
+    <rect x="282" y="160" width="240" height="84" rx="10" fill="#f7f9f8" stroke="#067666" stroke-width="1.5"/>
+    <text x="402" y="186" text-anchor="middle" font-size="13" font-weight="700" fill="#182f3c">Algorithm 2 でファイル鍵導出</text>
+    <text x="402" y="208" text-anchor="middle" font-size="12" fill="#526b76">32B + /O + /P + /ID[0] をMD5</text>
+    <text x="402" y="227" text-anchor="middle" font-size="12" fill="#526b76">R3/R4は先頭nバイトを50回</text>
+    <line x1="522" y1="202" x2="560" y2="202" stroke="#526b76" stroke-width="1.8"/>
+    <polygon points="567,202 558,197 558,207" fill="#526b76"/>
+    <rect x="568" y="148" width="236" height="108" rx="10" fill="#e6f4ef" stroke="#067666" stroke-width="1.8"/>
+    <text x="686" y="172" text-anchor="middle" font-size="13" font-weight="700" fill="#182f3c">/U を定数時間比較で照合</text>
+    <text x="686" y="194" text-anchor="middle" font-size="12" fill="#526b76">R2: RC4(パディング) == /U[0..32]</text>
+    <text x="686" y="214" text-anchor="middle" font-size="12" fill="#526b76">R3/R4: 20回RC4 == /U[0..16]</text>
+    <text x="686" y="238" text-anchor="middle" font-size="12" font-weight="700" fill="#067666">一致 → 検証済み鍵 + 役割</text>
+  </svg>
+  <figcaption class="flow-caption">Algorithm 7 で <code>/O</code> から復元される値はすでに32バイトのパディング済みバイト列です。もう一度パディングすると鍵が一致しません。</figcaption>
+</figure>
+<div class="note warning"><strong>Algorithm 2 と Algorithm 3 の50回MD5は対象の長さが違う</strong>ファイル暗号鍵を求める Algorithm 2 では、直前のダイジェストの<strong>先頭 <code>n</code> バイト</strong>だけを50回再ハッシュします（例：<code>/Length 64</code> は8バイト）。これに対し、所有者RC4鍵を求める Algorithm 3（手順3）では<strong>16バイトのダイジェスト全体</strong>を50回再ハッシュし、完了後に先頭 <code>n</code> バイトを切り出します。</div>
+<h3>具体例で見る認証結果</h3>
+<div class="card">
+  <h3>正常・省略例：空パスワードで自動オープンする R2 辞書</h3>
+  <p>次はテスト用PDFからの抜粋です（完全なPDFではなく暗号化辞書とトレイラの部分）。利用者パスワードが空のR2暗号化辞書です。</p>
+  <pre><code><span class="comment">% 空の利用者パスワードで開ける R2 暗号化辞書とトレイラの抜粋</span>
+<span class="pdf-syntax">&lt;&lt;</span> <span class="key">/Filter</span> <span class="key">/Standard</span> <span class="key">/V</span> <span class="value">1</span> <span class="key">/R</span> <span class="value">2</span> <span class="key">/Length</span> <span class="value">40</span> <span class="key">/P</span> <span class="value">-4</span>
+   <span class="key">/O</span> <span class="string">&lt;c92422687facee686e373f10b5c7d04738053152f7e2ee30e11c69ec442576ab&gt;</span>
+   <span class="key">/U</span> <span class="string">&lt;b3d9fa366906ef42f354c6deb74c59075eaf334eb7c04356ba0d7f3dd8b51d0a&gt;</span> <span class="pdf-syntax">&gt;&gt;</span>
+<span class="pdf-syntax">trailer</span>
+<span class="pdf-syntax">&lt;&lt;</span> <span class="key">/Root</span> <span class="value">1 0</span> <span class="pdf-syntax">R</span> <span class="key">/Size</span> <span class="value">6</span> <span class="key">/Encrypt</span> <span class="value">5 0</span> <span class="pdf-syntax">R</span>
+   <span class="key">/ID</span> <span class="pdf-syntax">[</span><span class="string">&lt;31415926535897932384626433832795&gt;</span> <span class="string">&lt;31415926535897932384626433832795&gt;</span><span class="pdf-syntax">]</span> <span class="pdf-syntax">&gt;&gt;</span></code></pre>
+  <p><code>handler.authenticate(None, trailer.id())</code> を呼ぶと、空パスワード <code>b""</code> を利用者 → 所有者の順に試し、Algorithm 6 で導出した5バイト鍵 <code>0e7b66938a</code> が <code>/U</code> の全32バイトと一致します。結果は <code>PasswordRole::User</code> 付きの <code>AuthenticatedFileKey</code> になります。</p>
+</div>
+<div class="card">
+  <h3>正常例：明示パスワードで所有者として認証する（R5・R6）</h3>
+  <p>前節のテスト用 R6 PDF（<code>/O</code>・<code>/OE</code> を含む暗号化辞書）に対して <code>handler.authenticate(Some(b"owner-r6"), None)</code> を呼ぶと、所有者 → 利用者の順に Algorithm 12 を実行し、<code>/O</code> の検証値・<code>/OE</code> の復号・<code>/Perms</code> の照合がすべて通って <code>PasswordRole::Owner</code> が返ります。R5・R6 は <code>/ID</code> を参照しないため <code>file_id</code> は <code>None</code> で構いません。</p>
+</div>
+<div class="card">
+  <h3>エラー例：パスワード不一致と構造不正の区別</h3>
+  <p>誤ったパスワードや、R5・R6 に対して UTF-8 として解釈できないバイト列を渡した場合は <code>AuthError::IncorrectPassword</code> を返します。一方、R2〜R4 で <code>/ID</code> が欠けていれば <code>MissingFileId</code>、<code>/U</code> や <code>/O</code> が規定長（R2〜R4 は32バイト、R5・R6 は48バイト）と異なれば <code>InvalidEntryLength</code>、R5・R6 で <code>/Perms</code> が辞書と矛盾すれば <code>InvalidPermissions</code> となり、誤パスワードと辞書の破損・改ざんを明確に区別できます。</p>
+</div>
+<h3>Rust API と型による安全境界</h3>
+<p>検証済みの鍵と役割は <code>AuthenticatedFileKey</code> に包んで返します。フィールドは非公開で、構築できるのは <code>authenticate</code> と <code>authenticate_as</code> だけです。未認証や誤った鍵のまま後続の復号処理へ渡せないことを型で保証します。</p>
+<pre><code><span class="keyword">use</span> pdfmod_core::encrypt::auth::{<span class="type">AuthError</span>, <span class="type">PasswordRole</span>};
+
+<span class="keyword">match</span> handler.authenticate(password, trailer.id()) {
+    <span class="type">Ok</span>(authenticated) =&gt; {
+        <span class="keyword">let</span> role: <span class="type">PasswordRole</span> = authenticated.role();
+        <span class="keyword">let</span> key_bytes: &amp;[<span class="type">u8</span>] = authenticated.as_bytes();
+        <span class="comment">// role に応じて /P の権限制限を判定し、key_bytes で復号へ進む</span>
+    }
+    <span class="type">Err</span>(<span class="type">AuthError</span>::IncorrectPassword) =&gt; {
+        <span class="comment">// パスワード不一致：再入力を求めるなど</span>
+    }
+    <span class="type">Err</span>(structural_error) =&gt; {
+        <span class="comment">// /ID 欠落、/U・/O の長さ不正、/Perms 不一致など</span>
+    }
+}</code></pre>
+<div class="table-wrap" tabindex="0" role="region" aria-label="Rustのパスワード認証API（小画面では横スクロールできます）">
+<table>
+  <thead><tr><th scope="col">型・メソッド</th><th scope="col">役割と制約</th></tr></thead>
+  <tbody>
+    <tr><td><code>StandardSecurityHandler::authenticate(password, file_id)</code></td><td><code>None</code> は空パスワードを利用者 → 所有者、<code>Some(bytes)</code> は所有者 → 利用者の順に認証</td></tr>
+    <tr><td><code>StandardSecurityHandler::authenticate_as(role, password, file_id)</code></td><td>指定した単一の <code>PasswordRole</code> で Algorithm 6 / 7 / 11 / 12 を適用</td></tr>
+    <tr><td><code>AuthenticatedFileKey</code></td><td><code>role()</code>・<code>key()</code>・<code>as_bytes()</code> を提供。<code>Clone</code> / <code>Copy</code> 非実装、<code>Debug</code> は鍵バイト列を秘匿</td></tr>
+    <tr><td><code>FileEncryptionKey</code></td><td><code>Legacy(LegacyFileKey)</code> と <code>Aes256(Aes256FileKey)</code> の列挙型。<code>as_bytes()</code>・<code>as_legacy()</code>・<code>as_aes256()</code> を提供</td></tr>
+    <tr><td><code>AuthError</code></td><td><code>IncorrectPassword</code> と <code>MissingFileId</code>・<code>InvalidEntryLength</code>・<code>InvalidKeyLength</code>・<code>InvalidPermissions</code>・<code>InvalidHashInput</code>・<code>UnsupportedRevision</code> を区別</td></tr>
+  </tbody>
+</table>
+</div>
+<div class="note"><strong>定数時間比較と鍵の秘匿</strong><code>/U</code> や検証ハッシュの照合には、先頭で不一致を見つけても打ち切らず全バイトを XOR で畳み込む<strong>定数時間比較（constant-time comparison）</strong>を使います。また <code>AuthenticatedFileKey</code> と内包する鍵型は <code>Debug</code> フォーマットで鍵バイト列を出力しません。</div>
+<div class="note warning"><strong>仕様と実装方針の境界</strong>R3・R4 の <code>/U</code> で照合対象となるのは先頭16バイトですが、pdfmod は辞書項目として32バイトちょうどの長さを要求します。R5・R6 の SASLprep は呼び出し側で行い、不正な UTF-8 は <code>IncorrectPassword</code> として扱います。検証済みの鍵を使ったオブジェクト単位の鍵導出（Algorithm 1）、文字列・ストリームの復号、<code>PdfDocument</code> への統合は後続の実装で扱います。</div>
 </section>
 <footer><a href="#top">最上部へ</a> · <a href="README.md">解説一覧</a></footer></div></main>
 </body></html>
