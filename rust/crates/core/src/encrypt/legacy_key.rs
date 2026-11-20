@@ -7,13 +7,13 @@ use crate::encrypt::md5::{Md5, DIGEST_LEN};
 use crate::encrypt::standard::StandardSecurityHandler;
 use crate::xref::trailer::file_id::FileId;
 
-const PADDED_PASSWORD_LEN: usize = 32;
-const PASSWORD_PADDING: [u8; PADDED_PASSWORD_LEN] = [
+pub(super) const PADDED_PASSWORD_LEN: usize = 32;
+pub(super) const PASSWORD_PADDING: [u8; PADDED_PASSWORD_LEN] = [
     0x28, 0xbf, 0x4e, 0x5e, 0x4e, 0x75, 0x8a, 0x41, 0x64, 0x00, 0x4e, 0x56, 0xff, 0xfa, 0x01, 0x08,
     0x2e, 0x2e, 0x00, 0xb6, 0xd0, 0x68, 0x3e, 0x80, 0x2f, 0x0c, 0xa9, 0xfe, 0x64, 0x53, 0x69, 0x7a,
 ];
 const CLEAR_METADATA_BYTES: [u8; 4] = [0xff; 4];
-const REHASH_COUNT: usize = 50;
+pub(super) const REHASH_COUNT: usize = 50;
 
 /// Algorithm 2 で導出した 5〜16 バイトのファイル暗号鍵。
 /// 鍵は `digest` の先頭 `length.bytes()` バイトに収まる。
@@ -71,6 +71,18 @@ impl StandardSecurityHandler {
         password: &[u8],
         file_id: Option<&FileId>,
     ) -> Result<LegacyFileKey, LegacyFileKeyError> {
+        self.derive_legacy_file_key_from_padded(&padded_password(password), file_id)
+    }
+
+    /// 32 バイトに整え済みのパスワードから R2〜R4 のファイル暗号鍵を導出する。
+    ///
+    /// Algorithm 7 で `/O` から復元した 32 バイトのパディング済み利用者パスワードを
+    /// 二重パディングせずそのまま Algorithm 2 に渡すために使用する。
+    pub(super) fn derive_legacy_file_key_from_padded(
+        &self,
+        padded: &[u8; PADDED_PASSWORD_LEN],
+        file_id: Option<&FileId>,
+    ) -> Result<LegacyFileKey, LegacyFileKeyError> {
         let algorithm = self.algorithm();
         let rehash_count = match algorithm {
             StandardAlgorithm::V1R2 => 0,
@@ -97,7 +109,7 @@ impl StandardSecurityHandler {
         }
 
         let mut md5 = Md5::new();
-        md5.update(&padded_password(password));
+        md5.update(padded);
         md5.update(owner_entry);
         md5.update(&self.permissions().bits().to_le_bytes());
         md5.update(file_id.permanent());
@@ -117,7 +129,7 @@ impl StandardSecurityHandler {
     }
 }
 
-fn padded_password(password: &[u8]) -> [u8; PADDED_PASSWORD_LEN] {
+pub(super) fn padded_password(password: &[u8]) -> [u8; PADDED_PASSWORD_LEN] {
     let mut padded = [0; PADDED_PASSWORD_LEN];
     let input = password.iter().chain(&PASSWORD_PADDING);
     for (slot, &byte) in padded.iter_mut().zip(input) {
