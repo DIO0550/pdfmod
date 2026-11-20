@@ -1,14 +1,30 @@
 # 07. データ圧縮とストリームフィルタ
 
+> **対応規格**: ISO 32000-1:2008 §7.4, §7.5.7 / ISO 32000-2:2020 §7.4, §7.5.7  
+> **扱う内容**: 単一・多段フィルタの適用順、`/DecodeParms`、10 種の標準フィルタ（FlateDecode・PNG 予測子・LZWDecode 等）、オブジェクトストリーム（ObjStm）、フィルタパイプライン  
+> **関連仕様**: [FlateDecode ストリームパーサ](../pdf-parsing-pipeline/flatedecode-stream-parser.md) / [オブジェクトストリーム仕様](../pdf-parsing-pipeline/object-stream-spec.md)
+
+## 目次
+
+1. [概要](#1-概要)
+2. [フィルタの指定方法](#2-フィルタの指定方法)
+3. [標準フィルタ一覧](#3-標準フィルタ一覧)
+4. [オブジェクトストリーム（Object Streams）](#4-オブジェクトストリームobject-streams)
+5. [フィルタパイプラインの実装](#5-フィルタパイプラインの実装)
+
+---
+
 ## 1. 概要
 
-PDF内のストリームオブジェクトは、ファイルサイズの最適化のために圧縮アルゴリズムを利用する。圧縮・展開のメカニズムは、ストリーム辞書の `/Filter` キーによって管理される。
+PDF 内のストリームオブジェクトはファイルサイズ削減やテキスト転送互換のために圧縮・エンコードされます。どのアルゴリズムをどの順で適用するかは、ストリーム辞書の `/Filter` と `/DecodeParms` で指定します。
+
+---
 
 ## 2. フィルタの指定方法
 
 ### 2.1 単一フィルタ
 
-```
+```pdf
 << /Length 1234
    /Filter /FlateDecode
 >>
@@ -19,295 +35,212 @@ endstream
 
 ### 2.2 カスケード（多段）フィルタ
 
-フィルタを配列で指定し、パイプライン処理を構築する。
+`/Filter` に名前配列を指定して多段パイプラインを構成できます。
 
-```
+```pdf
 << /Length 1234
    /Filter [/ASCII85Decode /FlateDecode]
    /DecodeParms [null << /Predictor 12 /Columns 4 >>]
 >>
 stream
-... (ASCII85エンコード + Flate圧縮されたデータ) ...
+... (ASCII85 エンコード + Flate 圧縮されたデータ) ...
 endstream
 ```
 
 #### デコード処理の順序
 
+```text
+ストリームの生データ
+  ──→ [1] /ASCII85Decode（ASCII85 をバイナリへ復元）
+  ──→ [2] /FlateDecode（DEFLATE 展開 + Predictor 逆変換）
+  ──→ 元のデータ
 ```
-エンコードされたデータ
-  → /ASCII85Decode (ASCII85をバイナリに変換)
-  → /FlateDecode (DEFLATEで解凍)
-  → 元のデータ
-```
 
-**重要**: 配列の**先頭から順番に**デコードを適用する。
+> **重要**: デコード時は配列の**先頭から順番に**フィルタを適用します（エンコード時とは逆順）。
 
-### 2.3 DecodeParms
+### 2.3 `DecodeParms`
 
-フィルタのパラメータを辞書で指定する。複数フィルタの場合は配列で対応。
+各フィルタへ渡すパラメータを辞書（多段時は `/Filter` と同じ長さの配列）で指定します。パラメータ不要のフィルタ位置には `null` を置きます。
 
-```
+```pdf
+% 単一フィルタ
 /DecodeParms << /Predictor 12 /Columns 4 >>
 
-または（複数フィルタ時）:
+% 複数フィルタ（1番目はパラメータ不要、2番目に指定）
 /DecodeParms [null << /Predictor 12 /Columns 4 >>]
 ```
 
-パラメータが不要なフィルタには `null` を指定。
+---
 
 ## 3. 標準フィルタ一覧
 
-### 3.1 /FlateDecode
+### 3.1 `/FlateDecode`
 
-**最も重要で普遍的なフィルタ**。
+PDF で**最も広く使われる可逆圧縮フィルタ**です。
 
 | 項目 | 詳細 |
-|:-----|:-----|
-| アルゴリズム | zlib/DEFLATE (RFC 1950/1951) |
-| 用途 | テキストストリーム、オブジェクトストリーム、画像データ等の汎用圧縮 |
+| :--- | :--- |
+| アルゴリズム | zlib / DEFLATE（RFC 1950 / RFC 1951） |
+| 主な用途 | コンテンツストリーム、XRef ストリーム、オブジェクトストリーム、画像データなど汎用圧縮 |
 | 圧縮タイプ | 可逆圧縮 |
-| 実装 | zlib等の外部ライブラリと連携 |
+| 実装方式 | 一般的には zlib 系ライブラリや Web Streams API（`DecompressionStream`）を利用する。外部依存ゼロの方針を採る実装（pdfmod の Rust クレートなど）では自前実装する選択肢もある |
 
-#### DecodeParms
+#### `DecodeParms`
 
-| キー | 型 | デフォルト | 説明 |
-|:-----|:---|:-----------|:-----|
-| `/Predictor` | 整数 | 1 | 予測子アルゴリズム |
-| `/Colors` | 整数 | 1 | 1サンプルあたりのカラーコンポーネント数 |
-| `/BitsPerComponent` | 整数 | 8 | 1コンポーネントあたりのビット数 |
-| `/Columns` | 整数 | 1 | 1行あたりのサンプル数 |
-| `/EarlyChange` | 整数 | 1 | LZW用（FlateDecodeでは無視） |
+| キー | 型 | 既定値 | 説明 |
+| :--- | :--- | :--- | :--- |
+| `/Predictor` | 整数 | `1` | 予測子アルゴリズム（下表） |
+| `/Colors` | 整数 | `1` | 1 サンプルあたりのカラーコンポーネント数 |
+| `/BitsPerComponent` | 整数 | `8` | 1 コンポーネントあたりのビット数 |
+| `/Columns` | 整数 | `1` | 1 行あたりのサンプル数 |
+| `/EarlyChange` | 整数 | `1` | LZW 用パラメータ（FlateDecode では無視） |
 
-#### Predictor 値
+#### `Predictor` 値
 
-| 値 | 説明 |
-|:---|:-----|
-| 1 | 予測子なし（デフォルト） |
-| 2 | TIFF Predictor 2 |
-| 10 | PNG None |
-| 11 | PNG Sub |
-| 12 | PNG Up |
-| 13 | PNG Average |
-| 14 | PNG Paeth |
-| 15 | PNG Optimum（各行で最適な予測子を選択） |
+| 値 | アルゴリズム |
+| :--- | :--- |
+| `1` | 予測子なし（既定値） |
+| `2` | TIFF Predictor 2（水平差分） |
+| `10` / `11` / `12` / `13` / `14` / `15` | PNG 予測子（10=None, 11=Sub, 12=Up, 13=Average, 14=Paeth, 15=Optimum: 行ごとに最適選択） |
 
-#### PNG予測子の実装
+#### PNG 予測子（`Predictor >= 10`）の逆変換
 
-```
-Predictor ≥ 10 の場合、各行の先頭バイトが予測子タイプを示す:
+`Predictor >= 10` のとき、展開後データは「**1 バイトの予測子タイプ + 1 行分のデータ（`row_size` バイト）**」が繰り返されます。各バイト `raw` は、1 ピクセルあたりのバイト数 `bpp` と近傍 3 バイト（`a`, `b`, `c`）から復元します（範囲外は `0`、加算は mod 256）。
 
-fn apply_png_predictor(data: &[u8], columns: usize, components: usize) -> Vec<u8> {
-    let bpp = components;  // bytes per pixel (simplified)
-    let row_size = columns * bpp;
-    let mut result = Vec::new();
-    let mut prev_row = vec![0u8; row_size];
-
-    for row in data.chunks(row_size + 1) {
-        let predictor_type = row[0];
-        let row_data = &row[1..];
-        let mut decoded_row = vec![0u8; row_size];
-
-        for i in 0..row_size {
-            let a = if i >= bpp { decoded_row[i - bpp] } else { 0 };     // left
-            let b = prev_row[i];                                          // above
-            let c = if i >= bpp { prev_row[i - bpp] } else { 0 };        // upper-left
-
-            decoded_row[i] = match predictor_type {
-                0 => row_data[i],                                         // None
-                1 => row_data[i].wrapping_add(a),                         // Sub
-                2 => row_data[i].wrapping_add(b),                         // Up
-                3 => row_data[i].wrapping_add(((a as u16 + b as u16) / 2) as u8), // Average
-                4 => row_data[i].wrapping_add(paeth_predictor(a, b, c)),  // Paeth
-                _ => row_data[i],
-            };
-        }
-
-        result.extend_from_slice(&decoded_row);
-        prev_row = decoded_row;
-    }
-    result
-}
-
-fn paeth_predictor(a: u8, b: u8, c: u8) -> u8 {
-    let p = a as i32 + b as i32 - c as i32;
-    let pa = (p - a as i32).abs();
-    let pb = (p - b as i32).abs();
-    let pc = (p - c as i32).abs();
-    if pa <= pb && pa <= pc { a }
-    else if pb <= pc { b }
-    else { c }
-}
+```text
+  直前行:   [ c (左上) ]   [ b (真上) ]
+  現在行:   [ a (左)   ]   [ x (復元対象) ]
+            <-- bpp バイト前 -->
 ```
 
-### 3.2 /LZWDecode
+| 行先頭バイト（タイプ） | 名称 | 復元式（mod 256） |
+| :--- | :--- | :--- |
+| `0` | None | `x = raw` |
+| `1` | Sub | `x = raw + a` |
+| `2` | Up | `x = raw + b` |
+| `3` | Average | `x = raw + floor((a + b) / 2)` |
+| `4` | Paeth | `x = raw + Paeth(a, b, c)`（$p = a + b - c$ に最も近い値を `a` → `b` → `c` の優先順で選択） |
+
+---
+
+### 3.2 `/LZWDecode`
 
 | 項目 | 詳細 |
-|:-----|:-----|
-| アルゴリズム | Lempel-Ziv-Welch 辞書ベース圧縮 |
-| 用途 | 古いPDFファイルでの汎用圧縮 |
+| :--- | :--- |
+| アルゴリズム | Lempel-Ziv-Welch 辞書ベース圧縮（GIF と同系） |
+| 用途 | 古い PDF での汎用圧縮（現在は `/FlateDecode` が主流） |
 | 圧縮タイプ | 可逆圧縮 |
-| 備考 | GIF画像と同等のアルゴリズム。現在はFlateDecodeが主流 |
 
-#### DecodeParms
+#### `DecodeParms`
 
-`/FlateDecode` と同じパラメータに加え:
+`/FlateDecode` のパラメータに加え、次を受け取ります。
 
-| キー | 型 | デフォルト | 説明 |
-|:-----|:---|:-----------|:-----|
-| `/EarlyChange` | 整数 | 1 | 1: コードサイズ拡張のタイミングが早い、0: 標準 |
+| キー | 型 | 既定値 | 説明 |
+| :--- | :--- | :--- | :--- |
+| `/EarlyChange` | 整数 | `1` | `1`: コード幅拡張のタイミングを 1 早いコードで行う / `0`: 標準タイミング |
 
-#### 展開時の扱い
+#### コード体系と展開ルール
 
-- コードは MSB 先頭で9ビットから読み、最大12ビットまで拡張する。
-- 0〜255 は単一バイト、256 は ClearTable、257 は EOD、258〜4095 は辞書コード。
-- ClearTable は辞書・直前コード・コード幅をリセットする。ビット位置はバイト境界に揃えず継続する。
-- デコーダが辞書に追加した後、次の登録番号が `2^コード幅 - EarlyChange` に達したら次のコードから幅を増やす。12ビットを超えない。
-- 次の登録番号そのものが現れた場合は、直前の文字列にその先頭バイトを追加して復元する。それより先の未登録番号、または直前コードのない状態での辞書参照はエラーとする。
-- 辞書が4096項目に達した後は追加を止め、ClearTable または EOD まで既存辞書を用いて12ビットの読み取りを継続する。
-- EOD がない入力（空入力・コード途中での切断を含む）は `LZWDECODE_FAILED` とする。EOD 後の残りビット・バイトは無視する。先頭の ClearTable を省略した入力は初期辞書で展開する。
-- `/EarlyChange` は整数の0または1のみ受け入れる。未指定は1。
-- 展開サイズ上限は既定100 MiB。出力を追加する前に上限を確認し、超過時はエラーとする。
-- Predictor は FlateDecode と同じく展開後に共通の `Predictor` で逆変換する。XRef ストリームは両フィルタで同じ逆変換経路を使う。
-- ObjStm の `/DecodeParms` 非対応は既存の制限を維持する。LZW の既定パラメータによる展開は可能。
+| コード範囲 | 意味 |
+| :--- | :--- |
+| `0`〜`255` | 単一バイト文字 |
+| `256` | **ClearTable**（辞書・直前コード・コード幅を 9 ビットへリセット。ビット位置はバイト境界へ揃えずに継続） |
+| `257` | **EOD**（End of Data。以降の残りビット・バイトは無視） |
+| `258`〜`4095` | 動的辞書に登録されたバイト列 |
 
-### 3.3 /ASCII85Decode
+- **ビット読み取りと幅拡張**: MSB 先頭で **9 ビット**から読み始め、最大 **12 ビット**まで拡張する。辞書登録後に次の登録番号が $2^{\text{コード幅}} - \text{EarlyChange}$ に達したら、次のコードから幅を +1 ビットする（上限 12 ビット）。
+- **KwKwK ケース**: ちょうど「次の登録番号」自身が出現した場合は、直前の出力文字列にその先頭バイトを付加した列として復元する。それより先の未登録番号、または直前コードが無い状態での辞書参照はエラー。
+- **辞書満杯（4096 項目）**: 新規登録を止め、ClearTable または EOD が来るまで既存辞書を使って 12 ビットの読み取りを継続する。
+
+#### pdfmod の実装方針（`/LZWDecode`）
+
+| 項目 | 方針 |
+| :--- | :--- |
+| EOD 欠落・途中切断・空入力 | `LZWDECODE_FAILED` エラー |
+| 先頭の ClearTable 省略 | 初期辞書のまま展開を許容 |
+| `/EarlyChange` の検証 | 整数の `0` または `1` のみ受理（未指定時は `1`） |
+| 展開サイズ上限 | 既定 **100 MiB**。出力追加前に確認し超過時はエラー |
+| Predictor 連携 | 展開後に `/FlateDecode` と共通の `Predictor` で逆変換（XRef ストリームでも同一経路を使用） |
+| ObjStm の制限 | ObjStm の `/DecodeParms` 非対応制限は維持（LZW の既定パラメータによる展開は可能） |
+
+---
+
+### 3.3 `/ASCII85Decode`
 
 | 項目 | 詳細 |
-|:-----|:-----|
-| アルゴリズム | ASCII base-85 エンコーディング |
-| 用途 | バイナリデータをASCII文字に変換 |
-| 圧縮タイプ | エンコーディング（サイズは約25%増加） |
+| :--- | :--- |
+| アルゴリズム | ASCII Base-85 エンコーディング（サイズ約 25% 増） |
 | 終端マーカー | `~>` |
 
-#### エンコーディング仕様
+- バイナリ 4 バイトを ASCII 文字 5 文字（`0x21` `'!'` 〜 `0x75` `'u'`）へ変換する。
+- 4 バイトすべて `0x00` の場合は 1 文字 `'z'` に短縮する。
+- ホワイトスペースは無視し、終端 `~>` 手前の不足グループはパディングで復元する。
 
-```
-変換規則:
-- 4バイトのバイナリ → 5文字のASCII（文字コード33〜117、つまり '!' 〜 'u'）
-- 4バイトすべてが0の場合 → 'z'（1文字に短縮）
-- 最終グループが4バイト未満の場合はパディング
-
-デコード:
-- ストリーム終端は '~>' で示される
-- ホワイトスペースは無視
-```
-
-### 3.4 /ASCIIHexDecode
+### 3.4 `/ASCIIHexDecode`
 
 | 項目 | 詳細 |
-|:-----|:-----|
-| アルゴリズム | 16進数エンコーディング |
-| 用途 | バイナリデータを16進数文字に変換 |
-| 圧縮タイプ | エンコーディング（サイズは100%増加） |
+| :--- | :--- |
+| アルゴリズム | 16 進数テキストエンコーディング（サイズ 100% 増） |
 | 終端マーカー | `>` |
 
-```
-変換規則:
-- 1バイト → 2文字の16進数
-- ホワイトスペースは無視
-- 奇数桁の場合は末尾に0を補完
-- ストリーム終端は '>' で示される
-```
+- 1 バイトを 2 文字の 16 進数字へ変換する。ホワイトスペースは無視し、奇数桁の場合は末尾に `0` を補完する。
 
-### 3.5 /DCTDecode
+### 3.5 `/DCTDecode`
 
 | 項目 | 詳細 |
-|:-----|:-----|
-| アルゴリズム | JPEG (Joint Photographic Experts Group) |
-| 用途 | 写真等の自然画像の圧縮 |
-| 圧縮タイプ | 非可逆圧縮（品質設定による） |
-| 備考 | ストリームデータはJPEGファイルそのもの |
+| :--- | :--- |
+| アルゴリズム | JPEG（非可逆圧縮） |
+| 用途 | 写真などの自然画像（ストリームデータ自体が JPEG バイト列） |
+| `DecodeParms` | `/ColorTransform`（整数: `0`=変換なし, `1`=YCbCr 変換） |
 
-#### DecodeParms
+- ストリームデータをそのまま JPEG デコーダへ渡せる（CMYK JPEG の色反転に注意）。
 
-| キー | 型 | 説明 |
-|:-----|:---|:-----|
-| `/ColorTransform` | 整数 | 色変換の適用: 0=なし、1=YCbCrに変換 |
+### 3.6 `/JPXDecode`
 
-#### 実装上の注意点
-- ストリームデータをそのままJPEGデコーダに引き渡すことが可能
-- JPEG のSOFマーカーから画像サイズ・色空間情報を取得可能
-- CMYKのJPEG画像は色変換に注意が必要
+- **JPEG 2000**（PDF 1.5 導入）。可逆・非可逆の両方に対応した高品質画像圧縮。
 
-### 3.6 /JPXDecode
+### 3.7 `/CCITTFaxDecode`
 
-| 項目 | 詳細 |
-|:-----|:-----|
-| アルゴリズム | JPEG 2000 |
-| 用途 | 高品質画像の圧縮（可逆/非可逆選択可能） |
-| 圧縮タイプ | 可逆または非可逆 |
-| 導入 | PDF 1.5 |
+1 ビットモノクロ画像向け（CCITT Group 3 / 4 ファクシミリ規格、スキャン文書アーカイブに多用）。
 
-### 3.7 /CCITTFaxDecode
+| `DecodeParms` キー | 型 | 既定値 | 説明 |
+| :--- | :--- | :--- | :--- |
+| `/K` | 整数 | `0` | `<0`: Group 4、`=0`: Group 3 1D、`>0`: Group 3 混合 |
+| `/EndOfLine` | 真偽値 | `false` | 行末コードの有無 |
+| `/EncodedByteAlign` | 真偽値 | `false` | バイト境界揃えの有無 |
+| `/Columns` | 整数 | `1728` | 1 行あたりのピクセル数 |
+| `/Rows` | 整数 | `0` | 行数（`0` = 不定） |
+| `/EndOfBlock` | 真偽値 | `true` | ブロック終端コードの有無 |
+| `/BlackIs1` | 真偽値 | `false` | `true`: 1=黒、`false`: 0=黒 |
+| `/DamagedRowsBeforeError` | 整数 | `0` | エラーまでに許容する破損行数 |
 
-| 項目 | 詳細 |
-|:-----|:-----|
-| アルゴリズム | CCITT Group 3/4 ファクシミリ規格 |
-| 用途 | 1ビットモノクロ画像の圧縮 |
-| 圧縮タイプ | 可逆圧縮 |
-| 備考 | スキャン文書のアーカイブに多用 |
+### 3.8 `/JBIG2Decode`
 
-#### DecodeParms
+- **JBIG2**（PDF 1.4 導入）。モノクロ画像の高効率圧縮（可逆/非可逆）。`DecodeParms` にグローバルシンボル辞書 `/JBIG2Globals`（ストリーム）を取りうる。
 
-| キー | 型 | デフォルト | 説明 |
-|:-----|:---|:-----------|:-----|
-| `/K` | 整数 | 0 | <0: Group 4、=0: Group 3 1D、>0: Group 3 混合 |
-| `/EndOfLine` | ブール | false | 行末コードの有無 |
-| `/EncodedByteAlign` | ブール | false | バイトアラインメントの有無 |
-| `/Columns` | 整数 | 1728 | 1行あたりのピクセル数 |
-| `/Rows` | 整数 | 0 | 行数（0=不定） |
-| `/EndOfBlock` | ブール | true | ブロック終端コードの有無 |
-| `/BlackIs1` | ブール | false | true: 1=黒、false: 0=黒 |
-| `/DamagedRowsBeforeError` | 整数 | 0 | エラー前に許容される破損行数 |
+### 3.9 `/RunLengthDecode`
 
-### 3.8 /JBIG2Decode
+単純なランレングス符号化（終端マーカーはバイト値 `128` = `0x80`）。
 
-| 項目 | 詳細 |
-|:-----|:-----|
-| アルゴリズム | JBIG2 |
-| 用途 | モノクロ画像の高効率圧縮 |
-| 圧縮タイプ | 可逆または非可逆 |
-| 導入 | PDF 1.4 |
-| 備考 | CCITTよりも高い圧縮率を実現 |
+| 先頭バイト `length` | 意味 |
+| :--- | :--- |
+| `0`〜`127` | 続く 1 バイトを `length + 1` 回繰り返して出力 |
+| `129`〜`255` | 続く `257 - length` バイトをそのまま出力 |
+| `128`（`0x80`） | ストリーム終端（EOD） |
 
-#### DecodeParms
+### 3.10 `/Crypt`
 
-| キー | 型 | 説明 |
-|:-----|:---|:-----|
-| `/JBIG2Globals` | ストリーム | グローバルシンボル辞書 |
+- PDF 1.5 導入の暗号化フィルタ。他の圧縮フィルタと組み合わせてストリーム単位の暗号化・復号（[02b章](./02b_encryption.md)）を行う。
 
-### 3.9 /RunLengthDecode
-
-| 項目 | 詳細 |
-|:-----|:-----|
-| アルゴリズム | Run-Length Encoding |
-| 用途 | 単純なバイト列の圧縮 |
-| 圧縮タイプ | 可逆圧縮 |
-| 終端マーカー | バイト値 128 (0x80) |
-
-```
-デコード規則:
-- length (0〜127): 次の1バイトを (length + 1) 回繰り返す
-- length (129〜255): 次の (257 - length) バイトをそのまま出力
-- length = 128: ストリーム終端
-```
-
-### 3.10 /Crypt
-
-| 項目 | 詳細 |
-|:-----|:-----|
-| アルゴリズム | 暗号化フィルタ |
-| 用途 | ストリームデータの暗号化/復号 |
-| 導入 | PDF 1.5 |
-| 備考 | 他のフィルタと組み合わせて使用 |
+---
 
 ## 4. オブジェクトストリーム（Object Streams）
 
 ### 4.1 概要
 
-PDF 1.5で導入された構造圧縮の仕組み。複数のインダイレクトオブジェクトを1つのストリーム内にまとめてFlate圧縮する。
+PDF 1.5 で導入された構造圧縮です。複数の間接オブジェクトを 1 つのストリーム内にまとめて `/FlateDecode` 等で圧縮します。
 
-```
+```pdf
 30 0 obj
 << /Type /ObjStm
    /N 5
@@ -316,100 +249,81 @@ PDF 1.5で導入された構造圧縮の仕組み。複数のインダイレク�
    /Filter /FlateDecode
 >>
 stream
-1 0 2 20 3 35 4 50 5 65    % オフセットテーブル: obj_num offset pairs
-<< /Type /Catalog /Pages 2 0 R >>   % オブジェクト1の内容
-<< /Type /Pages /Kids [3 0 R] /Count 1 >>   % オブジェクト2の内容
-... (以降のオブジェクト) ...
+1 0 2 20 3 35 4 50 5 65
+<< /Type /Catalog /Pages 2 0 R >>
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+...
 endstream
 endobj
 ```
 
-### 4.2 ObjStm辞書のエントリ
+### 4.2 ObjStm 辞書のエントリ
 
 | キー | 型 | 必須 | 説明 |
-|:-----|:---|:-----|:-----|
+| :--- | :--- | :--- | :--- |
 | `/Type` | 名前 | **必須** | `/ObjStm` |
-| `/N` | 整数 | **必須** | 格納されているオブジェクトの数 |
-| `/First` | 整数 | **必須** | 最初のオブジェクトデータの開始バイトオフセット |
+| `/N` | 整数 | **必須** | 格納されているオブジェクト数 |
+| `/First` | 整数 | **必須** | 最初のオブジェクトデータが始まる展開後バイトオフセット |
 | `/Extends` | 間接参照 | 任意 | 拡張元のオブジェクトストリーム |
 
-### 4.3 内部構造
+### 4.3 内部構造と抽出手順
 
+```text
+展開後のストリームデータ:
++--------------------------------------+-------------------------------+
+| オフセットテーブル (先頭 /First バイト)  | オブジェクト本体領域            |
+| obj_num1 off1 obj_num2 off2 ...      | << /Type /Catalog ... >>      |
+| (N 組の整数ペア)                      | << /Type /Pages ... >>        |
++--------------------------------------+-------------------------------+
+                                       ^
+                                       /First の位置（各 off はここからの相対位置）
 ```
-デコード後のデータ:
-+------------------------------------+-------------------------------+
-| オフセットテーブル (N*2個の整数)     | オブジェクトデータ              |
-| obj_num1 offset1 obj_num2 offset2  | << /Type /Catalog ... >>      |
-| ...                                | << /Type /Pages ... >>        |
-+------------------------------------+-------------------------------+
-                                     ^
-                                     /First の位置
-```
 
-#### オフセットテーブルのパース
+**抽出手順**:
 
-```
-fn parse_object_stream(data: &[u8], n: usize, first: usize) -> Vec<(u32, PdfObject)> {
-    let header = &data[..first];
-    let body = &data[first..];
-
-    // ヘッダからオブジェクト番号とオフセットのペアを読み取る
-    let pairs: Vec<(u32, usize)> = parse_int_pairs(header, n);
-
-    pairs.iter().map(|(obj_num, offset)| {
-        let obj_data = &body[*offset..];
-        let object = parse_pdf_object(obj_data);
-        (*obj_num, object)
-    }).collect()
-}
-```
+1. ストリームを展開し、先頭 `/First` バイトをヘッダ、残りを本文領域に分ける。
+2. ヘッダから `(obj_num, offset)` ペアを `/N` 組読み取る。
+3. 対象インデックスの `offset` 位置（`/First + offset`）から PDF オブジェクトを 1 つパースする（`obj` / `endobj` キーワードは付かない）。
 
 ### 4.4 制約事項
 
-- **ストリームオブジェクト自体**はオブジェクトストリーム内に格納できない
-- オブジェクトストリーム内のオブジェクトの**世代番号は常に0**
-- XRefストリームからの参照はType=2エントリで行う
+- ストリームオブジェクト自身は ObjStm 内に格納できない。
+- ObjStm 内オブジェクトの世代番号は**常に `0`**。
+- XRef ストリームの `Type=2` エントリからのみ参照される（詳細な制約は [02a章 §5.3](./02a_object_resolution.md#53-格納制限)）。
 
-### 4.5 XRefストリームとの連携
+### 4.5 XRef ストリームとの連携
 
+```text
+1. XRef ストリームから Type=2 エントリ（親 ObjStm 番号, インデックス）を取得
+2. 親 ObjStm を通常のインダイレクトオブジェクトとして解決・展開
+3. 先頭 /First バイトのオフセットテーブルから対象インデックスの開始位置を特定
+4. 指定位置のオブジェクトをパースして返却
 ```
-XRefストリームのType=2エントリ:
-  Field1 (type) = 2
-  Field2 = オブジェクトストリームのオブジェクト番号
-  Field3 = ストリーム内のインデックス
 
-オブジェクト取得手順:
-1. XRefからType=2エントリを取得
-2. Field2で指定されたオブジェクトストリームを解凍
-3. オフセットテーブルをパース
-4. Field3のインデックスに対応するオブジェクトを取り出す
-```
+---
 
 ## 5. フィルタパイプラインの実装
 
-```
-fn decode_stream(stream: &PdfStream) -> Result<Vec<u8>> {
-    let mut data = stream.raw_data().to_vec();
-    let filters = stream.get_filter_list();
-    let params = stream.get_decode_params_list();
+ストリームを展開する汎用パイプラインは、`/Filter` リストと対応する `/DecodeParms` リストを先頭から順に適用します。
 
-    for (i, filter) in filters.iter().enumerate() {
-        let param = params.get(i).cloned().unwrap_or(None);
-        data = match filter.as_str() {
-            "/FlateDecode" => flate_decode(&data, param.as_ref())?,
-            "/LZWDecode" => lzw_decode(&data, param.as_ref())?,
-            "/ASCII85Decode" => ascii85_decode(&data)?,
-            "/ASCIIHexDecode" => ascii_hex_decode(&data)?,
-            "/DCTDecode" => data,  // JPEGデータはそのまま保持
-            "/JPXDecode" => data,  // JPEG2000データはそのまま保持
-            "/CCITTFaxDecode" => ccitt_decode(&data, param.as_ref())?,
-            "/JBIG2Decode" => jbig2_decode(&data, param.as_ref())?,
-            "/RunLengthDecode" => rle_decode(&data)?,
-            "/Crypt" => crypt_decode(&data, param.as_ref())?,
-            _ => return Err(Error::UnsupportedFilter(filter.clone())),
-        };
-    }
-
-    Ok(data)
-}
+```text
+1. ストリーム辞書から /Filter 一覧と /DecodeParms 一覧を取得
+   - 単一名前・単一辞書の場合は長さ 1 のリストへ正規化
+2. data = ストリームの生バイト列
+3. i = 0, 1, ..., filters.length - 1 について順番に適用:
+   - /FlateDecode     → zlib 展開 (+ Predictor 逆変換)
+   - /LZWDecode       → LZW 展開 (+ Predictor 逆変換)
+   - /ASCII85Decode   → Base85 デコード
+   - /ASCIIHexDecode  → 16 進デコード
+   - /RunLengthDecode → RLE デコード
+   - /CCITTFaxDecode  → CCITT デコード
+   - /JBIG2Decode     → JBIG2 デコード
+   - /Crypt           → crypt filter による復号
+   - /DCTDecode, /JPXDecode → 画像フォーマット固有バイト列のまま保持（画像デコーダへ委譲）
+   - 未知のフィルタ    → UnsupportedFilter エラー
+4. 最終的な data を返却
 ```
+
+---
+
+[← 前の章: 06. フォント管理アーキテクチャ (`06_font_architecture.md`)](./06_font_architecture.md) | [目次](./00_overview.md) | [次の章: 08. インクリメンタルアップデートとリニアライズ (`08_incremental_update_linearization.md`) →](./08_incremental_update_linearization.md)
