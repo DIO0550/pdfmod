@@ -1,100 +1,78 @@
 # StartXRef Scanner
 
-PDFファイル末尾から `startxref` オフセット値を検出するモジュール。
+> **上位目次**: [PDF解析パイプライン仕様](./index.md) / [xref 解析仕様（統括）](./xref-parser-spec.md)  
+> **対応規格**: ISO 32000-1:2008 §7.5.5（[02. 物理ファイル構造 §5–§6](../specs/02_file_structure.md#5-トレイラ辞書trailer-dictionary)）  
+> **実装ファイル**: `packages/core/src/xref/startxref/scanner/index.ts`
 
-## PDF仕様解説
+PDF ファイル末尾から `%%EOF` と `startxref` を逆方向スキャンし、xref テーブルの開始バイトオフセットを検出するモジュールです。
 
-### %%EOF と startxref の役割（ISO 32000-1 §7.5.5）
+---
 
-PDFはファイル末尾から逆方向に解析を開始する。末尾には以下の構造が存在する:
+## PDF 仕様の要点
 
-```
-startxref
-116          <-- xrefテーブルのバイトオフセット
-%%EOF        <-- ファイル終端マーカー
-```
+### `%%EOF` と `startxref` の構造
 
-- **%%EOF**: ファイル終端を示すマーカー。PDFリーダーはこれを起点に逆方向解析を開始する
-- **startxref**: 直後の整数値がxrefテーブル（相互参照テーブル）のファイル先頭からのバイトオフセットを示す
-
-### ファイル末尾構造の図解
-
-```
+```pdf
 ... (ボディ — インダイレクトオブジェクト群) ...
 
-xref                          <-- 相互参照テーブルの開始
-0 6                           <-- サブセクション: オブジェクト0から6個
+xref                          % 相互参照テーブルの開始（例: offset 116）
+0 6                           % サブセクション: オブジェクト 0 から 6 個
 0000000000 65535 f
 0000000009 00000 n
 ...
 trailer
 << /Size 6 /Root 1 0 R >>
 startxref
-116                           <-- xrefテーブルのバイトオフセット
-%%EOF
+116                           % xref テーブルのバイトオフセット
+%%EOF                         % ファイル終端マーカー
 ```
 
-### インクリメンタルアップデートと複数%%EOF
+- **末尾からの逆方向解析**: 増分更新された PDF には `%%EOF` が複数存在するため、常に**最後の `%%EOF`** を起点とする。
+- **1024 バイト範囲の根拠**: ISO 32000-1 §7.5.5 は末尾 1024 バイト以内に `%%EOF` が存在すべきと規定している（末尾のゴミデータを許容しつつ探索コストを抑えるため）。
 
-PDFに変更を加える場合、元のファイルを書き換えず末尾に差分を追記する（インクリメンタルアップデート）:
+---
 
-```
-[元のボディ] [元のxref] [元のtrailer] [元のstartxref] [元の%%EOF]
-[追加ボディ] [新xref]   [新trailer]   [新startxref]   [新%%EOF]
-```
+## 実装仕様
 
-`%%EOF` はファイル内に複数存在しうる。パーサーは最後の（最新の）`%%EOF` から解析を開始する。
+### `scanStartXRef(data)`
 
-### 1024バイトスキャン範囲の根拠
+- **入力**: PDF バイナリ全体（`Uint8Array`）
+- **出力**: `Result<ByteOffset, PdfParseError>`（成功時は `startxref` 直後のオフセット値）
 
-ISO 32000-1 §7.5.5 では「ファイルの最後の1024バイト以内に `%%EOF` が存在すべき」と規定。これは末尾にゴミデータが付加されたPDFを許容しつつ、効率的にスキャン開始位置を限定するため。
+#### 処理アルゴリズム
 
-## 実装解説
+1. **探索範囲の算出**: 末尾 1024 バイト（`max(0, data.length - 1024)`〜末尾）を対象にする。
+2. **`%%EOF` 逆方向検索**: バイト列 `[0x25, 0x25, 0x45, 0x4F, 0x46]` を逆方向検索する（コメント行内のマッチは除外）。最後の `%%EOF` を検出する。
+3. **`startxref` 逆方向検索**: 検出した `%%EOF` から先頭方向へ `"startxref"` を検索する。前後のトークン境界（ホワイトスペース・デリミタ・データ端）を検証し、コメント行内マッチを除外して最も `%%EOF` に近い候補を採用する。
+4. **オフセット値パース**: `startxref` 末尾から `%%EOF` 手前までの空白・コメントを飛ばし、ASCII 数字列を安全整数（`Number.isSafeInteger`）として構築する。数字列と `%%EOF` の間に余分なゴミがないことも検証する。
+5. **範囲検証**: 取得したオフセット値がファイル長未満であることを確認する。
 
-### scanStartXRef 関数
+#### エラーケース（エラーコード: `STARTXREF_NOT_FOUND`）
 
-**入力**: PDFバイナリ全体（バイト列）
-**出力**: 成功時は `startxref` 直後のオフセット値（整数、xrefテーブルのバイトオフセット）、失敗時は `PdfParseError` を Err で返す
-
-### 処理アルゴリズム
-
-1. **末尾領域の算出**: `tailStart = Math.max(0, data.length - 1024)` で末尾1024バイトの `%%EOF` 検索開始位置を決定
-2. **%%EOF 逆方向検索**: `tailStart` から末尾までの範囲でバイト列 `[0x25, 0x25, 0x45, 0x4F, 0x46]` を逆方向に検索。コメント行内のマッチは除外。最後の `%%EOF` を自動的に検出
-3. **startxref 逆方向検索**: `%%EOF` の位置からファイル先頭に向かってバイト列 `"startxref"` を検索。前後両方のトークン境界チェック（ホワイトスペースまたはデリミタまたはデータ端）を行い、コメント行内のマッチも除外。最も `%%EOF` に近い有効な候補を採用し、数字の有無は次のステップで判定
-4. **オフセット値パース**: `startxref` キーワード末尾から `%%EOF` 位置までの範囲でホワイトスペース/コメントをスキップし、連続するASCII数字を逐次的に数値構築（`Number.isSafeInteger` でオーバーフロー検出）。数字列後に `%%EOF` までの間にゴミがないことも検証
-5. **バリデーション**: パースしたオフセット値がファイル長未満であることを確認
-
-### エラーケースとResult型
-
-すべてのエラーは `throw` せず `Result` 型（`Err<PdfParseError>`）で返す:
+すべての失敗は `throw` せず `Err<PdfParseError>` で返します。
 
 | ケース | エラーメッセージ |
-|:-------|:-----------------|
-| `%%EOF` が末尾1024バイト内に見つからない | `"%%EOF not found within last 1024 bytes"` |
+| :--- | :--- |
+| `%%EOF` が末尾スキャン範囲内に見つからない | `"%%EOF not found within last 1024 bytes"` |
 | `startxref` キーワードが見つからない | `"startxref keyword not found before %%EOF"` |
-| オフセット値が不正（数字がない） | `"invalid startxref offset value"` |
+| オフセット値が不正（数字がない・範囲外等） | `"invalid startxref offset value"` |
 
-エラーコードはすべて `"STARTXREF_NOT_FOUND"` を使用。
+---
 
 ## 回復処理
 
 ### XR-003: スキャン範囲拡大
 
-実世界のPDFでは %%EOF が末尾1024バイトを超える位置にある場合がある。XR-003 の回復処理は次のとおり:
-
-1. 範囲拡大は **`scanStartXRef` 自身**が行う。1024バイト以内に `%%EOF` が見つからない場合、最大4096バイトまでスキャン範囲を拡大する
-2. 拡大によって `%%EOF` を検出できた場合、`scanStartXRef` は成功（オフセット値の Ok）を返しつつ `EOF_NOT_FOUND` 警告を発行する（警告はパイプラインの警告収集を通じて `LoadOptions.onWarning` に伝わる）
-3. 4096バイトまで拡大しても `%%EOF` が見つからない場合は `STARTXREF_NOT_FOUND` を Err で返す（上位でフォールバックスキャナへ委譲。XR-004）
+1. 末尾 1024 バイト以内に `%%EOF` が見つからない場合、**`scanStartXRef` 自身**が探索範囲を最大 **4096 バイト**まで拡大して再検索する。
+2. 拡大で検出できた場合はオフセット値を `Ok` で返しつつ、**`EOF_NOT_FOUND` 警告**を発行する（`LoadOptions.onWarning` へ通知）。
+3. 4096 バイトでも見つからない場合は `STARTXREF_NOT_FOUND` を `Err` で返す。
 
 ### XR-004: フォールバックスキャナ
 
-%%EOF や startxref が破損している場合のフォールバック戦略。ファイル全体を走査して xref テーブルの開始位置を直接検出する（[error-handling-spec.md](./error-handling-spec.md) のフォールバックXRefスキャナを参照）。
+`STARTXREF_NOT_FOUND` が返った場合、上位パイプラインはファイル全体から `N G obj` を走査するフォールバック XRef スキャナへ委譲します（[error-handling-spec.md](./error-handling-spec.md)）。
 
-### 他のxrefモジュールとの関係
+## パイプライン内の位置づけ
 
+```text
+scanStartXRef ──→ XRefTableParser / XRefStreamParser ──→ XRefMerger ──→ ObjectStore
 ```
-scanStartXRef  -->  XRefTableParser  -->  ObjectStore
-                    XRefStreamParser
-```
-
-`scanStartXRef` は PDF解析パイプラインの最初のステップ。返されたオフセット値を使って `XRefTableParser`（従来形式）または `XRefStreamParser`（PDF 1.5+ のxrefストリーム形式）がxrefデータを読み取る。

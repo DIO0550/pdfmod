@@ -1,38 +1,57 @@
 # 06. タイポグラフィとフォント管理アーキテクチャ
 
+> **対応規格**: ISO 32000-1:2008 §9.6–9.10 / ISO 32000-2:2020 §9.6–9.10  
+> **扱う内容**: 単純フォント（Type 1 / TrueType / Type 3）、エンコーディング、複合フォント（Type 0 / CIDFont / CMap / CIDToGIDMap）、フォント記述子、`/ToUnicode` によるテキスト抽出、フォントサブセッティング
+
+## 目次
+
+1. [概要](#1-概要)
+2. [フォントの分類体系](#2-フォントの分類体系)
+3. [単純フォント（Simple Fonts）](#3-単純フォントsimple-fonts)
+4. [複合フォント（Composite Fonts）とCJKサポート](#4-複合フォントcomposite-fontsとcjkサポート)
+5. [フォント記述子（FontDescriptor）](#5-フォント記述子fontdescriptor)
+6. [テキスト抽出と ToUnicode マッピング](#6-テキスト抽出と-tounicode-マッピング)
+7. [フォントサブセッティング](#7-フォントサブセッティング)
+
+---
+
 ## 1. 概要
 
-PDFにおいて、ストリーム内に記述されたバイトコードは、セマンティックなテキスト（Unicode）を直接意味しているわけではなく、**フォントファイル内の特定の「グリフ（図形）」を指定するためのインデックスキー**に過ぎない。
+PDF のコンテンツストリームに書かれたバイト列は、そのまま Unicode の文字（テキストの意味）を表しているわけではありません。それは**フォント内の特定の「グリフ（図形）」を引くためのインデックスキー**にすぎません。
 
-これがPDFライブラリ開発における最大の壁となる。
+そのため「画面に正しく描画すること」と「コピー＆ペーストや検索のためにテキストを抽出すること」は別のパイプラインとなり、ここが PDF ライブラリ実装における最大の難所になります。
+
+---
 
 ## 2. フォントの分類体系
 
-```
-PDFフォント
-├── 単純フォント (Simple Fonts)
+```text
+PDF フォント
+├── 単純フォント (Simple Fonts) — 1 バイト = 最大 256 グリフ（主に欧文）
 │   ├── Type 1
 │   ├── TrueType
 │   ├── Type 3
 │   └── (MMType1 - Multiple Master, 非推奨)
-└── 複合フォント (Composite Fonts)
+└── 複合フォント (Composite Fonts) — マルチバイト対応（日本語など CJK）
     └── Type 0
         └── CIDFont
-            ├── CIDFontType0 (Type 1ベース)
-            └── CIDFontType2 (TrueTypeベース)
+            ├── CIDFontType0 (Type 1 / CFF ベース)
+            └── CIDFontType2 (TrueType ベース)
 ```
+
+---
 
 ## 3. 単純フォント（Simple Fonts）
 
 ### 3.1 基本特性
 
-- ストリーム内の文字列を **「1バイト＝1文字（グリフ）」** として処理
-- 最大 **256個** のグリフのみマッピング可能
-- 主に欧文（ラテン文字系）のドキュメントで使用
+- ストリーム内の文字列を **「1 バイト = 1 グリフ」** として処理する。
+- 最大 **256 個** のグリフのみマッピング可能。
+- 主に欧文（ラテン文字系）ドキュメントで使用される。
 
 ### 3.2 フォント辞書の共通構造
 
-```
+```pdf
 6 0 obj
 << /Type /Font
    /Subtype /Type1
@@ -49,51 +68,39 @@ endobj
 #### 共通エントリ
 
 | キー | 型 | 必須 | 説明 |
-|:-----|:---|:-----|:-----|
+| :--- | :--- | :--- | :--- |
 | `/Type` | 名前 | **必須** | `/Font` |
 | `/Subtype` | 名前 | **必須** | `/Type1`, `/TrueType`, `/Type3` |
-| `/BaseFont` | 名前 | **必須** | フォントのPostScript名 |
-| `/Encoding` | 名前 or 辞書 | 条件付き | エンコーディング定義 |
-| `/FirstChar` | 整数 | 条件付き | `/Widths` 配列の最初の文字コード |
-| `/LastChar` | 整数 | 条件付き | `/Widths` 配列の最後の文字コード |
-| `/Widths` | 配列 | 条件付き | 各文字の幅（グリフ空間の1/1000単位） |
-| `/FontDescriptor` | 辞書 | 条件付き | フォントの詳細メトリクス情報 |
-| `/ToUnicode` | ストリーム | 任意 | Unicode変換マップ |
+| `/BaseFont` | 名前 | **必須** | フォントの PostScript 名 |
+| `/Encoding` | 名前 or 辞書 | 条件付き | 文字コード → グリフ名のエンコーディング定義 |
+| `/FirstChar` | 整数 | 条件付き | `/Widths` 配列の先頭に対応する文字コード |
+| `/LastChar` | 整数 | 条件付き | `/Widths` 配列の末尾に対応する文字コード |
+| `/Widths` | 配列 | 条件付き | 各文字の幅（グリフ空間の 1/1000 単位） |
+| `/FontDescriptor` | 辞書 | 条件付き | フォントの詳細メトリクス・埋め込みデータ情報 |
+| `/ToUnicode` | ストリーム | 任意 | 文字コード → Unicode 変換マップ |
 
 ### 3.3 Type 1 フォント
 
-- Adobe PostScript技術に基づく
-- **3次ベジェ曲線**でグリフを定義
-- PDF標準の14フォント（Standard 14 Fonts）が定義されている
+- Adobe PostScript 技術に基づき、**3 次ベジェ曲線**でグリフを定義する。
+- PDF 1.x では次の **Standard 14 Fonts** が定義されている。
 
 #### Standard 14 Fonts
 
-| フォント名 | 説明 |
-|:-----------|:-----|
-| Times-Roman | Times系セリフ体（標準） |
-| Times-Bold | Times系セリフ体（太字） |
-| Times-Italic | Times系セリフ体（斜体） |
-| Times-BoldItalic | Times系セリフ体（太字斜体） |
-| Helvetica | Helvetica系サンセリフ体（標準） |
-| Helvetica-Bold | Helvetica系サンセリフ体（太字） |
-| Helvetica-Oblique | Helvetica系サンセリフ体（斜体） |
-| Helvetica-BoldOblique | Helvetica系サンセリフ体（太字斜体） |
-| Courier | Courier系等幅体（標準） |
-| Courier-Bold | Courier系等幅体（太字） |
-| Courier-Oblique | Courier系等幅体（斜体） |
-| Courier-BoldOblique | Courier系等幅体（太字斜体） |
-| Symbol | Symbol記号フォント |
-| ZapfDingbats | 装飾記号フォント |
+| 系統 | フォント名 |
+| :--- | :--- |
+| Times（セリフ体） | `Times-Roman`, `Times-Bold`, `Times-Italic`, `Times-BoldItalic` |
+| Helvetica（サンセリフ体） | `Helvetica`, `Helvetica-Bold`, `Helvetica-Oblique`, `Helvetica-BoldOblique` |
+| Courier（等幅体） | `Courier`, `Courier-Bold`, `Courier-Oblique`, `Courier-BoldOblique` |
+| 記号・装飾 | `Symbol`, `ZapfDingbats` |
 
-**注意**: PDF 2.0ではStandard 14 Fontsの暗黙的な存在保証は非推奨化されている。すべてのフォントは埋め込みを推奨。
+> **注意**: PDF 2.0 では Standard 14 Fonts の暗黙的な存在保証は非推奨となりました。互換性のため、生成時はすべてのフォントを埋め込むことが推奨されます。
 
 ### 3.4 TrueType フォント
 
-- **2次ベジェ曲線**でグリフを定義
-- PDF内でフォント辞書としてラップされて組み込まれる
-- `/FontDescriptor` の `/FontFile2` エントリに埋め込みフォントデータ
+- **2 次ベジェ曲線**でグリフを定義する。
+- 埋め込みフォントプログラムは `/FontDescriptor` の `/FontFile2` ストリームに格納される。
 
-```
+```pdf
 6 0 obj
 << /Type /Font
    /Subtype /TrueType
@@ -109,9 +116,9 @@ endobj
 
 ### 3.5 Type 3 フォント
 
-グリフの形状がPDFのコンテンツストリームオペレータで直接定義される特殊フォント。
+グリフの形状そのものを **PDF コンテンツストリームの描画命令** で直接定義する特殊フォントです。
 
-```
+```pdf
 6 0 obj
 << /Type /Font
    /Subtype /Type3
@@ -129,61 +136,59 @@ endobj
 #### Type 3 固有のエントリ
 
 | キー | 型 | 説明 |
-|:-----|:---|:-----|
-| `/FontBBox` | 配列 | フォントのバウンディングボックス |
+| :--- | :--- | :--- |
+| `/FontBBox` | 配列 | フォント全体のバウンディングボックス |
 | `/FontMatrix` | 配列 | グリフ空間からテキスト空間への変換行列 |
-| `/CharProcs` | 辞書 | グリフ名とストリームオブジェクトのマッピング |
-| `/Resources` | 辞書 | グリフストリーム内で使用されるリソース |
+| `/CharProcs` | 辞書 | グリフ名 → 描画命令ストリームのマップ |
+| `/Resources` | 辞書 | グリフストリーム内で使うリソース辞書 |
 
-#### 特徴
-- グリフに**複数の色**を使用可能
-- グリフに**画像や複雑な図形**を埋め込み可能
-- フォントメトリクスの精度が低い場合がある
-- テキスト抽出が困難
+- グリフに複数色・画像・複雑な図形を使える一方、メトリクス精度が低くなりがちで `/ToUnicode` 無しのテキスト抽出が困難になる。
 
 ### 3.6 エンコーディング
 
 #### 定義済みエンコーディング
 
 | エンコーディング名 | 説明 |
-|:-------------------|:-----|
-| `/StandardEncoding` | Adobe標準エンコーディング |
+| :--- | :--- |
+| `/StandardEncoding` | Adobe 標準エンコーディング |
 | `/MacRomanEncoding` | Mac Roman エンコーディング |
-| `/WinAnsiEncoding` | Windows ANSI (Latin-1相当) |
+| `/WinAnsiEncoding` | Windows ANSI（Latin-1 相当） |
 | `/MacExpertEncoding` | Mac Expert エンコーディング |
 
-#### カスタムエンコーディング（Differences配列）
+#### カスタムエンコーディング（`/Differences` 配列）
 
-```
+```pdf
 /Encoding <<
   /Type /Encoding
   /BaseEncoding /WinAnsiEncoding
   /Differences [
-    128 /Euro           % 文字コード128にEuro記号を割り当て
-    160 /nbspace        % 文字コード160に非改行スペースを割り当て
+    128 /Euro           % 文字コード 128 に Euro 記号を割り当て
+    160 /nbspace        % 文字コード 160 に非改行スペースを割り当て
   ]
 >>
 ```
 
-`/Differences` 配列のフォーマット:
-- 整数: 以降のグリフ名が割り当てられる開始文字コード
-- 名前: その文字コードに割り当てるグリフ名（連続して割り当て）
+`/Differences` 配列では「整数（開始文字コード）」の後に「名前（グリフ名）」を並べます。名前が連続する場合は、開始文字コードから `+1` ずつ順に割り当てられます。
+
+---
 
 ## 4. 複合フォント（Composite Fonts）とCJKサポート
 
+日本語・中国語・韓国語（CJK）のように数千〜数万のグリフを扱う言語では、Type 0 ルート辞書と子孫の CIDFont 辞書を組み合わせた**複合フォント**を使用します。
+
 ### 4.1 構造概要
 
-```
+```text
 Type 0 (ルート辞書)
-  ├── /Encoding: CMap
+  ├── /Encoding: CMap（バイト列 → CID）
   └── /DescendantFonts: [CIDFont]
-        ├── CIDFontType0 (Type 1アウトライン)
-        └── CIDFontType2 (TrueTypeアウトライン)
+        ├── CIDFontType0 (Type 1 / CFF アウトライン)
+        └── CIDFontType2 (TrueType アウトライン)
 ```
 
 ### 4.2 Type 0 フォント辞書
 
-```
+```pdf
 20 0 obj
 << /Type /Font
    /Subtype /Type0
@@ -196,17 +201,17 @@ endobj
 ```
 
 | キー | 型 | 必須 | 説明 |
-|:-----|:---|:-----|:-----|
+| :--- | :--- | :--- | :--- |
 | `/Type` | 名前 | **必須** | `/Font` |
 | `/Subtype` | 名前 | **必須** | `/Type0` |
-| `/BaseFont` | 名前 | **必須** | フォントの識別名 |
-| `/Encoding` | 名前 or ストリーム | **必須** | CMapの名前またはストリーム |
-| `/DescendantFonts` | 配列 | **必須** | CIDFontへの参照（要素は1つのみ） |
-| `/ToUnicode` | ストリーム | 推奨 | Unicode変換CMap |
+| `/BaseFont` | 名前 | **必須** | フォント識別名 |
+| `/Encoding` | 名前 or ストリーム | **必須** | CMap の定義済み名前または埋め込み CMap ストリーム |
+| `/DescendantFonts` | 配列 | **必須** | CIDFont への参照（要素数は常に 1） |
+| `/ToUnicode` | ストリーム | 推奨 | Unicode 変換 CMap |
 
-### 4.3 CIDFont辞書
+### 4.3 CIDFont 辞書
 
-```
+```pdf
 21 0 obj
 << /Type /Font
    /Subtype /CIDFontType2
@@ -221,98 +226,72 @@ endobj
 ```
 
 | キー | 型 | 必須 | 説明 |
-|:-----|:---|:-----|:-----|
+| :--- | :--- | :--- | :--- |
 | `/Type` | 名前 | **必須** | `/Font` |
-| `/Subtype` | 名前 | **必須** | `/CIDFontType0` or `/CIDFontType2` |
-| `/BaseFont` | 名前 | **必須** | フォントのPostScript名 |
-| `/CIDSystemInfo` | 辞書 | **必須** | 文字コレクション情報 |
+| `/Subtype` | 名前 | **必須** | `/CIDFontType0` または `/CIDFontType2` |
+| `/BaseFont` | 名前 | **必須** | フォントの PostScript 名 |
+| `/CIDSystemInfo` | 辞書 | **必須** | 文字コレクション情報（`/Registry`, `/Ordering`, `/Supplement`） |
 | `/FontDescriptor` | 辞書 | **必須** | フォント記述子 |
-| `/DW` | 整数 | 任意 | デフォルトの文字幅（デフォルト: 1000） |
+| `/DW` | 整数 | 任意 | 既定の文字幅（既定値 `1000`） |
 | `/W` | 配列 | 任意 | 個別の文字幅定義 |
-| `/DW2` | 配列 | 任意 | デフォルトの縦書きメトリクス |
-| `/W2` | 配列 | 任意 | 個別の縦書きメトリクス |
-| `/CIDToGIDMap` | ストリーム or 名前 | 条件付き | CIDからGIDへの変換マップ |
+| `/DW2` / `/W2` | 配列 | 任意 | 縦書き用の既定/個別メトリクス |
+| `/CIDToGIDMap` | ストリーム or 名前 | 条件付き | CID → GID（TrueType グリフ ID）の変換マップ |
 
-#### /W 配列のフォーマット
+#### `/W` 配列の 2 パターン
 
-2つのパターンが混在する。
-
-```
+```pdf
 /W [
-  CID_start [width1 width2 ...]     % パターン1: 連続するCIDに個別の幅
-  CID_first CID_last width          % パターン2: CID範囲に一律の幅
-]
-
-例:
-/W [
-  1 [250 333 408]     % CID 1=250, CID 2=333, CID 3=408
-  231 395 500          % CID 231〜395は全て幅500
+  1 [250 333 408]    % パターン1: CID_start [w1 w2 ...] → CID 1=250, 2=333, 3=408
+  231 395 500        % パターン2: CID_first CID_last w  → CID 231〜395 はすべて幅 500
 ]
 ```
 
-#### CIDSystemInfo辞書
+#### `CIDSystemInfo` 辞書
 
-| キー | 型 | 説明 |
-|:-----|:---|:-----|
-| `/Registry` | 文字列 | フォントベンダー名（例: "Adobe"） |
-| `/Ordering` | 文字列 | 文字コレクション名（例: "Japan1", "Korea1", "CNS1", "GB1"） |
-| `/Supplement` | 整数 | 補足番号（コレクションの拡張バージョン） |
+| キー | 型 | 例 |
+| :--- | :--- | :--- |
+| `/Registry` | 文字列 | ベンダー名（例: `(Adobe)`） |
+| `/Ordering` | 文字列 | 文字コレクション名（例: `(Japan1)`, `(Korea1)`, `(CNS1)`, `(GB1)`） |
+| `/Supplement` | 整数 | コレクションの拡張リビジョン番号 |
 
 ### 4.4 マルチステージ・ルックアップ・パイプライン
 
-複合フォントを正しくレンダリングするための完全な処理フロー。
+複合フォントの描画は 4 段階の変換パイプラインで行われます。
 
-```
-ステージ1: 文字コード → CID
-+------------------+    +---------+    +-----+
-| テキストストリーム  | → |  CMap   | → | CID |
-| (マルチバイト)     |    | デコード |    |     |
-+------------------+    +---------+    +-----+
+```text
+[ステージ 1: 文字コード → CID]
+  テキストストリーム (マルチバイト) ──→ CMap デコード ──→ CID
 
-ステージ2: CID → メトリクス取得
-+-----+    +----------+    +--------+
-| CID | → | CIDFont  | → | 文字幅  |
-|     |    | /W, /DW  |    | 取得    |
-+-----+    +----------+    +--------+
+[ステージ 2: CID → メトリクス取得]
+  CID ──→ CIDFont (/W, /DW) ──→ 文字幅を取得
 
-ステージ3: CID → GID（CIDFontType2のみ）
-+-----+    +---------------+    +-----+
-| CID | → | /CIDToGIDMap  | → | GID  |
-|     |    | (バイナリマップ)|    |     |
-+-----+    +---------------+    +-----+
+[ステージ 3: CID → GID（CIDFontType2 のみ）]
+  CID ──→ /CIDToGIDMap ──→ GID (フォント内グリフ ID)
 
-ステージ4: GID → グリフ描画
-+-----+    +------------------+    +--------+
-| GID | → | フォントプログラム  | → | グリフ  |
-|     |    | (TrueType/CFF)    |    | 描画    |
-+-----+    +------------------+    +--------+
+[ステージ 4: GID → グリフ描画]
+  GID ──→ 埋め込みフォントプログラム (TrueType / CFF) ──→ グリフ描画
 ```
 
 ### 4.5 CMap（Character Map）
 
-入力されたバイト列をCID（Character Identifier）に変換する辞書プログラム。
+入力バイト列を CID（Character Identifier）へ変換する対応表です。
 
-#### 定義済みCMap（名前参照）
+#### 代表的な定義済み CMap
 
-| CMap名 | 説明 |
-|:-------|:-----|
-| `Identity-H` | CID = 文字コード（水平書き） |
-| `Identity-V` | CID = 文字コード（垂直書き） |
-| `UniJIS-UTF16-H` | UTF-16からAdobe-Japan1へのマッピング |
-| `83pv-RKSJ-H` | Shift_JISからAdobe-Japan1へのマッピング |
-| `UniKS-UTF16-H` | UTF-16からAdobe-Korea1へのマッピング |
-| `UniGB-UTF16-H` | UTF-16からAdobe-GB1へのマッピング |
-| `UniCNS-UTF16-H` | UTF-16からAdobe-CNS1へのマッピング |
+| CMap 名 | 説明 |
+| :--- | :--- |
+| `Identity-H` / `Identity-V` | CID = 文字コードそのまま（横書き / 縦書き） |
+| `UniJIS-UTF16-H` | UTF-16 → Adobe-Japan1 |
+| `83pv-RKSJ-H` | Shift_JIS → Adobe-Japan1 |
+| `UniKS-UTF16-H` | UTF-16 → Adobe-Korea1 |
+| `UniGB-UTF16-H` | UTF-16 → Adobe-GB1 |
+| `UniCNS-UTF16-H` | UTF-16 → Adobe-CNS1 |
 
-#### 埋め込みCMapストリーム
+#### 埋め込み CMap ストリームの例
 
-```
+```pdf
 /CMapName /CustomCMap def
-/CIDSystemInfo <<
-  /Registry (Adobe)
-  /Ordering (Japan1)
-  /Supplement 6
->> def
+/CIDSystemInfo << /Registry (Adobe) /Ordering (Japan1) /Supplement 6 >> def
 
 1 begincodespacerange
   <0000> <FFFF>
@@ -330,39 +309,26 @@ endbfchar
 endbfrange
 ```
 
-### 4.6 CIDToGIDMap
+### 4.6 `CIDToGIDMap`
 
-- `/Identity`: CIDとGIDの数値は同一とみなす
-- ストリーム: 2バイト/エントリのバイナリマッピングテーブル
+CID から TrueType の GID を求める規則は次の 2 通りです。
 
-```
-実装:
-fn cid_to_gid(cid: u16, map: &CIDToGIDMap) -> u16 {
-    match map {
-        CIDToGIDMap::Identity => cid,
-        CIDToGIDMap::Stream(data) => {
-            let offset = (cid as usize) * 2;
-            if offset + 1 < data.len() {
-                u16::from_be_bytes([data[offset], data[offset + 1]])
-            } else {
-                0 // .notdef
-            }
-        }
-    }
-}
-```
+| 指定形式 | 変換ルール |
+| :--- | :--- |
+| `/Identity` | `GID = CID`（数値をそのまま使用） |
+| ストリーム（バイナリ表） | 1 エントリ 2 バイトのビッグエンディアン符号なし整数テーブル。`offset = CID × 2` から 2 バイトを読み取り GID とする。ストリーム長を超える場合は `0`（`.notdef`）へフォールバック |
 
 ### 4.7 CID 0 の規則
 
-すべてのCIDFontは**CID 0のグリフを必ず定義**しなければならない。
-- 文字が見つからない場合のフォールバック（`.notdef`）として使用
-- 通常は四角形の「豆腐文字」(□) として表示
+すべての CIDFont は **CID 0（`.notdef`）のグリフを必ず定義**しなければなりません。未定義文字のフォールバック（いわゆる「豆腐」□ 等）として使われます。
+
+---
 
 ## 5. フォント記述子（FontDescriptor）
 
-フォントの詳細なメトリクス情報と埋め込みフォントデータを保持する辞書。
+フォントの詳細メトリクスと埋め込みフォントデータを保持する辞書です。
 
-```
+```pdf
 7 0 obj
 << /Type /FontDescriptor
    /FontName /ArialMT
@@ -381,116 +347,110 @@ endobj
 ### 5.1 主要エントリ
 
 | キー | 型 | 説明 |
-|:-----|:---|:-----|
+| :--- | :--- | :--- |
 | `/Type` | 名前 | `/FontDescriptor` |
-| `/FontName` | 名前 | フォントのPostScript名 |
-| `/Flags` | 整数 | フォント特性フラグ（ビットフィールド） |
+| `/FontName` | 名前 | フォントの PostScript 名 |
+| `/Flags` | 整数 | フォント特性フラグ（ビットフィールド、§5.2） |
 | `/FontBBox` | 配列 | 全グリフのバウンディングボックス |
-| `/ItalicAngle` | 実数 | 斜体角度（度単位、0 = 直立） |
+| `/ItalicAngle` | 実数 | 斜体角度（度、`0` = 直立） |
 | `/Ascent` | 実数 | アセンダ値（ベースライン上の高さ） |
-| `/Descent` | 実数 | ディセンダ値（ベースライン下の深さ、負の値） |
+| `/Descent` | 実数 | ディセンダ値（ベースライン下の深さ、負値） |
 | `/CapHeight` | 実数 | 大文字の高さ |
 | `/StemV` | 実数 | 垂直ステムの太さ |
-| `/FontFile` | ストリーム | Type 1フォントプログラム |
-| `/FontFile2` | ストリーム | TrueType/OpenTypeフォントプログラム |
-| `/FontFile3` | ストリーム | CFF/OpenType CFF フォントプログラム |
+| `/FontFile` | ストリーム | Type 1 フォントプログラム |
+| `/FontFile2` | ストリーム | TrueType / OpenType フォントプログラム |
+| `/FontFile3` | ストリーム | CFF / OpenType CFF フォントプログラム |
 
 ### 5.2 フォントフラグ（ビットフィールド）
 
-| ビット | 値 | 意味 |
-|:-------|:---|:-----|
-| 1 | 1 | FixedPitch（等幅フォント） |
-| 2 | 2 | Serif（セリフ体） |
-| 3 | 4 | Symbolic（記号フォント） |
-| 4 | 8 | Script（筆記体） |
-| 6 | 32 | Nonsymbolic（非記号、ラテン文字ベース） |
-| 7 | 64 | Italic（斜体） |
-| 17 | 65536 | AllCap（すべて大文字） |
-| 18 | 131072 | SmallCap（スモールキャップ） |
-| 19 | 262144 | ForceBold（太字を強制） |
+| ビット（1 起点） | 値 | 意味 |
+| :--- | :--- | :--- |
+| 1 | `1` | FixedPitch（等幅フォント） |
+| 2 | `2` | Serif（セリフ体） |
+| 3 | `4` | Symbolic（記号フォント） |
+| 4 | `8` | Script（筆記体） |
+| 6 | `32` | Nonsymbolic（非記号、ラテン文字ベース） |
+| 7 | `64` | Italic（斜体） |
+| 17 | `65536` | AllCap（すべて大文字） |
+| 18 | `131072` | SmallCap（スモールキャップ） |
+| 19 | `262144` | ForceBold（太字を強制） |
+
+---
 
 ## 6. テキスト抽出と ToUnicode マッピング
 
 ### 6.1 テキスト抽出の課題
 
-- 画面上では正しく表示されていても、ストリーム内のバイトコードは独自のCIDにマッピングされている
-- 標準的なテキストとしてコピー＆ペーストできない場合がある
-- PDFには「単語間のスペース」の明示的な概念が存在しない場合が多い
+- 画面上は読めても、ストリーム内のバイト列はサブセットフォント独自の CID や GID になっていることが多い。
+- PDF には「単語間のスペース」が明示文字として入らず、座標移動（`Td`, `TJ` 等）だけで空けられている場合が多い。
 
-### 6.2 ToUnicode CMap
+### 6.2 `ToUnicode` CMap
 
-フォント辞書の `/ToUnicode` エントリに格納される特殊なCMap。
+フォント辞書の `/ToUnicode` に格納される、文字コード → UTF-16 Unicode コードポイントの変換表です。
 
-```
+```pdf
 /CMapType 2 def
 1 begincodespacerange
   <0000> <FFFF>
 endcodespacerange
 
 5 beginbfchar
-  <0003> <0020>        % 文字コード0x0003 → U+0020 (スペース)
-  <0010> <0048>        % 文字コード0x0010 → U+0048 ('H')
-  <0011> <0065>        % 文字コード0x0011 → U+0065 ('e')
-  <0012> <006C>        % 文字コード0x0012 → U+006C ('l')
-  <0013> <006F>        % 文字コード0x0013 → U+006F ('o')
+  <0003> <0020>        % 0x0003 → U+0020 (スペース)
+  <0010> <0048>        % 0x0010 → U+0048 ('H')
+  <0011> <0065>        % 0x0011 → U+0065 ('e')
+  <0012> <006C>        % 0x0012 → U+006C ('l')
+  <0013> <006F>        % 0x0013 → U+006F ('o')
 endbfchar
 
 2 beginbfrange
-  <0020> <007E> <0020> % 文字コード0x0020〜0x007E → U+0020〜U+007E
-  <00A0> <00FF> <00A0> % 文字コード0x00A0〜0x00FF → U+00A0〜U+00FF
+  <0020> <007E> <0020> % 0x0020〜0x007E → U+0020〜U+007E
+  <00A0> <00FF> <00A0> % 0x00A0〜0x00FF → U+00A0〜U+00FF
 endbfrange
 ```
 
-#### 処理フロー
+#### 描画とテキスト抽出のパイプライン比較
 
+```text
+描画パイプライン（見た目）:
+  文字コード ──→ CMap ──→ CID ──→ GID ──→ グリフ描画
+
+テキスト抽出パイプライン（意味）:
+  文字コード ──→ /ToUnicode CMap ──→ UTF-16 Unicode コードポイント
 ```
-描画パイプライン（グリフ表示用）:
-  文字コード → CMap → CID → GID → グリフ描画
 
-テキスト抽出パイプライン（意味取得用）:
-  文字コード → /ToUnicode CMap → UTF-16 Unicodeコードポイント
-```
+### 6.3 `ToUnicode` が存在しない場合
 
-### 6.3 ToUnicode が存在しない場合
-
-1. `/Encoding` からグリフ名を取得
-2. Adobe Glyph List (AGL) でグリフ名をUnicodeにマッピング
-3. それでも失敗した場合、テキスト情報は**完全に失われる**
-4. OCR（光学文字認識）のヒューリスティックに頼る以外に復元方法なし
+1. `/Encoding` からグリフ名を取得する。
+2. Adobe Glyph List（AGL）でグリフ名 → Unicode へ変換を試みる。
+3. それも得られない場合、テキスト情報は構造上復元不能であり、OCR などのヒューリスティックに頼るしかない。
 
 ### 6.4 単語境界の再構築
 
-PDFにはスペースの明示的な表現がないため、パーサーは幾何学的な分析で推測する。
+PDF には明示的なスペースや改行文字が無いことが多いため、グリフの幾何学座標から単語・行の境界を推定します。
 
-```
-単語境界検出アルゴリズム:
-1. 各グリフのバウンディングボックス（位置と幅）を計算
-2. 連続するグリフ間の水平距離を測定
-3. 距離がスペース文字の幅の一定割合（例: 30%）を超える場合、単語境界と判定
-4. 垂直方向の位置変化が一定値を超える場合、行の境界と判定
+1. 各グリフのバウンディングボックス（位置 `x, y` と幅 `width`）を算出する。
+2. 隣接する 2 グリフ間の水平ギャップ `gap = glyph2.x - (glyph1.x + glyph1.width)` を求める。
+3. `gap > space_width × 0.3`（スペース幅の一定割合、目安 30%）を超えれば**単語境界**、垂直位置の変化が閾値を超えれば**行境界**と判定する。
 
-fn detect_word_boundary(glyph1: &Glyph, glyph2: &Glyph, space_width: f64) -> bool {
-    let gap = glyph2.x - (glyph1.x + glyph1.width);
-    gap > space_width * 0.3
-}
-```
+---
 
 ## 7. フォントサブセッティング
 
-フォントファイル全体をPDFに埋め込むとファイルサイズが膨大になるため、使用するグリフのみを含む**サブセットフォント**を作成する。
+フォント全体（特に日本語フォント）を埋め込むとファイルサイズが膨大になるため、文書内で実際に使ったグリフだけを抜き出した**サブセットフォント**が広く使われます。
 
 ### 7.1 サブセット識別子
 
-```
+```pdf
 /BaseFont /ABCDEF+ArialMT
 ```
 
-- 6文字の大文字アルファベット + `+` + フォント名
-- プレフィックスはランダムに生成される
-- サブセット化されたフォントであることを示す慣例的な命名規則
+- ランダムな大文字アルファベット 6 文字 + `+` + 元のフォント名、という慣例的な命名規則で表す。
 
 ### 7.2 実装上の注意
 
-- サブセット化されたフォントでは、未使用のグリフは含まれない
-- `/ToUnicode` CMapがない場合、サブセット化されたフォントのテキスト抽出は極めて困難
-- フォント編集（テキスト追加等）を行う場合、元のフォントファイルが必要になる場合がある
+- 未使用グリフは含まれないため、既存テキストへの文字追加など編集操作を行う場合は別の完全フォントやシステムフォントが必要になる。
+- サブセットフォントに `/ToUnicode` CMap が欠けていると、文字コードが連番再割り当てされているためテキスト抽出は極めて困難になる。
+
+---
+
+[← 前の章: 05. コンテンツストリーム (`05_content_streams.md`)](./05_content_streams.md) | [目次](./00_overview.md) | [次の章: 07. データ圧縮とストリームフィルタ (`07_compression_filters.md`) →](./07_compression_filters.md)
