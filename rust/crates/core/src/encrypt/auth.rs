@@ -17,7 +17,6 @@ use crate::encrypt::standard::StandardSecurityHandler;
 use crate::xref::trailer::file_id::FileId;
 
 const RC4_ROUND_COUNT: u8 = 20;
-const LEGACY_R3_USER_COMPARE_LEN: usize = 16;
 
 /// 検証済みのファイル暗号鍵。
 ///
@@ -292,14 +291,8 @@ impl StandardSecurityHandler {
                 for round in 0..RC4_ROUND_COUNT {
                     apply_rc4_round(file_key.as_bytes(), key_length, round, &mut expected)?;
                 }
-                let Some(user_prefix) = user_entry.first_chunk::<LEGACY_R3_USER_COMPARE_LEN>()
-                else {
-                    return Err(AuthError::InvalidEntryLength {
-                        key: EncryptKey::U,
-                        actual: user_entry.len(),
-                    });
-                };
-                ct_eq(&expected, user_prefix)
+                // Algorithm 5 は /U（32 バイト）の先頭 16 バイト（MD5 ダイジェスト長）だけを照合する。
+                ct_eq_prefix(&expected, user_entry)
             }
         };
 
@@ -406,6 +399,11 @@ fn apply_rc4_round(
 }
 
 fn ct_eq<const N: usize>(left: &[u8; N], right: &[u8; N]) -> bool {
+    ct_eq_prefix(left, right)
+}
+
+fn ct_eq_prefix<const N: usize, const M: usize>(left: &[u8; N], right: &[u8; M]) -> bool {
+    const { assert!(N <= M) };
     left.iter()
         .zip(right)
         .fold(0_u8, |diff, (&a, &b)| diff | (a ^ b))
