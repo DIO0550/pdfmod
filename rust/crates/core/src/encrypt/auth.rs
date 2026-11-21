@@ -20,10 +20,14 @@ use crate::xref::trailer::file_id::FileId;
 
 const RC4_ROUND_COUNT: u8 = 20;
 
-/// 検証済みのファイル暗号鍵。
+/// リビジョンに応じたファイル暗号鍵の種別。
 ///
 /// R2〜R4 は 5〜16 バイトの [`LegacyFileKey`]、R5・R6 は 32 バイトの
 /// [`Aes256FileKey`] を保持する。両バリアントとも `Debug` で鍵バイト列を出力しない。
+///
+/// この列挙型自体は鍵の認証済みを保証しない（[`Self::Legacy`] は `/U` 未照合の
+/// [`StandardSecurityHandler::derive_legacy_file_key`] の結果も包める）。
+/// 認証済みの鍵を要求する境界では [`AuthenticatedFileKey`] を受け取ること。
 #[derive(Debug)]
 #[must_use]
 pub enum FileEncryptionKey {

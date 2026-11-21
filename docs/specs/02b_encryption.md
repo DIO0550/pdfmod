@@ -241,7 +241,7 @@ R5・R6 はトレイラの `/ID` を参照しない。パスワードバイト�
 ### 型による安全境界とエラー分類
 
 - `AuthenticatedFileKey` はフィールドを非公開とし、`authenticate` / `authenticate_as` からのみ構築できる。未認証または誤った鍵のまま復号へ進めないことを型で保証し、`role()`・`key()`・`as_bytes()` を提供する。
-- `FileEncryptionKey` は `as_bytes()`・`as_legacy()`・`as_aes256()` を提供する。`AuthenticatedFileKey`・`FileEncryptionKey` とも `Clone` / `Copy` を実装せず、`Debug` 出力は `finish_non_exhaustive()`（内包鍵型の秘匿実装を含む）で鍵バイト列を出力しない。
+- `FileEncryptionKey` は `Legacy(LegacyFileKey)` / `Aes256(Aes256FileKey)` の鍵種別を表す列挙型であり、単独では鍵の認証済みを保証しない（`Legacy` は `/U` 未照合の `derive_legacy_file_key` の結果も包める）。認証済みの鍵を要求する境界では `AuthenticatedFileKey` を受け取る。`FileEncryptionKey` は `as_bytes()`・`as_legacy()`・`as_aes256()` を提供し、`AuthenticatedFileKey`・`FileEncryptionKey` とも `Clone` / `Copy` を実装せず、`Debug` 出力は `finish_non_exhaustive()`（内包鍵型の秘匿実装を含む）で鍵バイト列を出力しない。
 - `AuthError` はパスワード不一致と暗号化辞書・トレイラの構造不正や改ざんをバリアントで区別する。
 
 | バリアント | 意味 |

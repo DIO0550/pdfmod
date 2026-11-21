@@ -652,7 +652,7 @@ assert_eq!(digest, <span class="type">Md5</span>::digest(<span class="string">b"
     <tr><td><code>StandardSecurityHandler::authenticate(password, file_id)</code></td><td><code>None</code> は空パスワードを利用者 → 所有者、<code>Some(bytes)</code> は所有者 → 利用者の順に認証</td></tr>
     <tr><td><code>StandardSecurityHandler::authenticate_as(role, password, file_id)</code></td><td>指定した単一の <code>PasswordRole</code> で Algorithm 6 / 7 / 11 / 12 を適用</td></tr>
     <tr><td><code>AuthenticatedFileKey</code></td><td><code>role()</code>・<code>key()</code>・<code>as_bytes()</code> を提供。<code>Clone</code> / <code>Copy</code> 非実装、<code>Debug</code> は鍵バイト列を秘匿</td></tr>
-    <tr><td><code>FileEncryptionKey</code></td><td><code>Legacy(LegacyFileKey)</code> と <code>Aes256(Aes256FileKey)</code> の列挙型。<code>as_bytes()</code>・<code>as_legacy()</code>・<code>as_aes256()</code> を提供</td></tr>
+    <tr><td><code>FileEncryptionKey</code></td><td><code>Legacy(LegacyFileKey)</code> と <code>Aes256(Aes256FileKey)</code> の列挙型。鍵種別のみを表し単独では認証済みを保証しない（認証が必要な境界では <code>AuthenticatedFileKey</code> を要求する）。<code>as_bytes()</code>・<code>as_legacy()</code>・<code>as_aes256()</code> を提供</td></tr>
     <tr><td><code>AuthError</code></td><td><code>IncorrectPassword</code> と <code>MissingFileId</code>・<code>InvalidEntryLength</code>・<code>InvalidKeyLength</code>・<code>InvalidPermissions</code>・<code>InvalidHashInput</code>・<code>UnsupportedRevision</code> を区別</td></tr>
   </tbody>
 </table>
