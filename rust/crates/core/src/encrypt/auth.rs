@@ -4,7 +4,9 @@
 use std::fmt;
 
 pub use crate::encrypt::aes256_key::PasswordRole;
-use crate::encrypt::aes256_key::{Aes256FileKey, Aes256FileKeyError};
+use crate::encrypt::aes256_key::{
+    Aes256FileKey, Aes256FileKeyError, MAX_PASSWORD_BYTES as AES256_MAX_PASSWORD_BYTES,
+};
 use crate::encrypt::algorithm::{KeyLength, StandardAlgorithm};
 use crate::encrypt::key::EncryptKey;
 use crate::encrypt::legacy_key::{
@@ -170,7 +172,9 @@ impl StandardSecurityHandler {
     /// - `password` が `Some(bytes)` のときは指定バイト列を **所有者 → 利用者** の順に試す
     ///   （ISO 32000-1 §7.6.3.1 / ISO 32000-2 §7.6.4.1）。
     /// - R2〜R4 は `file_id`（トレイラの `/ID`）を必要とする。R5・R6 は `file_id` を使わず、
-    ///   パスワードを準備済み UTF-8 として検証する（不正な UTF-8 は [`AuthError::IncorrectPassword`]）。
+    ///   鍵導出に使う先頭 127 バイトを覆う最小の UTF-8 文字境界まで（最大 130 バイト）を
+    ///   UTF-8 として検証する（範囲内の不正な UTF-8 は [`AuthError::IncorrectPassword`]、
+    ///   その文字境界より後ろの未使用バイトは走査せず無視する）。
     ///
     /// # Errors
     ///
@@ -190,22 +194,27 @@ impl StandardSecurityHandler {
             Some(bytes) => (bytes, [PasswordRole::Owner, PasswordRole::User]),
         };
 
-        for role in roles {
-            match self.authenticate_as(role, bytes, file_id) {
-                Ok(authenticated) => return Ok(authenticated),
-                Err(AuthError::IncorrectPassword) => continue,
-                Err(error) => return Err(error),
+        match self.algorithm() {
+            StandardAlgorithm::V1R2 => {
+                self.authenticate_legacy_roles(LegacyRevision::R2, roles, bytes, file_id)
+            }
+            StandardAlgorithm::V1R3
+            | StandardAlgorithm::V2R3 { .. }
+            | StandardAlgorithm::V4R4 { .. } => {
+                self.authenticate_legacy_roles(LegacyRevision::R3OrR4, roles, bytes, file_id)
+            }
+            StandardAlgorithm::V5R5 { .. } | StandardAlgorithm::V5R6 { .. } => {
+                self.authenticate_aes256_roles(roles, bytes)
             }
         }
-
-        Err(AuthError::IncorrectPassword)
     }
 
     /// 指定した役割でパスワードを認証し、検証済みのファイル暗号鍵を返す。
     ///
     /// R2〜R4 の [`PasswordRole::User`] は Algorithm 6、[`PasswordRole::Owner`] は Algorithm 7、
     /// R5・R6 の [`PasswordRole::User`] は Algorithm 11、[`PasswordRole::Owner`] は Algorithm 12 を
-    /// 適用する。
+    /// 適用する。R5・R6 は鍵導出に使う先頭 127 バイトを覆う最小の UTF-8 文字境界まで
+    /// （最大 130 バイト）を UTF-8 として検証し、その文字境界より後ろの未使用バイトは走査しない。
     ///
     /// # Errors
     ///
@@ -227,9 +236,43 @@ impl StandardSecurityHandler {
                 self.authenticate_legacy(LegacyRevision::R3OrR4, role, password, file_id)
             }
             StandardAlgorithm::V5R5 { .. } | StandardAlgorithm::V5R6 { .. } => {
-                self.authenticate_aes256(role, password)
+                self.authenticate_aes256_prepared(role, prepare_aes256_password(password))
             }
         }
+    }
+
+    fn authenticate_legacy_roles(
+        &self,
+        revision: LegacyRevision,
+        roles: [PasswordRole; 2],
+        password: &[u8],
+        file_id: Option<&FileId>,
+    ) -> Result<AuthenticatedFileKey, AuthError> {
+        for role in roles {
+            match self.authenticate_legacy(revision, role, password, file_id) {
+                Ok(authenticated) => return Ok(authenticated),
+                Err(AuthError::IncorrectPassword) => continue,
+                Err(error) => return Err(error),
+            }
+        }
+        Err(AuthError::IncorrectPassword)
+    }
+
+    fn authenticate_aes256_roles(
+        &self,
+        roles: [PasswordRole; 2],
+        password: &[u8],
+    ) -> Result<AuthenticatedFileKey, AuthError> {
+        // UTF-8 検証結果は認証 1 回につき一度だけ求めて役割間で共有する。
+        let prepared = prepare_aes256_password(password);
+        for role in roles {
+            match self.authenticate_aes256_prepared(role, prepared) {
+                Ok(authenticated) => return Ok(authenticated),
+                Err(AuthError::IncorrectPassword) => continue,
+                Err(error) => return Err(error),
+            }
+        }
+        Err(AuthError::IncorrectPassword)
     }
 
     fn authenticate_legacy(
@@ -340,18 +383,15 @@ impl StandardSecurityHandler {
         self.authenticate_legacy_padded_user(revision, &recovered_user, user_entry, file_id)
     }
 
-    fn authenticate_aes256(
+    fn authenticate_aes256_prepared(
         &self,
         role: PasswordRole,
-        password: &[u8],
+        prepared: Option<&str>,
     ) -> Result<AuthenticatedFileKey, AuthError> {
-        // 不正な UTF-8 入力でも辞書項目の長さ不正（構造破損）を隠さないよう先に検証する。
-        self.validate_aes256_entries(role)
-            .map_err(AuthError::from_aes256_error)?;
-
-        // R5・R6 のパスワードは UTF-8 文字列。UTF-8 として解釈できないバイト列は
-        // いずれの検証ハッシュとも一致しないため、認証失敗として扱う。
-        let Ok(prepared) = std::str::from_utf8(password) else {
+        let Some(prepared) = prepared else {
+            // 不正な UTF-8 入力でも辞書項目の長さ不正（構造破損）を隠さないよう先に検証する。
+            self.validate_aes256_entries(role)
+                .map_err(AuthError::from_aes256_error)?;
             return Err(AuthError::IncorrectPassword);
         };
 
@@ -363,6 +403,30 @@ impl StandardSecurityHandler {
             key: FileEncryptionKey::Aes256(key),
             role,
         })
+    }
+}
+
+/// R5・R6 の鍵導出で使う先頭 127 バイトを覆う最小の UTF-8 プレフィックスを検証する。
+///
+/// 鍵導出（Algorithm 2.A）は先頭 127 バイトのみを使用するため、127 バイト目をまたぐ
+/// 多バイト文字の終端（最大 130 バイト）までを UTF-8 として検証し、未使用の末尾は
+/// 走査しない。
+fn prepare_aes256_password(password: &[u8]) -> Option<&str> {
+    // UTF-8 の 1 文字は最大 4 バイトなので、127 バイト目（添字 126）を含む文字は
+    // 最大でも 126 + 4 = 130 バイト目で終わる。
+    const UTF8_WINDOW_LEN: usize = AES256_MAX_PASSWORD_BYTES + 3;
+    let window = password.get(..UTF8_WINDOW_LEN).unwrap_or(password);
+    match std::str::from_utf8(window) {
+        Ok(valid) => Some(valid),
+        Err(error) => {
+            let valid_len = error.valid_up_to();
+            if valid_len >= AES256_MAX_PASSWORD_BYTES {
+                let prefix = window.get(..valid_len)?;
+                std::str::from_utf8(prefix).ok()
+            } else {
+                None
+            }
+        }
     }
 }
 

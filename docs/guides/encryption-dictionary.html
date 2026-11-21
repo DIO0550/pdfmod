@@ -658,7 +658,7 @@ assert_eq!(digest, <span class="type">Md5</span>::digest(<span class="string">b"
 </table>
 </div>
 <div class="note"><strong>定数時間比較と鍵の秘匿</strong><code>/U</code> や検証ハッシュの照合には、先頭で不一致を見つけても打ち切らず全バイトを XOR で畳み込む<strong>定数時間比較（constant-time comparison）</strong>を使います。また <code>AuthenticatedFileKey</code> と内包する鍵型は <code>Debug</code> フォーマットで鍵バイト列を出力しません。</div>
-<div class="note warning"><strong>仕様と実装方針の境界</strong>R3・R4 の <code>/U</code> で照合対象となるのは先頭16バイトですが、pdfmod は辞書項目として32バイトちょうどの長さを要求します。R5・R6 の SASLprep は呼び出し側で行い、不正な UTF-8 は <code>IncorrectPassword</code> として扱います。検証済みの鍵を使ったオブジェクト単位の鍵導出（Algorithm 1）、文字列・ストリームの復号、<code>PdfDocument</code> への統合は後続の実装で扱います。</div>
+<div class="note warning"><strong>仕様と実装方針の境界</strong>R3・R4 の <code>/U</code> で照合対象となるのは先頭16バイトですが、pdfmod は辞書項目として32バイトちょうどの長さを要求します。R5・R6 の SASLprep は呼び出し側で行い、鍵導出に使う先頭127バイトを覆う最小のUTF-8文字境界まで（最大130バイト）を検証して不正な UTF-8 は <code>IncorrectPassword</code> として扱います（文字境界より後ろの未使用バイトは走査しません）。検証済みの鍵を使ったオブジェクト単位の鍵導出（Algorithm 1）、文字列・ストリームの復号、<code>PdfDocument</code> への統合は後続の実装で扱います。</div>
 </section>
 <footer><a href="#top">最上部へ</a> · <a href="README.md">解説一覧</a></footer></div></main>
 </body></html>

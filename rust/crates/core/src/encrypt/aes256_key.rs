@@ -15,7 +15,7 @@ const ENTRY_LEN: usize = 48;
 const KEY_LEN: usize = 32;
 const PERMS_LEN: usize = 16;
 const SALT_LEN: usize = 8;
-const MAX_PASSWORD_BYTES: usize = 127;
+pub(super) const MAX_PASSWORD_BYTES: usize = 127;
 
 /// 指定したパスワードに対応する辞書項目を選ぶ。
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

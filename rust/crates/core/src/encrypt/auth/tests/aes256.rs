@@ -142,3 +142,67 @@ fn r5_authenticate_truncates_utf8_at_byte_127_across_multibyte_char_boundary() {
         AuthError::IncorrectPassword
     );
 }
+
+#[test]
+fn r5_validates_utf8_only_up_to_char_boundary_covering_127_bytes() {
+    // 「界」の先頭 2 バイト（計 127 バイト）で生成した pypdf の /U と /UE。
+    let dictionary = replace_hex_entry(
+        R5,
+        EncryptKey::U,
+        "1a732e8fd657e5944aeb12cf9b1d7cf51e4cdc39cfd255a140f38dabf395ddf231323334353637386162636465666768",
+    );
+    let dictionary = replace_hex_entry(
+        &dictionary,
+        EncryptKey::UE,
+        "f1118deb311faa1da160badfd5bcb5618903fad0e04e16ce4cd9c178e6745edf",
+    );
+    let handler = standard_handler(dictionary.as_bytes());
+    let prefix_125 = "a".repeat(125);
+    let valid_128 = format!("{prefix_125}界");
+
+    // 127 バイト目を覆う「界」（125..128）の直後に 4 バイト文字（130 バイト窓で分断）、
+    // 不正な UTF-8 バイト列、または長い有効 UTF-8 末尾が続いても、先頭 127 バイトで認証できる。
+    let with_emoji_after_boundary = [valid_128.as_bytes(), "😀".as_bytes()].concat();
+    let with_invalid_utf8_after_boundary = [valid_128.as_bytes(), b"\xff\xfe"].concat();
+    let with_long_tail = [valid_128.as_bytes(), "x".repeat(4096).as_bytes()].concat();
+    for password in [
+        with_emoji_after_boundary.as_slice(),
+        with_invalid_utf8_after_boundary.as_slice(),
+        with_long_tail.as_slice(),
+    ] {
+        let auth = handler
+            .authenticate(Some(password), None)
+            .expect("127 バイト目を覆う文字境界より後ろの内容に依らず認証できる");
+        assert_eq!(auth.role(), PasswordRole::User);
+        assert_eq!(auth.as_bytes(), R5_KEY);
+    }
+
+    // 127 バイト目をまたぐ文字自体が途中で途切れたり壊れている場合は不正 UTF-8 として拒否する。
+    let truncated_at_127 = [prefix_125.as_bytes(), &[0xe7, 0x95]].concat();
+    let corrupt_3byte_at_127 = [prefix_125.as_bytes(), &[0xe7, 0x95, 0xff]].concat();
+    let prefix_126 = "a".repeat(126);
+    let corrupt_4byte_at_127 = [prefix_126.as_bytes(), &[0xf0, 0x9f, 0x98, 0xff]].concat();
+    for invalid in [
+        truncated_at_127.as_slice(),
+        corrupt_3byte_at_127.as_slice(),
+        corrupt_4byte_at_127.as_slice(),
+    ] {
+        assert_eq!(
+            handler.authenticate(Some(invalid), None).unwrap_err(),
+            AuthError::IncorrectPassword
+        );
+    }
+
+    // 127 バイト境界をまたぐ不正 UTF-8 でも、フォールバック先（User）の /UE 長さ不正が隠されないこと。
+    let broken_ue = replace_hex_entry(&dictionary, EncryptKey::UE, &"00".repeat(31));
+    let broken_handler = standard_handler(broken_ue.as_bytes());
+    assert_eq!(
+        broken_handler
+            .authenticate(Some(corrupt_3byte_at_127.as_slice()), None)
+            .unwrap_err(),
+        AuthError::InvalidEntryLength {
+            key: EncryptKey::UE,
+            actual: 31,
+        }
+    );
+}
