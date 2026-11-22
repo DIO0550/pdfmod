@@ -1,121 +1,105 @@
 # PDF解析パイプライン - ObjectParser 仕様
 
-> **機能**: [PDF解析パイプライン](./index.md)
-> **ステータス**: 下書き
+> **上位目次**: [PDF解析パイプライン仕様](./index.md)  
+> **対応規格**: ISO 32000-1:2008 §7.3, §7.3.8, §7.3.10  
+> **関連仕様**: [オブジェクト解決仕様（OP-001〜OP-009）](./object-resolver-spec.md) / [エラーハンドリング仕様](./error-handling-spec.md) / [01. レキシカル規約](../specs/01_lexical_conventions.md)
 
 ## 概要
 
-Token列を PdfObject に変換する汎用パーサー。`parse(data, offset)` でバイト列から PdfObject を1つパースし、`parseIndirectObject(data, offset, resolveLength?)` で間接オブジェクト定義（`N G obj ... endobj`）をパースする。
+Token 列を `PdfObject` に変換する汎用パーサです。
 
-ISO 32000-1:2008 の以下のセクションに基づく:
-- §7.3 オブジェクト — プリミティブ9型の定義
-- §7.3.8 ストリームオブジェクト — stream/endstream 構文
-- §7.3.10 間接オブジェクト — obj/endobj 構文、間接参照（`N G R`）
+| 操作 | 対象 | `/Length` が間接参照のとき |
+| :--- | :--- | :--- |
+| `parse(data, offset)` | 単体の PDF オブジェクト（直接オブジェクト、および `/Length` が直値整数のストリーム） | `OBJECT_PARSE_STREAM_LENGTH` エラー |
+| `parseIndirectObject(data, offset, resolveLength?)` | 間接オブジェクト定義（`N G obj ... endobj`、ストリーム含む） | `resolveLength` コールバックで解決 |
 
-## 関連仕様
+> `parseIndirectObject()` の本体読み取りと `stream` 判定は `parse()` の単純ラッパーではなく、内部の `readValue` で値を 1 つ読んだ直後に `stream` を判定して `resolveLength` を使います。
 
-- [object-resolver-spec.md](./object-resolver-spec.md) — ObjectParser/ObjectResolver の全体像（OP-001〜OP-009）
-- [error-handling-spec.md](./error-handling-spec.md) — エラー型定義
+---
 
-## トークン → PdfObject 変換ルール
+## トークン → `PdfObject` 変換ルール
 
 ### プリミティブ（トークン）型
 
-| トークン型 | PdfObject 型 | 変換 |
-|:-----------|:-------------|:-----|
+| トークン型 | `PdfObject` 型 | 変換 |
+| :--- | :--- | :--- |
 | `Null` | `{ type: "null" }` | そのまま |
-| `Boolean` | `{ type: "boolean", value }` | トークン value をそのまま使用 |
-| `Integer` | `{ type: "integer", value }` | トークン value をそのまま使用（※ indirect-ref 先読みあり） |
-| `Real` | `{ type: "real", value }` | トークン value をそのまま使用 |
-| `Name` | `{ type: "name", value }` | トークン value をそのまま使用 |
-| `LiteralString` | `{ type: "string", value: Uint8Array, encoding: "literal" }` | 文字列をバイト列に変換 |
-| `HexString` | `{ type: "string", value: Uint8Array, encoding: "hex" }` | 16進文字列をバイト列に変換 |
+| `Boolean` | `{ type: "boolean", value }` | トークン `value` を使用 |
+| `Integer` | `{ type: "integer", value }` | トークン `value` を使用（※ `indirect-ref` 先読みあり） |
+| `Real` | `{ type: "real", value }` | トークン `value` を使用 |
+| `Name` | `{ type: "name", value }` | トークン `value` を使用 |
+| `LiteralString` | `{ type: "string", value: Uint8Array, encoding: "literal" }` | リテラル文字列をバイト列へデコード |
+| `HexString` | `{ type: "string", value: Uint8Array, encoding: "hex" }` | 16 進文字列をバイト列へデコード |
 
-### NaN な数値トークンの拒否
+### NaN 数値トークンの拒否
 
-Tokenizer が `.`、`+`、`-` 単独を NaN な Integer/Real トークンとして返す場合がある。ObjectParser はこれを `OBJECT_PARSE_UNEXPECTED_TOKEN` エラーとして拒否する。
+Tokenizer が `.`・`+`・`-` 単独を `NaN` 数値トークンとして返した場合、ObjectParser は `OBJECT_PARSE_UNEXPECTED_TOKEN` エラーとして拒否します。
 
-### indirect-ref 検出（Integer Integer R）
+### 間接参照の検出（`Integer Integer R`）
 
-Integer トークンを受け取った際の 3 トークン先読みロジック:
+`Integer` トークンを受け取った際は 3 トークン先読みで間接参照を判定します。
 
-1. `next()` で 2nd トークンを取得
-2. 2nd が Integer なら `next()` で 3rd トークンを取得
-3. 3rd が `Keyword("R")` なら `{ type: "indirect-ref", objectNumber, generationNumber }` を返す
-4. 3rd が `Keyword("R")` でなければ `pushBack(3rd)`, `pushBack(2nd)`, Integer を返す
-5. 2nd が Integer でなければ `pushBack(2nd)`, Integer を返す
+1. 2 番目のトークンを先読みする。`Integer` でなければ `pushBack(2nd)` して最初の `Integer` を返す。
+2. 3 番目のトークンを先読みする。
+3. 3 番目が `Keyword("R")` なら `{ type: "indirect-ref", objectNumber, generationNumber }` を返す（`objectNumber == 0` は [02a章 §2.4](../specs/02a_object_resolution.md#24-解決フロー) に従い `null` に畳む）。
+4. `Keyword("R")` でなければ `pushBack(3rd)` → `pushBack(2nd)` の順（スタック構造なので逆順）に巻き戻し、最初の `Integer` を返す。
 
-pushBack の順序が重要: 後に pushBack したものが先に pop される（スタック）。
+### 配列・辞書パースとネスト深度制限
 
-### 配列パース
+- **配列**: `[` を検出したら `]` まで再帰的に `PdfObject` を収集する。
+- **辞書**: `<<` を検出したら `>>` まで `Name`–`Value` ペアを収集してマップに格納する。キーが `Name` トークンでなければ `OBJECT_PARSE_UNEXPECTED_TOKEN` エラー。
+- **ネスト深度制限**: 配列・辞書のネストが **100 段**を超えた場合、DoS 防止のため `NESTING_TOO_DEEP` エラーを返す。
 
-`[` トークン検出後、`]` トークンまで再帰的に PdfObject を収集する。
+---
 
-### 辞書パース
+## `stream` / `endstream` 処理
 
-`<<` トークン検出後、`>>` トークンまで Name-Value ペアを収集し `Map<string, PdfObject>` に格納する。キーは Name トークンでなければ `OBJECT_PARSE_UNEXPECTED_TOKEN` エラー。
+### `stream` キーワード直後の改行規則（ISO 32000-1 §7.3.8.1）
 
-### ネスト深度制限
+Tokenizer はキーワード後の改行を消費しないため、生バイトを直接検査します。
 
-配列・辞書のネストが 100 段を超えた場合、`NESTING_TOO_DEEP` エラーを返す（DoS 防止）。
+| 直後のバイト列 | 扱い |
+| :--- | :--- |
+| `LF (0x0A)` | `streamStart = position + 1` |
+| `CR (0x0D) + LF (0x0A)` | `streamStart = position + 2` |
+| `CR` 単独・その他 | 不可（`OBJECT_PARSE_STREAM_LENGTH` エラー） |
 
-## stream/endstream 処理
+### `/Length` の取得と値域検証
 
-### parse() での stream 検出
+1. 辞書の `/Length` を参照する。
+   - `integer`: その `value` を直接使用。
+   - `indirect-ref`: `resolveLength(objNum, genNum)` を呼び出す（未提供またはエラー返却時は元情報をメッセージへ畳み込んで `OBJECT_PARSE_STREAM_LENGTH`）。
+   - 不在・その他の型: `OBJECT_PARSE_STREAM_LENGTH` エラー。
+2. 値域検証: `Number.isSafeInteger(length) && length >= 0`、かつ `streamStart + length <= data.length` を満たさない場合は `OBJECT_PARSE_STREAM_LENGTH` エラー。
 
-`parse()` で辞書をパースした直後に次トークンが `Keyword("stream")` の場合、ストリームオブジェクトとして処理する。ただし `/Length` が直値（integer）の場合のみ対応。`/Length` が間接参照の場合は `OBJECT_PARSE_STREAM_LENGTH` エラーを返す（間接参照の解決は `parseIndirectObject` 側の責務）。
+### `endstream` の検証
 
-### stream キーワード後の改行規則
+`streamStart + length` の位置にあるストリーム終端の改行（LF または CRLF）を消費した直後に `endstream` キーワードが続くことを、生バイト比較で厳密に検証します（コメントや追加空白は許容しません）。
 
-ISO 32000-1:2008 §7.3.8.1 より、`stream` キーワードの後は:
-- `LF (0x0A)` → `streamStart = position + 1`
-- `CR (0x0D)` + `LF (0x0A)` → `streamStart = position + 2`
-- `CR` 単独は不可 → `OBJECT_PARSE_STREAM_LENGTH` エラー
+---
 
-Tokenizer は keyword 後の改行を消費しないため、生バイトを直接検査する。
+## `obj` / `endobj` 構文（間接オブジェクト定義）
 
-### /Length の取得
+`parseIndirectObject(data, offset, resolveLength?)` の処理手順です。
 
-1. 辞書の `/Length` エントリを取得
-2. `/Length` が `{ type: "integer" }` → その value を直接使用
-3. `/Length` が `{ type: "indirect-ref" }` → `resolveLength(objNum, genNum)` を呼び出し
-   - `resolveLength` が未提供 → `Err(OBJECT_PARSE_STREAM_LENGTH)`
-   - `resolveLength` がエラーを返した → `Err(OBJECT_PARSE_STREAM_LENGTH)`（元エラーの情報は message に畳み込み）
-4. `/Length` が存在しない or 上記以外の型 → `Err(OBJECT_PARSE_STREAM_LENGTH)`
+1. `Integer` `Integer` `Keyword("obj")` のヘッダを読み取り、`objNum`・`genNum` を取得する。
+2. `readValue` でオブジェクト本体を 1 つ読み取る。
+3. 本体が辞書であり、直後に `Keyword("stream")` が続く場合のみストリーム処理を行う。
+4. ストリームの有無にかかわらず、最後に `Keyword("endobj")` を確認する。
 
-### /Length の値域検証
+---
 
-- `Number.isSafeInteger(length) && length >= 0` を満たすこと
-- 違反時は `OBJECT_PARSE_STREAM_LENGTH` エラー
-- `streamStart + length > data.length` の場合もエラー
-
-### endstream の検証
-
-`streamStart + length` の位置にはストリームデータ終端の改行（LF または CRLF）があることを期待し、その改行を消費した直後に `endstream` キーワードが続くことを raw byte で厳密に検証する（Tokenizer は使わず、コメントや追加空白は許容しない）。
-
-## obj/endobj 構文（間接オブジェクト定義）
-
-`parseIndirectObject(data, offset, resolveLength?)` の処理:
-
-1. Integer Integer Keyword("obj") のヘッダを読み取り → objNum, genNum を取得
-2. 本体は `parse()` をそのまま呼ぶのではなく、`parseIndirectObject` 内で `readValue` により値を1つ読み取る
-3. 読み取った本体が dictionary の場合は、その直後に `Keyword("stream")` が続くかを `parseIndirectObject` 側で判定し、続く場合のみストリーム処理を行う
-4. ストリーム処理の有無にかかわらず、最後に `Keyword("endobj")` を確認する
-
-> 注: `parseIndirectObject()` の本体読み取り・`stream` 判定は `parse()` の単純なラッパーではない。したがって `/Length` の扱い（`parse()` は indirect `/Length` をエラーにする一方、`parseIndirectObject()` は `resolveLength` コールバックで解決する）など、`parse()` 単体の仕様と完全には一致しない。
-
-## エラーコード一覧
+## エラーコード一覧と `offset` の定義
 
 | コード | 発生条件 |
-|:-------|:---------|
-| `OBJECT_PARSE_UNEXPECTED_TOKEN` | 予期しないトークン（不正な構文、辞書キーが Name でない、NaN 数値） |
-| `OBJECT_PARSE_UNTERMINATED` | 配列・辞書・obj・stream が閉じられていない（EOF 到達） |
-| `OBJECT_PARSE_STREAM_LENGTH` | /Length が取得できない（間接参照で resolveLength 未提供、resolveLength エラー、値域不正、データ範囲超過） |
+| :--- | :--- |
+| `OBJECT_PARSE_UNEXPECTED_TOKEN` | 予期しないトークン（不正構文、辞書キーが `Name` でない、`NaN` 数値、開始 `offset` が範囲外） |
+| `OBJECT_PARSE_UNTERMINATED` | 配列・辞書・`obj`・`stream` が閉じられないまま EOF 到達 |
+| `OBJECT_PARSE_STREAM_LENGTH` | `/Length` が確定できない（間接参照で `resolveLength` 未提供・失敗、値域不正、データ範囲超過、`stream` 後改行不正） |
 | `NESTING_TOO_DEEP` | 配列・辞書のネストが 100 段超 |
 
-## offset の定義
+### `offset` の基準
 
-`parse(data, offset)` および `parseIndirectObject(data, offset, ...)` の `offset` は、渡された `Uint8Array data` に対する相対位置。内部では `data.subarray(offset)` → `new Tokenizer(subData)` の形で使用する。
-
-- 入力検証: `offset < 0 || offset >= data.length` の場合は `OBJECT_PARSE_UNEXPECTED_TOKEN` エラー
-- エラー位置: `PdfParseError.offset` は呼び出し元の `data` 基準で返す（内部トークン offset + 開始 offset を加算）
+- `parse(data, offset)` / `parseIndirectObject(data, offset, ...)` の `offset` は渡された `data` に対する相対位置です。
+- `offset < 0 || offset >= data.length` の場合は `OBJECT_PARSE_UNEXPECTED_TOKEN` を返します。
+- `PdfParseError.offset` は呼び出し元の `data` 基準の絶対位置（内部トークン位置 + 開始 `offset`）で返します。

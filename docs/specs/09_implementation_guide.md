@@ -1,22 +1,38 @@
 # 09. PDFライブラリ実装ガイドとベストプラクティス
 
+> **位置づけ**: 堅牢で安全な PDF ライブラリを設計するためのアーキテクチャ指針、実世界の壊れた PDF への寛容処理（Postel の法則）、セキュリティ対策、テスト・最適化戦略  
+> **関連仕様**: [解析パイプライン仕様 (`../pdf-parsing-pipeline/index.md`)](../pdf-parsing-pipeline/index.md) / [エラーハンドリング仕様](../pdf-parsing-pipeline/error-handling-spec.md)
+
+## 目次
+
+1. [概要](#1-概要)
+2. [最小限のアーキテクチャパイプライン](#2-最小限のアーキテクチャパイプライン)
+3. [構造的なカオスへの対処](#3-構造的なカオスへの対処)
+4. [開発言語の選定](#4-開発言語の選定)
+5. [テスト戦略](#5-テスト戦略)
+6. [パフォーマンス最適化のガイドライン](#6-パフォーマンス最適化のガイドライン)
+
+---
+
 ## 1. 概要
 
-適合リーダー、適合ライター、あるいはテキスト解析パーサーのいずれを開発する場合でも、PDFをソフトウェアのコードに落とし込む作業はシステム設計に対する極限のテストとなる。
+適合リーダー、適合ライター、あるいはテキスト抽出パーサのいずれを構築する場合でも、PDF ライブラリ開発はバイナリ解析・グラフ探索・状態機械・セキュリティ防御を兼ね備えた高度なシステム設計が求められます。本章では、実装言語に依存しない基本アーキテクチャと実務上の指針を整理します。
+
+---
 
 ## 2. 最小限のアーキテクチャパイプライン
 
 ### 2.1 モジュール構成
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────┐
-│                    PDFライブラリ全体構成                      │
+│                    PDF ライブラリ全体構成                     │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐  │
-│  │ レクサー /     │  │ グラフリゾルバ │  │ DOMトラバーサ     │  │
-│  │ トークナイザ   │→│ / オブジェクト │→│                  │  │
-│  │              │  │ キャッシュ     │  │                  │  │
+│  │ レクサー /     │  │ グラフリゾルバ │  │ DOM トラバーサ    │  │
+│  │ トークナイザ   │→│ / オブジェクト │→│ (カタログ /       │  │
+│  │              │  │ キャッシュ     │  │  ページツリー)     │  │
 │  └──────────────┘  └──────────────┘  └──────────────────┘  │
 │         ↓                 ↓                   ↓             │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐  │
@@ -29,433 +45,185 @@
 
 ### 2.2 レクサー / トークナイザ（Lexer / Tokenizer）
 
-バイトストリームからプリミティブトークンを生成する高度に最適化されたステートマシン。
+**責務**: 入力バイトストリームから、構文解析に適した型付きトークン列を生成するステートマシン。
 
-```
-入力: バイトストリーム
-出力: 型付きトークン列
+#### 主なトークン種別
 
-enum Token {
-    Null,
-    Boolean(bool),
-    Integer(i64),
-    Real(f64),
-    LiteralString(Vec<u8>),
-    HexString(Vec<u8>),
-    Name(String),
-    ArrayBegin,          // '['
-    ArrayEnd,            // ']'
-    DictBegin,           // '<<'
-    DictEnd,             // '>>'
-    StreamBegin,         // 'stream'
-    StreamEnd,           // 'endstream'
-    ObjBegin,            // 'obj'
-    ObjEnd,              // 'endobj'
-    IndirectRef {        // 'N G R'
-        obj_num: u32,
-        gen_num: u16,
-    },
-    Keyword(String),     // xref, trailer, startxref, etc.
-    Comment(String),     // '%...'
-}
-```
+| カテゴリ | トークン種別 | PDF 上の表記例 |
+| :--- | :--- | :--- |
+| プリミティブ値 | `Null`, `Boolean`, `Integer`, `Real`, `LiteralString`, `HexString`, `Name` | `null`, `true`, `42`, `3.14`, `(Hi)`, `<4869>`, `/Type` |
+| 構造区切り | `ArrayBegin` / `ArrayEnd`, `DictBegin` / `DictEnd` | `[` `]`, `<<` `>>` |
+| オブジェクト・ストリーム境界 | `ObjBegin` / `ObjEnd`, `StreamBegin` / `StreamEnd`, `IndirectRef` | `obj` / `endobj`, `stream` / `endstream`, `N G R` |
+| その他 | `Keyword`, `Comment` | `xref`, `trailer`, `startxref`, `%...` |
 
-#### 実装上のポイント
+#### 設計上のポイント
 
-- **ゼロコピー設計**: 可能な限りバッファの割り当てを避け、入力バイト列への参照を使用
-- **先読み（Lookahead）**: `<<` と `<hex>` の区別には最低2バイトの先読みが必要
-- **間接参照の認識**: `N G R` パターンを認識するために3トークンのバックトラッキングが必要
-- **ストリームデータ**: `/Length` を事前に解決してからストリームデータを読み込む
+- **ゼロコピー設計**: 可能な限り不要なバッファコピーを避け、入力バイト列へのスライス参照を活用する。
+- **2 バイト先読み（Lookahead）**: 辞書開始 `<<` と 16 進文字列 `<...>` の区別に最低 2 バイトの先読みが必要。
+- **3 トークン先読み**: 間接参照 `N G R` と単なる連続整数を区別するため、3 トークン分の先読み・巻き戻し機構が必要。
+- **ストリームデータ**: 辞書から `/Length` を確定させたうえで生バイト列を切り出す（字句解析を通さない）。
 
 ### 2.3 グラフリゾルバとオブジェクトキャッシュ（Graph Resolver）
 
-xrefテーブルを解析し、インダイレクト参照を実際のオブジェクトに解決するレイヤ。
+**責務**: 統合済み xref テーブルを用いて間接参照（`N G R`）を実体オブジェクトへ遅延解決し、循環検出とキャッシュ管理を行う。
 
-```
-struct ObjectResolver {
-    xref: MergedXRefTable,
-    file: RandomAccessFile,
-    cache: LruCache<ObjectId, PdfObject>,
-    resolving: HashSet<ObjectId>,  // 循環参照検出用
-}
+#### 解決ステップ
 
-impl ObjectResolver {
-    fn resolve(&mut self, obj_ref: &IndirectRef) -> Result<&PdfObject> {
-        let id = obj_ref.to_id();
+1. **キャッシュ参照**: 対象 `(オブジェクト番号, 世代番号)` が LRU キャッシュにあれば即返却する。
+2. **循環参照チェック**: 現在解決中（`resolving`）集合に既に存在すれば循環参照エラーを返す。存在しなければ追加する。
+3. **物理位置の解決**:
+   - `DirectOffset`（`type=1`）: 指定オフセットへシークして `obj ... endobj` をパースする。
+   - `InObjectStream`（`type=2`）: 親 ObjStm を解決・展開し、対象インデックスのオブジェクトを抽出する。
+   - `Free`（`type=0`）または未登録: `null` を返す。
+4. **後処理**: `resolving` 集合から取り除き、結果を LRU キャッシュへ格納して返却する。
 
-        // キャッシュチェック
-        if self.cache.contains(&id) {
-            return Ok(self.cache.get(&id).unwrap());
-        }
+> **遅延読み込み（Lazy Loading）**: 数百 MB〜GB 級の PDF を開く際にメモリ枯渇を防ぐため、要求されるまでオブジェクト実体をロードせず、LRU キャッシュで常駐量を制限する。
 
-        // 循環参照チェック
-        if !self.resolving.insert(id) {
-            return Err(Error::CircularReference(id));
-        }
+### 2.4 DOM トラバーサ（DOM Traverser）
 
-        // xrefからオブジェクトの位置を取得
-        let location = self.xref.get_location(id)?;
+**責務**: `/Root`（ドキュメントカタログ）から `/Pages` ツリーを巡回し、各ページの継承属性（`/MediaBox`, `/Resources`, `/CropBox`, `/Rotate`）を解決してページ一覧を構築する。
 
-        // オブジェクトの読み込み（遅延読み込み）
-        let object = match location {
-            ObjectLocation::DirectOffset(offset) => {
-                self.file.seek(offset);
-                parse_indirect_object(&mut self.file)?
-            }
-            ObjectLocation::InObjectStream { stream_obj, index } => {
-                let stream = self.resolve_object_stream(stream_obj)?;
-                extract_from_object_stream(stream, index)?
-            }
-        };
+#### 走査の要点
 
-        // キャッシュに格納
-        self.resolving.remove(&id);
-        self.cache.put(id, object);
-        Ok(self.cache.get(&id).unwrap())
-    }
-}
-```
-
-#### 遅延読み込み（Lazy Loading）
-
-- ギガバイト級のPDFを開いた際にRAMを枯渇させない
-- 要求されるまでオブジェクトの実体をメモリにロードしない
-- LRUキャッシュでメモリ使用量を制限
-
-### 2.4 DOMトラバーサ（DOM Traverser）
-
-`/Catalog` から始まり、`/Pages` ツリーを巡回するモジュール。
-
-```
-struct DocumentTraverser {
-    resolver: ObjectResolver,
-}
-
-impl DocumentTraverser {
-    fn build_page_list(&mut self) -> Result<Vec<ResolvedPage>> {
-        let catalog = self.resolver.resolve_catalog()?;
-        let pages_root = catalog.get_pages_root()?;
-        let mut pages = Vec::new();
-        let mut visited = HashSet::new();
-        self.collect_pages(pages_root, &mut pages, &mut visited)?;
-        Ok(pages)
-    }
-
-    fn collect_pages(
-        &mut self,
-        node: &PdfObject,
-        pages: &mut Vec<ResolvedPage>,
-        visited: &mut HashSet<ObjectId>,
-    ) -> Result<()> {
-        // 循環参照チェック
-        let node_id = node.object_id();
-        if !visited.insert(node_id) {
-            return Ok(()); // 循環検出 - スキップ
-        }
-
-        match node.get_type()? {
-            "/Pages" => {
-                for kid in node.get_kids()? {
-                    let resolved = self.resolver.resolve(&kid)?;
-                    self.collect_pages(resolved, pages, visited)?;
-                }
-            }
-            "/Page" => {
-                // 継承された属性を解決
-                let resolved_page = ResolvedPage {
-                    media_box: self.resolve_inherited(node, "/MediaBox")?,
-                    resources: self.resolve_inherited(node, "/Resources")?,
-                    crop_box: self.resolve_inherited(node, "/CropBox"),
-                    rotate: self.resolve_inherited(node, "/Rotate"),
-                    contents: node.get("/Contents"),
-                    annots: node.get("/Annots"),
-                };
-                pages.push(resolved_page);
-            }
-            _ => { /* 不明なタイプは無視 */ }
-        }
-
-        Ok(())
-    }
-}
-```
+- 訪問済みオブジェクト ID を記録して循環参照・共有ノードを検出する（詳細は [03章 §4.3](./03_document_architecture.md#43-ページツリーの走査アルゴリズム)）。
+- `/Pages` ノードの継承可能属性を子へ伝播しつつ、末端の `/Page` で解決済みページを構築する。
+- 深い木でのスタックオーバーフローを防ぐため、関数再帰ではなく**明示スタック**による反復走査を推奨する。
 
 ### 2.5 ストリームインタプリタ（Stream Interpreter）
 
-スタックベースのPostScriptオペランドとオペレータを評価するレンダリングの心臓部。
+**責務**: 展開済みコンテンツストリームのトークン列を RPN として評価し、オペランドスタックとグラフィックスステートスタックを駆動する。
 
-```
-struct StreamInterpreter {
-    operand_stack: Vec<PdfObject>,
-    graphics_state: GraphicsStateStack,
-    resources: ResourceDict,
-    output: Box<dyn RenderTarget>,
-}
+#### 処理ループ
 
-impl StreamInterpreter {
-    fn execute(&mut self, stream_data: &[u8]) -> Result<()> {
-        let tokens = tokenize_content_stream(stream_data);
+1. プリミティブ値・配列・辞書などの**オペランド**はオペランドスタックへ積む。
+2. **オペレータ**が来たら、対応するハンドラ（グラフィックスステート・パス・色・テキスト・XObject・シェーディング・マーク付きコンテンツ等）へディスパッチし、必要な個数のオペランドをポップして状態を更新する。
+3. 未知のオペレータに遭遇した場合は、後続オペレータへゴミオペランドが混入しないようオペランドスタックをクリアして寛容に継続する。
 
-        for token in tokens {
-            match token {
-                Token::Integer(_) | Token::Real(_) | Token::Name(_)
-                | Token::LiteralString(_) | Token::HexString(_)
-                | Token::ArrayBegin | Token::ArrayEnd => {
-                    // オペランド → スタックにプッシュ
-                    self.operand_stack.push(token.to_object());
-                }
-                Token::Keyword(op) => {
-                    // オペレータ → スタックからポップして実行
-                    self.execute_operator(&op)?;
-                }
-                _ => {}
-            }
-        }
-
-        Ok(())
-    }
-
-    fn execute_operator(&mut self, op: &str) -> Result<()> {
-        match op {
-            // グラフィックスステート
-            "q" => self.graphics_state.save(),
-            "Q" => self.graphics_state.restore(),
-            "cm" => {
-                let f = self.pop_number()?;
-                let e = self.pop_number()?;
-                let d = self.pop_number()?;
-                let c = self.pop_number()?;
-                let b = self.pop_number()?;
-                let a = self.pop_number()?;
-                self.graphics_state.concat_matrix(a, b, c, d, e, f);
-            }
-            "w" => self.graphics_state.set_line_width(self.pop_number()?),
-
-            // パス構築
-            "m" => { /* moveto */ }
-            "l" => { /* lineto */ }
-            "c" => { /* curveto */ }
-            "h" => { /* closepath */ }
-            "re" => { /* rectangle */ }
-
-            // パス描画
-            "S" => self.stroke()?,
-            "f" | "F" => self.fill(FillRule::NonZeroWinding)?,
-            "f*" => self.fill(FillRule::EvenOdd)?,
-            "B" => self.fill_and_stroke(FillRule::NonZeroWinding)?,
-            "n" => self.discard_path(),
-
-            // 色
-            "rg" => { /* set fill color RGB */ }
-            "RG" => { /* set stroke color RGB */ }
-            "g" => { /* set fill color gray */ }
-            "G" => { /* set stroke color gray */ }
-            "k" => { /* set fill color CMYK */ }
-            "K" => { /* set stroke color CMYK */ }
-
-            // テキスト
-            "BT" => self.begin_text(),
-            "ET" => self.end_text(),
-            "Tf" => { /* set font */ }
-            "Td" => { /* move text position */ }
-            "Tm" => { /* set text matrix */ }
-            "Tj" => { /* show string */ }
-            "TJ" => { /* show string array with positioning */ }
-
-            // XObject
-            "Do" => {
-                let name = self.pop_name()?;
-                self.draw_xobject(&name)?;
-            }
-
-            // 拡張ステート
-            "gs" => {
-                let name = self.pop_name()?;
-                self.apply_ext_gstate(&name)?;
-            }
-
-            _ => { /* 未知のオペレータは無視（寛容処理） */ }
-        }
-        Ok(())
-    }
-}
-```
+---
 
 ## 3. 構造的なカオスへの対処
 
-### 3.1 Postelの法則の適用
+### 3.1 Postel の法則の適用
 
 > 「送信するものについては厳密に、受信するものについては寛容に」
 
-実世界のPDFファイルに存在する構造的な問題の例:
+実世界の PDF には規格からわずかに逸脱したファイルが多く存在します。リーダー側では次の問題への回復手段を用意します。
 
 | 問題 | 発生頻度 | 対処法 |
-|:-----|:---------|:-------|
-| xrefオフセットの数バイトのずれ | 高 | 前後数バイトの範囲で `obj` キーワードを探索 |
-| %%EOFマーカーの欠落 | 中 | ファイル末尾から `startxref` を直接探索 |
-| 文字列リテラルのエスケープ不完全 | 中 | ヒューリスティックに括弧のバランスを判定 |
-| /Pages ツリーの循環参照 | 低 | 訪問済みオブジェクトIDの追跡で検出 |
-| /Count 値の不正 | 中 | 実際のページ数を再計算 |
-| 重複するオブジェクト番号 | 低 | 最後に定義されたものを優先 |
-| 不正なストリーム長 | 中 | `endstream` キーワードの位置から逆算 |
+| :--- | :--- | :--- |
+| xref オフセットの数バイトずれ | 高 | 前後数十バイトの範囲で `N G obj` を探索 |
+| `%%EOF` マーカーの欠落・末尾 1024B 外 | 中 | スキャン範囲拡大、または `startxref` の直接探索 |
+| 文字列リテラルのエスケープ不完全 | 中 | 括弧のバランスをヒューリスティックに判定 |
+| `/Pages` ツリーの循環参照 | 低 | 訪問済みオブジェクト ID の追跡で検出 |
+| `/Count` 値の不一致・欠落 | 中 | 実際のページ走査結果を採用して警告 |
+| 重複するオブジェクト番号 | 低 | 後方に定義されたものを優先 |
+| 不正なストリーム `/Length` | 中 | `endstream` キーワード位置から逆算 |
 
 ### 3.2 循環参照の検出
 
-```
-fn traverse_with_cycle_detection<F>(
-    root: &PdfObject,
-    resolver: &mut ObjectResolver,
-    visitor: F,
-) -> Result<()>
-where F: FnMut(&PdfObject) -> Result<()>
-{
-    let mut visited = HashSet::new();
-    let mut stack = vec![root.object_id()];
+グラフ走査では**明示スタック + 訪問済み集合**を用いることで、コールスタック消費を抑えつつ安全に循環を検知できます。
 
-    while let Some(current_id) = stack.pop() {
-        if !visited.insert(current_id) {
-            // 循環参照を検出 - ログ出力してスキップ
-            log::warn!("Circular reference detected: object {}", current_id);
-            continue;
-        }
+1. 起点オブジェクト ID をスタックへ積む。
+2. スタックから取り出した ID が訪問済み集合に既に含まれていれば、循環として警告またはエラー処理を行いスキップする。
+3. 未訪問なら訪問済み集合へ追加し、オブジェクトを解決・処理したうえで子参照をスタックへ積む。
 
-        let obj = resolver.resolve_by_id(current_id)?;
-        visitor(obj)?;
+### 3.3 フォールバック xref スキャナ
 
-        // 子オブジェクトをスタックに追加
-        for child_ref in obj.get_indirect_references() {
-            stack.push(child_ref.to_id());
-        }
-    }
+通常の xref 解析に失敗した場合の最終フェイルセーフです。
 
-    Ok(())
-}
-```
-
-### 3.3 フォールバックxrefスキャナ
-
-xrefテーブルのパースに失敗した場合のフェイルセーフ。
-
-```
-fn rebuild_xref_by_scanning(file: &[u8]) -> Result<XRefTable> {
-    let mut xref = XRefTable::new();
-
-    // ファイル全体をスキャンして "N G obj" パターンを検出
-    let obj_pattern = Regex::new(r"(\d+)\s+(\d+)\s+obj")?;
-
-    let file_str = String::from_utf8_lossy(file);
-    for capture in obj_pattern.captures_iter(&file_str) {
-        let obj_num: u32 = capture[1].parse()?;
-        let gen_num: u16 = capture[2].parse()?;
-        let offset = capture.get(0).unwrap().start();
-
-        xref.add_entry(obj_num, gen_num, offset as u64, true);
-    }
-
-    Ok(xref)
-}
-```
+1. ファイル全体を走査して `N G obj` の定義ヘッダを検出する（文字列・コメント・ストリームデータ本体内の誤検出に注意）。
+2. 各定義の `(オブジェクト番号, 世代番号, バイトオフセット)` を再構築 xref テーブルへ登録する（同一番号の重複は後方の定義を優先）。
+3. `trailer` 辞書を後方探索し、見つからない場合は `/Type /Catalog` を持つ辞書から `/Root` を推定する。
+4. 再構築を行った事実を警告として通知する。
 
 ### 3.4 ストリーム長の修正
 
-```
-fn find_stream_end(data: &[u8], declared_length: usize) -> usize {
-    // まず宣言された長さを信用
-    if declared_length > 0 && declared_length < data.len() {
-        let expected_end = &data[declared_length..];
-        if expected_end.starts_with(b"endstream") ||
-           expected_end.starts_with(b"\nendstream") ||
-           expected_end.starts_with(b"\r\nendstream") {
-            return declared_length;
-        }
-    }
+宣言された `/Length` と実データの終端が食い違う場合の回復手順です。
 
-    // 宣言された長さが不正な場合、endstreamを直接探索
-    if let Some(pos) = find_bytes(data, b"endstream") {
-        // 直前のEOLを除外
-        let mut end = pos;
-        if end > 0 && data[end - 1] == b'\n' { end -= 1; }
-        if end > 0 && data[end - 1] == b'\r' { end -= 1; }
-        return end;
-    }
+1. **宣言長の検証**: ストリーム開始位置 + `/Length` の直後に `endstream`（または EOL + `endstream`）が存在すれば宣言長をそのまま採用する。
+2. **フォールバック探索**: 一致しない場合、ストリーム開始位置以降から `endstream` キーワードを探索する。
+3. **直前 EOL の除外**: 見つけた `endstream` の直前にある `LF` または `CR+LF` を取り除いた位置をストリーム終端とし、警告を記録する。
 
-    declared_length // フォールバック
-}
-```
+---
 
 ## 4. 開発言語の選定
 
 ### 4.1 言語比較
 
 | 言語 | 長所 | 短所 | 代表的なライブラリ |
-|:-----|:-----|:-----|:-------------------|
-| C/C++ | 最高性能、既存資産が豊富 | メモリ安全性の欠如、セキュリティリスク | PDFium, Ghostscript, qpdf, libHaru |
-| Rust | メモリ安全性、C++同等の性能 | 学習曲線、エコシステムの成熟度 | lopdf, pdf-rs |
-| Java/Kotlin | GC、クロスプラットフォーム | メモリ使用量、GCの停止 | Apache PDFBox, iText |
-| C# | GC、Windowsとの親和性 | クロスプラットフォーム制約 | PdfSharp, Aspose.PDF |
+| :--- | :--- | :--- | :--- |
+| C / C++ | 最高性能、既存資産が豊富 | メモリ安全性欠如、セキュリティリスク | PDFium, Ghostscript, qpdf, libHaru |
+| Rust | メモリ安全性、C++ 同等の性能 | 学習曲線 | lopdf, pdf-rs |
+| TypeScript / JS | ブラウザネイティブ動作、Web UI 連携 | 数値精度・バイナリ処理の制約 | pdf.js, pdf-lib |
+| Java / Kotlin | GC、クロスプラットフォーム | メモリ使用量、GC 停止 | Apache PDFBox, iText |
+| C# | GC、Windows 親和性 | 実行環境制約 | PdfSharp, Aspose.PDF |
 | Python | 開発速度、エコシステム | 実行速度 | pypdf, pikepdf, reportlab |
-| Go | 並行処理、シンプルさ | ジェネリクスの制限 | pdfcpu, unipdf |
+| Go | 並行処理、シンプルさ | 表現力の制約 | pdfcpu, unipdf |
 
-### 4.2 Rustの利点
+### 4.2 Rust の利点
 
-PDFライブラリ開発においてRustが特に有効な理由。
+低レイヤのバイナリ PDF 解析において Rust は次の強みを持ちます。
 
-- **所有権モデル**: オブジェクトグラフの複雑なライフサイクル管理をコンパイル時に検証
-- **バッファオーバーフロー防止**: 信頼できない外部バイナリの解析における最大の攻撃ベクタを排除
-- **Use-After-Free防止**: 解放後メモリの使用をコンパイル時に防止
-- **ゼロコスト抽象化**: 安全性を保ちながらC++同等の実行速度
-- **パターンマッチング**: PDFの複雑な型分岐を安全かつ網羅的に処理
+- **所有権モデル**: 複雑なオブジェクトグラフとライフサイクルをコンパイル時に検証できる。
+- **メモリ安全**: 信頼できない外部バイナリ解析におけるバッファオーバーフローや Use-After-Free を排除できる。
+- **ゼロコスト抽象化**: 安全性を保ちながら C++ 並みの性能を得られる。
+- **網羅的パターンマッチング**: PDF の多岐にわたる型・状態分岐の抜け漏れをコンパイル時に検出できる。
 
 ### 4.3 セキュリティ上の考慮事項
 
-信頼できないPDFファイルの解析は以下の攻撃ベクタに対して脆弱。
+信頼できない外部 PDF の解析は、以下の攻撃ベクタへの防御が必須です。
 
-| 攻撃ベクタ | 説明 | 対策 |
-|:-----------|:-----|:-----|
-| バッファオーバーフロー | 不正なxrefオフセットや文字列長 | 境界チェック、安全な言語の使用 |
-| Use-After-Free | 解放されたオブジェクトへの参照 | 所有権管理、GCまたはRust |
-| 整数オーバーフロー | 巨大なオブジェクト番号や長さ | チェック付き算術演算 |
-| スタックオーバーフロー | 深くネストされた構造、循環参照 | 深度制限、循環検出 |
-| リソース枯渇 | 巨大なストリーム、zip bomb | サイズ制限、展開比率の監視 |
-| パストラバーサル | 埋め込みファイル名 | ファイル名のサニタイズ |
+| 攻撃ベクタ | 脅威の例 | 対策 |
+| :--- | :--- | :--- |
+| バッファオーバーフロー | 不正な xref オフセットや文字列長 | 境界チェック、メモリ安全な言語の採用 |
+| Use-After-Free | 解放済みオブジェクト参照 | 所有権管理または GC |
+| 整数オーバーフロー | 巨大なオブジェクト番号・`/Length`・`/W` | チェック付き算術演算・安全整数検証 |
+| スタックオーバーフロー | 深い配列/辞書ネスト、循環参照 | 深度制限、非再帰スタック走査、循環検出 |
+| リソース枯渇（Zip Bomb 等） | 展開後サイズが極端に巨大なストリーム | 展開サイズ上限（例: 100 MiB）の事前監視 |
+| パストラバーサル | 添付ファイルの不正なファイル名 | ファイル名のサニタイズ |
+
+---
 
 ## 5. テスト戦略
 
 ### 5.1 テストカテゴリ
 
-| カテゴリ | 内容 |
-|:---------|:-----|
-| ユニットテスト | 各プリミティブ型のパース、個別オペレータの処理 |
-| 統合テスト | 完全なPDFファイルの読み込み・検証 |
-| ファズテスト | ランダムなバイト列による堅牢性テスト |
-| 適合性テスト | ISO 32000仕様への準拠確認 |
-| リグレッションテスト | 実世界のPDFファイルコレクションによるテスト |
-| パフォーマンステスト | 大規模PDFの処理時間・メモリ使用量 |
+| カテゴリ | 確認内容 |
+| :--- | :--- |
+| ユニットテスト | 各プリミティブ型のパース、個別オペレータ・暗号プリミティブの処理 |
+| 統合テスト | 完全な PDF ファイルの読み込み・構造検証 |
+| ファズテスト | ランダム・破損バイト列を与えたときのクラッシュ・無限ループ耐性 |
+| 適合性テスト | ISO 32000 仕様および実ツール（qpdf 等）生成ファイルとの照合 |
+| リグレッションテスト | 実世界の多様な PDF コレクションに対する継続検証 |
+| パフォーマンステスト | 大規模 PDF の処理時間・ピークメモリ使用量 |
 
-### 5.2 テストデータ
+### 5.2 推奨テストデータ
 
-```
-推奨テストファイル:
-- 最小有効PDF（手書きで構築）
-- Standard 14 Fontsのみ使用するPDF
-- CJKフォント（日本語、中国語、韓国語）を含むPDF
-- 複数の圧縮フィルタを使用するPDF
-- インクリメンタルアップデートされたPDF
-- リニアライズされたPDF
-- 暗号化されたPDF（各アルゴリズム）
-- オブジェクトストリーム/XRefストリームを使用するPDF
-- 100ページ以上の大規模PDF
-- 意図的に破損したPDF（フォールバック処理のテスト）
-```
+- 最小有効 PDF（手書き構築）
+- Standard 14 Fonts のみを使用する PDF
+- CJK フォント（日本語・中国語・韓国語）と `/ToUnicode` を含む PDF
+- 単一・多段圧縮フィルタ（FlateDecode + Predictor、LZWDecode 等）を使用する PDF
+- インクリメンタルアップデート（複数世代）された PDF
+- リニアライズされた PDF
+- 暗号化された PDF（R2〜R6、各 crypt filter）
+- オブジェクトストリーム・XRef ストリーム・ハイブリッド参照（`/XRefStm`）を使用する PDF
+- 100 ページ以上の大規模 PDF
+- 意図的に破損させた PDF（オフセットずれ、`%%EOF` 欠落、循環参照、`/Count` 不一致）
+
+---
 
 ## 6. パフォーマンス最適化のガイドライン
 
 | 最適化項目 | 手法 |
-|:-----------|:-----|
-| I/O | メモリマップドファイル（mmap）の使用 |
-| パース | ゼロコピーパーシング、不要なアロケーション回避 |
-| オブジェクト解決 | LRUキャッシュ、遅延読み込み |
-| ストリーム展開 | ストリーミングデコーダ（全体をバッファリングしない） |
-| ページツリー | `/Count` を利用したO(log n)のページアクセス |
-| フォント | フォントメトリクスのキャッシュ |
-| 描画 | タイルベースレンダリング、必要な領域のみ描画 |
+| :--- | :--- |
+| I/O | メモリマップドファイル（mmap）やスライス借用の活用 |
+| パース | ゼロコピーパーシング、不要なメモリ割り当ての削減 |
+| オブジェクト解決 | LRU キャッシュ、遅延読み込み（Lazy Loading） |
+| ストリーム展開 | ストリーミングデコーダ・growing single buffer によるピークメモリ抑制 |
+| ページツリー | 必要ページのみ遅延解決、適切なキャッシュ |
+| フォント | フォントメトリクス・CMap のキャッシュ |
+| 描画 | タイルベースレンダリング、可視領域のみの描画 |
+
+---
+
+[← 前の章: 08. インクリメンタルアップデートとリニアライズ (`08_incremental_update_linearization.md`)](./08_incremental_update_linearization.md) | [目次 (`00_overview.md`)](./00_overview.md)

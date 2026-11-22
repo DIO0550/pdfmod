@@ -1,172 +1,157 @@
-# PDF解析パイプライン - xref解析仕様
+# PDF解析パイプライン - xref解析仕様（統括）
 
-> **機能**: [PDF解析パイプライン](./index.md)
-> **ステータス**: 下書き
+> **上位目次**: [PDF解析パイプライン仕様](./index.md)  
+> **詳細仕様**: [startxref-scanner](./startxref-scanner.md) / [xref-table-parser](./xref-table-parser.md) / [xref-stream-decoder](./xref-stream-decoder.md) / [flatedecode-stream-parser](./flatedecode-stream-parser.md) / [xref-merger-spec](./xref-merger-spec.md)  
+> **対応規格**: ISO 32000-1:2008 §7.5.4–7.5.8（[02. 物理ファイル構造](../specs/02_file_structure.md)）
 
 ## 概要
 
-PDFファイル末尾からstartxrefを検出し、xrefテーブル（テキスト形式・ストリーム形式）とトレイラ辞書を解析する。`/Prev`チェーンを再帰的に辿り、インクリメンタルアップデートされた複数のxrefを1つのマージ済みテーブルに統合する。
+PDF ファイル末尾から `startxref` を検出し、テキスト形式・ストリーム形式の xref とトレイラ辞書を解析します。`/Prev` チェーンおよびハイブリッド参照（`/XRefStm`）を辿り、複数の更新を 1 つのマージ済み `XRefTable` に統合します。
 
 ## モジュール構成
 
-| モジュール | 責務 |
-|:-----------|:-----|
-| `StartXRefScanner` | ファイル末尾からstartxrefオフセットを検出 |
-| `XRefTableParser` | テキスト形式xrefテーブルを解析 |
-| `XRefStreamParser` | ストリーム形式xref（PDF 1.5+）を解析 |
-| `TrailerParser` | トレイラ辞書を解析し`TrailerDict`を構築 |
-| `XRefMerger` | `/Prev`チェーンを辿り複数xrefをマージ |
+| モジュール | 責務 | 詳細仕様 |
+| :--- | :--- | :--- |
+| `StartXRefScanner` | ファイル末尾から `startxref` オフセットを検出 | [startxref-scanner.md](./startxref-scanner.md) |
+| `XRefTableParser` | テキスト形式 xref テーブルを解析 | [xref-table-parser.md](./xref-table-parser.md) |
+| `XRefStreamParser` | ストリーム形式 xref（PDF 1.5+）を解析 | [xref-stream-decoder.md](./xref-stream-decoder.md) / [flatedecode-stream-parser.md](./flatedecode-stream-parser.md) |
+| `TrailerParser` | トレイラ辞書を解析し `TrailerDict` を構築 | [flatedecode-stream-parser.md](./flatedecode-stream-parser.md) |
+| `XRefMerger` | `/Prev` チェーンと `/XRefStm` を統合 | [xref-merger-spec.md](./xref-merger-spec.md) |
+
+---
 
 ## データ型
 
-### XRefEntry
+### `XRefEntry`
 
 | フィールド | 型 | 説明 |
-|:-----------|:---|:-----|
-| type | 整数（0 / 1 / 2） | エントリタイプ: 0=空き, 1=通常オブジェクト, 2=オブジェクトストリーム内 |
-| field2 | 整数 | type=1: ファイル内バイトオフセット, type=2: 親ストリームのオブジェクト番号 |
-| field3 | 整数 | type=0,1: 世代番号, type=2: ストリーム内インデックス |
+| :--- | :--- | :--- |
+| `type` | `0 \| 1 \| 2` | `0`=空き、`1`=通常オブジェクト、`2`=オブジェクトストリーム内 |
+| `field2` | 整数 | `type=0`: 次空き番号、`type=1`: バイトオフセット、`type=2`: 親 ObjStm 番号 |
+| `field3` | 整数 | `type=0,1`: 世代番号、`type=2`: ストリーム内インデックス |
 
-### XRefTable
+### `XRefTable`
 
 | フィールド | 型 | 説明 |
-|:-----------|:---|:-----|
-| entries | マップ（整数 → XRefEntry） | オブジェクト番号 → XRefEntry のマップ |
-| size | 整数 | テーブル内の最大オブジェクト番号 + 1 |
+| :--- | :--- | :--- |
+| `entries` | マップ（オブジェクト番号 → `XRefEntry`） | 各オブジェクトのエントリ |
+| `size` | 整数 | 最大オブジェクト番号 + 1 |
 
-### TrailerDict
+### `TrailerDict`
 
 | フィールド | 型 | 必須 | 説明 |
-|:-----------|:---|:-----|:-----|
-| root | 間接参照(IndirectRef) | 必須 | /Root — ドキュメントカタログへの間接参照 |
-| size | 整数 | 必須 | /Size — xrefテーブルのエントリ総数 |
-| prev | バイトオフセット(ByteOffset) | 任意 | /Prev — 前のxrefテーブルのバイトオフセット |
-| info | 間接参照(IndirectRef) | 任意 | /Info — ドキュメント情報辞書への間接参照 |
-| id | バイト列 2 要素の組 | 任意 | /ID — ファイル識別子 [永続ID, 変更ID] |
-| encrypt | 辞書 または 間接参照(IndirectRef) | 任意 | /Encrypt — 暗号化辞書（辞書またはその間接参照）。存在する場合、暗号化PDFとして検出する |
-| xrefStm | バイトオフセット(ByteOffset) | 任意 | /XRefStm — ハイブリッド参照ファイルにおける相互参照ストリームのバイトオフセット（テキスト形式trailerのみ） |
+| :--- | :--- | :--- | :--- |
+| `root` | `IndirectRef` | **必須** | `/Root` — ドキュメントカタログへの参照 |
+| `size` | 整数 | **必須** | `/Size` — xref テーブルのエントリ総数 |
+| `prev` | `ByteOffset` | 任意 | `/Prev` — 前の xref セクションのバイトオフセット |
+| `info` | `IndirectRef` | 任意 | `/Info` — ドキュメント情報辞書への参照 |
+| `id` | バイト列 2 要素の組 | 任意 | `/ID` — ファイル識別子 `[永続ID, 変更ID]` |
+| `encrypt` | 辞書 or `IndirectRef` | 任意 | `/Encrypt` — 暗号化辞書（存在時は暗号化 PDF として検出） |
+| `xrefStm` | `ByteOffset` | 任意 | `/XRefStm` — ハイブリッド参照の相互参照ストリーム位置（テキスト trailer のみ） |
+
+---
 
 ## 処理仕様
 
-### StartXRefScanner
+### 1. `StartXRefScanner`
 
-**入力**: `Uint8Array`（PDFバイナリ全体）
-**出力**: `number`（xrefテーブルのバイトオフセット）
-
-| ID | ルール | 条件 | 振る舞い |
-|:---|:-------|:-----|:---------|
-| XR-001 | %%EOF検出 | ファイル末尾1024バイトを逆方向スキャン | `%%EOF` 文字列を後方検索 |
-| XR-002 | startxref検出 | %%EOF の上方向をスキャン | `startxref` キーワードの後の数値を取得 |
-| XR-003 | %%EOF未検出 | 1024バイト以内に見つからない | スキャン範囲を拡大（最大4096バイト） |
-| XR-004 | startxref未検出 | %%EOF付近に見つからない | `STARTXREF_NOT_FOUND` エラーを返す（上位でフォールバックスキャナへ委譲） |
-
-### XRefTableParser（テキスト形式）
-
-**入力**: `Uint8Array` + オフセット
-**出力**: `{ xref: XRefTable, trailerOffset: number }`
-
-処理フロー:
-1. 指定オフセットで `xref` キーワードを確認
-2. サブセクションヘッダ `{firstObj} {count}` を読み取り
-3. 各エントリ（固定長20バイト）をパース
-4. 複数サブセクション対応（連続しないオブジェクト番号範囲）
-5. `trailer` キーワードの位置を返却
+- **入力**: `Uint8Array`（PDF バイナリ全体）
+- **出力**: `Result<ByteOffset, PdfParseError>`
 
 | ID | ルール | 条件 | 振る舞い |
-|:---|:-------|:-----|:---------|
-| XT-001 | エントリフォーマット | 20バイト固定長 | `nnnnnnnnnn ggggg n\r\n` をパース |
-| XT-002 | 状態フラグ | `n` = 使用中, `f` = 空き | type=1 (n) / type=0 (f) に変換 |
-| XT-003 | オブジェクト0 | 常に世代番号65535の空きオブジェクト | 空きリストのヘッドとして扱う |
-| XT-004 | 複数サブセクション | 連続しないオブジェクト番号範囲 | 各サブセクションを順次パース |
-| XT-005 | EOLバリエーション | CR+LF, LF, CR+SP | 全パターンを許容（寛容処理） |
+| :--- | :--- | :--- | :--- |
+| XR-001 | `%%EOF` 検出 | 末尾 1024 バイトを逆方向スキャン | `%%EOF` を後方検索 |
+| XR-002 | `startxref` 検出 | `%%EOF` の上方向をスキャン | `startxref` 直後の整数オフセットを取得 |
+| XR-003 | `%%EOF` 未検出 | 1024 バイト以内に見つからない | 最大 4096 バイトまで拡大（検出時は `EOF_NOT_FOUND` 警告） |
+| XR-004 | `startxref` 未検出 | 検出できない | `STARTXREF_NOT_FOUND` エラー（上位でフォールバックスキャナへ委譲） |
 
-### XRefStreamParser（ストリーム形式）
+### 2. `XRefTableParser`（テキスト形式）
 
-**入力**: `Uint8Array` + オフセット + ObjectParser
-**出力**: `{ xref: XRefTable, trailer: TrailerDict }`
+- **入力**: `Uint8Array` + オフセット
+- **出力**: `Result<{ xref: XRefTable, trailerOffset: ByteOffset }, PdfParseError>`
 
-処理フロー:
-1. 指定オフセットでストリームオブジェクトをパース
-2. `/Type /XRef` を確認
-3. `/W` 配列からフィールド幅を取得
-4. ストリームデータを展開（FlateDecode）
-5. バイナリデータを `/W` に基づいてXRefEntryに変換
-6. ストリーム辞書からトレイラ情報を抽出
+手順: `xref` キーワード確認 → サブセクション `{firstObj} {count}` 読み取り → 20 バイトエントリ群パース → 複数サブセクション反復 → `trailer` 位置を返却。
 
 | ID | ルール | 条件 | 振る舞い |
-|:---|:-------|:-----|:---------|
-| XS-001 | /W配列 | `[w1 w2 w3]` | 各エントリは `w1+w2+w3` バイトで構成 |
-| XS-002 | /Index配列 | 存在する場合 | サブセクション範囲を指定 |
-| XS-003 | /Index不在 | デフォルト | `[0 /Size]` として扱う |
-| XS-004 | Typeフィールド幅0 | w1 = 0 | デフォルト値1（通常オブジェクト）として扱う |
-| XS-005 | /Filter | FlateDecode | pakoで展開 |
-| XS-006 | /Prev | 存在する場合 | 前のxrefへのオフセットとしてTrailerDictに格納 |
+| :--- | :--- | :--- | :--- |
+| XT-001 | エントリ形式 | 20 バイト固定長 | `nnnnnnnnnn ggggg n\r\n` をパース |
+| XT-002 | 状態フラグ | `n` = 使用中, `f` = 空き | `type=1` (`n`) / `type=0` (`f`) へ変換 |
+| XT-003 | オブジェクト 0 | 世代 `65535` の空きオブジェクト | 空きリストのヘッドとして扱う |
+| XT-004 | 複数サブセクション | 不連続なオブジェクト番号範囲 | 各サブセクションを順次パース |
+| XT-005 | EOL バリエーション | CR+LF, LF, CR+SP, CR | すべてのパターンを寛容に受理 |
 
-### TrailerParser
+### 3. `XRefStreamParser`（ストリーム形式）
 
-**入力**: `Uint8Array` + trailerオフセット + ObjectParser
-**出力**: `TrailerDict`
+- **入力**: `Uint8Array` + オフセット + `ObjectParser`
+- **出力**: `Result<{ xref: XRefTable, trailer: TrailerDict }, PdfParseError>`
 
-処理フロー:
-1. `trailer` キーワードの後の辞書をパース
-2. 必須エントリ（`/Root`, `/Size`）の存在を検証
-3. オプションエントリ（`/Prev`, `/Info`, `/ID`, `/Encrypt`, `/XRefStm`）を抽出（TR-005 / TR-006）
+手順: ストリームオブジェクト解析 → `/Type /XRef` 検証 → `/W` 取得 → ストリーム展開（FlateDecode / LZWDecode + Predictor） → バイナリを `XRefEntry` へデコード → 辞書から `TrailerDict` を抽出。
 
 | ID | ルール | 条件 | 振る舞い |
-|:---|:-------|:-----|:---------|
-| TR-001 | /Root必須 | 未検出 | `ROOT_NOT_FOUND` エラーを返す |
-| TR-002 | /Size必須 | 未検出 | `SIZE_NOT_FOUND` エラーを返す |
-| TR-003 | /Prev | 整数値 | 前のxrefテーブルのオフセットとして記録 |
-| TR-004 | /ID | 2要素の配列 | Uint8Arrayのペアに変換 |
-| TR-005 | /Encrypt | 存在する場合 | `TrailerDict.encrypt` に記録。復号は未対応のため、パイプライン上位（`PdfDocument.load`）が `ENCRYPTED_PDF_UNSUPPORTED` エラーを返す |
-| TR-006 | /XRefStm | 整数値（テキスト形式trailerのみ） | ハイブリッド参照ファイルの相互参照ストリームのオフセットとして記録（XM-005参照） |
+| :--- | :--- | :--- | :--- |
+| XS-001 | `/W` 配列 | `[w1, w2, w3]` | 1 エントリ = `w1 + w2 + w3` バイト |
+| XS-002 | `/Index` 配列 | 存在する場合 | サブセクション範囲を指定 |
+| XS-003 | `/Index` 不在 | 省略時 | 既定値 `[0, /Size]` として扱う |
+| XS-004 | Type 幅 0 | `w1 = 0` | 既定値 `type = 1`（通常オブジェクト）として扱う |
+| XS-005 | `/Filter` | `/FlateDecode` | Web Streams API の `DecompressionStream("deflate")` で展開（詳細は [flatedecode-stream-parser.md](./flatedecode-stream-parser.md)） |
+| XS-006 | `/Prev` | 存在する場合 | 前の xref オフセットとして `TrailerDict` に格納 |
 
-### XRefMerger
+### 4. `TrailerParser`
 
-**入力**: `Uint8Array` + 最新のstartxrefオフセット
-**出力**: `{ mergedXRef: XRefTable, trailer: TrailerDict }`
-
-処理フロー:
-1. 最新のxref/トレイラを解析
-2. `/Prev` が存在する場合、そのオフセットで再帰的にxrefを解析
-3. 全xrefを古いものから順にマージ（新しいエントリが優先）
-4. 最新のトレイラ辞書を返却（`/Root`は最新のものを使用）
+- **入力**: `Uint8Array` + `trailerOffset` + `ObjectParser`
+- **出力**: `Result<TrailerDict, PdfParseError>`
 
 | ID | ルール | 条件 | 振る舞い |
-|:---|:-------|:-----|:---------|
-| XM-001 | マージ順序 | 複数xref存在 | 新しいxrefのエントリが古いものを上書き |
-| XM-002 | 循環防止 | /Prevが同一オフセットを指す | `XREF_PREV_CHAIN_CYCLE` エラーを返す |
-| XM-003 | 深度制限 | /Prevチェーンが深すぎる | 最大100段で `XREF_PREV_CHAIN_TOO_DEEP` エラーを返す |
-| XM-004 | 形式混在 | テキスト形式とストリーム形式の混在 | コールバック提供側が形式を判定し適切なパーサを呼び出す |
-| XM-005 | ハイブリッド参照 | trailerに`/XRefStm`が存在 | 同一更新のテキストxrefより先に相互参照ストリームを読み、エントリはストリーム側を優先。`/Prev`はテキストtrailer側のみ辿る |
+| :--- | :--- | :--- | :--- |
+| TR-001 | `/Root` 必須 | 未検出 | `ROOT_NOT_FOUND` エラー |
+| TR-002 | `/Size` 必須 | 未検出 | `SIZE_NOT_FOUND` エラー |
+| TR-003 | `/Prev` | 整数値 | 前の xref オフセットを記録 |
+| TR-004 | `/ID` | 2 要素配列 | `Uint8Array` ペアへ変換 |
+| TR-005 | `/Encrypt` | 存在する場合 | `TrailerDict.encrypt` に記録（上位の `PdfDocument.load` が `ENCRYPTED_PDF_UNSUPPORTED` を返す） |
+| TR-006 | `/XRefStm` | 整数値（テキスト trailer のみ） | ハイブリッド参照の相互参照ストリーム位置を記録（XM-005） |
 
-> 📄 詳細仕様は [xref-merger-spec.md](./xref-merger-spec.md) を参照。
+### 5. `XRefMerger`
+
+- **入力**: `Uint8Array` + 最新 `startxref` オフセット
+- **出力**: `Result<{ mergedXRef: XRefTable, trailer: TrailerDict }, PdfParseError>`
+
+| ID | ルール | 条件 | 振る舞い |
+| :--- | :--- | :--- | :--- |
+| XM-001 | マージ順序 | 複数 xref 存在 | 新しい xref のエントリが古いエントリを上書き |
+| XM-002 | 循環防止 | `/Prev` または `/XRefStm` が既訪問オフセット | `XREF_PREV_CHAIN_CYCLE` エラー |
+| XM-003 | 深度制限 | `/Prev` チェーンが 100 段超過 | `XREF_PREV_CHAIN_TOO_DEEP` エラー |
+| XM-004 | 形式混在 | テキスト形式とストリーム形式の混在 | コールバック側で形式判定し適切なパーサを呼び出し |
+| XM-005 | ハイブリッド参照 | trailer に `/XRefStm` 存在 | 同一更新ではストリーム側エントリを優先し、`/Prev` はテキスト trailer 側のみ辿る |
+
+> 詳細仕様と具体例は [xref-merger-spec.md](./xref-merger-spec.md) を参照してください。
+
+---
 
 ## ファイル配置
 
-```
+```text
 packages/core/src/
-├── xref/
-│   ├── index.ts                # 再エクスポート
-│   ├── startxref/
-│   │   └── scanner/index.ts    # StartXRefScanner
-│   ├── table/
-│   │   └── parser/index.ts     # XRefTableParser
-│   ├── stream/
-│   │   ├── parser/index.ts     # XRefStreamParser（デコード）
-│   │   ├── flatedecode/index.ts # FlateDecode展開
-│   │   └── trailer/index.ts    # xrefストリームからTrailerDict構築
-│   ├── trailer/
-│   │   ├── parser/index.ts     # TrailerParser
-│   │   └── dict-builder/index.ts # TrailerDict構築
-│   └── merger/
-│       └── index.ts            # XRefMerger（/Prevチェーン走査・マージ）
-└── types/
-    └── pdf-types/index.ts      # XRefEntry, XRefTable, TrailerDict
+├── pdf/
+│   ├── filter/flatedecode/index.ts        # FlateDecode 展開（decompressFlate）
+│   └── types/pdf-types/index.ts           # XRefEntry, XRefTable, TrailerDict
+└── xref/
+    ├── index.ts                           # 再エクスポート
+    ├── startxref/scanner/index.ts         # StartXRefScanner
+    ├── table/parser/index.ts              # XRefTableParser
+    ├── stream/
+    │   ├── parse-xref-stream/index.ts     # XRefStreamParser 統合エントリ
+    │   ├── parser/index.ts                # decodeXRefStreamEntries
+    │   ├── dict/index.ts                  # xref ストリーム辞書検証
+    │   ├── predictor/index.ts             # PNG / TIFF Predictor 逆変換
+    │   └── trailer/index.ts               # buildXRefStreamTrailerDict
+    ├── trailer/
+    │   ├── parser/index.ts                # TrailerParser
+    │   └── dict-builder/index.ts          # trailerDictBuilder（共通）
+    └── merger/index.ts                    # XRefMerger
 ```
 
 ## 関連仕様
 
-- [object-resolver-spec.md](./object-resolver-spec.md) - xrefテーブルを使ってオブジェクトを解決
-- [error-handling-spec.md](./error-handling-spec.md) - フォールバックxrefスキャナの仕様
-- `docs/specs/02_file_structure.md` - ISO 32000仕様の詳細
+- [object-resolver-spec.md](./object-resolver-spec.md) — xref テーブルを用いたオブジェクト解決
+- [error-handling-spec.md](./error-handling-spec.md) — フォールバック xref スキャナとエラーコード
+- [02. 物理ファイル構造](../specs/02_file_structure.md) — ISO 32000 仕様詳細
