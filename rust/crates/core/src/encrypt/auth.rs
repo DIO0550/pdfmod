@@ -479,4 +479,4 @@ fn ct_eq_prefix<const N: usize, const M: usize>(left: &[u8; N], right: &[u8; M])
 }
 
 #[cfg(test)]
-mod tests;
+pub(super) mod tests;
