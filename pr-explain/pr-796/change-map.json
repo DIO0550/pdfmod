@@ -3,8 +3,8 @@
   "pr": 796,
   "headBranch": "docs/improve-specs-readability",
   "baseBranch": "main",
-  "mergeBase": "ad29712add683e22ebe94cde55e12703a5d259df",
-  "head": "80e0b234c381c7ae9410ecb92073e47dd0ef9f2c",
+  "mergeBase": "c84b7f6163059b2d1eb42575205e4f8c720fed2d",
+  "head": "5278799343ad39788a0971ad493e3f3ff0c03b11",
   "groups": [
     {
       "label": "仕様・設計",
@@ -184,8 +184,8 @@
           "path": "docs/specs/02b_encryption.md",
           "status": "M",
           "oldPath": null,
-          "additions": 299,
-          "deletions": 106,
+          "additions": 320,
+          "deletions": 119,
           "changed": true,
           "target": null
         },
@@ -648,6 +648,15 @@
           "truncated": false
         }
       ]
+    },
+    {
+      "sha": "5278799343ad39788a0971ad493e3f3ff0c03b11",
+      "merge": true,
+      "author": "DIO0550",
+      "date": "2026-11-22T01:12:42Z",
+      "subject": "📝 [Doc]: mainのパスワード認証仕様をマージしてコンフリクトを解消する",
+      "body": "- docs/specs/00_overview.md の02b説明と未カバー領域にパスワード認証（#675）を反映\n- docs/specs/02b_encryption.md に §13 パスワード認証（Algorithm 6 / 7 / 11 / 12）と目次・各節からの参照を統合",
+      "files": []
     }
   ],
   "dependencies": [
