@@ -166,7 +166,8 @@ nav a { font-size: 16px; } table { font-size: 17px; } th { font-size: 15px; }
 <a href="#implementation"><span>07</span>解析の境界</a><a href="#algorithm-types"><span>08</span>方式ごとの型と責務</a>
 <a href="#legacy-md5"><span>09</span>旧リビジョンの鍵導出とMD5</a><a href="#legacy-rc4"><span>10</span>旧形式のRC4</a>
 <a href="#revision6-sha2"><span>11</span>リビジョン6のSHA-2</a><a href="#aes-decryption"><span>12</span>AESのCBC・ECB復号</a>
-<a href="#aes256-file-key"><span>13</span>AES-256のファイル暗号鍵</a><a href="#password-auth"><span>14</span>パスワード認証</a></nav></aside>
+<a href="#aes256-file-key"><span>13</span>AES-256のファイル暗号鍵</a><a href="#password-auth"><span>14</span>パスワード認証</a>
+<a href="#object-key"><span>15</span>オブジェクトの復号鍵</a></nav></aside>
 <main id="top"><div class="wrap"><header class="hero"><div class="eyebrow">PDF INTERNALS / ENCRYPTION DICTIONARY</div>
 <h1>暗号化辞書を読む</h1><p class="lead">PDFの <code>/Encrypt</code> は、暗号化の方式と鍵の材料を記述します。アルゴリズムの版、crypt filter、権限を、解釈できる型へ変換する仕組みを見ていきます。</p></header>
 <section class="section" id="overview"><div class="section-heading"><span class="number">01</span><h2>暗号化の起点</h2></div>
@@ -408,7 +409,7 @@ assert_eq!(digest, <span class="type">Md5</span>::digest(<span class="string">b"
 暗号化  <span class="value">41</span> XOR <span class="value">1F</span> = <span class="value">5E</span>
 復号    <span class="value">5E</span> XOR <span class="value">1F</span> = <span class="value">41</span></code></pre>
 <p>Rustの内部型 <code>Rc4</code> は5〜16バイトの鍵を受け取ります。例えば4バイトや17バイトを渡すと <code>None</code> が返ります。<code>apply</code> は渡したデータをその場で書き換え、同じ状態で続けて呼ぶと次のバイトから処理します。空のデータでは鍵ストリームは進みません。</p>
-<div class="note"><strong>Rustで使える処理</strong>鍵とバイト列を渡してRC4を適用でき、R2〜R4の <a href="#password-auth">パスワード認証</a> でも使います。PDFの読み込み中に鍵を求め、暗号化された文字列やストリームに適用する処理は後続の実装です。</div>
+<div class="note"><strong>Rustで使える処理</strong>RC4はR2〜R4の <a href="#password-auth">パスワード認証</a> に使います。認証後は <a href="#object-key">オブジェクトの復号鍵</a> を導出できます。</div>
 </section>
 <section class="section" id="revision6-sha2">
 <div class="section-heading"><span class="number">11</span><h2>リビジョン6の鍵導出とSHA-2</h2></div>
@@ -658,7 +659,53 @@ assert_eq!(digest, <span class="type">Md5</span>::digest(<span class="string">b"
 </table>
 </div>
 <div class="note"><strong>定数時間比較と鍵の秘匿</strong><code>/U</code> や検証ハッシュの照合には、先頭で不一致を見つけても打ち切らず全バイトを XOR で畳み込む<strong>定数時間比較（constant-time comparison）</strong>を使います。また <code>AuthenticatedFileKey</code> と内包する鍵型は <code>Debug</code> フォーマットで鍵バイト列を出力しません。</div>
-<div class="note warning"><strong>仕様と実装方針の境界</strong>R3・R4 の <code>/U</code> で照合対象となるのは先頭16バイトですが、pdfmod は辞書項目として32バイトちょうどの長さを要求します。R5・R6 の SASLprep は呼び出し側で行い、鍵導出に使う先頭127バイトを覆う最小のUTF-8文字境界まで（最大130バイト）を検証して不正な UTF-8 は <code>IncorrectPassword</code> として扱います（文字境界より後ろの未使用バイトは走査しません）。検証済みの鍵を使ったオブジェクト単位の鍵導出（Algorithm 1）、文字列・ストリームの復号、<code>PdfDocument</code> への統合は後続の実装で扱います。</div>
+<div class="note warning"><strong>仕様と実装方針の境界</strong>R3・R4 の <code>/U</code> で照合対象となるのは先頭16バイトですが、pdfmod は辞書項目として32バイトちょうどの長さを要求します。R5・R6 の SASLprep は呼び出し側で行い、鍵導出に使う先頭127バイトを覆う最小のUTF-8文字境界まで（最大130バイト）を検証して不正な UTF-8 は <code>IncorrectPassword</code> として扱います（文字境界より後ろの未使用バイトは走査しません）。認証で得たファイル鍵は、次の <a href="#object-key">オブジェクトの復号鍵</a> の選択に使います。</div>
+</section>
+<section class="section" id="object-key">
+<div class="section-heading"><span class="number">15</span><h2>オブジェクトの復号鍵</h2></div>
+<p>ファイル暗号鍵はパスワード認証で得られます。文字列やストリームを読む段階では、まず暗号化に使われた方式を探し、その方式に必要な鍵を用意します。</p>
+
+<h3>文字列は <code>/StrF</code>、ストリーム本体は <code>/StmF</code></h3>
+<p>次は暗号化辞書と間接オブジェクトの抜粋です。<code>/StrF /ForStrings</code> から <code>/CF</code> の <code>/ForStrings</code> を引くと、<code>/CFM /V2</code> が見つかります。したがって <code>/Subject</code> に続く16進文字列は RC4 で復号します。ストリーム本体の既定方式は、<code>/StmF /ForStreams</code> が選ぶ AES-128 です。</p>
+<pre><code><span class="comment">% /Encrypt が指す暗号化辞書の抜粋</span>
+<span class="pdf-syntax">&lt;&lt;</span> <span class="key">/V</span> <span class="value">4</span> <span class="key">/R</span> <span class="value">4</span> <span class="key">/Length</span> <span class="value">128</span>
+   <span class="key">/CF</span> <span class="pdf-syntax">&lt;&lt;</span> <span class="key">/ForStreams</span> <span class="pdf-syntax">&lt;&lt;</span> <span class="key">/CFM</span> <span class="key">/AESV2</span> <span class="key">/Length</span> <span class="value">16</span> <span class="pdf-syntax">&gt;&gt;</span>
+          <span class="key">/ForStrings</span> <span class="pdf-syntax">&lt;&lt;</span> <span class="key">/CFM</span> <span class="key">/V2</span> <span class="key">/Length</span> <span class="value">16</span> <span class="pdf-syntax">&gt;&gt; &gt;&gt;</span>
+   <span class="key">/StmF</span> <span class="key">/ForStreams</span> <span class="key">/StrF</span> <span class="key">/ForStrings</span> <span class="pdf-syntax">&gt;&gt;</span>
+
+<span class="value">7 4660</span> <span class="pdf-syntax">obj</span>
+<span class="pdf-syntax">&lt;&lt;</span> <span class="key">/Subject</span> <span class="string">&lt;5A2277&gt;</span> <span class="pdf-syntax">&gt;&gt;</span>
+<span class="pdf-syntax">endobj</span></code></pre>
+
+<div class="table-wrap" tabindex="0" role="region" aria-label="crypt filter に応じた復号鍵">
+<table>
+  <thead><tr><th scope="col">指定</th><th scope="col">処理</th></tr></thead>
+  <tbody>
+    <tr><td><code>/V 1</code>・<code>/V 2</code>、または <code>/CFM /V2</code></td><td>RC4。Algorithm 1 でオブジェクト鍵を導出します。</td></tr>
+    <tr><td><code>/CFM /AESV2</code></td><td>AES-128。Algorithm 1 の MD5 入力に <code>sAlT</code> を加えます。</td></tr>
+    <tr><td><code>/CFM /AESV3</code></td><td>AES-256。Algorithm 1.A に従って32バイトのファイル暗号鍵を使います。</td></tr>
+    <tr><td><code>/Identity</code>、<code>/CFM /None</code></td><td>復号を省略します。<code>/V 4</code> 以降で <code>/StmF</code> や <code>/StrF</code> を省略すると、その対象は <code>/Identity</code> です。<code>/CFM</code> の省略は <code>/None</code> になります。</td></tr>
+  </tbody>
+</table></div>
+<div class="note error"><strong><code>/CF</code> に名前が見つからない場合</strong>たとえば <code>/StrF /Missing</code> を指定した文書は、暗号化辞書の解析時に <code>UndefinedCryptFilter</code> を返します。<code>/Identity</code> は組み込みの名前として解決されます。</div>
+
+<h3>Algorithm 1 の入力をバイトで読む</h3>
+<ol class="steps">
+  <li><strong>ファイル暗号鍵を置く。</strong> 例の <code>/Length 128</code> は16バイト鍵を表します。</li>
+  <li><strong>番号をリトルエンディアンで足す。</strong> リトルエンディアンは小さい桁のバイトから並べる方式です。<code>7 4660 obj</code> のオブジェクト番号 <code>7</code> は <code>07 00 00</code>、世代番号 <code>4660</code>（16進数で <code>1234</code>）は <code>34 12</code> です。</li>
+  <li><strong>AES-128 の場合は <code>sAlT</code> を足す。</strong> 4文字を ASCII の4バイト <code>73 41 6C 54</code> にした固定値です。</li>
+  <li><strong>MD5 の先頭を取る。</strong> 16バイトの出力から、ファイル鍵の長さに5を足した長さまで取り出します。取り出すのは最大16バイトです。たとえばファイル鍵が5バイトなら、RC4 のオブジェクト鍵は10バイトになります。</li>
+</ol>
+<p>例のオブジェクトでテスト用ファイル鍵 <code>2d3657bf2eed39f71c700423877a4e15</code> を使うと、RC4 鍵は <code>a81abbe4025116ebda01d9652639ddee</code> です。この鍵で <code>&lt;5A2277&gt;</code> を復号したバイトを ASCII で読むと <code>PDF</code> になります。同じ番号と世代で AES-128 を選ぶと、<code>sAlT</code> が加わって鍵は <code>1b66d7e5ffda93e9bb90892ab0e05027</code> になります。</p>
+<div class="note"><strong>3バイトを超えるオブジェクト番号</strong>16進数で <code>ff ff ff</code> の次の番号 <code>01 00 00 00</code> は、下位3バイトだけを取り出すと <code>00 00 00</code> になります。上位バイトだけが異なる場合は、同じ世代から同じ鍵が導出されます。</div>
+
+<h3>オブジェクトストリームを一度復号する</h3>
+<p><code>/Type /ObjStm</code> は、複数のオブジェクトを一つのストリーム本体に格納します。コンテナの本体に <code>/StmF</code> とコンテナ自身の番号・世代を使います。そこから取り出したオブジェクトの文字列は、コンテナ本体を復号した時点で平文になっています。</p>
+<pre><code><span class="keyword">let</span> <span class="type">ObjectDecryptionTarget</span>::Indirect { id, kind } = target <span class="keyword">else</span> {
+    <span class="keyword">return</span> <span class="type">Ok</span>(<span class="type">ObjectDecryption</span>::None);
+};</code></pre>
+<p>Rust の <code>let … else</code> は、右辺の値が左側の形に一致したときに中身を取り出す構文です。<code>target</code> が通常の間接オブジェクトなら、波括弧の <code>id</code> と <code>kind</code> を後続の処理で使えます。格納形態が <code>InObjectStream</code> なら <code>else</code> の中へ進み、復号不要を表す <code>Ok(ObjectDecryption::None)</code> を返します。</p>
+<p><code>StandardSecurityHandler::object_decryption</code> は、認証済みのファイル鍵と対象を受け取り、方式と鍵を返す API です。選んだ方式がファイル鍵の種別や長さと両立しない場合は <code>IncompatibleFileKey</code> になります。暗号データへの適用と文書読み込みへの組み込みは後続の #683 で扱います。</p>
 </section>
 <footer><a href="#top">最上部へ</a> · <a href="README.md">解説一覧</a></footer></div></main>
 </body></html>
