@@ -37,7 +37,7 @@
 | 01 | [01_lexical_conventions.md](./01_lexical_conventions.md) | レキシカル規約とプリミティブデータ型 | [字句トークンと描画命令](../guides/token-layers.html) / [テキスト文字列](../guides/text-strings.html) |
 | 02 | [02_file_structure.md](./02_file_structure.md) | 物理ファイル構造とランダムアクセス機構 | — |
 | 02a | [02a_object_resolution.md](./02a_object_resolution.md) | インダイレクトオブジェクト解決の仕組み | — |
-| 02b | [02b_encryption.md](./02b_encryption.md) | 暗号化辞書、暗号プリミティブ、R2〜R6 のファイル暗号鍵導出 | [暗号化辞書](../guides/encryption-dictionary.html) |
+| 02b | [02b_encryption.md](./02b_encryption.md) | 暗号化辞書、暗号プリミティブ、R2〜R6 のファイル暗号鍵導出とパスワード認証 | [暗号化辞書](../guides/encryption-dictionary.html) |
 | 03 | [03_document_architecture.md](./03_document_architecture.md) | 論理ドキュメントアーキテクチャとページツリー | [カタログ](../guides/document-catalog.html) / [ページツリー](../guides/page-tree.html) / [境界ボックス](../guides/page-boxes.html) / [文書API](../guides/document-api.html) / [情報辞書](../guides/document-info.html) / [日付](../guides/date-format.html) |
 | 04 | [04_resources_graphics_state.md](./04_resources_graphics_state.md) | リソース辞書とグラフィックスステート | [リソース辞書](../guides/resources.html) / [拡張グラフィックス状態](../guides/ext-gstate.html) / [パターンとシェーディング](../guides/patterns-shadings.html) |
 | 05 | [05_content_streams.md](./05_content_streams.md) | コンテンツストリームと描画オペレータ | [字句トークンと描画命令](../guides/token-layers.html) / [リソース辞書](../guides/resources.html) |
@@ -77,7 +77,7 @@ PDF は、JSON や XML のような単純なシリアライズデータでも、
 
 | 領域 | ISO 32000 参照 | 現状 |
 | :--- | :--- | :--- |
-| 暗号化文書の認証入口とオブジェクト単位の復号 | §7.6 | 暗号化辞書、暗号プリミティブ、R2〜R6 の鍵導出、R5・R6 の権限検証は [02b_encryption.md](./02b_encryption.md) に記載済み。パスワード認証の統合入口と文字列・ストリーム復号は未記載 |
+| 暗号化文書のオブジェクト単位の復号 | §7.6 | 暗号化辞書、暗号プリミティブ、R2〜R6 の鍵導出・パスワード認証（Algorithm 6 / 7 / 11 / 12）と R5・R6 の権限検証は [02b_encryption.md](./02b_encryption.md) に記載済み。オブジェクト単位の復号と文書読込への統合は未記載（#683） |
 | 注釈（Annotations: 共通辞書、サブタイプ、外観ストリーム） | §12.5 | ページ `/Annots` の言及のみ |
 | インタラクティブフォーム（AcroForm: フィールド辞書、Widget 注釈、XFA） | §12.7 | カタログ `/AcroForm` の名前のみ |
 | アクション（`/OpenAction`、`/GoTo`、`/URI`、JavaScript、追加アクション `/AA`） | §12.6 | アウトラインの `/A` の言及のみ |

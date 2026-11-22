@@ -1,7 +1,7 @@
 # 02b. 暗号化 (Encryption)
 
 > **対応規格**: ISO 32000-1:2008 §7.6 / ISO 32000-2:2020 §7.6  
-> **扱う内容**: 暗号化辞書の構造、`/V`×`/R` の組み合わせ、crypt filter、権限フラグ `/P`、暗号プリミティブ（MD5 / RC4 / SHA-2 / AES）、R2〜R6 のファイル暗号鍵導出と権限検証  
+> **扱う内容**: 暗号化辞書の構造、`/V`×`/R` の組み合わせ、crypt filter、権限フラグ `/P`、暗号プリミティブ（MD5 / RC4 / SHA-2 / AES）、R2〜R6 のファイル暗号鍵導出・権限検証・パスワード認証  
 > **図解ガイド**: [暗号化辞書 — PDF 仕様解説](../guides/encryption-dictionary.html)（実 PDF 抜粋・色分け・計算例付き）
 
 ## 目次
@@ -18,6 +18,7 @@
 10. [AES-128 / AES-256 の復号](#10-aes-128--aes-256-の復号)
 11. [R2〜R4 のファイル暗号鍵を導出する](#11-r2r4-のファイル暗号鍵を導出する)
 12. [R5・R6 の AES-256 ファイル暗号鍵と権限の検証](#12-r5r6-の-aes-256-ファイル暗号鍵と権限の検証)
+13. [パスワード認証（Algorithm 6 / 7 / 11 / 12）](#13-パスワード認証algorithm-6--7--11--12)
 
 ---
 
@@ -149,9 +150,9 @@ ISO 32000-1 表 20（共通）・表 21（標準ハンドラ）に基づく主�
 | `/V` × `/R` の型制約 | §3 の 6 種だけを `StandardAlgorithm` として表現し、不正な組み合わせを構築不可にする |
 | 未対応ハンドラ・未対応版 | `/Adobe.PubSec` や未対応の `/V`×`/R` は `EncryptDictionary::Unsupported` に生辞書を保持して**解析を止めない** |
 | 構造不正エラー | `/Filter`・`/V`・`/R` の欠落や Standard 辞書の構造不正は `EncryptError` として位置情報付きで報告する |
-| 鍵導出（Rust） | R2〜R4 は §11、R5・R6 は §12 で実装済み |
+| 鍵導出・パスワード認証（Rust） | R2〜R4 の鍵導出は §11、R5・R6 の鍵導出・権限検証は §12、全リビジョンのパスワード認証と役割判定の入口は §13 で実装済み |
 | TypeScript `PdfDocument.load` | 復号未対応のため、暗号化 PDF は引き続き拒否する（暗号化辞書の型化 API は独立提供） |
-| 今後の対応範囲 | 利用者/所有者の役割を自動判定する統合認証入口、およびオブジェクト（文字列・ストリーム）単位の復号 |
+| 今後の対応範囲 | `AuthenticatedFileKey` を用いたオブジェクト（文字列・ストリーム）単位の復号、および `ObjectResolver`・`PdfDocument` への統合（#683） |
 
 ### 6.2 TypeScript と Rust の共通解析方針
 
@@ -214,6 +215,7 @@ ISO 32000-1:2008 §7.6.2 の旧形式では、`/V 1`・`/V 2`、または `/V 4`
 
 - 内部型 `encrypt::rc4::Rc4` は **5〜16 バイト**の鍵を受理し、範囲外は `None` を返す。
 - `apply` はスライスをインプレース更新し、分割入力に対しても同一の鍵ストリーム状態を継続する（空スライスでは状態を進めない）。
+- R2〜R4 のパスワード認証では §13 のとおり `/U` の照合と `/O` の復号に使う。PDF 読み込み時の文字列・ストリーム復号への接続は #683 で扱う。
 
 ---
 
@@ -319,6 +321,8 @@ ISO 32000-1:2008 §7.6.3.3 の **Algorithm 2** に基づき、パスワードと
 | トレイラの `/ID` が欠けている（空の永続 ID を含む 2 要素の `/ID` は受理） | `MissingFileId` |
 | `/O` が 32 バイトでない | `InvalidOwnerEntryLength` |
 
+> `/U`・`/O` によるパスワード認証は §13 で扱います。
+
 ---
 
 ## 12. R5・R6 の AES-256 ファイル暗号鍵と権限の検証
@@ -388,6 +392,66 @@ ISO 32000-2:2020 §7.6.4.3 の **Algorithm 2.A / 2.B** に基づき、利用者�
 | `IncorrectPassword` | 検証ハッシュが `/U` または `/O` の先頭 32 バイトと一致しない |
 | `InvalidPermissions` | 復号した `/Perms` の `/P`・`FF FF FF FF`・`T`/`F`・`adb` のいずれかが一致しない |
 | `InvalidEntryLength` | 必要な辞書項目のバイト長が規定と異なる（キー名と実際の長さを保持） |
+
+> R2〜R4 の鍵導出は §11、全リビジョンのパスワード認証と役割判定は §13 の入口を使います。
+
+---
+
+## 13. パスワード認証（Algorithm 6 / 7 / 11 / 12）
+
+ISO 32000-1:2008 §7.6.3.4（Algorithm 6・7）および ISO 32000-2:2020 §7.6.4.4（Algorithm 11・12）に従い、暗号化辞書の `/U`・`/O` と照合してファイル暗号鍵と役割（利用者 / 所有者）を確定します。
+
+Rust の `pdfmod_core::encrypt::auth` モジュールは、検証済みの鍵と役割を表す `AuthenticatedFileKey`、鍵本体を版別に包む `FileEncryptionKey`（`Legacy(LegacyFileKey)` / `Aes256(Aes256FileKey)`）、認証エラー `AuthError`、および `PasswordRole`（`encrypt::aes256_key::PasswordRole` の再公開）を提供します。入口は `StandardSecurityHandler` の次の 2 メソッドです。
+
+- `authenticate(password: Option<&[u8]>, file_id: Option<&FileId>) -> Result<AuthenticatedFileKey, AuthError>` — 役割を自動判定して認証する
+- `authenticate_as(role: PasswordRole, password: &[u8], file_id: Option<&FileId>) -> Result<AuthenticatedFileKey, AuthError>` — 指定した単一の役割で認証する
+
+### 13.1 役割の試行順序と未指定時の既定動作
+
+| `password` の指定 | 入力バイト列 | 試行順序 | 意図 |
+| :--- | :--- | :--- | :--- |
+| `None`（未指定） | `b""`（空パスワード） | `User` → `Owner` | 利用者・所有者ともに空パスワードの文書でも利用者として開き、`/P` の権限制限を尊重する |
+| `Some(bytes)`（明示指定） | `bytes` | `Owner` → `User` | ISO 32000-1 §7.6.3.1 / ISO 32000-2 §7.6.4.1 に従い、利用者・所有者が同一パスワードの文書でも所有者権限を付与する |
+
+1 つ目の役割が `AuthError::IncorrectPassword` を返した場合のみ 2 つ目の役割を試します。`/ID` 欠落や辞書項目の長さ不正、`/Perms` 不一致などの構造エラーはフォールバックせず即座に返します。
+
+### 13.2 R2〜R4 の利用者パスワード認証（Algorithm 6）
+
+R2〜R4 はパスワードを生のバイト列（PDFDocEncoding 等）として扱い、トレイラの `/ID` と 32 バイトちょうどの `/O`・`/U` を必須とします。Algorithm 2（§11）でファイル暗号鍵を導出した後、`/U` の期待値を計算して定数時間比較（全バイトの XOR 畳み込み）で照合します。
+
+1. **R2（`/V 1 /R 2`）**: 32 バイトの標準パディング列をファイル暗号鍵（5 バイト）で RC4 暗号化し、`/U` の**全 32 バイト**と比較する（Algorithm 4）。
+2. **R3・R4（`/V 1 /R 3`・`/V 2 /R 3`・`/V 4 /R 4`）**: `MD5(標準パディング列 || /ID[0])` の 16 バイトに対し、`i = 0..20` の 20 ラウンドで「ファイル暗号鍵の各バイトと `i` を XOR した鍵」を使って RC4 暗号化し、`/U` の**先頭 16 バイト**と比較する（Algorithm 5）。後半 16 バイトは任意のパディングであり比較しないが、辞書項目 `/U` 自体の長さは 32 バイトであることを検証する。
+
+### 13.3 R2〜R4 の所有者パスワード認証（Algorithm 7）
+
+1. **所有者 RC4 鍵の導出（Algorithm 3 手順 1〜4）**: 所有者パスワードを 32 バイトにパディングして MD5 に掛ける。R3・R4 では、得られた **16 バイトのダイジェスト全体**に MD5 をさらに 50 回適用する（Algorithm 2 の先頭 `n` バイト再ハッシュとは異なる）。ダイジェストの先頭 `n` バイト（R2・`/V 1 /R 3` は 5 バイト、`/V 2 /R 3`・`/V 4 /R 4` は `/Length / 8` バイト）を所有者 RC4 鍵とする。
+2. **`/O` の復号**: `/O` の 32 バイトを復号してパディング済み利用者パスワードを復元する。R2 は所有者 RC4 鍵で 1 回 RC4 復号する。R3・R4 は `i = 19..=0` の**逆順** 20 ラウンドで「所有者 RC4 鍵の各バイトと `i` を XOR した鍵」を使って RC4 復号する。
+3. **利用者側アルゴリズムでの検証**: 復元した 32 バイトのパディング済み利用者パスワードを**再パディングせずに** Algorithm 2 へ渡し、Algorithm 6 で `/U` と照合する。照合できれば `PasswordRole::Owner` と検証済みファイル暗号鍵を返す。
+
+### 13.4 R5・R6 のパスワード認証（Algorithm 11 / 12）
+
+R5・R6 はトレイラの `/ID` を参照しません。パスワードバイト列は鍵導出に使う先頭 127 バイトを覆う最小の UTF-8 文字境界まで（最大 130 バイト）を認証 1 回につき一度だけ UTF-8 として検証し、その範囲内に不正な UTF-8 があればどの検証ハッシュとも一致しないため `AuthError::IncorrectPassword` を返します（その文字境界より後ろの未使用バイトは走査せず無視します）。有効なプレフィックスは先頭 127 バイトで切り詰め（127 バイト目が多バイト文字の途中であってもそのまま切る。SASLprep は呼び出し側の責務）、`StandardSecurityHandler::derive_aes256_file_key`（§12）へ委譲します。
+
+- **Algorithm 11（利用者）**: `/U`（48 バイト）の検証用ソルトでハッシュ照合（定数時間比較）し、鍵用ソルトで `/UE`（32 バイト）を復号して `/Perms`（16 バイト）を検証する。
+- **Algorithm 12（所有者）**: `/O`（48 バイト）のソルトと追加データ `/U`（全 48 バイト）でハッシュ照合し、鍵用ソルトで `/OE`（32 バイト）を復号して `/Perms` を検証する。
+
+### 13.5 型による安全境界とエラー分類
+
+- `AuthenticatedFileKey` はフィールドを非公開とし、`authenticate` / `authenticate_as` からのみ構築できる。未認証または誤った鍵のまま復号へ進めないことを型で保証し、`role()`・`key()`・`as_bytes()` を提供する。
+- `FileEncryptionKey` は `Legacy(LegacyFileKey)` / `Aes256(Aes256FileKey)` の鍵種別を表す列挙型であり、単独では鍵の認証済みを保証しない（`Legacy` は `/U` 未照合の `derive_legacy_file_key` の結果も包める）。認証済みの鍵を要求する境界では `AuthenticatedFileKey` を受け取る。`FileEncryptionKey` は `as_bytes()`・`as_legacy()`・`as_aes256()` を提供し、`AuthenticatedFileKey`・`FileEncryptionKey` とも `Clone` / `Copy` を実装せず、`Debug` 出力は `finish_non_exhaustive()`（内包鍵型の秘匿実装を含む）で鍵バイト列を出力しない。
+- `AuthError` はパスワード不一致と暗号化辞書・トレイラの構造不正や改ざんをバリアントで区別する。
+
+| バリアント | 意味 |
+| :--- | :--- |
+| `IncorrectPassword` | 指定パスワード（未指定時は空パスワード）が認証に一致しない（R5・R6 の不正 UTF-8 を含む） |
+| `MissingFileId` | R2〜R4 の認証に必要なトレイラの `/ID` が欠けている |
+| `InvalidEntryLength { key, actual }` | `/O` `/U` `/OE` `/UE` `/Perms` の長さが仕様と異なる |
+| `InvalidKeyLength { length }` | R2〜R4 の鍵長が 5〜16 バイトの範囲に収まらない |
+| `InvalidPermissions` | R5・R6 で復号した `/Perms` の固定値・権限・メタデータフラグが辞書と一致しない |
+| `InvalidHashInput` | R5・R6 の SHA-2 入力長または反復ブロック長を扱えない |
+| `UnsupportedRevision` | 対応外のアルゴリズム版・リビジョンが渡された |
+
+`AuthenticatedFileKey` を用いたオブジェクト単位の鍵導出（Algorithm 1）、文字列・ストリームの復号、および `ObjectResolver`・`PdfDocument` への統合は後続の #683 で扱います。
 
 ---
 

@@ -13,8 +13,9 @@ use super::standard::StandardSecurityHandler;
 
 const ENTRY_LEN: usize = 48;
 const KEY_LEN: usize = 32;
+const PERMS_LEN: usize = 16;
 const SALT_LEN: usize = 8;
-const MAX_PASSWORD_BYTES: usize = 127;
+pub(super) const MAX_PASSWORD_BYTES: usize = 127;
 
 /// 指定したパスワードに対応する辞書項目を選ぶ。
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -106,11 +107,32 @@ impl StandardSecurityHandler {
         };
 
         let entry = PasswordEntry::from_handler(self, keys, role)?;
-        let perms = fixed_entry(EncryptKey::Perms, &keys.perms)?;
+        let perms = fixed_entry::<PERMS_LEN>(EncryptKey::Perms, &keys.perms)?;
         let bytes = prepared_password.as_bytes();
         let password = bytes.get(..MAX_PASSWORD_BYTES).unwrap_or(bytes);
         let key = entry.unlock(revision, password)?;
         Aes256FileKey::verify_permissions(key, perms, self.permissions(), self.encrypt_metadata())
+    }
+
+    /// 指定した役割の R5・R6 認証に必要な辞書項目（`/U` `/O` `/UE` `/OE` `/Perms`）の長さを検証する。
+    ///
+    /// パスワード文字列の UTF-8 判定より先に構造エラーを検出するために使用する。
+    pub(super) fn validate_aes256_entries(
+        &self,
+        role: PasswordRole,
+    ) -> Result<(), Aes256FileKeyError> {
+        let keys = match self.algorithm() {
+            StandardAlgorithm::V5R5 { keys, .. } | StandardAlgorithm::V5R6 { keys, .. } => keys,
+            StandardAlgorithm::V1R2
+            | StandardAlgorithm::V1R3
+            | StandardAlgorithm::V2R3 { .. }
+            | StandardAlgorithm::V4R4 { .. } => {
+                return Err(Aes256FileKeyError::UnsupportedRevision);
+            }
+        };
+        let _ = PasswordEntry::from_handler(self, keys, role)?;
+        let _ = fixed_entry::<PERMS_LEN>(EncryptKey::Perms, &keys.perms)?;
+        Ok(())
     }
 }
 
