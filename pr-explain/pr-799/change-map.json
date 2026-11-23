@@ -1,0 +1,849 @@
+{
+  "version": 2,
+  "pr": 799,
+  "headBranch": "feature/652-typescript-crypto-primitives",
+  "baseBranch": "main",
+  "mergeBase": "0d619acb552c50626ff74f0ac3bbd1fed36f2488",
+  "head": "e536b7b6c9a945cb5431642629bbae0052ea429c",
+  "groups": [
+    {
+      "label": "TypeScript · core",
+      "files": [
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/aes/block/index.ts",
+          "status": "A",
+          "oldPath": null,
+          "additions": 138,
+          "deletions": 0,
+          "changed": true,
+          "target": null
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/aes/byte/index.ts",
+          "status": "A",
+          "oldPath": null,
+          "additions": 38,
+          "deletions": 0,
+          "changed": true,
+          "target": null
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/aes/index.ts",
+          "status": "A",
+          "oldPath": null,
+          "additions": 167,
+          "deletions": 0,
+          "changed": true,
+          "target": null
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/aes/round-keys/index.ts",
+          "status": "A",
+          "oldPath": null,
+          "additions": 60,
+          "deletions": 0,
+          "changed": true,
+          "target": null
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/hash-blocks/index.ts",
+          "status": "A",
+          "oldPath": null,
+          "additions": 52,
+          "deletions": 0,
+          "changed": true,
+          "target": null
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/hex-words/index.ts",
+          "status": "A",
+          "oldPath": null,
+          "additions": 15,
+          "deletions": 0,
+          "changed": true,
+          "target": null
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/index.ts",
+          "status": "A",
+          "oldPath": null,
+          "additions": 11,
+          "deletions": 0,
+          "changed": true,
+          "target": null
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/md5/index.ts",
+          "status": "A",
+          "oldPath": null,
+          "additions": 115,
+          "deletions": 0,
+          "changed": true,
+          "target": null
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/rc4/index.ts",
+          "status": "A",
+          "oldPath": null,
+          "additions": 60,
+          "deletions": 0,
+          "changed": true,
+          "target": null
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/sha2/sha256/index.ts",
+          "status": "A",
+          "oldPath": null,
+          "additions": 121,
+          "deletions": 0,
+          "changed": true,
+          "target": null
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/sha2/sha512/index.ts",
+          "status": "A",
+          "oldPath": null,
+          "additions": 188,
+          "deletions": 0,
+          "changed": true,
+          "target": null
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/word32/index.ts",
+          "status": "A",
+          "oldPath": null,
+          "additions": 17,
+          "deletions": 0,
+          "changed": true,
+          "target": null
+        },
+        {
+          "path": "packages/core/src/utils/option/index.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/utils/result/index.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/utils/types/utility-type.ts",
+          "changed": false
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/__tests__/vectors.test.helpers.ts",
+          "status": "A",
+          "oldPath": null,
+          "additions": 6,
+          "deletions": 0,
+          "changed": true,
+          "target": "packages/core/src/pdf/encryption/primitives/index.ts"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/aes/__tests__/aes.basic.test.ts",
+          "status": "A",
+          "oldPath": null,
+          "additions": 91,
+          "deletions": 0,
+          "changed": true,
+          "target": "packages/core/src/pdf/encryption/primitives/aes/index.ts"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/aes/__tests__/aes.test.helpers.ts",
+          "status": "A",
+          "oldPath": null,
+          "additions": 9,
+          "deletions": 0,
+          "changed": true,
+          "target": "packages/core/src/pdf/encryption/primitives/aes/index.ts"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/aes/__tests__/aes.validation.test.ts",
+          "status": "A",
+          "oldPath": null,
+          "additions": 92,
+          "deletions": 0,
+          "changed": true,
+          "target": "packages/core/src/pdf/encryption/primitives/aes/index.ts"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/md5/__tests__/md5.basic.test.ts",
+          "status": "A",
+          "oldPath": null,
+          "additions": 35,
+          "deletions": 0,
+          "changed": true,
+          "target": "packages/core/src/pdf/encryption/primitives/md5/index.ts"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/rc4/__tests__/rc4.basic.test.ts",
+          "status": "A",
+          "oldPath": null,
+          "additions": 39,
+          "deletions": 0,
+          "changed": true,
+          "target": "packages/core/src/pdf/encryption/primitives/rc4/index.ts"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/sha2/sha256/__tests__/sha256.basic.test.ts",
+          "status": "A",
+          "oldPath": null,
+          "additions": 26,
+          "deletions": 0,
+          "changed": true,
+          "target": "packages/core/src/pdf/encryption/primitives/sha2/sha256/index.ts"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/sha2/sha512/__tests__/sha512.basic.test.ts",
+          "status": "A",
+          "oldPath": null,
+          "additions": 74,
+          "deletions": 0,
+          "changed": true,
+          "target": "packages/core/src/pdf/encryption/primitives/sha2/sha512/index.ts"
+        }
+      ]
+    },
+    {
+      "label": "PDF 仕様の解説",
+      "files": [
+        {
+          "path": "docs/guides/README.md",
+          "status": "M",
+          "oldPath": null,
+          "additions": 1,
+          "deletions": 1,
+          "changed": true,
+          "target": null
+        },
+        {
+          "path": "docs/guides/encryption-dictionary.html",
+          "status": "M",
+          "oldPath": null,
+          "additions": 24,
+          "deletions": 1,
+          "changed": true,
+          "target": null
+        }
+      ]
+    },
+    {
+      "label": "仕様・設計",
+      "files": [
+        {
+          "path": "docs/specs/02b_encryption.md",
+          "status": "M",
+          "oldPath": null,
+          "additions": 1,
+          "deletions": 0,
+          "changed": true,
+          "target": null
+        }
+      ]
+    },
+    {
+      "label": "設定・その他",
+      "files": [
+        {
+          "path": "README.md",
+          "changed": false
+        }
+      ]
+    }
+  ],
+  "tests": {
+    "added": [
+      {
+        "file": "packages/core/src/pdf/encryption/primitives/aes/__tests__/aes.basic.test.ts",
+        "name": "AES-256 の /Perms を復号して権限と末尾の全バイトを保持する"
+      },
+      {
+        "file": "packages/core/src/pdf/encryption/primitives/aes/__tests__/aes.basic.test.ts",
+        "name": "AES-256 の PDF 文字列では先頭の IV と末尾のパディングを除く"
+      },
+      {
+        "file": "packages/core/src/pdf/encryption/primitives/aes/__tests__/aes.basic.test.ts",
+        "name": "FIPS 197 の鍵 %s で ECB の 1 ブロックを復号する"
+      },
+      {
+        "file": "packages/core/src/pdf/encryption/primitives/aes/__tests__/aes.basic.test.ts",
+        "name": "NIST の鍵 %s で CBC の 4 ブロックを復号する"
+      },
+      {
+        "file": "packages/core/src/pdf/encryption/primitives/aes/__tests__/aes.basic.test.ts",
+        "name": "R6 の反復ハッシュで使う AES-128-CBC がパディングを足さない"
+      },
+      {
+        "file": "packages/core/src/pdf/encryption/primitives/aes/__tests__/aes.validation.test.ts",
+        "name": "CBC の IV が 16 バイトに満たないと IV 長のエラーになる"
+      },
+      {
+        "file": "packages/core/src/pdf/encryption/primitives/aes/__tests__/aes.validation.test.ts",
+        "name": "CBC の末尾がブロック未満なら暗号文の長さエラーになる"
+      },
+      {
+        "file": "packages/core/src/pdf/encryption/primitives/aes/__tests__/aes.validation.test.ts",
+        "name": "ECB の 1 ブロックに %i バイト渡すと長さエラーになる"
+      },
+      {
+        "file": "packages/core/src/pdf/encryption/primitives/aes/__tests__/aes.validation.test.ts",
+        "name": "PDF で使えない %i バイトの AES 鍵を拒否する"
+      },
+      {
+        "file": "packages/core/src/pdf/encryption/primitives/aes/__tests__/aes.validation.test.ts",
+        "name": "PDF の CBC 入力が %i バイトなら長さエラーになる"
+      },
+      {
+        "file": "packages/core/src/pdf/encryption/primitives/aes/__tests__/aes.validation.test.ts",
+        "name": "PDF の CBC 平文の末尾が %s ならパディングエラーになる"
+      },
+      {
+        "file": "packages/core/src/pdf/encryption/primitives/aes/__tests__/aes.validation.test.ts",
+        "name": "PDF の CBC 暗号文 %s からパディングを除いた平文を得る"
+      },
+      {
+        "file": "packages/core/src/pdf/encryption/primitives/md5/__tests__/md5.basic.test.ts",
+        "name": "%i バイトの部分ビューの範囲だけを MD5 でハッシュする"
+      },
+      {
+        "file": "packages/core/src/pdf/encryption/primitives/md5/__tests__/md5.basic.test.ts",
+        "name": "RFC 1321 の入力 %j が既知の MD5 ダイジェストになる"
+      },
+      {
+        "file": "packages/core/src/pdf/encryption/primitives/rc4/__tests__/rc4.basic.test.ts",
+        "name": "PDF で使えない %i バイトの RC4 鍵を拒否する"
+      },
+      {
+        "file": "packages/core/src/pdf/encryption/primitives/rc4/__tests__/rc4.basic.test.ts",
+        "name": "RFC 6229 の %i バイト鍵に対する位置 %i の鍵ストリームと一致する"
+      },
+      {
+        "file": "packages/core/src/pdf/encryption/primitives/rc4/__tests__/rc4.basic.test.ts",
+        "name": "暗号文を復号しても入力のバイト列は変わらない"
+      },
+      {
+        "file": "packages/core/src/pdf/encryption/primitives/sha2/sha256/__tests__/sha256.basic.test.ts",
+        "name": "%i バイトの SHA-256 ダイジェストが Rust 版と一致する"
+      },
+      {
+        "file": "packages/core/src/pdf/encryption/primitives/sha2/sha256/__tests__/sha256.basic.test.ts",
+        "name": "SHA-256 が NIST の入力 %j のダイジェストと一致する"
+      },
+      {
+        "file": "packages/core/src/pdf/encryption/primitives/sha2/sha512/__tests__/sha512.basic.test.ts",
+        "name": "SHA-384/512 が NIST の入力 %j の既知のダイジェストと一致する"
+      },
+      {
+        "file": "packages/core/src/pdf/encryption/primitives/sha2/sha512/__tests__/sha512.basic.test.ts",
+        "name": "SHA-384/512 の %j に %i バイトを渡すと Rust 版と一致する"
+      }
+    ],
+    "removed": [],
+    "files": [
+      "packages/core/src/pdf/encryption/primitives/aes/__tests__/aes.basic.test.ts",
+      "packages/core/src/pdf/encryption/primitives/aes/__tests__/aes.validation.test.ts",
+      "packages/core/src/pdf/encryption/primitives/md5/__tests__/md5.basic.test.ts",
+      "packages/core/src/pdf/encryption/primitives/rc4/__tests__/rc4.basic.test.ts",
+      "packages/core/src/pdf/encryption/primitives/sha2/sha256/__tests__/sha256.basic.test.ts",
+      "packages/core/src/pdf/encryption/primitives/sha2/sha512/__tests__/sha512.basic.test.ts"
+    ]
+  },
+  "commits": [
+    {
+      "sha": "e1a43ae12bc35e945c0d09df920d85e56004aba2",
+      "merge": false,
+      "author": "DIO0550",
+      "date": "2026-11-23T23:40:18+09:00",
+      "subject": "✨ [New Feature]: #652 MD5 の同期プリミティブを実装する",
+      "body": "- RFC 1321 の MD5 と共通のハッシュブロック処理を追加する\n- Rust 版と同じ公開ベクタとパディング境界を検証する\n\n背景:\n旧リビジョンの PDF のファイル鍵導出と認証に MD5 が必要。\n\n採用理由:\n完全なブロックは入力のビューから読み、パディングが必要な末尾だけをコピーする。\n\n影響とトレードオフ:\n内部の同期計算として提供する。入力全体を Uint8Array で受け取る。",
+      "files": [
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/__tests__/vectors.test.helpers.ts",
+          "status": "A",
+          "oldPath": null,
+          "additions": 6,
+          "deletions": 0,
+          "patch": "@@ -0,0 +1,6 @@\n+/** 公開ベクタの 16 進表記を、実際に比較するテスト入力と期待値にする。 */\n+export function vectorBytes(hex: string): Uint8Array {\n+  return Uint8Array.from({ length: hex.length / 2 }, (_, index) =>\n+    Number.parseInt(hex.slice(2 * index, 2 * index + 2), 16),\n+  );\n+}",
+          "patchLines": 7,
+          "truncated": false
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/hash-blocks/index.ts",
+          "status": "A",
+          "oldPath": null,
+          "additions": 52,
+          "deletions": 0,
+          "patch": "@@ -0,0 +1,52 @@\n+import type { ValueOf } from \"../../../../utils/types/utility-type\";\n+\n+const BITS_PER_BYTE = 8n;\n+const PAD_START = 0x80;\n+const LOW_BIT_LENGTH_BYTES = 8;\n+\n+/** MD5 の長さはリトルエンディアン、SHA-2 の長さはビッグエンディアン。 */\n+export const HashBlockLayouts = {\n+  Md5: { blockBytes: 64, lengthBytes: 8, littleEndian: true },\n+  Sha256: { blockBytes: 64, lengthBytes: 8, littleEndian: false },\n+  Sha512: { blockBytes: 128, lengthBytes: 16, littleEndian: false },\n+} as const;\n+\n+type HashBlockLayout = ValueOf<typeof HashBlockLayouts>;\n+\n+/**\n+ * 入力の完全なブロックと、パディングを付けた末尾を順に処理する。\n+ * @param input 入力バイト列。\n+ * @param layout ブロックサイズとメッセージ長の配置。\n+ * @param compress ブロックの先頭位置を受け取る圧縮処理。\n+ */\n+export function visitHashBlocks(\n+  input: Uint8Array,\n+  layout: HashBlockLayout,\n+  compress: (view: DataView, offset: number) => void,\n+): void {\n+  const { blockBytes, lengthBytes, littleEndian } = layout;\n+  const remaining = input.length % blockBytes;\n+  const tailStart = input.length - remaining;\n+  const source = new DataView(input.buffer, input.byteOffset, input.byteLength);\n+\n+  for (let offset = 0; offset < tailStart; offset += blockBytes) {\n+    compress(source, offset);\n+  }\n+\n+  const fitsInOneBlock = remaining + 1 + lengthBytes <= blockBytes;\n+  const tail = new Uint8Array(fitsInOneBlock ? blockBytes : 2 * blockBytes);\n+  tail.set(input.subarray(tailStart));\n+  tail[remaining] = PAD_START;\n+\n+  // Uint8Array のビット長は 64 ビットに収まるため、128 ビット長の上位 64 ビットはゼロのまま。\n+  const padded = new DataView(tail.buffer);\n+  padded.setBigUint64(\n+    tail.length - LOW_BIT_LENGTH_BYTES,\n+    BigInt(input.length) * BITS_PER_BYTE,\n+    littleEndian,\n+  );\n+\n+  for (let offset = 0; offset < tail.length; offset += blockBytes) {\n+    compress(padded, offset);\n+  }\n+}",
+          "patchLines": 53,
+          "truncated": false
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/hex-words/index.ts",
+          "status": "A",
+          "oldPath": null,
+          "additions": 15,
+          "deletions": 0,
+          "patch": "@@ -0,0 +1,15 @@\n+/**\n+ * 規格の定数表を空白区切りの 16 進数で宣言し、モジュール初期化時に読み込む。\n+ * @param table 固定の定数表。\n+ * @param parse ワード幅に応じた Number または BigInt。\n+ * @returns 規格と同じ順に並んだ定数。\n+ */\n+export function readHexWords<T extends number | bigint>(\n+  table: string,\n+  parse: (word: string) => T,\n+): readonly T[] {\n+  return table\n+    .trim()\n+    .split(/\\s+/)\n+    .map((word) => parse(`0x${word}`));\n+}",
+          "patchLines": 16,
+          "truncated": false
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/md5/__tests__/md5.basic.test.ts",
+          "status": "A",
+          "oldPath": null,
+          "additions": 35,
+          "deletions": 0,
+          "patch": "@@ -0,0 +1,35 @@\n+import { expect, test } from \"vitest\";\n+import { vectorBytes } from \"../../__tests__/vectors.test.helpers\";\n+import { Md5 } from \"../index\";\n+\n+// RFC 1321 Appendix A.5 と Rust 版の MD5 テストと同じ値。\n+test.each([\n+  [\"\", \"d41d8cd98f00b204e9800998ecf8427e\"],\n+  [\"a\", \"0cc175b9c0f1b6a831c399e269772661\"],\n+  [\"abc\", \"900150983cd24fb0d6963f7d28e17f72\"],\n+  [\"message digest\", \"f96b697d7cb7938d525a2f31aaf161d0\"],\n+  [\"abcdefghijklmnopqrstuvwxyz\", \"c3fcd3d76192e4007dfb496cca67e13b\"],\n+  [\n+    \"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789\",\n+    \"d174ab98d277d9f5a5611c2c9f419d9f\",\n+  ],\n+  [\"1234567890\".repeat(8), \"57edf4a22be3c955ac49da2e2107b67a\"],\n+])(\"RFC 1321 の入力 %j が既知の MD5 ダイジェストになる\", (message, expected) => {\n+  const input = new TextEncoder().encode(message);\n+\n+  expect(Md5.digest(input)).toEqual(vectorBytes(expected));\n+});\n+\n+test.each([\n+  [55, \"6912ee65fff2d9f9ce2508cddf8bcda0\"],\n+  [56, \"51fdd1acda72405dfdfa03fcb85896d7\"],\n+  [64, \"b2d3f56bc197fd985d5965079b5e7148\"],\n+])(\"%i バイトの部分ビューの範囲だけを MD5 でハッシュする\", (length, expected) => {\n+  const buffer = Uint8Array.from(\n+    { length: length + 2 },\n+    (_, index) => index - 1,\n+  );\n+  const input = buffer.subarray(1, -1);\n+\n+  expect(Md5.digest(input)).toEqual(vectorBytes(expected));\n+});",
+          "patchLines": 36,
+          "truncated": false
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/md5/index.ts",
+          "status": "A",
+          "oldPath": null,
+          "additions": 115,
+          "deletions": 0,
+          "patch": "@@ -0,0 +1,115 @@\n+import { HashBlockLayouts, visitHashBlocks } from \"../hash-blocks/index\";\n+import { readHexWords } from \"../hex-words/index\";\n+import { Word32 } from \"../word32/index\";\n+\n+const WORD_BYTES = 4;\n+const WORDS_PER_BLOCK = HashBlockLayouts.Md5.blockBytes / WORD_BYTES;\n+\n+const INITIAL_STATE = /* @__PURE__ */ readHexWords(\n+  `\n+  67452301 efcdab89 98badcfe 10325476\n+`,\n+  Number,\n+);\n+\n+const STEP_CONSTANTS = /* @__PURE__ */ readHexWords(\n+  `\n+  d76aa478 e8c7b756 242070db c1bdceee f57c0faf 4787c62a a8304613 fd469501\n+  698098d8 8b44f7af ffff5bb1 895cd7be 6b901122 fd987193 a679438e 49b40821\n+  f61e2562 c040b340 265e5a51 e9b6c7aa d62f105d 02441453 d8a1e681 e7d3fbc8\n+  21e1cde6 c33707d6 f4d50d87 455a14ed a9e3e905 fcefa3f8 676f02d9 8d2a4c8a\n+  fffa3942 8771f681 6d9d6122 fde5380c a4beea44 4bdecfa9 f6bb4b60 bebfbc70\n+  289b7ec6 eaa127fa d4ef3085 04881d05 d9d4d039 e6db99e5 1fa27cf8 c4ac5665\n+  f4292244 432aff97 ab9423a7 fc93a039 655b59c3 8f0ccc92 ffeff47d 85845dd1\n+  6fa87e4f fe2ce6e0 a3014314 4e0811a1 f7537e82 bd3af235 2ad7d2bb eb86d391\n+`,\n+  Number,\n+);\n+\n+type WorkingState = {\n+  readonly b: number;\n+  readonly c: number;\n+  readonly d: number;\n+};\n+\n+// RFC 1321 §3.4 の F、G、H、I。各グループは別の順番で入力ワードを選ぶ。\n+const ROUNDS = [\n+  {\n+    mix: ({ b, c, d }: WorkingState) => (b & c) | (~b & d),\n+    stride: 1,\n+    firstWord: 0,\n+    shifts: /* @__PURE__ */ readHexWords(\"07 0c 11 16\", Number),\n+  },\n+  {\n+    mix: ({ b, c, d }: WorkingState) => (b & d) | (c & ~d),\n+    selectWord: (step: number) =>\n+      (ROUND_WORD_SELECTION.G.stride * step + ROUND_WORD_SELECTION.G.first) %\n+      WORDS_PER_BLOCK,\n+    shifts: /* @__PURE__ */ readHexWords(\"05 09 0e 14\", Number),\n+  },\n+  {\n+    mix: ({ b, c, d }: WorkingState) => b ^ c ^ d,\n+    selectWord: (step: number) =>\n+      (ROUND_WORD_SELECTION.H.stride * step + ROUND_WORD_SELECTION.H.first) %\n+      WORDS_PER_BLOCK,\n+    shifts: /* @__PURE__ */ readHexWords(\"04 0b 10 17\", Number),\n+  },\n+  {\n+    mix: ({ b, c, d }: WorkingState) => c ^ (b | ~d),\n+    selectWord: (step: number) =>\n+      (ROUND_WORD_SELECTION.I.stride * step) % WORDS_PER_BLOCK,\n+    shifts: /* @__PURE__ */ readHexWords(\"06 0a 0f 15\", Number),\n+  },\n+] as const;\n+\n+/** 旧リビジョンの PDF の標準セキュリティハンドラが使う MD5。 */\n+export const Md5 = {\n+  /**\n+   * RFC 1321 の MD5 を計算する。\n+   * @param input ハッシュ対象のバイト列。\n+   * @returns 16 バイトのダイジェスト。\n+   */\n+  digest(input: Uint8Array): Uint8Array {\n+    const state = new Uint32Array(INITIAL_STATE);\n+\n+    visitHashBlocks(input, HashBlockLayouts.Md5, (view, offset) => {\n+      let [a, b, c, d] = state;\n+      let constantIndex = 0;\n+\n+      for (const round of ROUNDS) {\n+        for (let step = 0; step < WORDS_PER_BLOCK; step++) {\n+          const wordIndex =\n+            (round.stride * step + round.firstWord) % WORDS_PER_BLOCK;\n+          const messageOffset = offset + wordIndex * WORD_BYTES;\n+          const messageWord = view.getUint32(messageOffset, true);\n+          const word =\n+            a +\n+            round.mix({ b, c, d }) +\n+            messageWord +\n+            STEP_CONSTANTS[constantIndex];\n+          const bits = round.shifts[step % round.shifts.length];\n+          const next = (b + Word32.rotateLeft({ word, bits })) >>> 0;\n+\n+          a = d;\n+          d = c;\n+          c = b;\n+          b = next;\n+          constantIndex++;\n+        }\n+      }\n+\n+      for (const [index, word] of [a, b, c, d].entries()) {\n+        state[index] += word;\n+      }\n+    });\n+\n+    const output = new Uint8Array(state.byteLength);\n+    const digest = new DataView(output.buffer);\n+\n+    for (const [index, word] of state.entries()) {\n+      digest.setUint32(index * WORD_BYTES, word, true);\n+    }\n+\n+    return output;\n+  },\n+} as const;",
+          "patchLines": 116,
+          "truncated": false
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/word32/index.ts",
+          "status": "A",
+          "oldPath": null,
+          "additions": 17,
+          "deletions": 0,
+          "patch": "@@ -0,0 +1,17 @@\n+/** MD5 と SHA-256 が使う 32 ビットワードの循環シフト。 */\n+const WORD_BITS = 32;\n+\n+type Rotation = {\n+  readonly word: number;\n+  readonly bits: number;\n+};\n+\n+export const Word32 = {\n+  rotateLeft({ word, bits }: Rotation): number {\n+    return (word << bits) | (word >>> (WORD_BITS - bits));\n+  },\n+\n+  rotateRight({ word, bits }: Rotation): number {\n+    return (word >>> bits) | (word << (WORD_BITS - bits));\n+  },\n+} as const;",
+          "patchLines": 18,
+          "truncated": false
+        }
+      ]
+    },
+    {
+      "sha": "27f26981786395d57254a624813f7f897ea2363d",
+      "merge": false,
+      "author": "DIO0550",
+      "date": "2026-11-23T23:40:28+09:00",
+      "subject": "✨ [New Feature]: #652 PDF の RC4 鍵ストリームを実装する",
+      "body": "- RC4 の 5〜16 バイトの鍵で入力を変換し、新しい配列を返す\n- RFC 6229 の短い鍵と長い鍵、256 バイト以降の位置を検証する\n\n背景:\n旧形式の PDF で、鍵導出とオブジェクトの復号に RC4 が必要。\n\n採用理由:\n呼び出しごとに置換表を初期化して、オブジェクト間で状態を共有しない。\n\n影響とトレードオフ:\n対応する鍵長は標準セキュリティハンドラが使う範囲に限定する。",
+      "files": [
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/rc4/__tests__/rc4.basic.test.ts",
+          "status": "A",
+          "oldPath": null,
+          "additions": 39,
+          "deletions": 0,
+          "patch": "@@ -0,0 +1,39 @@\n+import { assert, expect, test } from \"vitest\";\n+import { vectorBytes } from \"../../__tests__/vectors.test.helpers\";\n+import { Rc4 } from \"../index\";\n+\n+test.each([\n+  [5, 0, \"b2396305f03dc027ccc3524a0a1118a8\"],\n+  [5, 256, \"1cfcf62b03eddb641d77dfcf7f8d8c93\"],\n+  [16, 0, \"9ac7cc9a609d1ef7b2932899cde41b97\"],\n+])(\"RFC 6229 の %i バイト鍵に対する位置 %i の鍵ストリームと一致する\", (length, offset, expected) => {\n+  const key = Uint8Array.from({ length }, (_, index) => index + 1);\n+  const data = new Uint8Array(offset + 16);\n+\n+  const result = Rc4.apply({ key, data });\n+\n+  assert(result.ok);\n+  expect(result.value.subarray(offset)).toEqual(vectorBytes(expected));\n+});\n+\n+test(\"暗号文を復号しても入力のバイト列は変わらない\", () => {\n+  const key = new TextEncoder().encode(\"Secret\");\n+  const data = vectorBytes(\"45a01f645fc35b383552544b9bf5\");\n+\n+  const result = Rc4.apply({ key, data });\n+\n+  assert(result.ok);\n+  expect(new TextDecoder().decode(result.value)).toBe(\"Attack at dawn\");\n+  expect(data).toEqual(vectorBytes(\"45a01f645fc35b383552544b9bf5\"));\n+});\n+\n+test.each([\n+  0, 4, 17,\n+])(\"PDF で使えない %i バイトの RC4 鍵を拒否する\", (length) => {\n+  const result = Rc4.apply({\n+    key: new Uint8Array(length),\n+    data: Uint8Array.of(42),\n+  });\n+\n+  expect(result).toEqual({ ok: false, error: \"INVALID_KEY_LENGTH\" });\n+});",
+          "patchLines": 40,
+          "truncated": false
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/rc4/index.ts",
+          "status": "A",
+          "oldPath": null,
+          "additions": 60,
+          "deletions": 0,
+          "patch": "@@ -0,0 +1,60 @@\n+import { err, ok, type Result } from \"../../../../utils/result/index\";\n+\n+const MIN_KEY_BYTES = 5;\n+const MAX_KEY_BYTES = 16;\n+const STATE_SIZE = 256;\n+const BYTE_MASK = STATE_SIZE - 1;\n+\n+type Rc4Input = {\n+  readonly key: Uint8Array;\n+  readonly data: Uint8Array;\n+};\n+\n+/** 旧形式 PDF の標準セキュリティハンドラが使う RC4。 */\n+export const Rc4 = {\n+  /**\n+   * 新しい鍵ストリームを作り、入力全体に XOR する。同じ操作で暗号化と復号ができる。\n+   * @param input PDF の鍵と暗号化または復号するバイト列。\n+   * @returns 変換済みのバイト列。鍵が 5〜16 バイトでなければ長さエラー。\n+   */\n+  apply({ key, data }: Rc4Input): Result<Uint8Array, \"INVALID_KEY_LENGTH\"> {\n+    if (key.length < MIN_KEY_BYTES || key.length > MAX_KEY_BYTES) {\n+      return err(\"INVALID_KEY_LENGTH\");\n+    }\n+\n+    const permutation = Uint8Array.from(\n+      { length: STATE_SIZE },\n+      (_, index) => index,\n+    );\n+\n+    function swap(first: number, second: number): void {\n+      const value = permutation[first];\n+      permutation[first] = permutation[second];\n+      permutation[second] = value;\n+    }\n+\n+    let j = 0;\n+\n+    for (let i = 0; i < STATE_SIZE; i++) {\n+      j = (j + permutation[i] + key[i % key.length]) & BYTE_MASK;\n+      swap(i, j);\n+    }\n+\n+    // 鍵による初期化の後、鍵ストリームの添字は両方とも 0 から始める。\n+    let i = 0;\n+    j = 0;\n+\n+    const output = new Uint8Array(data.length);\n+\n+    for (let offset = 0; offset < data.length; offset++) {\n+      i = (i + 1) & BYTE_MASK;\n+      j = (j + permutation[i]) & BYTE_MASK;\n+      swap(i, j);\n+\n+      const index = (permutation[i] + permutation[j]) & BYTE_MASK;\n+      output[offset] = data[offset] ^ permutation[index];\n+    }\n+\n+    return ok(output);\n+  },\n+} as const;",
+          "patchLines": 61,
+          "truncated": false
+        }
+      ]
+    },
+    {
+      "sha": "34947516c0f3c3876ca377a17d07ecbc6f51f430",
+      "merge": false,
+      "author": "DIO0550",
+      "date": "2026-11-23T23:40:41+09:00",
+      "subject": "✨ [New Feature]: #652 SHA-256・384・512 を実装する",
+      "body": "- SHA-256 は 32 ビット、SHA-384・512 は 64 ビットのハッシュを提供する\n- NIST ベクタと Rust 版で照合済みの境界値を検証する\n\n背景:\nR5・R6 の AES-256 鍵導出ではリビジョンに応じて SHA-2 を使う。\n\n採用理由:\nSHA-384 と SHA-512 は圧縮処理を共有し、初期値と出力ワード数を分ける。\n\n影響とトレードオフ:\n64 ビットの演算は bigint で表し、ブラウザでも同じ規則で処理する。",
+      "files": [
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/sha2/sha256/__tests__/sha256.basic.test.ts",
+          "status": "A",
+          "oldPath": null,
+          "additions": 26,
+          "deletions": 0,
+          "patch": "@@ -0,0 +1,26 @@\n+import { expect, test } from \"vitest\";\n+import { vectorBytes } from \"../../../__tests__/vectors.test.helpers\";\n+import { Sha256 } from \"../index\";\n+\n+test.each([\n+  [\"\", \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"],\n+  [\"abc\", \"ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad\"],\n+  [\n+    \"abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq\",\n+    \"248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1\",\n+  ],\n+])(\"SHA-256 が NIST の入力 %j のダイジェストと一致する\", (message, expected) => {\n+  const input = new TextEncoder().encode(message);\n+\n+  expect(Sha256.digest(input)).toEqual(vectorBytes(expected));\n+});\n+\n+test.each([\n+  [55, \"463eb28e72f82e0a96c0a4cc53690c571281131f672aa229e0d45ae59b598b59\"],\n+  [56, \"da2ae4d6b36748f2a318f23e7ab1dfdf45acdc9d049bd80e59de82a60895f562\"],\n+  [64, \"fdeab9acf3710362bd2658cdc9a29e8f9c757fcf9811603a8c447cd1d9151108\"],\n+])(\"%i バイトの SHA-256 ダイジェストが Rust 版と一致する\", (length, expected) => {\n+  const input = Uint8Array.from({ length }, (_, index) => index);\n+\n+  expect(Sha256.digest(input)).toEqual(vectorBytes(expected));\n+});",
+          "patchLines": 27,
+          "truncated": false
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/sha2/sha256/index.ts",
+          "status": "A",
+          "oldPath": null,
+          "additions": 121,
+          "deletions": 0,
+          "patch": "@@ -0,0 +1,121 @@\n+import { HashBlockLayouts, visitHashBlocks } from \"../../hash-blocks/index\";\n+import { readHexWords } from \"../../hex-words/index\";\n+import { Word32 } from \"../../word32/index\";\n+\n+const WORD_BYTES = 4;\n+const SCHEDULE_SIGMA0_SHIFT = 3;\n+const SCHEDULE_SIGMA1_SHIFT = 10;\n+const SCHEDULE_PRIOR_WORD_OFFSET = 7;\n+const MESSAGE_WORDS = HashBlockLayouts.Sha256.blockBytes / WORD_BYTES;\n+\n+const INITIAL_STATE = /* @__PURE__ */ readHexWords(\n+  `\n+  6a09e667 bb67ae85 3c6ef372 a54ff53a 510e527f 9b05688c 1f83d9ab 5be0cd19\n+`,\n+  Number,\n+);\n+\n+const ROUND_CONSTANTS = /* @__PURE__ */ readHexWords(\n+  `\n+  428a2f98 71374491 b5c0fbcf e9b5dba5 3956c25b 59f111f1 923f82a4 ab1c5ed5\n+  d807aa98 12835b01 243185be 550c7dc3 72be5d74 80deb1fe 9bdc06a7 c19bf174\n+  e49b69c1 efbe4786 0fc19dc6 240ca1cc 2de92c6f 4a7484aa 5cb0a9dc 76f988da\n+  983e5152 a831c66d b00327c8 bf597fc7 c6e00bf3 d5a79147 06ca6351 14292967\n+  27b70a85 2e1b2138 4d2c6dfc 53380d13 650a7354 766a0abb 81c2c92e 92722c85\n+  a2bfe8a1 a81a664b c24b8b70 c76c51a3 d192e819 d6990624 f40e3585 106aa070\n+  19a4c116 1e376c08 2748774c 34b0bcb5 391c0cb3 4ed8aa4a 5b9cca4f 682e6ff3\n+  748f82ee 78a5636f 84c87814 8cc70208 90befffa a4506ceb bef9a3f7 c67178f2\n+`,\n+  Number,\n+);\n+\n+function scheduleSigma0(word: number): number {\n+  return (\n+    Word32.rotateRight({ word, bits: 7 }) ^\n+    Word32.rotateRight({ word, bits: 18 }) ^\n+    (word >>> SCHEDULE_SIGMA0_SHIFT)\n+  );\n+}\n+\n+function scheduleSigma1(word: number): number {\n+  return (\n+    Word32.rotateRight({ word, bits: 17 }) ^\n+    Word32.rotateRight({ word, bits: 19 }) ^\n+    (word >>> SCHEDULE_SIGMA1_SHIFT)\n+  );\n+}\n+\n+function roundSigma0(word: number): number {\n+  return (\n+    Word32.rotateRight({ word, bits: 2 }) ^\n+    Word32.rotateRight({ word, bits: 13 }) ^\n+    Word32.rotateRight({ word, bits: 22 })\n+  );\n+}\n+\n+function roundSigma1(word: number): number {\n+  return (\n+    Word32.rotateRight({ word, bits: 6 }) ^\n+    Word32.rotateRight({ word, bits: 11 }) ^\n+    Word32.rotateRight({ word, bits: 25 })\n+  );\n+}\n+\n+export const Sha256 = {\n+  /**\n+   * FIPS 180-4 §6.2 の SHA-256 を計算する。\n+   * @param input ハッシュ対象のバイト列。\n+   * @returns 32 バイトのダイジェスト。\n+   */\n+  digest(input: Uint8Array): Uint8Array {\n+    const state = new Uint32Array(INITIAL_STATE);\n+    const schedule = new Uint32Array(ROUND_CONSTANTS.length);\n+\n+    visitHashBlocks(input, HashBlockLayouts.Sha256, (view, offset) => {\n+      for (let i = 0; i < MESSAGE_WORDS; i++) {\n+        schedule[i] = view.getUint32(offset + i * WORD_BYTES);\n+      }\n+\n+      for (let i = MESSAGE_WORDS; i < schedule.length; i++) {\n+        // FIPS 180-4 §6.2.2 の W[t-16]、W[t-15]、W[t-7]、W[t-2] を再利用する。\n+        schedule[i] =\n+          schedule[i - MESSAGE_WORDS] +\n+          scheduleSigma0(schedule[i - MESSAGE_WORDS + 1]) +\n+          schedule[i - SCHEDULE_PRIOR_WORD_OFFSET] +\n+          scheduleSigma1(schedule[i - 2]);\n+      }\n+\n+      let [a, b, c, d, e, f, g, h] = state;\n+\n+      for (let i = 0; i < schedule.length; i++) {\n+        const choice = (e & f) ^ (~e & g);\n+        const majority = (a & b) ^ (a & c) ^ (b & c);\n+        const t1 =\n+          h + roundSigma1(e) + choice + ROUND_CONSTANTS[i] + schedule[i];\n+        const t2 = roundSigma0(a) + majority;\n+\n+        h = g;\n+        g = f;\n+        f = e;\n+        e = (d + t1) >>> 0;\n+        d = c;\n+        c = b;\n+        b = a;\n+        a = (t1 + t2) >>> 0;\n+      }\n+\n+      for (const [index, word] of [a, b, c, d, e, f, g, h].entries()) {\n+        state[index] += word;\n+      }\n+    });\n+\n+    const output = new Uint8Array(state.byteLength);\n+    const digest = new DataView(output.buffer);\n+\n+    for (const [index, word] of state.entries()) {\n+      digest.setUint32(index * WORD_BYTES, word);\n+    }\n+\n+    return output;\n+  },\n+} as const;",
+          "patchLines": 122,
+          "truncated": false
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/sha2/sha512/__tests__/sha512.basic.test.ts",
+          "status": "A",
+          "oldPath": null,
+          "additions": 74,
+          "deletions": 0,
+          "patch": "@@ -0,0 +1,74 @@\n+import { expect, test } from \"vitest\";\n+import { vectorBytes } from \"../../../__tests__/vectors.test.helpers\";\n+import { Sha384, Sha512 } from \"../index\";\n+\n+const longMessage =\n+  \"abcdefghbcdefghicdefghijdefghijkefghijklfghijklmghijklmnhijklmno\" +\n+  \"ijklmnopjklmnopqklmnopqrlmnopqrsmnopqrstnopqrstu\";\n+\n+test.each([\n+  [\n+    Sha384,\n+    \"abc\",\n+    \"cb00753f45a35e8bb5a03d699ac65007272c32ab0eded163\" +\n+      \"1a8b605a43ff5bed8086072ba1e7cc2358baeca134c825a7\",\n+  ],\n+  [\n+    Sha384,\n+    longMessage,\n+    \"09330c33f71147e83d192fc782cd1b4753111b173b3b05d2\" +\n+      \"2fa08086e3b0f712fcc7c71a557e2db966c3e9fa91746039\",\n+  ],\n+  [\n+    Sha512,\n+    \"abc\",\n+    \"ddaf35a193617abacc417349ae20413112e6fa4e89a97ea20a9eeee64b55d39a\" +\n+      \"2192992a274fc1a836ba3c23a3feebbd454d4423643ce80e2a9ac94fa54ca49f\",\n+  ],\n+  [\n+    Sha512,\n+    longMessage,\n+    \"8e959b75dae313da8cf4f72814fc143f8f7779c6eb9f7fa17299aeadb6889018\" +\n+      \"501d289e4900f7e4331b99dec4b5433ac7d329eeb6dd26545e96e55b874be909\",\n+  ],\n+])(\"SHA-384/512 が NIST の入力 %j の既知のダイジェストと一致する\", (algorithm, message, expected) => {\n+  const input = new TextEncoder().encode(message);\n+\n+  expect(algorithm.digest(input)).toEqual(vectorBytes(expected));\n+});\n+\n+test.each([\n+  [\n+    Sha384,\n+    111,\n+    \"f5f9fe110d809d34029de262a01b208356caec6e054c7f92\" +\n+      \"6b2591f6c9780579d4b59f5578c6f531a84f158a33660cef\",\n+  ],\n+  [\n+    Sha384,\n+    128,\n+    \"ca2385773319124534111a36d0581fc3f00815e907034b90\" +\n+      \"cff9c3a861e126a741d5dfcff65a417b6d7296863ac0ec17\",\n+  ],\n+  [\n+    Sha512,\n+    111,\n+    \"a1a111449b198d9b1f538bad7f3fc1022b3a5b1a5e90a0bc860de8512746cbc3\" +\n+      \"1599e6c834de3a3235327af0b51ff57bf7acf1974a73014d9c3953812edc7c8d\",\n+  ],\n+  [\n+    Sha512,\n+    128,\n+    \"1dffd5e3adb71d45d2245939665521ae001a317a03720a45732ba1900ca3b835\" +\n+      \"1fc5c9b4ca513eba6f80bc7b1d1fdad4abd13491cb824d61b08d8c0e1561b3f7\",\n+  ],\n+])(\"SHA-384/512 の %j に %i バイトを渡すと Rust 版と一致する\", (algorithm, length, expected) => {\n+  const buffer = Uint8Array.from(\n+    { length: length + 2 },\n+    (_, index) => index - 1,\n+  );\n+\n+  expect(algorithm.digest(buffer.subarray(1, -1))).toEqual(\n+    vectorBytes(expected),\n+  );\n+});",
+          "patchLines": 75,
+          "truncated": false
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/sha2/sha512/index.ts",
+          "status": "A",
+          "oldPath": null,
+          "additions": 188,
+          "deletions": 0,
+          "patch": "@@ -0,0 +1,188 @@\n+import type { ValueOf } from \"../../../../../utils/types/utility-type\";\n+import { HashBlockLayouts, visitHashBlocks } from \"../../hash-blocks/index\";\n+import { readHexWords } from \"../../hex-words/index\";\n+\n+const WORD_BYTES = 8;\n+const WORD_BITS = 64;\n+const WORD_BITS_BIGINT = BigInt(WORD_BITS);\n+const SCHEDULE_SIGMA0_SHIFT = 7n;\n+const SCHEDULE_SIGMA1_SHIFT = 6n;\n+const SCHEDULE_PRIOR_WORD_OFFSET = 7;\n+const MESSAGE_WORDS = HashBlockLayouts.Sha512.blockBytes / WORD_BYTES;\n+\n+const SHA384_INITIAL_STATE = /* @__PURE__ */ readHexWords(\n+  `\n+  cbbb9d5dc1059ed8 629a292a367cd507 9159015a3070dd17 152fecd8f70e5939\n+  67332667ffc00b31 8eb44a8768581511 db0c2e0d64f98fa7 47b5481dbefa4fa4\n+`,\n+  BigInt,\n+);\n+\n+const SHA512_INITIAL_STATE = /* @__PURE__ */ readHexWords(\n+  `\n+  6a09e667f3bcc908 bb67ae8584caa73b 3c6ef372fe94f82b a54ff53a5f1d36f1\n+  510e527fade682d1 9b05688c2b3e6c1f 1f83d9abfb41bd6b 5be0cd19137e2179\n+`,\n+  BigInt,\n+);\n+\n+const ROUND_CONSTANTS = /* @__PURE__ */ readHexWords(\n+  `\n+  428a2f98d728ae22 7137449123ef65cd b5c0fbcfec4d3b2f e9b5dba58189dbbc\n+  3956c25bf348b538 59f111f1b605d019 923f82a4af194f9b ab1c5ed5da6d8118\n+  d807aa98a3030242 12835b0145706fbe 243185be4ee4b28c 550c7dc3d5ffb4e2\n+  72be5d74f27b896f 80deb1fe3b1696b1 9bdc06a725c71235 c19bf174cf692694\n+  e49b69c19ef14ad2 efbe4786384f25e3 0fc19dc68b8cd5b5 240ca1cc77ac9c65\n+  2de92c6f592b0275 4a7484aa6ea6e483 5cb0a9dcbd41fbd4 76f988da831153b5\n+  983e5152ee66dfab a831c66d2db43210 b00327c898fb213f bf597fc7beef0ee4\n+  c6e00bf33da88fc2 d5a79147930aa725 06ca6351e003826f 142929670a0e6e70\n+  27b70a8546d22ffc 2e1b21385c26c926 4d2c6dfc5ac42aed 53380d139d95b3df\n+  650a73548baf63de 766a0abb3c77b2a8 81c2c92e47edaee6 92722c851482353b\n+  a2bfe8a14cf10364 a81a664bbc423001 c24b8b70d0f89791 c76c51a30654be30\n+  d192e819d6ef5218 d69906245565a910 f40e35855771202a 106aa07032bbd1b8\n+  19a4c116b8d2d0c8 1e376c085141ab53 2748774cdf8eeb99 34b0bcb5e19b48a8\n+  391c0cb3c5c95a63 4ed8aa4ae3418acb 5b9cca4f7763e373 682e6ff3d6b2b8a3\n+  748f82ee5defb2fc 78a5636f43172f60 84c87814a1f0ab72 8cc702081a6439ec\n+  90befffa23631e28 a4506cebde82bde9 bef9a3f7b2c67915 c67178f2e372532b\n+  ca273eceea26619c d186b8c721c0c207 eada7dd6cde0eb1e f57d4f7fee6ed178\n+  06f067aa72176fba 0a637dc5a2c898a6 113f9804bef90dae 1b710b35131c471b\n+  28db77f523047d84 32caab7b40c72493 3c9ebe0a15c9bebc 431d67c49c100d4c\n+  4cc5d4becb3e42b6 597f299cfc657e2a 5fcb6fab3ad6faec 6c44198c4a475817\n+`,\n+  BigInt,\n+);\n+\n+type Rotation = {\n+  readonly word: bigint;\n+  readonly bits: bigint;\n+};\n+\n+function rotateRight({ word, bits }: Rotation): bigint {\n+  return (\n+    (word >> bits) |\n+    BigInt.asUintN(WORD_BITS, word << (WORD_BITS_BIGINT - bits))\n+  );\n+}\n+\n+function scheduleSigma0(word: bigint): bigint {\n+  return (\n+    rotateRight({ word, bits: 1n }) ^\n+    rotateRight({ word, bits: 8n }) ^\n+    (word >> SCHEDULE_SIGMA0_SHIFT)\n+  );\n+}\n+\n+function scheduleSigma1(word: bigint): bigint {\n+  return (\n+    rotateRight({ word, bits: 19n }) ^\n+    rotateRight({ word, bits: 61n }) ^\n+    (word >> SCHEDULE_SIGMA1_SHIFT)\n+  );\n+}\n+\n+function roundSigma0(word: bigint): bigint {\n+  return (\n+    rotateRight({ word, bits: 28n }) ^\n+    rotateRight({ word, bits: 34n }) ^\n+    rotateRight({ word, bits: 39n })\n+  );\n+}\n+\n+function roundSigma1(word: bigint): bigint {\n+  return (\n+    rotateRight({ word, bits: 14n }) ^\n+    rotateRight({ word, bits: 18n }) ^\n+    rotateRight({ word, bits: 41n })\n+  );\n+}\n+\n+const OUTPUT_WORDS = { Sha384: 6, Sha512: 8 } as const;\n+\n+type Sha512Variant = {\n+  readonly initialState: readonly bigint[];\n+  readonly outputWords: ValueOf<typeof OUTPUT_WORDS>;\n+};\n+\n+const SHA384: Sha512Variant = {\n+  initialState: SHA384_INITIAL_STATE,\n+  outputWords: OUTPUT_WORDS.Sha384,\n+};\n+const SHA512: Sha512Variant = {\n+  initialState: SHA512_INITIAL_STATE,\n+  outputWords: OUTPUT_WORDS.Sha512,\n+};\n+\n+function digestSha512Family(\n+  input: Uint8Array,\n+  variant: Sha512Variant,\n+): Uint8Array {\n+  const state = BigUint64Array.from(variant.initialState);\n+  const schedule = new BigUint64Array(ROUND_CONSTANTS.length);\n+\n+  visitHashBlocks(input, HashBlockLayouts.Sha512, (view, offset) => {\n+    for (let i = 0; i < MESSAGE_WORDS; i++) {\n+      schedule[i] = view.getBigUint64(offset + i * WORD_BYTES);\n+    }\n+\n+    for (let i = MESSAGE_WORDS; i < schedule.length; i++) {\n+      schedule[i] =\n+        schedule[i - MESSAGE_WORDS] +\n+        scheduleSigma0(schedule[i - MESSAGE_WORDS + 1]) +\n+        schedule[i - SCHEDULE_PRIOR_WORD_OFFSET] +\n+        scheduleSigma1(schedule[i - 2]);\n+    }\n+\n+    let [a, b, c, d, e, f, g, h] = state;\n+\n+    for (let i = 0; i < schedule.length; i++) {\n+      const choice = (e & f) ^ (~e & g);\n+      const majority = (a & b) ^ (a & c) ^ (b & c);\n+      const t1 = h + roundSigma1(e) + choice + ROUND_CONSTANTS[i] + schedule[i];\n+      const t2 = roundSigma0(a) + majority;\n+\n+      h = g;\n+      g = f;\n+      f = e;\n+      e = BigInt.asUintN(WORD_BITS, d + t1);\n+      d = c;\n+      c = b;\n+      b = a;\n+      a = BigInt.asUintN(WORD_BITS, t1 + t2);\n+    }\n+\n+    for (const [index, word] of [a, b, c, d, e, f, g, h].entries()) {\n+      state[index] += word;\n+    }\n+  });\n+\n+  const output = new Uint8Array(variant.outputWords * WORD_BYTES);\n+  const digest = new DataView(output.buffer);\n+\n+  for (let i = 0; i < variant.outputWords; i++) {\n+    digest.setBigUint64(i * WORD_BYTES, state[i]);\n+  }\n+\n+  return output;\n+}\n+\n+export const Sha384 = {\n+  /**\n+   * FIPS 180-4 §6.5 の SHA-384 を専用初期値から計算する。\n+   * @param input ハッシュ対象のバイト列。\n+   * @returns 最終状態の先頭 48 バイト。\n+   */\n+  digest(input: Uint8Array): Uint8Array {\n+    return digestSha512Family(input, SHA384);\n+  },\n+} as const;\n+\n+export const Sha512 = {\n+  /**\n+   * FIPS 180-4 §6.4 の SHA-512 を計算する。\n+   * @param input ハッシュ対象のバイト列。\n+   * @returns 64 バイトのダイジェスト。\n+   */\n+  digest(input: Uint8Array): Uint8Array {\n+    return digestSha512Family(input, SHA512);\n+  },\n+} as const;",
+          "patchLines": 189,
+          "truncated": false
+        }
+      ]
+    },
+    {
+      "sha": "457f759df88c70c4f071103d071dc813fd6cb336",
+      "merge": false,
+      "author": "DIO0550",
+      "date": "2026-11-23T23:40:52+09:00",
+      "subject": "✨ [New Feature]: #652 AES の CBC・ECB 処理を実装する",
+      "body": "- AES-128・AES-256 のラウンド鍵を作り、PDF の各 AES 形式を処理する\n- R6 の鍵導出で使うパディングなしの CBC 暗号化を用意する\n- 暗号プリミティブを内部モジュールから参照できるようにする\n\n背景:\nファイル鍵、権限ブロック、文字列とストリームで AES の入出力形式が異なる。\n\n採用理由:\n検証した鍵を展開して再利用し、IV とパディングの扱いを入口で明示する。\n\n影響とトレードオフ:\nNode とブラウザに同期処理を揃え、依存パッケージを増やさない。\nすべてを使うと minify・gzip 後に約 5.1 KiB のコードが加わる。\n\n代替案:\nWeb Crypto を併用する場合、MD5・RC4・ECB とパディングなしの CBC に\n別の経路が必要になる。Node 専用 API との切り替えも同様に実装を分岐させる。\n\n参考:\nISO 32000 §7.6、FIPS 197、NIST SP 800-38A。",
+      "files": [
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/aes/__tests__/aes.basic.test.ts",
+          "status": "A",
+          "oldPath": null,
+          "additions": 91,
+          "deletions": 0,
+          "patch": "@@ -0,0 +1,91 @@\n+import { assert, expect, test } from \"vitest\";\n+import { vectorBytes } from \"../../__tests__/vectors.test.helpers\";\n+import { createAes } from \"./aes.test.helpers\";\n+\n+test.each([\n+  [\"000102030405060708090a0b0c0d0e0f\", \"69c4e0d86a7b0430d8cdb78070b4c55a\"],\n+  [\n+    \"000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f\",\n+    \"8ea2b7ca516745bfeafc49904b496089\",\n+  ],\n+])(\"FIPS 197 の鍵 %s で ECB の 1 ブロックを復号する\", (key, ciphertext) => {\n+  const aes = createAes(key);\n+\n+  const result = aes.decryptEcbBlock(vectorBytes(ciphertext));\n+\n+  assert(result.ok);\n+  expect(result.value).toEqual(vectorBytes(\"00112233445566778899aabbccddeeff\"));\n+});\n+\n+const iv = vectorBytes(\"000102030405060708090a0b0c0d0e0f\");\n+const plaintext =\n+  \"6bc1bee22e409f96e93d7e117393172a\" +\n+  \"ae2d8a571e03ac9c9eb76fac45af8e51\" +\n+  \"30c81c46a35ce411e5fbc1191a0a52ef\" +\n+  \"f69f2445df4f9b17ad2b417be66c3710\";\n+const key128 = \"2b7e151628aed2a6abf7158809cf4f3c\";\n+const ciphertext128 =\n+  \"7649abac8119b246cee98e9b12e9197d\" +\n+  \"5086cb9b507219ee95db113a917678b2\" +\n+  \"73bed6b8e3c1743b7116e69e22229516\" +\n+  \"3ff1caa1681fac09120eca307586e1a7\";\n+\n+// NIST SP 800-38A F.2.2 と F.2.6。\n+test.each([\n+  [key128, ciphertext128],\n+  [\n+    \"603deb1015ca71be2b73aef0857d77811f352c073b6108d72d9810a30914dff4\",\n+    \"f58c4c04d6e5f1ba779eabfb5f7bfbd6\" +\n+      \"9cfc4e967edb808d679f777bc6702c7d\" +\n+      \"39f23369a9d9bacfa530e26304231461\" +\n+      \"b2eb05e2c39be9fcda6c19078c6a9d1b\",\n+  ],\n+])(\"NIST の鍵 %s で CBC の 4 ブロックを復号する\", (key, ciphertext) => {\n+  const aes = createAes(key);\n+  const data = vectorBytes(ciphertext);\n+\n+  const result = aes.decryptCbcBlocks({ iv, data });\n+\n+  assert(result.ok);\n+  expect(result.value).toEqual(vectorBytes(plaintext));\n+  expect(data).toEqual(vectorBytes(ciphertext));\n+});\n+\n+test(\"R6 の反復ハッシュで使う AES-128-CBC がパディングを足さない\", () => {\n+  const aes = createAes(key128);\n+\n+  const result = aes.encryptCbcBlocks({\n+    iv,\n+    data: vectorBytes(plaintext),\n+  });\n+\n+  assert(result.ok);\n+  expect(result.value).toEqual(vectorBytes(ciphertext128));\n+});\n+\n+const key256 =\n+  \"000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f\";\n+\n+test(\"AES-256 の PDF 文字列では先頭の IV と末尾のパディングを除く\", () => {\n+  const aes = createAes(key256);\n+  const input = vectorBytes(\n+    \"a0a1a2a3a4a5a6a7a8a9aaabacadaeaf\" +\n+      \"aa21ce5618972cf6990c87a0b04065eb\" +\n+      \"1da720b04e5dded942a216c5b4f681df\",\n+  );\n+\n+  const result = aes.decryptPdfCbc(input);\n+\n+  assert(result.ok);\n+  expect(new TextDecoder().decode(result.value)).toBe(\"PDF stream block!\");\n+});\n+\n+test(\"AES-256 の /Perms を復号して権限と末尾の全バイトを保持する\", () => {\n+  const aes = createAes(key256);\n+  const input = vectorBytes(\"d2ffe8bc214ebc01dff5af20c2b755c8\");\n+\n+  const result = aes.decryptEcbBlock(input);\n+\n+  assert(result.ok);\n+  expect(result.value).toEqual(vectorBytes(\"fcffffffffffffff5461646200010203\"));\n+});",
+          "patchLines": 92,
+          "truncated": false
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/aes/__tests__/aes.test.helpers.ts",
+          "status": "A",
+          "oldPath": null,
+          "additions": 9,
+          "deletions": 0,
+          "patch": "@@ -0,0 +1,9 @@\n+import { assert } from \"vitest\";\n+import { vectorBytes } from \"../../__tests__/vectors.test.helpers\";\n+import { Aes } from \"../index\";\n+\n+export function createAes(hexKey: string): Aes {\n+  const result = Aes.create(vectorBytes(hexKey));\n+  assert(result.ok);\n+  return result.value;\n+}",
+          "patchLines": 10,
+          "truncated": false
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/aes/__tests__/aes.validation.test.ts",
+          "status": "A",
+          "oldPath": null,
+          "additions": 92,
+          "deletions": 0,
+          "patch": "@@ -0,0 +1,92 @@\n+import { assert, expect, test } from \"vitest\";\n+import { vectorBytes } from \"../../__tests__/vectors.test.helpers\";\n+import { Aes } from \"../index\";\n+import { createAes } from \"./aes.test.helpers\";\n+\n+const key128 = \"000102030405060708090a0b0c0d0e0f\";\n+const iv = \"a0a1a2a3a4a5a6a7a8a9aaabacadaeaf\";\n+\n+test.each([\n+  0, 15, 24, 33,\n+])(\"PDF で使えない %i バイトの AES 鍵を拒否する\", (length) => {\n+  expect(Aes.create(new Uint8Array(length))).toEqual({\n+    ok: false,\n+    error: \"INVALID_KEY_LENGTH\",\n+  });\n+});\n+\n+test.each([\n+  0, 15, 17, 32,\n+])(\"ECB の 1 ブロックに %i バイト渡すと長さエラーになる\", (length) => {\n+  const aes = createAes(key128);\n+\n+  expect(aes.decryptEcbBlock(new Uint8Array(length))).toEqual({\n+    ok: false,\n+    error: \"INVALID_BLOCK_LENGTH\",\n+  });\n+});\n+\n+test(\"CBC の IV が 16 バイトに満たないと IV 長のエラーになる\", () => {\n+  const aes = createAes(key128);\n+\n+  const result = aes.decryptCbcBlocks({\n+    iv: new Uint8Array(15),\n+    data: new Uint8Array(16),\n+  });\n+\n+  expect(result).toEqual({ ok: false, error: \"INVALID_IV_LENGTH\" });\n+});\n+\n+test(\"CBC の末尾がブロック未満なら暗号文の長さエラーになる\", () => {\n+  const aes = createAes(key128);\n+\n+  const result = aes.decryptCbcBlocks({\n+    iv: new Uint8Array(16),\n+    data: new Uint8Array(17),\n+  });\n+\n+  expect(result).toEqual({ ok: false, error: \"INVALID_BLOCK_LENGTH\" });\n+});\n+\n+// Rust 版と同じ OpenSSL の暗号文。PDF では IV を先頭に置く。\n+test.each([\n+  [\n+    \"0f7108e8240171ebadaae9bf29a4fa21efc6d88a11d76f86b901e934bbb2cd7e\",\n+    \"0123456789ABCDEF\",\n+  ],\n+  [\"c7c80bc82ca98d60ad992f01fb77b468\", \"0123456789ABCD\\x01\"],\n+  [\"e315209ed0e7c94f74a65c99f6eadc1e\", \"\"],\n+])(\"PDF の CBC 暗号文 %s からパディングを除いた平文を得る\", (ciphertext, expected) => {\n+  const aes = createAes(key128);\n+\n+  const result = aes.decryptPdfCbc(vectorBytes(iv + ciphertext));\n+\n+  assert(result.ok);\n+  expect(new TextDecoder().decode(result.value)).toBe(expected);\n+});\n+\n+test.each([\n+  0, 15, 16, 31, 33,\n+])(\"PDF の CBC 入力が %i バイトなら長さエラーになる\", (length) => {\n+  const aes = createAes(key128);\n+\n+  expect(aes.decryptPdfCbc(new Uint8Array(length))).toEqual({\n+    ok: false,\n+    error: \"INVALID_LENGTH\",\n+  });\n+});\n+\n+test.each([\n+  [\"00\", \"097fac153c4a60c65da846f2c62b7594\"],\n+  [\"01 02\", \"29f3f44782f54428d32dcaf8321b118d\"],\n+  [\n+    \"0x11 が 16 個\",\n+    \"0f7108e8240171ebadaae9bf29a4fa212402865661d1b8b69c7054849c76fcef\",\n+  ],\n+])(\"PDF の CBC 平文の末尾が %s ならパディングエラーになる\", (_, ciphertext) => {\n+  const aes = createAes(key128);\n+\n+  const result = aes.decryptPdfCbc(vectorBytes(iv + ciphertext));\n+\n+  expect(result).toEqual({ ok: false, error: \"INVALID_PADDING\" });\n+});",
+          "patchLines": 93,
+          "truncated": false
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/aes/block/index.ts",
+          "status": "A",
+          "oldPath": null,
+          "additions": 138,
+          "deletions": 0,
+          "patch": "@@ -0,0 +1,138 @@\n+import { multiplyByX, S_BOX } from \"../byte/index\";\n+\n+export const AES_BLOCK_BYTES = 16;\n+const COLUMN_BYTES = 4;\n+\n+function createInverseSBox(): Uint8Array {\n+  const inverse = new Uint8Array(S_BOX.length);\n+\n+  for (const [input, output] of S_BOX.entries()) {\n+    inverse[output] = input;\n+  }\n+\n+  return inverse;\n+}\n+\n+// 状態行列は列順。ShiftRows は同じ行の移動元を列番号から求める。\n+function createShiftRows(direction: 1 | -1): Uint8Array {\n+  return Uint8Array.from({ length: AES_BLOCK_BYTES }, (_, index) => {\n+    const row = index % COLUMN_BYTES;\n+    const column = Math.floor(index / COLUMN_BYTES);\n+    const sourceColumn =\n+      (column + direction * row + COLUMN_BYTES) % COLUMN_BYTES;\n+    return sourceColumn * COLUMN_BYTES + row;\n+  });\n+}\n+const FORWARD = {\n+  box: S_BOX,\n+  sourceIndices: /* @__PURE__ */ createShiftRows(1),\n+} as const;\n+\n+const INVERSE = {\n+  box: /* @__PURE__ */ createInverseSBox(),\n+  sourceIndices: /* @__PURE__ */ createShiftRows(-1),\n+} as const;\n+\n+type Substitution = typeof FORWARD | typeof INVERSE;\n+type TransformBlock = (data: Uint8Array, offset: number) => Uint8Array;\n+type BlockCipher = {\n+  readonly encrypt: TransformBlock;\n+  readonly decrypt: TransformBlock;\n+};\n+\n+/**\n+ * FIPS 197 §5.1・§5.3 の 1 ブロック変換を組み立てる。\n+ * @param roundKeys 生成済みのラウンド鍵。\n+ * @returns 作業用の 16 バイトを再利用する変換器。結果は次の変換前に読み取る。\n+ */\n+export function createBlockCipher(roundKeys: Uint8Array): BlockCipher {\n+  const state = new Uint8Array(AES_BLOCK_BYTES);\n+  const shifted = new Uint8Array(AES_BLOCK_BYTES);\n+  const lastRoundOffset = roundKeys.length - AES_BLOCK_BYTES;\n+\n+  function loadBlock(data: Uint8Array, offset: number): void {\n+    for (let i = 0; i < AES_BLOCK_BYTES; i++) {\n+      state[i] = data[offset + i];\n+    }\n+  }\n+\n+  function addRoundKey(keyOffset: number): void {\n+    for (let i = 0; i < AES_BLOCK_BYTES; i++) {\n+      state[i] ^= roundKeys[keyOffset + i];\n+    }\n+  }\n+\n+  function substituteAndShift({ box, sourceIndices }: Substitution): void {\n+    for (let i = 0; i < AES_BLOCK_BYTES; i++) {\n+      shifted[i] = box[state[sourceIndices[i]]];\n+    }\n+\n+    state.set(shifted);\n+  }\n+\n+  function mixColumns(inverse: boolean): void {\n+    for (let i = 0; i < AES_BLOCK_BYTES; i += COLUMN_BYTES) {\n+      let a = state[i];\n+      let b = state[i + 1];\n+      let c = state[i + 2];\n+      const end = i + COLUMN_BYTES - 1;\n+      let d = state[end];\n+\n+      if (inverse) {\n+        // 逆行列の前処理を適用すると、残りは通常の MixColumns と同じ式で計算できる。\n+        const even = multiplyByX(multiplyByX(a ^ c));\n+        const odd = multiplyByX(multiplyByX(b ^ d));\n+        a ^= even;\n+        b ^= odd;\n+        c ^= even;\n+        d ^= odd;\n+      }\n+\n+      const all = a ^ b ^ c ^ d;\n+      state[i] = a ^ all ^ multiplyByX(a ^ b);\n+      state[i + 1] = b ^ all ^ multiplyByX(b ^ c);\n+      state[i + 2] = c ^ all ^ multiplyByX(c ^ d);\n+      state[end] = d ^ all ^ multiplyByX(d ^ a);\n+    }\n+  }\n+\n+  return {\n+    encrypt(data, offset) {\n+      loadBlock(data, offset);\n+      addRoundKey(0);\n+\n+      for (\n+        let round = AES_BLOCK_BYTES;\n+        round < lastRoundOffset;\n+        round += AES_BLOCK_BYTES\n+      ) {\n+        substituteAndShift(FORWARD);\n+        mixColumns(false);\n+        addRoundKey(round);\n+      }\n+\n+      substituteAndShift(FORWARD);\n+      addRoundKey(lastRoundOffset);\n+      return state;\n+    },\n+\n+    decrypt(data, offset) {\n+      loadBlock(data, offset);\n+      addRoundKey(lastRoundOffset);\n+\n+      for (\n+        let round = lastRoundOffset - AES_BLOCK_BYTES;\n+        round > 0;\n+        round -= AES_BLOCK_BYTES\n+      ) {\n+        substituteAndShift(INVERSE);\n+        addRoundKey(round);\n+        mixColumns(true);\n+      }\n+\n+      substituteAndShift(INVERSE);\n+      addRoundKey(0);\n+      return state;\n+    },\n+  };\n+}",
+          "patchLines": 139,
+          "truncated": false
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/aes/byte/index.ts",
+          "status": "A",
+          "oldPath": null,
+          "additions": 38,
+          "deletions": 0,
+          "patch": "@@ -0,0 +1,38 @@\n+import { readHexWords } from \"../../hex-words/index\";\n+\n+const HIGH_BIT = 0x80;\n+const BYTE_MASK = 0xff;\n+const REDUCTION_POLYNOMIAL = 0x1b;\n+\n+/** FIPS 197 §5.1.1 のバイト置換表。 */\n+export const S_BOX = /* @__PURE__ */ readHexWords(\n+  `\n+  63 7c 77 7b f2 6b 6f c5 30 01 67 2b fe d7 ab 76\n+  ca 82 c9 7d fa 59 47 f0 ad d4 a2 af 9c a4 72 c0\n+  b7 fd 93 26 36 3f f7 cc 34 a5 e5 f1 71 d8 31 15\n+  04 c7 23 c3 18 96 05 9a 07 12 80 e2 eb 27 b2 75\n+  09 83 2c 1a 1b 6e 5a a0 52 3b d6 b3 29 e3 2f 84\n+  53 d1 00 ed 20 fc b1 5b 6a cb be 39 4a 4c 58 cf\n+  d0 ef aa fb 43 4d 33 85 45 f9 02 7f 50 3c 9f a8\n+  51 a3 40 8f 92 9d 38 f5 bc b6 da 21 10 ff f3 d2\n+  cd 0c 13 ec 5f 97 44 17 c4 a7 7e 3d 64 5d 19 73\n+  60 81 4f dc 22 2a 90 88 46 ee b8 14 de 5e 0b db\n+  e0 32 3a 0a 49 06 24 5c c2 d3 ac 62 91 95 e4 79\n+  e7 c8 37 6d 8d d5 4e a9 6c 56 f4 ea 65 7a ae 08\n+  ba 78 25 2e 1c a6 b4 c6 e8 dd 74 1f 4b bd 8b 8a\n+  70 3e b5 66 48 03 f6 0e 61 35 57 b9 86 c1 1d 9e\n+  e1 f8 98 11 69 d9 8e 94 9b 1e 87 e9 ce 55 28 df\n+  8c a1 89 0d bf e6 42 68 41 99 2d 0f b0 54 bb 16\n+`,\n+  Number,\n+);\n+\n+/**\n+ * AES の有限体でバイトに x を掛ける（FIPS 197 §4.2）。\n+ * @param byte 1 バイトの係数。\n+ * @returns 8 ビットに収めた積。\n+ */\n+export function multiplyByX(byte: number): number {\n+  const reduced = (byte & HIGH_BIT) === 0 ? 0 : REDUCTION_POLYNOMIAL;\n+  return ((byte << 1) & BYTE_MASK) ^ reduced;\n+}",
+          "patchLines": 39,
+          "truncated": false
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/aes/index.ts",
+          "status": "A",
+          "oldPath": null,
+          "additions": 167,
+          "deletions": 0,
+          "patch": "@@ -0,0 +1,167 @@\n+import { none, type Option, some } from \"../../../../utils/option/index\";\n+import { err, ok, type Result } from \"../../../../utils/result/index\";\n+import { AES_BLOCK_BYTES, createBlockCipher } from \"./block/index\";\n+import { AesKeyLengths, expandRoundKeys } from \"./round-keys/index\";\n+\n+type CbcInput = {\n+  readonly iv: Uint8Array;\n+  readonly data: Uint8Array;\n+};\n+\n+type CbcError = \"INVALID_IV_LENGTH\" | \"INVALID_BLOCK_LENGTH\";\n+type PdfCbcError = \"INVALID_LENGTH\" | \"INVALID_PADDING\";\n+\n+/** 1 つの鍵を展開した AES-128 または AES-256。 */\n+export type Aes = {\n+  /** /Perms など、パディングのない 16 バイトを復号する。 */\n+  readonly decryptEcbBlock: (\n+    ciphertext: Uint8Array,\n+  ) => Result<Uint8Array, \"INVALID_BLOCK_LENGTH\">;\n+\n+  /** IV を別に受け取り、完全なブロック列を復号する。パディングは保持する。 */\n+  readonly decryptCbcBlocks: (input: CbcInput) => Result<Uint8Array, CbcError>;\n+\n+  /** Algorithm 2.B の作業ブロック列を暗号化する。パディングは付けない。 */\n+  readonly encryptCbcBlocks: (input: CbcInput) => Result<Uint8Array, CbcError>;\n+\n+  /** AESV2/AESV3 の文字列・ストリームを復号する。先頭の IV と末尾のパディングは除く。 */\n+  readonly decryptPdfCbc: (\n+    input: Uint8Array,\n+  ) => Result<Uint8Array, PdfCbcError>;\n+};\n+\n+function validateCbcInput({ iv, data }: CbcInput): Option<CbcError> {\n+  if (iv.length !== AES_BLOCK_BYTES) {\n+    return some(\"INVALID_IV_LENGTH\");\n+  }\n+\n+  if (data.length % AES_BLOCK_BYTES !== 0) {\n+    return some(\"INVALID_BLOCK_LENGTH\");\n+  }\n+\n+  return none;\n+}\n+\n+function decryptCbc(roundKeys: Uint8Array, { iv, data }: CbcInput): Uint8Array {\n+  const cipher = createBlockCipher(roundKeys);\n+  const output = new Uint8Array(data.length);\n+  let previous = iv;\n+  let previousOffset = 0;\n+\n+  for (let offset = 0; offset < data.length; offset += AES_BLOCK_BYTES) {\n+    const block = cipher.decrypt(data, offset);\n+\n+    for (let i = 0; i < AES_BLOCK_BYTES; i++) {\n+      output[offset + i] = block[i] ^ previous[previousOffset + i];\n+    }\n+\n+    previous = data;\n+    previousOffset = offset;\n+  }\n+\n+  return output;\n+}\n+\n+function encryptCbc(roundKeys: Uint8Array, { iv, data }: CbcInput): Uint8Array {\n+  const cipher = createBlockCipher(roundKeys);\n+  const output = new Uint8Array(data.length);\n+  const block = new Uint8Array(AES_BLOCK_BYTES);\n+  let previous = iv;\n+  let previousOffset = 0;\n+\n+  for (let offset = 0; offset < data.length; offset += AES_BLOCK_BYTES) {\n+    for (let i = 0; i < AES_BLOCK_BYTES; i++) {\n+      block[i] = data[offset + i] ^ previous[previousOffset + i];\n+    }\n+\n+    output.set(cipher.encrypt(block, 0), offset);\n+    previous = output;\n+    previousOffset = offset;\n+  }\n+\n+  return output;\n+}\n+\n+function removePdfPadding(\n+  plaintext: Uint8Array,\n+): Result<Uint8Array, PdfCbcError> {\n+  const lastIndex = plaintext.length - 1;\n+  const padding = plaintext[lastIndex];\n+  let mismatch = 0;\n+\n+  // 不一致を見つけても、検査範囲は常に末尾の 1 ブロック。\n+  for (let i = 0; i < AES_BLOCK_BYTES; i++) {\n+    const mask = -Number(i < padding);\n+    mismatch |= (plaintext[lastIndex - i] ^ padding) & mask;\n+  }\n+\n+  const validLength = padding >= 1 && padding <= AES_BLOCK_BYTES;\n+\n+  if (!validLength || mismatch !== 0) {\n+    return err(\"INVALID_PADDING\");\n+  }\n+\n+  return ok(plaintext.subarray(0, plaintext.length - padding));\n+}\n+\n+export const Aes = {\n+  /**\n+   * 鍵長を検証し、ラウンド鍵を生成する。\n+   * @param key AES-128 または AES-256 の生の鍵。\n+   * @returns 再利用できる AES。鍵が 16 または 32 バイトでなければ長さエラー。\n+   */\n+  create(key: Uint8Array): Result<Aes, \"INVALID_KEY_LENGTH\"> {\n+    if (\n+      key.length !== AesKeyLengths.Aes128 &&\n+      key.length !== AesKeyLengths.Aes256\n+    ) {\n+      return err(\"INVALID_KEY_LENGTH\");\n+    }\n+\n+    const roundKeys = expandRoundKeys(key);\n+\n+    return ok<Aes>({\n+      decryptEcbBlock(ciphertext) {\n+        if (ciphertext.length !== AES_BLOCK_BYTES) {\n+          return err(\"INVALID_BLOCK_LENGTH\");\n+        }\n+\n+        const cipher = createBlockCipher(roundKeys);\n+        return ok(cipher.decrypt(ciphertext, 0));\n+      },\n+\n+      decryptCbcBlocks(input) {\n+        const invalid = validateCbcInput(input);\n+\n+        if (invalid.some) {\n+          return err(invalid.value);\n+        }\n+\n+        return ok(decryptCbc(roundKeys, input));\n+      },\n+\n+      encryptCbcBlocks(input) {\n+        const invalid = validateCbcInput(input);\n+\n+        if (invalid.some) {\n+          return err(invalid.value);\n+        }\n+\n+        return ok(encryptCbc(roundKeys, input));\n+      },\n+\n+      decryptPdfCbc(input) {\n+        const hasIvAndCiphertext = input.length >= 2 * AES_BLOCK_BYTES;\n+        const aligned = input.length % AES_BLOCK_BYTES === 0;\n+\n+        if (!hasIvAndCiphertext || !aligned) {\n+          return err(\"INVALID_LENGTH\");\n+        }\n+\n+        const iv = input.subarray(0, AES_BLOCK_BYTES);\n+        const data = input.subarray(AES_BLOCK_BYTES);\n+        return removePdfPadding(decryptCbc(roundKeys, { iv, data }));\n+      },\n+    });\n+  },\n+} as const;",
+          "patchLines": 168,
+          "truncated": false
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/aes/round-keys/index.ts",
+          "status": "A",
+          "oldPath": null,
+          "additions": 60,
+          "deletions": 0,
+          "patch": "@@ -0,0 +1,60 @@\n+import { AES_BLOCK_BYTES } from \"../block/index\";\n+import { multiplyByX, S_BOX } from \"../byte/index\";\n+\n+const WORD_BYTES = 4;\n+const LAST_WORD_BYTE = WORD_BYTES - 1;\n+const AES_ROUND_BASE = 6;\n+export const AesKeyLengths = { Aes128: 16, Aes256: 32 } as const;\n+\n+/**\n+ * FIPS 197 §5.2 の鍵スケジュールを展開する。\n+ * @param key 生成時に検証した 16 または 32 バイトの鍵。\n+ * @returns 先頭に元の鍵を含むラウンド鍵。\n+ */\n+export function expandRoundKeys(key: Uint8Array): Uint8Array {\n+  const rounds = key.length / WORD_BYTES + AES_ROUND_BASE;\n+  const expanded = new Uint8Array((rounds + 1) * AES_BLOCK_BYTES);\n+  expanded.set(key);\n+\n+  const word = new Uint8Array(WORD_BYTES);\n+  let roundConstant = 1;\n+\n+  for (\n+    let offset = key.length;\n+    offset < expanded.length;\n+    offset += WORD_BYTES\n+  ) {\n+    const previousOffset = offset - WORD_BYTES;\n+\n+    for (let i = 0; i < WORD_BYTES; i++) {\n+      word[i] = expanded[previousOffset + i];\n+    }\n+\n+    const offsetInKey = offset % key.length;\n+\n+    if (offsetInKey === 0) {\n+      const firstByte = word[0];\n+      word[0] = S_BOX[word[1]] ^ roundConstant;\n+      word[1] = S_BOX[word[2]];\n+      word[2] = S_BOX[word[LAST_WORD_BYTE]];\n+      word[LAST_WORD_BYTE] = S_BOX[firstByte];\n+      roundConstant = multiplyByX(roundConstant);\n+    }\n+\n+    if (\n+      key.length === AesKeyLengths.Aes256 &&\n+      offsetInKey === AES_BLOCK_BYTES\n+    ) {\n+      // AES-256 は鍵の中間のワードにも SubWord を適用する。\n+      for (let i = 0; i < WORD_BYTES; i++) {\n+        word[i] = S_BOX[word[i]];\n+      }\n+    }\n+\n+    for (let i = 0; i < WORD_BYTES; i++) {\n+      expanded[offset + i] = expanded[offset + i - key.length] ^ word[i];\n+    }\n+  }\n+\n+  return expanded;\n+}",
+          "patchLines": 61,
+          "truncated": false
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/index.ts",
+          "status": "A",
+          "oldPath": null,
+          "additions": 11,
+          "deletions": 0,
+          "patch": "@@ -0,0 +1,11 @@\n+/**\n+ * PDF の標準セキュリティハンドラ用の同期プリミティブ。\n+ *\n+ * Web Crypto は MD5・RC4・ECB とパディングなしの CBC を揃えられない。\n+ * TypeScript に揃えると Node とブラウザで同じ同期 API を使え、環境別の実装や依存パッケージをバンドルする必要がない。\n+ */\n+export { Aes } from \"./aes/index\";\n+export { Md5 } from \"./md5/index\";\n+export { Rc4 } from \"./rc4/index\";\n+export { Sha256 } from \"./sha2/sha256/index\";\n+export { Sha384, Sha512 } from \"./sha2/sha512/index\";",
+          "patchLines": 12,
+          "truncated": false
+        }
+      ]
+    },
+    {
+      "sha": "e536b7b6c9a945cb5431642629bbae0052ea429c",
+      "merge": false,
+      "author": "DIO0550",
+      "date": "2026-11-23T23:41:08+09:00",
+      "subject": "📝 [Doc]: #652 PDF と TypeScript の暗号処理の対応を説明する",
+      "body": "- 辞書の項目と同期プリミティブの対応表を解説に追加する\n- CBC の 2 つの入口と subarray による分割をコードで示す\n\n背景:\n暗号文だけを渡す CBC と IV を含む PDF の CBC では、扱うバイト列が異なる。\n\n採用理由:\n既存の暗号化辞書の図と具体例から TypeScript の入口をたどれるようにする。\n\n影響とトレードオフ:\n暗号化 PDF を開く経路には鍵導出・認証・読み込み処理の接続が必要。",
+      "files": [
+        {
+          "path": "docs/guides/README.md",
+          "status": "M",
+          "oldPath": null,
+          "additions": 1,
+          "deletions": 1,
+          "patch": "@@ -16,7 +16,7 @@ PDF機能の実装に合わせて、仕様の読み方と実装の振る舞い\n | [テキスト文字列](text-strings.html) | PDFDocEncoding・UTF-16BE・UTF-8、BOM判定、未割当バイト、サロゲート、不正入力の拒否／置換、バイト列との型境界 | [Issue #637](https://github.com/DIO0550/pdfmod/issues/637) / `rust/crates/core/src/text_string.rs` |\n | [日付文字列](date-format.html) | ISO 32000-1 / ISO 32000-2 構文、D: 接頭辞、階層的省略、タイムゾーン形式（' 区切り・Z）、うるう年・カレンダー厳格検証 | [Issue #638](https://github.com/DIO0550/pdfmod/issues/638) / `rust/crates/core/src/date.rs` |\n | [字句トークンと描画命令の境界](token-layers.html) | 字句解析と演算子の再分類、LexicalTokenとContentStreamToken、巻き戻しと画像辞書の型境界、Operator.value、正常例・未知の命令・壊れた画像 | [Issue #308](https://github.com/DIO0550/pdfmod/issues/308) / `packages/core/src/pdf/types/token/index.ts` |\n-| [暗号化辞書](encryption-dictionary.html) | Standard の6組と方式ごとの型・生成処理、crypt filter と Identity、鍵長の単位正規化、符号なし権限、未対応辞書の保持、間接参照と解析の境界、旧形式のMD5とRC4、リビジョン6のSHA-2、AESのIV・パディング・権限ブロック、[R2〜R4のファイル暗号鍵導出](encryption-dictionary.html#legacy-file-key)、[R5・R6のファイル暗号鍵と権限検証](encryption-dictionary.html#aes256-file-key)、[パスワード認証（Algorithm 6 / 7 / 11 / 12）と役割判定](encryption-dictionary.html#password-auth) | [Issue #651](https://github.com/DIO0550/pdfmod/issues/651) / [Issue #639](https://github.com/DIO0550/pdfmod/issues/639) / [Issue #640](https://github.com/DIO0550/pdfmod/issues/640) / [Issue #641](https://github.com/DIO0550/pdfmod/issues/641) / [Issue #642](https://github.com/DIO0550/pdfmod/issues/642) / [Issue #662](https://github.com/DIO0550/pdfmod/issues/662) / [Issue #663](https://github.com/DIO0550/pdfmod/issues/663) / [Issue #675](https://github.com/DIO0550/pdfmod/issues/675) / `packages/core/src/pdf/encryption/index.ts` / `rust/crates/core/src/encrypt.rs` / `rust/crates/core/src/encrypt/md5.rs` / `rust/crates/core/src/encrypt/rc4.rs` / `rust/crates/core/src/encrypt/sha2.rs` / `rust/crates/core/src/encrypt/aes.rs` / `rust/crates/core/src/encrypt/legacy_key.rs` / `rust/crates/core/src/encrypt/aes256_key.rs` / `rust/crates/core/src/encrypt/auth.rs` |\n+| [暗号化辞書](encryption-dictionary.html) | Standard の6組と方式ごとの型・生成処理、crypt filter と Identity、鍵長の単位正規化、符号なし権限、未対応辞書の保持、間接参照と解析の境界、旧形式のMD5とRC4、リビジョン6のSHA-2、AESのIV・パディング・権限ブロック、[R2〜R4のファイル暗号鍵導出](encryption-dictionary.html#legacy-file-key)、[R5・R6のファイル暗号鍵と権限検証](encryption-dictionary.html#aes256-file-key)、[パスワード認証（Algorithm 6 / 7 / 11 / 12）と役割判定](encryption-dictionary.html#password-auth)、[TypeScriptの暗号プリミティブ](encryption-dictionary.html#typescript-primitives) | [Issue #651](https://github.com/DIO0550/pdfmod/issues/651) / [Issue #639](https://github.com/DIO0550/pdfmod/issues/639) / [Issue #640](https://github.com/DIO0550/pdfmod/issues/640) / [Issue #641](https://github.com/DIO0550/pdfmod/issues/641) / [Issue #642](https://github.com/DIO0550/pdfmod/issues/642) / [Issue #662](https://github.com/DIO0550/pdfmod/issues/662) / [Issue #663](https://github.com/DIO0550/pdfmod/issues/663) / [Issue #675](https://github.com/DIO0550/pdfmod/issues/675) / [Issue #652](https://github.com/DIO0550/pdfmod/issues/652) / `packages/core/src/pdf/encryption/index.ts` / `packages/core/src/pdf/encryption/primitives/` / `rust/crates/core/src/encrypt.rs` / `rust/crates/core/src/encrypt/md5.rs` / `rust/crates/core/src/encrypt/rc4.rs` / `rust/crates/core/src/encrypt/sha2.rs` / `rust/crates/core/src/encrypt/aes.rs` / `rust/crates/core/src/encrypt/legacy_key.rs` / `rust/crates/core/src/encrypt/aes256_key.rs` / `rust/crates/core/src/encrypt/auth.rs` |\n | [拡張グラフィックス状態](ext-gstate.html) | gs の名前解決、各パラメータ、Font の辞書指定、透明度、q/Q、警告と回復 | [Issue #667](https://github.com/DIO0550/pdfmod/issues/667) / `packages/core/src/content-stream/ext-gstate/index.ts` |\n | [パターンとシェーディング](patterns-shadings.html) | PatternType・ShadingType、着色と基底色、scn / SCN / sh、間接参照、Functionの未評価保持、警告と回復 | [Issue #677](https://github.com/DIO0550/pdfmod/issues/677) / `packages/core/src/content-stream/paint-resources/` / `packages/core/src/document/resources/pattern/` / `packages/core/src/document/resources/shading/` |\n ",
+          "patchLines": 9,
+          "truncated": false
+        },
+        {
+          "path": "docs/guides/encryption-dictionary.html",
+          "status": "M",
+          "oldPath": null,
+          "additions": 24,
+          "deletions": 1,
+          "patch": "@@ -166,7 +166,8 @@ nav a { font-size: 16px; } table { font-size: 17px; } th { font-size: 15px; }\n <a href=\"#implementation\"><span>07</span>解析の境界</a><a href=\"#algorithm-types\"><span>08</span>方式ごとの型と責務</a>\n <a href=\"#legacy-md5\"><span>09</span>旧リビジョンの鍵導出とMD5</a><a href=\"#legacy-rc4\"><span>10</span>旧形式のRC4</a>\n <a href=\"#revision6-sha2\"><span>11</span>リビジョン6のSHA-2</a><a href=\"#aes-decryption\"><span>12</span>AESのCBC・ECB復号</a>\n-<a href=\"#aes256-file-key\"><span>13</span>AES-256のファイル暗号鍵</a><a href=\"#password-auth\"><span>14</span>パスワード認証</a></nav></aside>\n+<a href=\"#aes256-file-key\"><span>13</span>AES-256のファイル暗号鍵</a><a href=\"#password-auth\"><span>14</span>パスワード認証</a>\n+<a href=\"#typescript-primitives\"><span>15</span>TypeScriptの暗号プリミティブ</a></nav></aside>\n <main id=\"top\"><div class=\"wrap\"><header class=\"hero\"><div class=\"eyebrow\">PDF INTERNALS / ENCRYPTION DICTIONARY</div>\n <h1>暗号化辞書を読む</h1><p class=\"lead\">PDFの <code>/Encrypt</code> は、暗号化の方式と鍵の材料を記述します。アルゴリズムの版、crypt filter、権限を、解釈できる型へ変換する仕組みを見ていきます。</p></header>\n <section class=\"section\" id=\"overview\"><div class=\"section-heading\"><span class=\"number\">01</span><h2>暗号化の起点</h2></div>\n@@ -660,5 +661,27 @@ assert_eq!(digest, <span class=\"type\">Md5</span>::digest(<span class=\"string\">b\"\n <div class=\"note\"><strong>定数時間比較と鍵の秘匿</strong><code>/U</code> や検証ハッシュの照合には、先頭で不一致を見つけても打ち切らず全バイトを XOR で畳み込む<strong>定数時間比較（constant-time comparison）</strong>を使います。また <code>AuthenticatedFileKey</code> と内包する鍵型は <code>Debug</code> フォーマットで鍵バイト列を出力しません。</div>\n <div class=\"note warning\"><strong>仕様と実装方針の境界</strong>R3・R4 の <code>/U</code> で照合対象となるのは先頭16バイトですが、pdfmod は辞書項目として32バイトちょうどの長さを要求します。R5・R6 の SASLprep は呼び出し側で行い、鍵導出に使う先頭127バイトを覆う最小のUTF-8文字境界まで（最大130バイト）を検証して不正な UTF-8 は <code>IncorrectPassword</code> として扱います（文字境界より後ろの未使用バイトは走査しません）。検証済みの鍵を使ったオブジェクト単位の鍵導出（Algorithm 1）、文字列・ストリームの復号、<code>PdfDocument</code> への統合は後続の実装で扱います。</div>\n </section>\n+<section class=\"section\" id=\"typescript-primitives\">\n+<div class=\"section-heading\"><span class=\"number\">15</span><h2>TypeScriptの暗号プリミティブ</h2></div>\n+<p>暗号プリミティブは、バイト列をハッシュしたり、鍵で変換したりする計算の部品です。暗号化辞書からどの鍵と方式を使うかが決まると、次の部品にバイト列を渡せます。</p>\n+<div class=\"table-wrap\" tabindex=\"0\" role=\"region\" aria-label=\"PDFの処理とTypeScriptの暗号プリミティブ\">\n+<table><thead><tr><th scope=\"col\">PDFで必要な処理</th><th scope=\"col\">TypeScriptの入口</th><th scope=\"col\">渡すデータ</th></tr></thead><tbody>\n+<tr><td>R2〜R4の鍵導出・旧形式の復号</td><td><code>Md5.digest</code>・<code>Rc4.apply</code></td><td>ハッシュするバイト列、または5〜16バイトの鍵と暗号文</td></tr>\n+<tr><td>R5・R6の鍵導出</td><td><code>Sha256.digest</code>・<code>Sha384.digest</code>・<code>Sha512.digest</code></td><td>ハッシュするバイト列。R5はSHA-256、R6はSHA-256で始めて反復中に3種を使い分ける。Algorithm 2.B では <code>encryptCbcBlocks</code> でAES-128の作業ブロックを作る</td></tr>\n+<tr><td><code>/UE</code>・<code>/OE</code> のファイル鍵</td><td><code>decryptCbcBlocks</code></td><td>別に渡す16バイトのゼロIVと32バイトの暗号文。復号後の32バイトをすべて使う</td></tr>\n+<tr><td><code>/Perms</code> の権限ブロック</td><td><code>decryptEcbBlock</code></td><td>16バイトの暗号文。復号後の全16バイトを権限検証に渡す</td></tr>\n+<tr><td>AESV2・AESV3の文字列・ストリーム</td><td><code>decryptPdfCbc</code></td><td>IVを先頭に含む暗号文。復号後にパディングを検証して外す</td></tr>\n+</tbody></table>\n+</div>\n+<h3>CBCの2つの入口を使い分ける</h3>\n+<p><a href=\"#aes-decryption\">AESの例</a>の <code>/Subject</code> には先頭にIVがあります。一方、辞書の <code>/UE</code> の32バイトはすべて暗号文で、IVは呼び出し側がゼロで用意します。両方ともCBCですが、IVの置き場所と復号後の末尾の扱いが異なるため、入口を分けています。</p>\n+<pre><code><span class=\"keyword\">const</span> iv = input.subarray(<span class=\"value\">0</span>, AES_BLOCK_BYTES);\n+<span class=\"keyword\">const</span> data = input.subarray(AES_BLOCK_BYTES);\n+<span class=\"keyword\">return</span> removePdfPadding(decryptCbc(roundKeys, { iv, data }));</code></pre>\n+<p><code>subarray(0, 16)</code> は位置0から15までを参照します。終了位置の16は範囲に含まれません。<code>subarray(16)</code> は位置16から末尾までです。例えば <code>Uint8Array.of(10, 20, 30).subarray(1, 2)</code> で読める値は <code>20</code> です。2つのビューは元のバッファを共有し、<code>decryptCbc</code> は復号結果を新しい配列に書き込みます。</p>\n+<h3>Nodeとブラウザで同じ同期APIを使う</h3>\n+<p>Nodeでもブラウザでも使える <code>Uint8Array</code>・<code>DataView</code>・<code>bigint</code> で実装しています。計算結果はその場で返り、<code>await</code> が必要な文書の読み込み処理からもそのまま呼べます。Web Crypto の AES-CBC はパディングを処理するAPIです。PDFで必要なパディングなしのCBC・ECB、旧リビジョンのMD5・RC4を含めて1つの実装に揃え、暗号ライブラリや環境ごとの実装を追加せずに済むようにしています。</p>\n+<div class=\"note\"><strong>TypeScriptで利用できる範囲</strong>ここで使えるのは個々の変換です。暗号化PDFを <code>PdfDocument.load</code> で開くには、鍵導出・認証・オブジェクト読み込みへの接続が必要です。</div>\n+</section>\n <footer><a href=\"#top\">最上部へ</a> · <a href=\"README.md\">解説一覧</a></footer></div></main>\n </body></html>",
+          "patchLines": 38,
+          "truncated": false,
+          "hunkOpeningLines": [
+            {
+              "old": null,
+              "new": null
+            },
+            {
+              "old": null,
+              "new": null
+            }
+          ]
+        },
+        {
+          "path": "docs/specs/02b_encryption.md",
+          "status": "M",
+          "oldPath": null,
+          "additions": 1,
+          "deletions": 0,
+          "patch": "@@ -150,6 +150,7 @@ ISO 32000-1 表 20（共通）・表 21（標準ハンドラ）に基づく主\n | `/V` × `/R` の型制約 | §3 の 6 種だけを `StandardAlgorithm` として表現し、不正な組み合わせを構築不可にする |\n | 未対応ハンドラ・未対応版 | `/Adobe.PubSec` や未対応の `/V`×`/R` は `EncryptDictionary::Unsupported` に生辞書を保持して**解析を止めない** |\n | 構造不正エラー | `/Filter`・`/V`・`/R` の欠落や Standard 辞書の構造不正は `EncryptError` として位置情報付きで報告する |\n+| 暗号プリミティブ（TypeScript） | §7〜§10 の計算を Node とブラウザ共通の同期 TypeScript として提供。内部 API と PDF の各項目の対応は [図解ガイド](../guides/encryption-dictionary.html#typescript-primitives) を参照 |\n | 鍵導出・パスワード認証（Rust） | R2〜R4 の鍵導出は §11、R5・R6 の鍵導出・権限検証は §12、全リビジョンのパスワード認証と役割判定の入口は §13 で実装済み |\n | TypeScript `PdfDocument.load` | 復号未対応のため、暗号化 PDF は引き続き拒否する（暗号化辞書の型化 API は独立提供） |\n | 今後の対応範囲 | `AuthenticatedFileKey` を用いたオブジェクト（文字列・ストリーム）単位の復号、および `ObjectResolver`・`PdfDocument` への統合（#683） |",
+          "patchLines": 8,
+          "truncated": false
+        }
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "from": "docs/guides/encryption-dictionary.html",
+      "to": "README.md",
+      "status": "kept"
+    },
+    {
+      "from": "docs/guides/encryption-dictionary.html",
+      "to": "docs/guides/README.md",
+      "status": "kept"
+    },
+    {
+      "from": "packages/core/src/pdf/encryption/primitives/aes/__tests__/aes.basic.test.ts",
+      "to": "packages/core/src/pdf/encryption/primitives/__tests__/vectors.test.helpers.ts",
+      "status": "added"
+    },
+    {
+      "from": "packages/core/src/pdf/encryption/primitives/aes/__tests__/aes.basic.test.ts",
+      "to": "packages/core/src/pdf/encryption/primitives/aes/__tests__/aes.test.helpers.ts",
+      "status": "added"
+    },
+    {
+      "from": "packages/core/src/pdf/encryption/primitives/aes/__tests__/aes.test.helpers.ts",
+      "to": "packages/core/src/pdf/encryption/primitives/__tests__/vectors.test.helpers.ts",
+      "status": "added"
+    },
+    {
+      "from": "packages/core/src/pdf/encryption/primitives/aes/__tests__/aes.test.helpers.ts",
+      "to": "packages/core/src/pdf/encryption/primitives/aes/index.ts",
+      "status": "added"
+    },
+    {
+      "from": "packages/core/src/pdf/encryption/primitives/aes/__tests__/aes.validation.test.ts",
+      "to": "packages/core/src/pdf/encryption/primitives/__tests__/vectors.test.helpers.ts",
+      "status": "added"
+    },
+    {
+      "from": "packages/core/src/pdf/encryption/primitives/aes/__tests__/aes.validation.test.ts",
+      "to": "packages/core/src/pdf/encryption/primitives/aes/__tests__/aes.test.helpers.ts",
+      "status": "added"
+    },
+    {
+      "from": "packages/core/src/pdf/encryption/primitives/aes/__tests__/aes.validation.test.ts",
+      "to": "packages/core/src/pdf/encryption/primitives/aes/index.ts",
+      "status": "added"
+    },
+    {
+      "from": "packages/core/src/pdf/encryption/primitives/aes/block/index.ts",
+      "to": "packages/core/src/pdf/encryption/primitives/aes/byte/index.ts",
+      "status": "added"
+    },
+    {
+      "from": "packages/core/src/pdf/encryption/primitives/aes/byte/index.ts",
+      "to": "packages/core/src/pdf/encryption/primitives/hex-words/index.ts",
+      "status": "added"
+    },
+    {
+      "from": "packages/core/src/pdf/encryption/primitives/aes/index.ts",
+      "to": "packages/core/src/pdf/encryption/primitives/aes/block/index.ts",
+      "status": "added"
+    },
+    {
+      "from": "packages/core/src/pdf/encryption/primitives/aes/index.ts",
+      "to": "packages/core/src/pdf/encryption/primitives/aes/round-keys/index.ts",
+      "status": "added"
+    },
+    {
+      "from": "packages/core/src/pdf/encryption/primitives/aes/index.ts",
+      "to": "packages/core/src/utils/option/index.ts",
+      "status": "added"
+    },
+    {
+      "from": "packages/core/src/pdf/encryption/primitives/aes/index.ts",
+      "to": "packages/core/src/utils/result/index.ts",
+      "status": "added"
+    },
+    {
+      "from": "packages/core/src/pdf/encryption/primitives/aes/round-keys/index.ts",
+      "to": "packages/core/src/pdf/encryption/primitives/aes/block/index.ts",
+      "status": "added"
+    },
+    {
+      "from": "packages/core/src/pdf/encryption/primitives/aes/round-keys/index.ts",
+      "to": "packages/core/src/pdf/encryption/primitives/aes/byte/index.ts",
+      "status": "added"
+    },
+    {
+      "from": "packages/core/src/pdf/encryption/primitives/hash-blocks/index.ts",
+      "to": "packages/core/src/utils/types/utility-type.ts",
+      "status": "added"
+    },
+    {
+      "from": "packages/core/src/pdf/encryption/primitives/index.ts",
+      "to": "packages/core/src/pdf/encryption/primitives/aes/index.ts",
+      "status": "added"
+    },
+    {
+      "from": "packages/core/src/pdf/encryption/primitives/index.ts",
+      "to": "packages/core/src/pdf/encryption/primitives/md5/index.ts",
+      "status": "added"
+    },
+    {
+      "from": "packages/core/src/pdf/encryption/primitives/index.ts",
+      "to": "packages/core/src/pdf/encryption/primitives/rc4/index.ts",
+      "status": "added"
+    },
+    {
+      "from": "packages/core/src/pdf/encryption/primitives/index.ts",
+      "to": "packages/core/src/pdf/encryption/primitives/sha2/sha256/index.ts",
+      "status": "added"
+    },
+    {
+      "from": "packages/core/src/pdf/encryption/primitives/index.ts",
+      "to": "packages/core/src/pdf/encryption/primitives/sha2/sha512/index.ts",
+      "status": "added"
+    },
+    {
+      "from": "packages/core/src/pdf/encryption/primitives/md5/__tests__/md5.basic.test.ts",
+      "to": "packages/core/src/pdf/encryption/primitives/__tests__/vectors.test.helpers.ts",
+      "status": "added"
+    },
+    {
+      "from": "packages/core/src/pdf/encryption/primitives/md5/__tests__/md5.basic.test.ts",
+      "to": "packages/core/src/pdf/encryption/primitives/md5/index.ts",
+      "status": "added"
+    },
+    {
+      "from": "packages/core/src/pdf/encryption/primitives/md5/index.ts",
+      "to": "packages/core/src/pdf/encryption/primitives/hash-blocks/index.ts",
+      "status": "added"
+    },
+    {
+      "from": "packages/core/src/pdf/encryption/primitives/md5/index.ts",
+      "to": "packages/core/src/pdf/encryption/primitives/hex-words/index.ts",
+      "status": "added"
+    },
+    {
+      "from": "packages/core/src/pdf/encryption/primitives/md5/index.ts",
+      "to": "packages/core/src/pdf/encryption/primitives/word32/index.ts",
+      "status": "added"
+    },
+    {
+      "from": "packages/core/src/pdf/encryption/primitives/rc4/__tests__/rc4.basic.test.ts",
+      "to": "packages/core/src/pdf/encryption/primitives/__tests__/vectors.test.helpers.ts",
+      "status": "added"
+    },
+    {
+      "from": "packages/core/src/pdf/encryption/primitives/rc4/__tests__/rc4.basic.test.ts",
+      "to": "packages/core/src/pdf/encryption/primitives/rc4/index.ts",
+      "status": "added"
+    },
+    {
+      "from": "packages/core/src/pdf/encryption/primitives/rc4/index.ts",
+      "to": "packages/core/src/utils/result/index.ts",
+      "status": "added"
+    },
+    {
+      "from": "packages/core/src/pdf/encryption/primitives/sha2/sha256/__tests__/sha256.basic.test.ts",
+      "to": "packages/core/src/pdf/encryption/primitives/__tests__/vectors.test.helpers.ts",
+      "status": "added"
+    },
+    {
+      "from": "packages/core/src/pdf/encryption/primitives/sha2/sha256/__tests__/sha256.basic.test.ts",
+      "to": "packages/core/src/pdf/encryption/primitives/sha2/sha256/index.ts",
+      "status": "added"
+    },
+    {
+      "from": "packages/core/src/pdf/encryption/primitives/sha2/sha256/index.ts",
+      "to": "packages/core/src/pdf/encryption/primitives/hash-blocks/index.ts",
+      "status": "added"
+    },
+    {
+      "from": "packages/core/src/pdf/encryption/primitives/sha2/sha256/index.ts",
+      "to": "packages/core/src/pdf/encryption/primitives/hex-words/index.ts",
+      "status": "added"
+    },
+    {
+      "from": "packages/core/src/pdf/encryption/primitives/sha2/sha256/index.ts",
+      "to": "packages/core/src/pdf/encryption/primitives/word32/index.ts",
+      "status": "added"
+    },
+    {
+      "from": "packages/core/src/pdf/encryption/primitives/sha2/sha512/__tests__/sha512.basic.test.ts",
+      "to": "packages/core/src/pdf/encryption/primitives/__tests__/vectors.test.helpers.ts",
+      "status": "added"
+    },
+    {
+      "from": "packages/core/src/pdf/encryption/primitives/sha2/sha512/__tests__/sha512.basic.test.ts",
+      "to": "packages/core/src/pdf/encryption/primitives/sha2/sha512/index.ts",
+      "status": "added"
+    },
+    {
+      "from": "packages/core/src/pdf/encryption/primitives/sha2/sha512/index.ts",
+      "to": "packages/core/src/pdf/encryption/primitives/hash-blocks/index.ts",
+      "status": "added"
+    },
+    {
+      "from": "packages/core/src/pdf/encryption/primitives/sha2/sha512/index.ts",
+      "to": "packages/core/src/pdf/encryption/primitives/hex-words/index.ts",
+      "status": "added"
+    },
+    {
+      "from": "packages/core/src/pdf/encryption/primitives/sha2/sha512/index.ts",
+      "to": "packages/core/src/utils/types/utility-type.ts",
+      "status": "added"
+    }
+  ]
+}
