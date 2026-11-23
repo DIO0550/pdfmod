@@ -150,6 +150,7 @@ ISO 32000-1 表 20（共通）・表 21（標準ハンドラ）に基づく主�
 | `/V` × `/R` の型制約 | §3 の 6 種だけを `StandardAlgorithm` として表現し、不正な組み合わせを構築不可にする |
 | 未対応ハンドラ・未対応版 | `/Adobe.PubSec` や未対応の `/V`×`/R` は `EncryptDictionary::Unsupported` に生辞書を保持して**解析を止めない** |
 | 構造不正エラー | `/Filter`・`/V`・`/R` の欠落や Standard 辞書の構造不正は `EncryptError` として位置情報付きで報告する |
+| 暗号プリミティブ（TypeScript） | §7〜§10 の計算を Node とブラウザ共通の同期 TypeScript として提供。内部 API と PDF の各項目の対応は [図解ガイド](../guides/encryption-dictionary.html#typescript-primitives) を参照 |
 | 鍵導出・パスワード認証（Rust） | R2〜R4 の鍵導出は §11、R5・R6 の鍵導出・権限検証は §12、全リビジョンのパスワード認証と役割判定の入口は §13 で実装済み |
 | TypeScript `PdfDocument.load` | 復号未対応のため、暗号化 PDF は引き続き拒否する（暗号化辞書の型化 API は独立提供） |
 | 今後の対応範囲 | `AuthenticatedFileKey` を用いたオブジェクト（文字列・ストリーム）単位の復号、および `ObjectResolver`・`PdfDocument` への統合（#683） |
