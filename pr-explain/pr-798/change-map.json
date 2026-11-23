@@ -4,7 +4,7 @@
   "headBranch": "feat/676-object-decryption-keys",
   "baseBranch": "main",
   "mergeBase": "0d619acb552c50626ff74f0ac3bbd1fed36f2488",
-  "head": "3b0d45ee7e06c4786892fd7da97c46cdc8b73cda",
+  "head": "b36307b079a30e3c2ae417db8b48e3c6bc7a05b8",
   "groups": [
     {
       "label": "Rust",
@@ -22,8 +22,8 @@
           "path": "rust/crates/core/src/encrypt/auth.rs",
           "status": "M",
           "oldPath": null,
-          "additions": 1,
-          "deletions": 1,
+          "additions": 38,
+          "deletions": 12,
           "changed": true,
           "target": null
         },
@@ -31,7 +31,7 @@
           "path": "rust/crates/core/src/encrypt/object_key.rs",
           "status": "A",
           "oldPath": null,
-          "additions": 191,
+          "additions": 193,
           "deletions": 0,
           "changed": true,
           "target": null
@@ -55,6 +55,24 @@
           "target": "rust/crates/core/src/encrypt/auth.rs"
         },
         {
+          "path": "rust/crates/core/src/encrypt/auth/tests/errors.rs",
+          "status": "M",
+          "oldPath": null,
+          "additions": 4,
+          "deletions": 4,
+          "changed": true,
+          "target": "rust/crates/core/src/encrypt/auth.rs"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/auth/tests/roles.rs",
+          "status": "M",
+          "oldPath": null,
+          "additions": 12,
+          "deletions": 12,
+          "changed": true,
+          "target": "rust/crates/core/src/encrypt/auth.rs"
+        },
+        {
           "path": "rust/crates/core/src/encrypt/object_key/tests.rs",
           "status": "A",
           "oldPath": null,
@@ -67,7 +85,7 @@
           "path": "rust/crates/core/src/encrypt/object_key/tests/derivation.rs",
           "status": "A",
           "oldPath": null,
-          "additions": 79,
+          "additions": 78,
           "deletions": 0,
           "changed": true,
           "target": "rust/crates/core/src/encrypt/object_key.rs"
@@ -76,7 +94,7 @@
           "path": "rust/crates/core/src/encrypt/object_key/tests/selection.rs",
           "status": "A",
           "oldPath": null,
-          "additions": 123,
+          "additions": 122,
           "deletions": 0,
           "changed": true,
           "target": "rust/crates/core/src/encrypt/object_key.rs"
@@ -99,8 +117,8 @@
           "path": "docs/guides/encryption-dictionary.html",
           "status": "M",
           "oldPath": null,
-          "additions": 50,
-          "deletions": 3,
+          "additions": 55,
+          "deletions": 7,
           "changed": true,
           "target": null
         }
@@ -122,8 +140,8 @@
           "path": "docs/specs/02b_encryption.md",
           "status": "M",
           "oldPath": null,
-          "additions": 38,
-          "deletions": 3,
+          "additions": 42,
+          "deletions": 6,
           "changed": true,
           "target": null
         }
@@ -179,6 +197,8 @@
       "rust/crates/core/src/encrypt.rs",
       "rust/crates/core/src/encrypt/auth.rs",
       "rust/crates/core/src/encrypt/auth/tests.rs",
+      "rust/crates/core/src/encrypt/auth/tests/errors.rs",
+      "rust/crates/core/src/encrypt/auth/tests/roles.rs",
       "rust/crates/core/src/encrypt/object_key.rs",
       "rust/crates/core/src/encrypt/object_key/tests.rs",
       "rust/crates/core/src/encrypt/object_key/tests/derivation.rs",
@@ -337,6 +357,124 @@
           "deletions": 3,
           "patch": "@@ -1,7 +1,7 @@\n # 02b. 暗号化 (Encryption)\n \n > **対応規格**: ISO 32000-1:2008 §7.6 / ISO 32000-2:2020 §7.6  \n-> **扱う内容**: 暗号化辞書の構造、`/V`×`/R` の組み合わせ、crypt filter、権限フラグ `/P`、暗号プリミティブ（MD5 / RC4 / SHA-2 / AES）、R2〜R6 のファイル暗号鍵導出・権限検証・パスワード認証  \n+> **扱う内容**: 暗号化辞書の構造、`/V`×`/R` の組み合わせ、crypt filter、権限フラグ `/P`、暗号プリミティブ（MD5 / RC4 / SHA-2 / AES）、R2〜R6 のファイル暗号鍵導出・権限検証・パスワード認証、オブジェクトの復号鍵\\\n > **図解ガイド**: [暗号化辞書 — PDF 仕様解説](../guides/encryption-dictionary.html)（実 PDF 抜粋・色分け・計算例付き）\n \n ## 目次\n@@ -19,6 +19,7 @@\n 11. [R2〜R4 のファイル暗号鍵を導出する](#11-r2r4-のファイル暗号鍵を導出する)\n 12. [R5・R6 の AES-256 ファイル暗号鍵と権限の検証](#12-r5r6-の-aes-256-ファイル暗号鍵と権限の検証)\n 13. [パスワード認証（Algorithm 6 / 7 / 11 / 12）](#13-パスワード認証algorithm-6--7--11--12)\n+14. [オブジェクトの復号鍵](#14-オブジェクトの復号鍵)\n \n ---\n \n@@ -151,8 +152,9 @@ ISO 32000-1 表 20（共通）・表 21（標準ハンドラ）に基づく主\n | 未対応ハンドラ・未対応版 | `/Adobe.PubSec` や未対応の `/V`×`/R` は `EncryptDictionary::Unsupported` に生辞書を保持して**解析を止めない** |\n | 構造不正エラー | `/Filter`・`/V`・`/R` の欠落や Standard 辞書の構造不正は `EncryptError` として位置情報付きで報告する |\n | 鍵導出・パスワード認証（Rust） | R2〜R4 の鍵導出は §11、R5・R6 の鍵導出・権限検証は §12、全リビジョンのパスワード認証と役割判定の入口は §13 で実装済み |\n+| オブジェクトの復号鍵（Rust） | `AuthenticatedFileKey` と対象から方式を選び、Algorithm 1 / 1.A に従って鍵を返す（§14） |\n | TypeScript `PdfDocument.load` | 復号未対応のため、暗号化 PDF は引き続き拒否する（暗号化辞書の型化 API は独立提供） |\n-| 今後の対応範囲 | `AuthenticatedFileKey` を用いたオブジェクト（文字列・ストリーム）単位の復号、および `ObjectResolver`・`PdfDocument` への統合（#683） |\n+| 今後の対応範囲 | 文字列・ストリームへの復号の適用と、`ObjectResolver`・`PdfDocument` への統合（#683） |\n \n ### 6.2 TypeScript と Rust の共通解析方針\n \n@@ -451,7 +453,40 @@ R5・R6 はトレイラの `/ID` を参照しません。パスワードバイ\n | `InvalidHashInput` | R5・R6 の SHA-2 入力長または反復ブロック長を扱えない |\n | `UnsupportedRevision` | 対応外のアルゴリズム版・リビジョンが渡された |\n \n-`AuthenticatedFileKey` を用いたオブジェクト単位の鍵導出（Algorithm 1）、文字列・ストリームの復号、および `ObjectResolver`・`PdfDocument` への統合は後続の #683 で扱います。\n+認証に成功したら、返された `AuthenticatedFileKey` を §14 のオブジェクト復号鍵の選択に使います。\n+\n+---\n+\n+## 14. オブジェクトの復号鍵\n+\n+### 14.1 暗号方式の選択\n+\n+`/V 1`・`/V 2` の文字列とストリームは RC4 を使います。`/V 4` 以降の既定方式は、文字列なら `/StrF`、ストリーム本体なら `/StmF` で選び、指定名を `/CF` で引きます。ストリーム辞書内の文字列にも `/StrF` が適用されます。\n+\n+| 選択結果 | 鍵の扱い |\n+| :--- | :--- |\n+| `/Identity`、`/CFM /None` | 復号を省略。`/StmF`・`/StrF` の既定は `/Identity`、`/CFM` の既定は `/None` |\n+| `/CFM /V2` | Algorithm 1 で RC4 鍵を導出 |\n+| `/CFM /AESV2` | Algorithm 1 の入力末尾に `sAlT` を加え、16 バイトの AES-128 鍵を導出 |\n+| `/CFM /AESV3` | Algorithm 1.A に従い 32 バイトのファイル暗号鍵を使用 |\n+\n+### 14.2 Algorithm 1 と 1.A\n+\n+ISO 32000-1:2008 §7.6.2 の **Algorithm 1** では、認証済みのファイル暗号鍵、間接オブジェクト番号の下位 3 バイト、世代番号の下位 2 バイトを順に連結します。番号は下位バイトから並べます（リトルエンディアン）。AES-128 ではその末尾に ASCII `sAlT`（`73 41 6C 54`）を追加します。連結したバイト列を MD5 にかけ、先頭 `min(ファイル暗号鍵のバイト数 + 5, 16)` バイトを鍵にします。\n+\n+例えば `7 4660 obj` の番号は `07 00 00`、世代 `4660 = 0x1234` は `34 12` です。オブジェクト番号が `0x01000000` のときは `00 00 00` が入力になります。番号の上位バイトだけが異なり世代が同じオブジェクトは、同じ鍵を導出します。AES-256 の **Algorithm 1.A** はオブジェクト番号・世代番号に関わらず 32 バイトのファイル暗号鍵を使用します。\n+\n+### 14.3 オブジェクトストリームと Rust API\n+\n+`/Type /ObjStm` のストリーム本体は、コンテナ自身の番号・世代とストリームの方式で復号します。取り出した内包オブジェクトの文字列は、コンテナの復号ですでに平文になっています。\n+\n+`StandardSecurityHandler::object_decryption` は、同じ辞書で認証した `AuthenticatedFileKey` と `ObjectDecryptionTarget` を受け取ります。\n+\n+- 通常の間接オブジェクトでは `ObjectId` と値の種類を使って方式と鍵を選びます。`/AESV3` は元の鍵を借用します。\n+- `InObjectStream` ではフィルター選択と鍵導出を省略し、`ObjectDecryption::None` を返します。\n+- `/CF` に未定義の名前は暗号化辞書の解析時に `UndefinedCryptFilter` になります。選ばれた方式とファイル鍵が両立しない場合は `IncompatibleFileKey` を返します。\n+\n+実際のデータへの復号の適用と文書読込への統合は #683 で扱います。\n \n ---\n ",
           "patchLines": 70,
+          "truncated": false
+        }
+      ]
+    },
+    {
+      "sha": "b072a2b96d53b70b6ae372b3a41db8bcb104ca06",
+      "merge": false,
+      "author": "DIO0550",
+      "date": "2026-11-23T10:31:47+09:00",
+      "subject": "🐛 [Bug Fix]: #676 復号鍵を認証時の辞書に紐づける",
+      "body": "- 認証結果を復号鍵選択の入口にし、辞書の混用を型で防ぐ\n- 既定の crypt filter を選ぶ API の適用範囲を明記する",
+      "files": [
+        {
+          "path": "rust/crates/core/src/encrypt/auth.rs",
+          "status": "M",
+          "oldPath": null,
+          "additions": 37,
+          "deletions": 11,
+          "patch": "@@ -69,15 +69,39 @@ impl FileEncryptionKey {\n /// パスワード認証（Algorithm 6 / 7 / 11 / 12）を通過したファイル暗号鍵と役割。\n ///\n /// 構築経路は [`StandardSecurityHandler::authenticate`] と\n-/// [`StandardSecurityHandler::authenticate_as`] のみに限定し、\n-/// 未認証または誤った鍵のまま復号へ進めないことを型で保証する。\n+/// [`StandardSecurityHandler::authenticate_as`] に限る。認証に使った暗号化辞書を借用し、\n+/// [`Self::object_decryption`] でその辞書とファイル暗号鍵から方式と鍵を選ぶ。\n+///\n+/// # Examples\n+///\n+/// 別の暗号化辞書に認証結果を渡して復号鍵を選ぶ呼び出しは、コンパイル時に拒まれる。\n+///\n+/// ```compile_fail,E0599\n+/// use pdfmod_core::encrypt::{\n+///     auth::AuthenticatedFileKey, object_key::ObjectDecryptionTarget,\n+///     standard::StandardSecurityHandler,\n+/// };\n+///\n+/// fn select_with_another_handler(\n+///     another_handler: &StandardSecurityHandler,\n+///     authenticated: &AuthenticatedFileKey<'_>,\n+///     target: ObjectDecryptionTarget,\n+/// ) {\n+///     let _ = another_handler.object_decryption(authenticated, target);\n+/// }\n+/// ```\n #[must_use]\n-pub struct AuthenticatedFileKey {\n+pub struct AuthenticatedFileKey<'handler> {\n+    handler: &'handler StandardSecurityHandler,\n     key: FileEncryptionKey,\n     role: PasswordRole,\n }\n \n-impl AuthenticatedFileKey {\n+impl AuthenticatedFileKey<'_> {\n+    pub(super) fn handler(&self) -> &StandardSecurityHandler {\n+        self.handler\n+    }\n+\n     /// 認証に成功した役割（利用者または所有者）を返す。\n     #[must_use]\n     pub fn role(&self) -> PasswordRole {\n@@ -96,7 +120,7 @@ impl AuthenticatedFileKey {\n     }\n }\n \n-impl fmt::Debug for AuthenticatedFileKey {\n+impl fmt::Debug for AuthenticatedFileKey<'_> {\n     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {\n         formatter\n             .debug_struct(\"AuthenticatedFileKey\")\n@@ -188,7 +212,7 @@ impl StandardSecurityHandler {\n         &self,\n         password: Option<&[u8]>,\n         file_id: Option<&FileId>,\n-    ) -> Result<AuthenticatedFileKey, AuthError> {\n+    ) -> Result<AuthenticatedFileKey<'_>, AuthError> {\n         let (bytes, roles) = match password {\n             // パスワード未指定時は空パスワードを利用者 → 所有者の順に試し、\n             // 利用者・所有者ともに空の文書でも /P の権限制限を優先する。\n@@ -229,7 +253,7 @@ impl StandardSecurityHandler {\n         role: PasswordRole,\n         password: &[u8],\n         file_id: Option<&FileId>,\n-    ) -> Result<AuthenticatedFileKey, AuthError> {\n+    ) -> Result<AuthenticatedFileKey<'_>, AuthError> {\n         match self.algorithm() {\n             StandardAlgorithm::V1R2 => {\n                 self.authenticate_legacy(LegacyRevision::R2, role, password, file_id)\n@@ -251,7 +275,7 @@ impl StandardSecurityHandler {\n         roles: [PasswordRole; 2],\n         password: &[u8],\n         file_id: Option<&FileId>,\n-    ) -> Result<AuthenticatedFileKey, AuthError> {\n+    ) -> Result<AuthenticatedFileKey<'_>, AuthError> {\n         for role in roles {\n             match self.authenticate_legacy(revision, role, password, file_id) {\n                 Ok(authenticated) => return Ok(authenticated),\n@@ -266,7 +290,7 @@ impl StandardSecurityHandler {\n         &self,\n         roles: [PasswordRole; 2],\n         password: &[u8],\n-    ) -> Result<AuthenticatedFileKey, AuthError> {\n+    ) -> Result<AuthenticatedFileKey<'_>, AuthError> {\n         // UTF-8 検証結果は認証 1 回につき一度だけ求めて役割間で共有する。\n         let prepared = prepare_aes256_password(password);\n         for role in roles {\n@@ -285,7 +309,7 @@ impl StandardSecurityHandler {\n         role: PasswordRole,\n         password: &[u8],\n         file_id: Option<&FileId>,\n-    ) -> Result<AuthenticatedFileKey, AuthError> {\n+    ) -> Result<AuthenticatedFileKey<'_>, AuthError> {\n         let file_id = file_id.ok_or(AuthError::MissingFileId)?;\n         let owner_entry = fixed_legacy_entry(EncryptKey::O, self.owner_key())?;\n         let user_entry = fixed_legacy_entry(EncryptKey::U, self.user_key())?;\n@@ -307,6 +331,7 @@ impl StandardSecurityHandler {\n         };\n \n         Ok(AuthenticatedFileKey {\n+            handler: self,\n             key: FileEncryptionKey::Legacy(key),\n             role,\n         })\n@@ -391,7 +416,7 @@ impl StandardSecurityHandler {\n         &self,\n         role: PasswordRole,\n         prepared: Option<&str>,\n-    ) -> Result<AuthenticatedFileKey, AuthError> {\n+    ) -> Result<AuthenticatedFileKey<'_>, AuthError> {\n         let Some(prepared) = prepared else {\n             // 不正な UTF-8 入力でも辞書項目の長さ不正（構造破損）を隠さないよう先に検証する。\n             self.validate_aes256_entries(role)\n@@ -404,6 +429,7 @@ impl StandardSecurityHandler {\n             .map_err(AuthError::from_aes256_error)?;\n \n         Ok(AuthenticatedFileKey {\n+            handler: self,\n             key: FileEncryptionKey::Aes256(key),\n             role,\n         })",
+          "patchLines": 123,
+          "truncated": false
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/auth/tests/errors.rs",
+          "status": "M",
+          "oldPath": null,
+          "additions": 4,
+          "deletions": 4,
+          "patch": "@@ -58,9 +58,8 @@ fn r2_verifies_all_32_bytes_of_u_while_r4_ignores_trailing_16_bytes() {\n             .unwrap_err(),\n         AuthError::IncorrectPassword\n     );\n-    let r2_ok = standard_handler(R2.as_bytes())\n-        .authenticate(None, trailer.id())\n-        .unwrap();\n+    let r2_handler = standard_handler(R2.as_bytes());\n+    let r2_ok = r2_handler.authenticate(None, trailer.id()).unwrap();\n     assert_eq!(r2_ok.as_bytes(), R2_KEY);\n \n     // R4: /U の後半 16 バイト（16..32）を変えても認証成功する（先頭 16 バイト比較）。\n@@ -68,7 +67,8 @@ fn r2_verifies_all_32_bytes_of_u_while_r4_ignores_trailing_16_bytes() {\n         \"0122456a91bae5134273a6db134c87c4>\",\n         \"ffffffffffffffffffffffffffffffff>\",\n     );\n-    let r4_ok = standard_handler(r4_changed_tail.as_bytes())\n+    let r4_handler = standard_handler(r4_changed_tail.as_bytes());\n+    let r4_ok = r4_handler\n         .authenticate(Some(b\"user\"), trailer.id())\n         .expect(\"R4 は /U の後半 16 バイトを無視する\");\n     assert_eq!(r4_ok.role(), PasswordRole::User);",
+          "patchLines": 22,
+          "truncated": false
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/auth/tests/roles.rs",
+          "status": "M",
+          "oldPath": null,
+          "additions": 12,
+          "deletions": 12,
+          "patch": "@@ -124,7 +124,8 @@ fn explicit_password_prefers_owner_when_user_and_owner_passwords_are_identical()\n     let r2 = b\"<< /Filter /Standard /V 1 /R 2 /Length 40 /P -4\n         /O <8bcfe6441d8d2931a4bd1c063a0fc2e5d165288c9f429d491a513414f7bde5aa>\n         /U <b000bee02ac13b53a5f940094057180e67da785b31a7bc6a27297ec4e7f3586f> >>\";\n-    let r2_auth = standard_handler(r2)\n+    let r2_handler = standard_handler(r2);\n+    let r2_auth = r2_handler\n         .authenticate(Some(b\"shared\"), trailer.id())\n         .unwrap();\n     assert_eq!(r2_auth.role(), PasswordRole::Owner);\n@@ -134,7 +135,8 @@ fn explicit_password_prefers_owner_when_user_and_owner_passwords_are_identical()\n     let r3 = b\"<< /Filter /Standard /V 2 /R 3 /Length 128 /P -4\n         /O <ef4e52c82a492f3fd5ad90ce3846b738c11b7b2c38d8cfe236062aee2bc9b9c4>\n         /U <ba7e586784910f76a068f5cb7a410eff0122456a91bae5134273a6db134c87c4> >>\";\n-    let r3_auth = standard_handler(r3)\n+    let r3_handler = standard_handler(r3);\n+    let r3_auth = r3_handler\n         .authenticate(Some(b\"shared-r3\"), trailer.id())\n         .unwrap();\n     assert_eq!(r3_auth.role(), PasswordRole::Owner);\n@@ -149,7 +151,8 @@ fn explicit_password_prefers_owner_when_user_and_owner_passwords_are_identical()\n         /StmF /StdCF /StrF /StdCF /P -3392 /EncryptMetadata false\n         /O <d558d15c2e5630be588eb5627040b710633ad0e89268920bc6b9668d87d1e241>\n         /U <b24e6231b6927bde60f5edd622fc575c0122456a91bae5134273a6db134c87c4> >>\";\n-    let r4_auth = standard_handler(r4)\n+    let r4_handler = standard_handler(r4);\n+    let r4_auth = r4_handler\n         .authenticate(Some(b\"shared-r4\"), trailer.id())\n         .unwrap();\n     assert_eq!(r4_auth.role(), PasswordRole::Owner);\n@@ -169,9 +172,8 @@ fn explicit_password_prefers_owner_when_user_and_owner_passwords_are_identical()\n         EncryptKey::OE,\n         \"1806262c5ddd8229a4ed71fa1b222b39a3fc402f47b66e779d561acaf234042a\",\n     );\n-    let r5_auth = standard_handler(r5_same.as_bytes())\n-        .authenticate(Some(b\"user-r5\"), None)\n-        .unwrap();\n+    let r5_handler = standard_handler(r5_same.as_bytes());\n+    let r5_auth = r5_handler.authenticate(Some(b\"user-r5\"), None).unwrap();\n     assert_eq!(r5_auth.role(), PasswordRole::Owner);\n     assert_eq!(r5_auth.as_bytes(), R5_KEY);\n }\n@@ -180,9 +182,8 @@ fn explicit_password_prefers_owner_when_user_and_owner_passwords_are_identical()\n fn authenticated_file_key_accessors_and_redacted_debug_do_not_leak_key_bytes() {\n     let trailer = parse_trailer(TRAILER);\n \n-    let legacy_auth = standard_handler(R2.as_bytes())\n-        .authenticate(None, trailer.id())\n-        .unwrap();\n+    let legacy_handler = standard_handler(R2.as_bytes());\n+    let legacy_auth = legacy_handler.authenticate(None, trailer.id()).unwrap();\n     assert!(matches!(legacy_auth.key(), FileEncryptionKey::Legacy(_)));\n     assert_eq!(legacy_auth.key().as_legacy().unwrap().as_bytes(), R2_KEY);\n     assert!(legacy_auth.key().as_aes256().is_none());\n@@ -200,9 +201,8 @@ fn authenticated_file_key_accessors_and_redacted_debug_do_not_leak_key_bytes() {\n         }\n     }\n \n-    let aes_auth = standard_handler(R5.as_bytes())\n-        .authenticate(Some(b\"owner-r5\"), None)\n-        .unwrap();\n+    let aes_handler = standard_handler(R5.as_bytes());\n+    let aes_auth = aes_handler.authenticate(Some(b\"owner-r5\"), None).unwrap();\n     assert!(matches!(aes_auth.key(), FileEncryptionKey::Aes256(_)));\n     assert_eq!(aes_auth.key().as_aes256().unwrap().as_bytes(), R5_KEY);\n     assert!(aes_auth.key().as_legacy().is_none());",
+          "patchLines": 66,
+          "truncated": false
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/object_key.rs",
+          "status": "M",
+          "oldPath": null,
+          "additions": 12,
+          "deletions": 10,
+          "patch": "@@ -9,7 +9,6 @@ use crate::encrypt::auth::{AuthenticatedFileKey, FileEncryptionKey};\n use crate::encrypt::crypt_filter::{CryptFilter, CryptFilterMethod};\n use crate::encrypt::legacy_key::LegacyFileKey;\n use crate::encrypt::md5::{Md5, DIGEST_LEN};\n-use crate::encrypt::standard::StandardSecurityHandler;\n use crate::object::object_id::ObjectId;\n \n const AES128_KEY_LEN: usize = 16;\n@@ -20,7 +19,8 @@ const AES128_KEY_SALT: &[u8; 4] = b\"sAlT\";\n pub enum EncryptedValueKind {\n     /// 文字列。間接オブジェクト内の辞書や配列に含まれる文字列も該当する。\n     String,\n-    /// ストリーム本体のバイト列。\n+    /// ストリーム本体のバイト列。crypt filter を使う文書では既定の `/StmF` を選ぶ。\n+    /// 明示的な `/Crypt` や埋め込みファイル用の `/EFF` が適用される場合は呼び出し側で扱う。\n     Stream,\n }\n \n@@ -112,25 +112,27 @@ pub enum ObjectKeyError {\n     },\n }\n \n-impl StandardSecurityHandler {\n-    /// この辞書で認証したファイル暗号鍵から、対象の復号方式と鍵を決定する。\n-    /// 名前付きフィルターの存在は辞書解析で検証される。`/ObjStm` 内の値は復号を省略する。\n+impl AuthenticatedFileKey<'_> {\n+    /// 認証時の暗号化辞書とファイル暗号鍵から、対象の復号方式と鍵を決定する。\n+    /// `/ObjStm` 内の値は復号を省略する。\n+    ///\n+    /// crypt filter を使う文書では既定の `/StrF` または `/StmF` を選ぶ。\n+    /// 明示的な `/Crypt` や埋め込みファイル用の `/EFF` が適用される場合は呼び出し側で扱う。\n     ///\n     /// # Errors\n     ///\n     /// 選択した方式がファイル暗号鍵の種別または長さと両立しなければ\n     /// [`ObjectKeyError::IncompatibleFileKey`] を返す。\n-    pub fn object_decryption<'key>(\n+    pub fn object_decryption(\n         &self,\n-        file_key: &'key AuthenticatedFileKey,\n         target: ObjectDecryptionTarget,\n-    ) -> Result<ObjectDecryption<'key>, ObjectKeyError> {\n+    ) -> Result<ObjectDecryption<'_>, ObjectKeyError> {\n         let ObjectDecryptionTarget::Indirect { id, kind } = target else {\n             return Ok(ObjectDecryption::None);\n         };\n \n-        let method = self.algorithm().crypt_filter_method(kind);\n-        match (method, file_key.key()) {\n+        let method = self.handler().algorithm().crypt_filter_method(kind);\n+        match (method, self.key()) {\n             (CryptFilterMethod::None, _) => Ok(ObjectDecryption::None),\n             (CryptFilterMethod::V2, FileEncryptionKey::Legacy(key)) => {\n                 Ok(ObjectDecryption::Rc4(Rc4ObjectKey::derive(key, id)))",
+          "patchLines": 54,
+          "truncated": false
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/object_key/tests/derivation.rs",
+          "status": "M",
+          "oldPath": null,
+          "additions": 3,
+          "deletions": 4,
+          "patch": "@@ -15,7 +15,7 @@ fn legacy_rc4_uses_object_and_generation_and_truncates_to_ten_bytes() {\n         (7, 0x1235, b\"\\x78\\x93\\xd9\\x0c\\x35\\x7a\\x5d\\x7f\\xaa\\x6d\"),\n     ] {\n         let target = indirect(number, generation, EncryptedValueKind::String);\n-        let ObjectDecryption::Rc4(key) = handler.object_decryption(&auth, target).unwrap() else {\n+        let ObjectDecryption::Rc4(key) = auth.object_decryption(target).unwrap() else {\n             panic!(\"V1 の文字列には RC4 の鍵が必要\");\n         };\n         assert_eq!(key.as_bytes(), expected);\n@@ -52,7 +52,7 @@ fn algorithm_one_uses_only_the_low_three_object_number_bytes() {\n         ),\n     ] {\n         let target = indirect(number, generation, EncryptedValueKind::Stream);\n-        let ObjectDecryption::Rc4(key) = handler.object_decryption(&auth, target).unwrap() else {\n+        let ObjectDecryption::Rc4(key) = auth.object_decryption(target).unwrap() else {\n             panic!(\"V1 のストリームには RC4 の鍵が必要\");\n         };\n         assert_eq!(key.as_bytes(), expected);\n@@ -70,8 +70,7 @@ fn aesv3_reuses_the_same_authenticated_file_key_for_distinct_objects() {\n         (0x100_0000, 8, EncryptedValueKind::Stream),\n     ] {\n         let target = indirect(number, generation, kind);\n-        let ObjectDecryption::Aes256(key) = handler.object_decryption(&auth, target).unwrap()\n-        else {\n+        let ObjectDecryption::Aes256(key) = auth.object_decryption(target).unwrap() else {\n             panic!(\"AESV3 の場合はファイル暗号鍵を使う\");\n         };\n         assert!(std::ptr::eq(key, file_key));",
+          "patchLines": 28,
+          "truncated": false
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/object_key/tests/selection.rs",
+          "status": "M",
+          "oldPath": null,
+          "additions": 6,
+          "deletions": 7,
+          "patch": "@@ -19,11 +19,11 @@ fn stream_and_string_filters_select_salted_aes128_and_unsalted_rc4() {\n     let auth = handler.authenticate(Some(b\"user\"), trailer.id()).unwrap();\n \n     let stream = indirect(7, 0x1234, EncryptedValueKind::Stream);\n-    let ObjectDecryption::Aes128(aes) = handler.object_decryption(&auth, stream).unwrap() else {\n+    let ObjectDecryption::Aes128(aes) = auth.object_decryption(stream).unwrap() else {\n         panic!(\"/StmF の AESV2 が選ばれる\");\n     };\n     let string = indirect(7, 0x1234, EncryptedValueKind::String);\n-    let ObjectDecryption::Rc4(rc4) = handler.object_decryption(&auth, string).unwrap() else {\n+    let ObjectDecryption::Rc4(rc4) = auth.object_decryption(string).unwrap() else {\n         panic!(\"/StrF の V2 が選ばれる\");\n     };\n \n@@ -58,7 +58,7 @@ fn identity_and_no_encryption_method_return_no_key() {\n         for kind in [EncryptedValueKind::Stream, EncryptedValueKind::String] {\n             let target = indirect(7, 0, kind);\n             assert!(matches!(\n-                handler.object_decryption(&auth, target).unwrap(),\n+                auth.object_decryption(target).unwrap(),\n                 ObjectDecryption::None\n             ));\n         }\n@@ -90,12 +90,11 @@ fn object_stream_container_gets_a_key_but_its_members_do_not() {\n \n     let container = indirect(12, 0, EncryptedValueKind::Stream);\n     assert!(matches!(\n-        handler.object_decryption(&auth, container).unwrap(),\n+        auth.object_decryption(container).unwrap(),\n         ObjectDecryption::Aes128(_)\n     ));\n     assert!(matches!(\n-        handler\n-            .object_decryption(&auth, ObjectDecryptionTarget::InObjectStream)\n+        auth.object_decryption(ObjectDecryptionTarget::InObjectStream)\n             .unwrap(),\n         ObjectDecryption::None\n     ));\n@@ -114,7 +113,7 @@ fn rejects_aes128_when_the_file_key_is_shorter_than_128_bits() {\n     let target = indirect(7, 0, EncryptedValueKind::Stream);\n \n     assert_eq!(\n-        handler.object_decryption(&auth, target).unwrap_err(),\n+        auth.object_decryption(target).unwrap_err(),\n         ObjectKeyError::IncompatibleFileKey {\n             method: CryptFilterMethod::AesV2,\n             length: 5,",
+          "patchLines": 47,
+          "truncated": false
+        }
+      ]
+    },
+    {
+      "sha": "b36307b079a30e3c2ae417db8b48e3c6bc7a05b8",
+      "merge": false,
+      "author": "DIO0550",
+      "date": "2026-11-23T10:33:43+09:00",
+      "subject": "📝 [Doc]: #676 認証結果から復号鍵を選ぶ流れを説明する",
+      "body": "- 実装に合わせて認証結果の借用と呼び出し方を示す\n- ストリームの既定方式と個別に扱う指定を説明する",
+      "files": [
+        {
+          "path": "docs/guides/encryption-dictionary.html",
+          "status": "M",
+          "oldPath": null,
+          "additions": 7,
+          "deletions": 6,
+          "patch": "@@ -630,14 +630,13 @@ assert_eq!(digest, <span class=\"type\">Md5</span>::digest(<span class=\"string\">b\"\n   <p>誤ったパスワードや、R5・R6 に対して UTF-8 として解釈できないバイト列を渡した場合は <code>AuthError::IncorrectPassword</code> を返します。一方、R2〜R4 で <code>/ID</code> が欠けていれば <code>MissingFileId</code>、<code>/U</code> や <code>/O</code> が規定長（R2〜R4 は32バイト、R5・R6 は48バイト）と異なれば <code>InvalidEntryLength</code>、R5・R6 で <code>/Perms</code> が辞書と矛盾すれば <code>InvalidPermissions</code> となり、誤パスワードと辞書の破損・改ざんを明確に区別できます。</p>\n </div>\n <h3>Rust API と型による安全境界</h3>\n-<p>検証済みの鍵と役割は <code>AuthenticatedFileKey</code> に包んで返します。フィールドは非公開で、構築できるのは <code>authenticate</code> と <code>authenticate_as</code> だけです。未認証や誤った鍵のまま後続の復号処理へ渡せないことを型で保証します。</p>\n+<p><code>authenticate</code> と <code>authenticate_as</code> は、検証済みの鍵と役割を <code>AuthenticatedFileKey</code> に包んで返します。認証結果は認証に使った暗号化辞書への参照も保持するため、復号方式と鍵を同じ辞書から選べます。</p>\n <pre><code><span class=\"keyword\">use</span> pdfmod_core::encrypt::auth::{<span class=\"type\">AuthError</span>, <span class=\"type\">PasswordRole</span>};\n \n <span class=\"keyword\">match</span> handler.authenticate(password, trailer.id()) {\n     <span class=\"type\">Ok</span>(authenticated) =&gt; {\n         <span class=\"keyword\">let</span> role: <span class=\"type\">PasswordRole</span> = authenticated.role();\n-        <span class=\"keyword\">let</span> key_bytes: &amp;[<span class=\"type\">u8</span>] = authenticated.as_bytes();\n-        <span class=\"comment\">// role に応じて /P の権限制限を判定し、key_bytes で復号へ進む</span>\n+        <span class=\"comment\">// role に応じて /P の権限制限を判定する</span>\n     }\n     <span class=\"type\">Err</span>(<span class=\"type\">AuthError</span>::IncorrectPassword) =&gt; {\n         <span class=\"comment\">// パスワード不一致：再入力を求めるなど</span>\n@@ -652,7 +651,7 @@ assert_eq!(digest, <span class=\"type\">Md5</span>::digest(<span class=\"string\">b\"\n   <tbody>\n     <tr><td><code>StandardSecurityHandler::authenticate(password, file_id)</code></td><td><code>None</code> は空パスワードを利用者 → 所有者、<code>Some(bytes)</code> は所有者 → 利用者の順に認証</td></tr>\n     <tr><td><code>StandardSecurityHandler::authenticate_as(role, password, file_id)</code></td><td>指定した単一の <code>PasswordRole</code> で Algorithm 6 / 7 / 11 / 12 を適用</td></tr>\n-    <tr><td><code>AuthenticatedFileKey</code></td><td><code>role()</code>・<code>key()</code>・<code>as_bytes()</code> を提供。<code>Clone</code> / <code>Copy</code> 非実装、<code>Debug</code> は鍵バイト列を秘匿</td></tr>\n+    <tr><td><code>AuthenticatedFileKey</code></td><td>認証に使った暗号化辞書を借用。<code>role()</code>・<code>key()</code>・<code>as_bytes()</code> で認証結果を参照。<code>Debug</code> は鍵バイト列を秘匿</td></tr>\n     <tr><td><code>FileEncryptionKey</code></td><td><code>Legacy(LegacyFileKey)</code> と <code>Aes256(Aes256FileKey)</code> の列挙型。鍵種別のみを表し単独では認証済みを保証しない（認証が必要な境界では <code>AuthenticatedFileKey</code> を要求する）。<code>as_bytes()</code>・<code>as_legacy()</code>・<code>as_aes256()</code> を提供</td></tr>\n     <tr><td><code>AuthError</code></td><td><code>IncorrectPassword</code> と <code>MissingFileId</code>・<code>InvalidEntryLength</code>・<code>InvalidKeyLength</code>・<code>InvalidPermissions</code>・<code>InvalidHashInput</code>・<code>UnsupportedRevision</code> を区別</td></tr>\n   </tbody>\n@@ -665,7 +664,7 @@ assert_eq!(digest, <span class=\"type\">Md5</span>::digest(<span class=\"string\">b\"\n <div class=\"section-heading\"><span class=\"number\">15</span><h2>オブジェクトの復号鍵</h2></div>\n <p>ファイル暗号鍵はパスワード認証で得られます。文字列やストリームを読む段階では、まず暗号化に使われた方式を探し、その方式に必要な鍵を用意します。</p>\n \n-<h3>文字列は <code>/StrF</code>、ストリーム本体は <code>/StmF</code></h3>\n+<h3>文字列とストリーム本体の既定の方式</h3>\n <p>次は暗号化辞書と間接オブジェクトの抜粋です。<code>/StrF /ForStrings</code> から <code>/CF</code> の <code>/ForStrings</code> を引くと、<code>/CFM /V2</code> が見つかります。したがって <code>/Subject</code> に続く16進文字列は RC4 で復号します。ストリーム本体の既定方式は、<code>/StmF /ForStreams</code> が選ぶ AES-128 です。</p>\n <pre><code><span class=\"comment\">% /Encrypt が指す暗号化辞書の抜粋</span>\n <span class=\"pdf-syntax\">&lt;&lt;</span> <span class=\"key\">/V</span> <span class=\"value\">4</span> <span class=\"key\">/R</span> <span class=\"value\">4</span> <span class=\"key\">/Length</span> <span class=\"value\">128</span>\n@@ -705,7 +704,9 @@ assert_eq!(digest, <span class=\"type\">Md5</span>::digest(<span class=\"string\">b\"\n     <span class=\"keyword\">return</span> <span class=\"type\">Ok</span>(<span class=\"type\">ObjectDecryption</span>::None);\n };</code></pre>\n <p>Rust の <code>let … else</code> は、右辺の値が左側の形に一致したときに中身を取り出す構文です。<code>target</code> が通常の間接オブジェクトなら、波括弧の <code>id</code> と <code>kind</code> を後続の処理で使えます。格納形態が <code>InObjectStream</code> なら <code>else</code> の中へ進み、復号不要を表す <code>Ok(ObjectDecryption::None)</code> を返します。</p>\n-<p><code>StandardSecurityHandler::object_decryption</code> は、認証済みのファイル鍵と対象を受け取り、方式と鍵を返す API です。選んだ方式がファイル鍵の種別や長さと両立しない場合は <code>IncompatibleFileKey</code> になります。暗号データへの適用と文書読み込みへの組み込みは後続の #683 で扱います。</p>\n+<p><code>authenticated.object_decryption(target)</code> と呼ぶと、認証結果に結び付いた辞書とファイル鍵から、対象の復号方式と鍵を選びます。選んだ方式がファイル鍵の種別や長さと両立しない場合は <code>IncompatibleFileKey</code> になります。</p>\n+<p><code>AuthenticatedFileKey&lt;'handler&gt;</code> の <code>'handler</code> は、暗号化辞書への参照を使える期間（ライフタイム）を表します。認証結果を使っている間は、元の辞書も参照できることを Rust のコンパイラが確認します。</p>\n+<p>crypt filter を使う文書では、ストリーム本体の既定の方式を <code>/StmF</code> から選びます。明示的な <code>/Crypt</code> や埋め込みファイル用の <code>/EFF</code> が適用される場合は、呼び出し側で扱います。暗号データへの適用と文書読み込みへの組み込みは後続の #683 で扱います。</p>\n </section>\n <footer><a href=\"#top\">最上部へ</a> · <a href=\"README.md\">解説一覧</a></footer></div></main>\n </body></html>",
+          "patchLines": 46,
+          "truncated": false,
+          "hunkOpeningLines": [
+            {
+              "old": null,
+              "new": null
+            },
+            {
+              "old": null,
+              "new": null
+            },
+            {
+              "old": null,
+              "new": null
+            },
+            {
+              "old": null,
+              "new": null
+            }
+          ]
+        },
+        {
+          "path": "docs/specs/02b_encryption.md",
+          "status": "M",
+          "oldPath": null,
+          "additions": 6,
+          "deletions": 5,
+          "patch": "@@ -405,8 +405,8 @@ ISO 32000-1:2008 §7.6.3.4（Algorithm 6・7）および ISO 32000-2:2020 §7.6.\n \n Rust の `pdfmod_core::encrypt::auth` モジュールは、検証済みの鍵と役割を表す `AuthenticatedFileKey`、鍵本体を版別に包む `FileEncryptionKey`（`Legacy(LegacyFileKey)` / `Aes256(Aes256FileKey)`）、認証エラー `AuthError`、および `PasswordRole`（`encrypt::aes256_key::PasswordRole` の再公開）を提供します。入口は `StandardSecurityHandler` の次の 2 メソッドです。\n \n-- `authenticate(password: Option<&[u8]>, file_id: Option<&FileId>) -> Result<AuthenticatedFileKey, AuthError>` — 役割を自動判定して認証する\n-- `authenticate_as(role: PasswordRole, password: &[u8], file_id: Option<&FileId>) -> Result<AuthenticatedFileKey, AuthError>` — 指定した単一の役割で認証する\n+- `authenticate(password: Option<&[u8]>, file_id: Option<&FileId>) -> Result<AuthenticatedFileKey<'_>, AuthError>` — 役割を自動判定して認証する\n+- `authenticate_as(role: PasswordRole, password: &[u8], file_id: Option<&FileId>) -> Result<AuthenticatedFileKey<'_>, AuthError>` — 指定した単一の役割で認証する\n \n ### 13.1 役割の試行順序と未指定時の既定動作\n \n@@ -439,7 +439,7 @@ R5・R6 はトレイラの `/ID` を参照しません。パスワードバイ\n \n ### 13.5 型による安全境界とエラー分類\n \n-- `AuthenticatedFileKey` はフィールドを非公開とし、`authenticate` / `authenticate_as` からのみ構築できる。未認証または誤った鍵のまま復号へ進めないことを型で保証し、`role()`・`key()`・`as_bytes()` を提供する。\n+- `AuthenticatedFileKey<'handler>` は、認証に使った暗号化辞書の参照と検証済みの鍵・役割を保持する。フィールドは非公開で、`authenticate` / `authenticate_as` から構築する。`role()`・`key()`・`as_bytes()` で結果を参照できる。\n - `FileEncryptionKey` は `Legacy(LegacyFileKey)` / `Aes256(Aes256FileKey)` の鍵種別を表す列挙型であり、単独では鍵の認証済みを保証しない（`Legacy` は `/U` 未照合の `derive_legacy_file_key` の結果も包める）。認証済みの鍵を要求する境界では `AuthenticatedFileKey` を受け取る。`FileEncryptionKey` は `as_bytes()`・`as_legacy()`・`as_aes256()` を提供し、`AuthenticatedFileKey`・`FileEncryptionKey` とも `Clone` / `Copy` を実装せず、`Debug` 出力は `finish_non_exhaustive()`（内包鍵型の秘匿実装を含む）で鍵バイト列を出力しない。\n - `AuthError` はパスワード不一致と暗号化辞書・トレイラの構造不正や改ざんをバリアントで区別する。\n \n@@ -480,9 +480,10 @@ ISO 32000-1:2008 §7.6.2 の **Algorithm 1** では、認証済みのファイ\n \n `/Type /ObjStm` のストリーム本体は、コンテナ自身の番号・世代とストリームの方式で復号します。取り出した内包オブジェクトの文字列は、コンテナの復号ですでに平文になっています。\n \n-`StandardSecurityHandler::object_decryption` は、同じ辞書で認証した `AuthenticatedFileKey` と `ObjectDecryptionTarget` を受け取ります。\n+`AuthenticatedFileKey::object_decryption` は、`ObjectDecryptionTarget` を受け取り、認証結果が保持する暗号化辞書とファイル鍵から方式と鍵を選びます。\n \n-- 通常の間接オブジェクトでは `ObjectId` と値の種類を使って方式と鍵を選びます。`/AESV3` は元の鍵を借用します。\n+- 通常の間接オブジェクトでは値の種類から既定の方式を選び、`ObjectId` を使って鍵を導出します。`/AESV3` は元の鍵を借用します。\n+- ストリーム側の明示的な `/Crypt` や埋め込みファイル用の `/EFF` が適用される場合は、呼び出し側で扱います。\n - `InObjectStream` ではフィルター選択と鍵導出を省略し、`ObjectDecryption::None` を返します。\n - `/CF` に未定義の名前は暗号化辞書の解析時に `UndefinedCryptFilter` になります。選ばれた方式とファイル鍵が両立しない場合は `IncompatibleFileKey` を返します。\n ",
+          "patchLines": 33,
           "truncated": false
         }
       ]
