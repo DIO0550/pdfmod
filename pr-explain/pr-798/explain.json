@@ -1,7 +1,7 @@
 {
   "version": 1,
   "pr": 798,
-  "sha": "b36307b079a30e3c2ae417db8b48e3c6bc7a05b8",
+  "sha": "4267b598ed14bee7036f054e8c14dad107759833",
   "issue": 676,
   "overview": {
     "title": "暗号化された文字列を開くとき、どの鍵を使うか",
@@ -22,6 +22,9 @@
       {
         "text": "辞書と鍵の組は認証が成功した時点で決まります。呼び出し側は、その認証結果に対象だけを渡します。",
         "message": "get-handler"
+      },
+      {
+        "text": "復号鍵は結果自身が所有します。AES-256 でも結果を構造体に保存したり、認証結果を破棄したあとで鍵を使ったりできます。"
       },
       {
         "text": "オブジェクトストリームはコンテナ本体を復号します。そこから読み出した内包値では復号を省きます。"
@@ -62,7 +65,7 @@
       "path": "rust/crates/core/src/encrypt/object_key.rs",
       "name": "対象に応じた復号方式と鍵",
       "role": "対象の格納形態と値の種類を判定し、暗号化辞書の方式に合った型で鍵を返す。",
-      "change": "認証結果の辞書から方式を引き、同じ結果にある鍵を導出に使う。内包値は鍵を作る前に復号不要を返す。"
+      "change": "認証結果の辞書から方式を選び、その鍵を使って戻り値を作る。内包値は鍵を作る前に復号不要を返す。AES-256 の結果にも鍵の値を持たせる。"
     },
     {
       "path": "rust/crates/core/src/encrypt/auth.rs",
@@ -80,6 +83,12 @@
       "name": "復号方式の選択テスト",
       "role": "PDF の暗号化辞書を構成するバイト列を既存のパーサーと認証に通して、対象ごとの戻り値を照合する。",
       "change": "文字列とストリームで同じ番号・世代を使い、指定された方式と期待する鍵バイト列が分かれることを確認する。"
+    },
+    {
+      "path": "rust/crates/core/src/encrypt/aes256_key.rs",
+      "name": "検証済みのファイル暗号鍵",
+      "role": "AES-256 の検証済みの32バイトを保持する。",
+      "change": "復号結果が鍵を所有できるよう、暗号化モジュール内にコピーする入口を設ける。"
     }
   ],
   "messages": [
@@ -104,7 +113,7 @@
       "via": "call",
       "code": "auth.object_decryption(target)",
       "payload": "値を収める間接オブジェクトの番号・世代と、文字列またはストリーム本体という種類",
-      "returns": "方式に対応する鍵、復号不要、または方式と鍵が両立しないエラー。",
+      "returns": "復号方式とその鍵を所有する成功値、復号不要、または方式と鍵が両立しないエラー。",
       "status": "added"
     },
     {
@@ -795,6 +804,95 @@
       "review": [
         "ストリーム本体の既定の /StmF と、ストリームを読む箇所が判断する /Crypt・/EFF の適用範囲を確認する。"
       ]
+    },
+    {
+      "sha": "1f85bf64f63ad5d096963621d3407984653e2b57",
+      "phase": "revise",
+      "role": "復号方式と鍵の結果を、認証結果から独立して保持できるようにする",
+      "why": "AES-256 の鍵への参照があると、復号結果を入れた構造体まで認証結果のライフタイムを引き継ぐ。32バイトのコピーで復号結果自体が鍵を持つようにする。",
+      "before": [
+        {
+          "text": "AES-256 の結果が認証結果の中の鍵を借りるため、復号結果の型にライフタイムがある。"
+        }
+      ],
+      "after": [
+        {
+          "text": "復号結果が鍵を所有し、呼び出し側は認証結果より長く保持できる。"
+        }
+      ],
+      "review": [
+        "AES-256 の結果を認証結果のスコープ外で使えることと、32バイトの値が元の鍵と一致することを確認する。"
+      ],
+      "notes": [
+        {
+          "path": "rust/crates/core/src/encrypt/aes256_key.rs",
+          "start": 40,
+          "end": 43,
+          "text": "すでに検証した固定長配列を、その配列を持つ型の中でコピーする。方式が AES-256 の復号結果を構築するときに使う。"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/object_key.rs",
+          "start": 44,
+          "end": 44,
+          "text": "結果の構造体が認証結果のライフタイムを受け取らずに済むよう、列挙型からライフタイム引数を外す。"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/object_key.rs",
+          "start": 51,
+          "end": 52,
+          "text": "AES-256 の成功結果に検証済みファイル暗号鍵を値として格納し、結果が鍵の持ち主になる。"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/object_key.rs",
+          "start": 116,
+          "end": 117,
+          "text": "呼び出し側がいつまで結果を保持できるかが分かるよう、結果の所有権をメソッドの説明に記す。"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/object_key.rs",
+          "start": 126,
+          "end": 129,
+          "text": "読み取る間だけ借りる入力を &self で受け取り、戻り値にはライフタイム引数のない ObjectDecryption を返す。"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/object_key.rs",
+          "start": 146,
+          "end": 148,
+          "text": "方式が AESV3 で検証済み AES-256 鍵を読めたとき、32バイトをコピーして成功値に入れる。"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/object_key/tests/derivation.rs",
+          "start": 63,
+          "end": 74,
+          "text": "R5 の暗号化辞書で認証し、番号と世代の異なる文字列とストリームに対して方式と鍵を選ぶ。認証結果は波括弧の内側で破棄する。"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/object_key/tests/derivation.rs",
+          "start": 75,
+          "end": 81,
+          "text": "認証結果のスコープ外で返った値を使う。両方の結果から AES-256 鍵を取り出し、元のファイル暗号鍵と同じ32バイトであることを検証する。"
+        }
+      ]
+    },
+    {
+      "sha": "4267b598ed14bee7036f054e8c14dad107759833",
+      "phase": "fin",
+      "role": "AES-256 が選ぶバイト列と Rust で鍵を持つ期間を説明する",
+      "why": "Algorithm 1.A の鍵選択と、復号結果が値を所有する API の動作を結び付ける。",
+      "notes": [
+        {
+          "path": "docs/guides/encryption-dictionary.html",
+          "start": 708,
+          "end": 708,
+          "text": "導出した鍵を持つ RC4・AES-128 と、認証済みの鍵をコピーして持つ AES-256 の各結果を説明する。"
+        },
+        {
+          "path": "docs/specs/02b_encryption.md",
+          "start": 485,
+          "end": 485,
+          "text": "方式ごとの鍵の作り方と、認証結果より長く返り値を保持できることを Rust API の仕様に記す。"
+        }
+      ]
     }
   ],
   "suites": [
@@ -902,20 +1000,27 @@
     {
       "id": "aesv3",
       "suite": "derivation",
-      "name": "aesv3_reuses_the_same_authenticated_file_key_for_distinct_objects",
+      "name": "aesv3_returns_file_key_bytes_that_outlive_authentication",
       "techniques": [
-        "equivalence"
+        "equivalence",
+        "regression"
       ],
-      "why": "AES-256ではオブジェクトごとの導出を省略する。",
-      "given": "AESV3を選ぶR5の辞書と認証済み32バイト鍵。",
-      "when": "オブジェクト番号と世代が異なる文字列・ストリームの鍵を選ぶ。",
-      "then": "どちらも同一の32バイトの鍵への参照を返す。std::ptr::eq で、参照先が認証結果にある鍵と同じことを調べる。",
-      "commit": "fe351ff105ceee9bdca47574588d5c6bf4314f74",
+      "why": "AES-256 が元のファイル暗号鍵と同じ32バイトを使い、結果を認証結果の外で保持できることを確認する。",
+      "given": "AESV3 を選ぶ R5 の辞書と、認証済みの32バイト鍵。",
+      "when": "短いスコープ内で文字列とストリームの鍵を選んでから、認証結果を破棄する。",
+      "then": "外側のスコープで両方の AES-256 鍵を読み、どちらも元の32バイトと一致する。",
+      "commit": "1f85bf64f63ad5d096963621d3407984653e2b57",
       "excerpt": {
         "path": "rust/crates/core/src/encrypt/object_key/tests/derivation.rs",
         "start": 63,
-        "end": 78,
-        "text": "fn aesv3_reuses_the_same_authenticated_file_key_for_distinct_objects() {\n    let handler = standard_handler(R5.as_bytes());\n    let auth = handler.authenticate(Some(b\"user-r5\"), None).unwrap();\n    let file_key = auth.key().as_aes256().unwrap();\n\n    for (number, generation, kind) in [\n        (7, 0, EncryptedValueKind::String),\n        (0x100_0000, 8, EncryptedValueKind::Stream),\n    ] {\n        let target = indirect(number, generation, kind);\n        let ObjectDecryption::Aes256(key) = auth.object_decryption(target).unwrap() else {\n            panic!(\"AESV3 の場合はファイル暗号鍵を使う\");\n        };\n        assert!(std::ptr::eq(key, file_key));\n    }\n}"
+        "end": 82,
+        "emphasis": [
+          {
+            "start": 64,
+            "end": 80
+          }
+        ],
+        "text": "fn aesv3_returns_file_key_bytes_that_outlive_authentication() {\n    let (decryptions, file_key_bytes) = {\n        let handler = standard_handler(R5.as_bytes());\n        let auth = handler.authenticate(Some(b\"user-r5\"), None).unwrap();\n        let file_key_bytes = *auth.key().as_aes256().unwrap().as_bytes();\n        let targets = [\n            indirect(7, 0, EncryptedValueKind::String),\n            indirect(0x100_0000, 8, EncryptedValueKind::Stream),\n        ];\n        let decryptions = targets.map(|target| auth.object_decryption(target).unwrap());\n        (decryptions, file_key_bytes)\n    };\n\n    for decryption in decryptions {\n        let ObjectDecryption::Aes256(key) = decryption else {\n            panic!(\"AESV3 の場合はファイル暗号鍵を使う\");\n        };\n        assert_eq!(key.as_bytes(), &file_key_bytes);\n    }\n}"
       },
       "targets": [
         "rust/crates/core/src/encrypt/object_key.rs"
@@ -1097,6 +1202,9 @@
         },
         {
           "text": "復号方式とその鍵を使うか、復号を省くかを判断できる。"
+        },
+        {
+          "text": "選んだ鍵は、認証結果のスコープを出たあとも使える。"
         }
       ]
     },
@@ -1161,7 +1269,7 @@
           {
             "rowHead": "aes",
             "columnHead": "answer",
-            "result": "認証で取得した32バイトのファイル暗号鍵を使う。",
+            "result": "認証で得た32バイトのファイル暗号鍵を結果の中に持つ。認証結果のスコープを越えて保持できる。",
             "tests": [
               "aesv3"
             ]
@@ -1253,8 +1361,8 @@
             },
             {
               "name": "戻り値",
-              "type": "Result<ObjectDecryption<'_>, ObjectKeyError>",
-              "text": "復号方式と対応する鍵、復号不要、または入力の組み合わせを扱えない理由が返ります。"
+              "type": "Result<ObjectDecryption, ObjectKeyError>",
+              "text": "方式と鍵を所有する結果、復号不要、または入力の組み合わせを扱えない理由が返ります。"
             }
           ]
         },
@@ -1278,7 +1386,7 @@
                 "end": 147
               }
             ],
-            "text": "    pub fn object_decryption(\n        &self,\n        target: ObjectDecryptionTarget,\n    ) -> Result<ObjectDecryption<'_>, ObjectKeyError> {\n        let ObjectDecryptionTarget::Indirect { id, kind } = target else {\n            return Ok(ObjectDecryption::None);\n        };\n\n        let method = self.handler().algorithm().crypt_filter_method(kind);\n        match (method, self.key()) {\n            (CryptFilterMethod::None, _) => Ok(ObjectDecryption::None),\n            (CryptFilterMethod::V2, FileEncryptionKey::Legacy(key)) => {\n                Ok(ObjectDecryption::Rc4(Rc4ObjectKey::derive(key, id)))\n            }\n            (CryptFilterMethod::AesV2, FileEncryptionKey::Legacy(key))\n                if key.as_bytes().len() == AES128_KEY_LEN =>\n            {\n                let bytes = key.object_key_hash(id, AES128_KEY_SALT);\n                Ok(ObjectDecryption::Aes128(Aes128ObjectKey(bytes)))\n            }\n            (CryptFilterMethod::AesV3, FileEncryptionKey::Aes256(key)) => {\n                Ok(ObjectDecryption::Aes256(key))\n            }\n            (method, key) => Err(ObjectKeyError::IncompatibleFileKey {"
+            "text": "    pub fn object_decryption(\n        &self,\n        target: ObjectDecryptionTarget,\n    ) -> Result<ObjectDecryption, ObjectKeyError> {\n        let ObjectDecryptionTarget::Indirect { id, kind } = target else {\n            return Ok(ObjectDecryption::None);\n        };\n\n        let method = self.handler().algorithm().crypt_filter_method(kind);\n        match (method, self.key()) {\n            (CryptFilterMethod::None, _) => Ok(ObjectDecryption::None),\n            (CryptFilterMethod::V2, FileEncryptionKey::Legacy(key)) => {\n                Ok(ObjectDecryption::Rc4(Rc4ObjectKey::derive(key, id)))\n            }\n            (CryptFilterMethod::AesV2, FileEncryptionKey::Legacy(key))\n                if key.as_bytes().len() == AES128_KEY_LEN =>\n            {\n                let bytes = key.object_key_hash(id, AES128_KEY_SALT);\n                Ok(ObjectDecryption::Aes128(Aes128ObjectKey(bytes)))\n            }\n            (CryptFilterMethod::AesV3, FileEncryptionKey::Aes256(key)) => {\n                Ok(ObjectDecryption::Aes256(key.copy_for_object_decryption()))\n            }\n            (method, key) => Err(ObjectKeyError::IncompatibleFileKey {"
           }
         },
         {
@@ -1311,7 +1419,8 @@
       "seeAlso": [
         "pdf-filter",
         "document-binding",
-        "let-else"
+        "let-else",
+        "owned-decryption"
       ],
       "status": "added",
       "tests": [
@@ -1392,7 +1501,7 @@
                 "end": 135
               }
             ],
-            "text": "    pub fn object_decryption(\n        &self,\n        target: ObjectDecryptionTarget,\n    ) -> Result<ObjectDecryption<'_>, ObjectKeyError> {\n        let ObjectDecryptionTarget::Indirect { id, kind } = target else {\n            return Ok(ObjectDecryption::None);\n        };\n\n        let method = self.handler().algorithm().crypt_filter_method(kind);\n        match (method, self.key()) {\n            (CryptFilterMethod::None, _) => Ok(ObjectDecryption::None),\n            (CryptFilterMethod::V2, FileEncryptionKey::Legacy(key)) => {\n                Ok(ObjectDecryption::Rc4(Rc4ObjectKey::derive(key, id)))\n            }"
+            "text": "    pub fn object_decryption(\n        &self,\n        target: ObjectDecryptionTarget,\n    ) -> Result<ObjectDecryption, ObjectKeyError> {\n        let ObjectDecryptionTarget::Indirect { id, kind } = target else {\n            return Ok(ObjectDecryption::None);\n        };\n\n        let method = self.handler().algorithm().crypt_filter_method(kind);\n        match (method, self.key()) {\n            (CryptFilterMethod::None, _) => Ok(ObjectDecryption::None),\n            (CryptFilterMethod::V2, FileEncryptionKey::Legacy(key)) => {\n                Ok(ObjectDecryption::Rc4(Rc4ObjectKey::derive(key, id)))\n            }"
           }
         },
         {
@@ -1456,6 +1565,133 @@
       ],
       "flows": [
         "v4-object-key"
+      ]
+    },
+    {
+      "id": "owned-decryption",
+      "kind": "codebase",
+      "category": "pdfmod の設計",
+      "label": "復号結果が AES-256 の鍵を所有する理由",
+      "gist": "結果を別の構造体に入れて使う場合も、鍵の持ち主をその結果自身にします。AES-256 は認証で得た鍵の32バイトをコピーします。",
+      "status": "changed",
+      "passages": [
+        {
+          "kind": "history",
+          "text": "従来の Aes256(&'key Aes256FileKey) は、認証結果 auth の中の鍵への参照を持つ形です。参照を enum に入れると、enum を別の構造体に保存したときも、その構造体を使う間 auth を参照できる必要があります。"
+        },
+        {
+          "kind": "text",
+          "text": "たとえば復号方式と鍵を複数のオブジェクトについて先に集めると、各結果を入れる構造体がライフタイムを引き継ぎます。今回は復号結果を値として持ち回せるよう、ObjectDecryption の各バリアントが必要な鍵を所有する形に揃えます。"
+        },
+        {
+          "kind": "excerpt",
+          "excerpt": {
+            "path": "rust/crates/core/src/encrypt/object_key.rs",
+            "start": 41,
+            "end": 53,
+            "emphasis": [
+              {
+                "start": 44,
+                "end": 52
+              }
+            ],
+            "text": "/// 対象へ適用する復号方式と、その方式の鍵。\n#[derive(Debug)]\n#[must_use]\npub enum ObjectDecryption {\n    /// `/Identity`、`/CFM /None`、またはオブジェクトストリーム内の値。\n    None,\n    /// Algorithm 1 で導出した RC4 の鍵。\n    Rc4(Rc4ObjectKey),\n    /// `sAlT` を加えた Algorithm 1 で導出した AES-128 の鍵。\n    Aes128(Aes128ObjectKey),\n    /// Algorithm 1.A に従い、認証済みの AES-256 ファイル暗号鍵のコピーを使う。\n    Aes256(Aes256FileKey),\n}"
+          }
+        },
+        {
+          "kind": "text",
+          "text": "Algorithm 1.A が指定するのは、元のファイル暗号鍵と同じ32バイトを使うことです。Rust 側は、鍵の値を結果へコピーしてこの条件を満たします。Aes256FileKey の Self(self.0) は、すでに検証した固定長バイト配列を複製し、新しい鍵の値に包む処理です。"
+        },
+        {
+          "kind": "excerpt",
+          "excerpt": {
+            "path": "rust/crates/core/src/encrypt/aes256_key.rs",
+            "start": 33,
+            "end": 44,
+            "emphasis": [
+              {
+                "start": 40,
+                "end": 43
+              }
+            ],
+            "text": "impl Aes256FileKey {\n    /// ファイル暗号鍵の 32 バイトを借用する。\n    #[must_use]\n    pub fn as_bytes(&self) -> &[u8; KEY_LEN] {\n        &self.0\n    }\n\n    /// 検証済みの鍵を、復号結果で所有できるように複製する。\n    pub(super) fn copy_for_object_decryption(&self) -> Self {\n        Self(self.0)\n    }\n"
+          }
+        },
+        {
+          "kind": "excerpt",
+          "excerpt": {
+            "path": "rust/crates/core/src/encrypt/object_key.rs",
+            "start": 140,
+            "end": 152,
+            "emphasis": [
+              {
+                "start": 146,
+                "end": 148
+              }
+            ],
+            "text": "            (CryptFilterMethod::AesV2, FileEncryptionKey::Legacy(key))\n                if key.as_bytes().len() == AES128_KEY_LEN =>\n            {\n                let bytes = key.object_key_hash(id, AES128_KEY_SALT);\n                Ok(ObjectDecryption::Aes128(Aes128ObjectKey(bytes)))\n            }\n            (CryptFilterMethod::AesV3, FileEncryptionKey::Aes256(key)) => {\n                Ok(ObjectDecryption::Aes256(key.copy_for_object_decryption()))\n            }\n            (method, key) => Err(ObjectKeyError::IncompatibleFileKey {\n                method,\n                length: key.as_bytes().len(),\n            }),"
+          }
+        },
+        {
+          "kind": "text",
+          "text": "RC4 と AES-128 は処理の中で作った鍵をそのまま所有します。AES-256 のコピーはオブジェクトの方式と鍵を選んだ時点で行うため、呼び出し側は認証結果と別に復号結果の保存期間を決められます。"
+        },
+        {
+          "kind": "excerpt",
+          "excerpt": {
+            "path": "rust/crates/core/src/encrypt/object_key/tests/derivation.rs",
+            "start": 62,
+            "end": 82,
+            "emphasis": [
+              {
+                "start": 65,
+                "end": 80
+              }
+            ],
+            "text": "#[test]\nfn aesv3_returns_file_key_bytes_that_outlive_authentication() {\n    let (decryptions, file_key_bytes) = {\n        let handler = standard_handler(R5.as_bytes());\n        let auth = handler.authenticate(Some(b\"user-r5\"), None).unwrap();\n        let file_key_bytes = *auth.key().as_aes256().unwrap().as_bytes();\n        let targets = [\n            indirect(7, 0, EncryptedValueKind::String),\n            indirect(0x100_0000, 8, EncryptedValueKind::Stream),\n        ];\n        let decryptions = targets.map(|target| auth.object_decryption(target).unwrap());\n        (decryptions, file_key_bytes)\n    };\n\n    for decryption in decryptions {\n        let ObjectDecryption::Aes256(key) = decryption else {\n            panic!(\"AESV3 の場合はファイル暗号鍵を使う\");\n        };\n        assert_eq!(key.as_bytes(), &file_key_bytes);\n    }\n}"
+          }
+        },
+        {
+          "kind": "text",
+          "text": "テストでは波括弧の中で認証し、結果を外へ取り出します。中で定義した auth を破棄したあとで、文字列用とストリーム用の鍵がいずれも認証で得た32バイトと一致することを確かめます。"
+        }
+      ],
+      "occurrences": [
+        {
+          "path": "rust/crates/core/src/encrypt/object_key.rs",
+          "lineRange": {
+            "start": 44,
+            "end": 52
+          },
+          "text": "すべての復号方式が鍵の値を持つ列挙型。"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/aes256_key.rs",
+          "lineRange": {
+            "start": 40,
+            "end": 43
+          },
+          "text": "検証済み AES-256 ファイル暗号鍵のコピーを作る。"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/object_key/tests/derivation.rs",
+          "lineRange": {
+            "start": 63,
+            "end": 80
+          },
+          "text": "認証結果のスコープを越えて鍵を使えることを確かめる。"
+        }
+      ],
+      "tests": [
+        "aesv3"
+      ],
+      "flows": [
+        "v4-object-key"
+      ],
+      "seeAlso": [
+        "object-key-bytes",
+        "borrow-key",
+        "result-and-variants"
       ]
     },
     {
@@ -1680,7 +1916,7 @@
         },
         {
           "kind": "text",
-          "text": "AES-256 を選んだ場合の規則は Algorithm 1.A です。既に得た32バイトのファイル暗号鍵を使うので、戻り値はその鍵への参照です。番号と世代は RC4・AES-128 の導出で使い、AES-256 の分岐では鍵の参照を返します。"
+          "text": "AES-256 を選んだ場合は Algorithm 1.A に従い、認証で得た32バイトのファイル暗号鍵を使います。pdfmod はその32バイトをコピーし、結果が所有する鍵にします。番号と世代は RC4 と AES-128 で鍵を作るために使います。"
         },
         {
           "kind": "excerpt",
@@ -1694,7 +1930,7 @@
                 "end": 147
               }
             ],
-            "text": "            (CryptFilterMethod::V2, FileEncryptionKey::Legacy(key)) => {\n                Ok(ObjectDecryption::Rc4(Rc4ObjectKey::derive(key, id)))\n            }\n            (CryptFilterMethod::AesV2, FileEncryptionKey::Legacy(key))\n                if key.as_bytes().len() == AES128_KEY_LEN =>\n            {\n                let bytes = key.object_key_hash(id, AES128_KEY_SALT);\n                Ok(ObjectDecryption::Aes128(Aes128ObjectKey(bytes)))\n            }\n            (CryptFilterMethod::AesV3, FileEncryptionKey::Aes256(key)) => {\n                Ok(ObjectDecryption::Aes256(key))\n            }"
+            "text": "            (CryptFilterMethod::V2, FileEncryptionKey::Legacy(key)) => {\n                Ok(ObjectDecryption::Rc4(Rc4ObjectKey::derive(key, id)))\n            }\n            (CryptFilterMethod::AesV2, FileEncryptionKey::Legacy(key))\n                if key.as_bytes().len() == AES128_KEY_LEN =>\n            {\n                let bytes = key.object_key_hash(id, AES128_KEY_SALT);\n                Ok(ObjectDecryption::Aes128(Aes128ObjectKey(bytes)))\n            }\n            (CryptFilterMethod::AesV3, FileEncryptionKey::Aes256(key)) => {\n                Ok(ObjectDecryption::Aes256(key.copy_for_object_decryption()))\n            }"
           }
         },
         {
@@ -1717,7 +1953,7 @@
             "start": 137,
             "end": 148
           },
-          "text": "RC4、AES-128、AES-256 で鍵の作り方または参照の返し方を切り替える。"
+          "text": "RC4 と AES-128 では鍵を導出し、AES-256 ではファイル暗号鍵をコピーする。"
         },
         {
           "path": "rust/crates/core/src/encrypt/object_key/tests/selection.rs",
@@ -1906,26 +2142,26 @@
                 "end": 129
               }
             ],
-            "text": "    pub fn object_decryption(\n        &self,\n        target: ObjectDecryptionTarget,\n    ) -> Result<ObjectDecryption<'_>, ObjectKeyError> {\n        let ObjectDecryptionTarget::Indirect { id, kind } = target else {\n            return Ok(ObjectDecryption::None);\n        };\n\n        let method = self.handler().algorithm().crypt_filter_method(kind);\n        match (method, self.key()) {"
+            "text": "    pub fn object_decryption(\n        &self,\n        target: ObjectDecryptionTarget,\n    ) -> Result<ObjectDecryption, ObjectKeyError> {\n        let ObjectDecryptionTarget::Indirect { id, kind } = target else {\n            return Ok(ObjectDecryption::None);\n        };\n\n        let method = self.handler().algorithm().crypt_filter_method(kind);\n        match (method, self.key()) {"
           }
         },
         {
           "kind": "text",
-          "text": "&self は認証結果自体への読み取り参照です。戻り値の ObjectDecryption<'_> にある '_ は、ここでは &self と同じ借用の範囲をコンパイラが補います。AES-256 の結果で鍵を借りたまま使うなら、元の認証結果もその間必要になります。"
+          "text": "&self は、方式を選ぶ間に認証結果を読み取るための参照です。戻り値の ObjectDecryption の中には鍵の値が入るので、呼び出しが終われば、その結果を認証結果のスコープの外に持ち出せます。AuthenticatedFileKey の 'handler は、認証した辞書にアクセスできる期間を表します。"
         },
         {
           "kind": "excerpt",
           "excerpt": {
             "path": "rust/crates/core/src/encrypt/object_key.rs",
-            "start": 140,
-            "end": 148,
+            "start": 44,
+            "end": 53,
             "emphasis": [
               {
-                "start": 146,
-                "end": 147
+                "start": 47,
+                "end": 52
               }
             ],
-            "text": "            (CryptFilterMethod::AesV2, FileEncryptionKey::Legacy(key))\n                if key.as_bytes().len() == AES128_KEY_LEN =>\n            {\n                let bytes = key.object_key_hash(id, AES128_KEY_SALT);\n                Ok(ObjectDecryption::Aes128(Aes128ObjectKey(bytes)))\n            }\n            (CryptFilterMethod::AesV3, FileEncryptionKey::Aes256(key)) => {\n                Ok(ObjectDecryption::Aes256(key))\n            }"
+            "text": "pub enum ObjectDecryption {\n    /// `/Identity`、`/CFM /None`、またはオブジェクトストリーム内の値。\n    None,\n    /// Algorithm 1 で導出した RC4 の鍵。\n    Rc4(Rc4ObjectKey),\n    /// `sAlT` を加えた Algorithm 1 で導出した AES-128 の鍵。\n    Aes128(Aes128ObjectKey),\n    /// Algorithm 1.A に従い、認証済みの AES-256 ファイル暗号鍵のコピーを使う。\n    Aes256(Aes256FileKey),\n}"
           }
         }
       ],
@@ -1944,12 +2180,13 @@
             "start": 126,
             "end": 129
           },
-          "text": "戻り値で鍵を借用できる期間を &self に結び付ける。"
+          "text": "方式選択の入力は認証結果への参照で、出力は鍵を所有する値。"
         }
       ],
       "seeAlso": [
         "document-binding",
-        "result-and-variants"
+        "result-and-variants",
+        "owned-decryption"
       ]
     },
     {
@@ -1994,7 +2231,7 @@
                 "end": 132
               }
             ],
-            "text": "    pub fn object_decryption(\n        &self,\n        target: ObjectDecryptionTarget,\n    ) -> Result<ObjectDecryption<'_>, ObjectKeyError> {\n        let ObjectDecryptionTarget::Indirect { id, kind } = target else {\n            return Ok(ObjectDecryption::None);\n        };\n\n        let method = self.handler().algorithm().crypt_filter_method(kind);\n        match (method, self.key()) {"
+            "text": "    pub fn object_decryption(\n        &self,\n        target: ObjectDecryptionTarget,\n    ) -> Result<ObjectDecryption, ObjectKeyError> {\n        let ObjectDecryptionTarget::Indirect { id, kind } = target else {\n            return Ok(ObjectDecryption::None);\n        };\n\n        let method = self.handler().algorithm().crypt_filter_method(kind);\n        match (method, self.key()) {"
           }
         },
         {
@@ -2048,12 +2285,12 @@
                 "end": 52
               }
             ],
-            "text": "/// 対象へ適用する復号方式と、その方式の鍵。\n#[derive(Debug)]\n#[must_use]\npub enum ObjectDecryption<'key> {\n    /// `/Identity`、`/CFM /None`、またはオブジェクトストリーム内の値。\n    None,\n    /// Algorithm 1 で導出した RC4 の鍵。\n    Rc4(Rc4ObjectKey),\n    /// `sAlT` を加えた Algorithm 1 で導出した AES-128 の鍵。\n    Aes128(Aes128ObjectKey),\n    /// Algorithm 1.A に従い借用した AES-256 のファイル暗号鍵。\n    Aes256(&'key Aes256FileKey),\n}"
+            "text": "/// 対象へ適用する復号方式と、その方式の鍵。\n#[derive(Debug)]\n#[must_use]\npub enum ObjectDecryption {\n    /// `/Identity`、`/CFM /None`、またはオブジェクトストリーム内の値。\n    None,\n    /// Algorithm 1 で導出した RC4 の鍵。\n    Rc4(Rc4ObjectKey),\n    /// `sAlT` を加えた Algorithm 1 で導出した AES-128 の鍵。\n    Aes128(Aes128ObjectKey),\n    /// Algorithm 1.A に従い、認証済みの AES-256 ファイル暗号鍵のコピーを使う。\n    Aes256(Aes256FileKey),\n}"
           }
         },
         {
           "kind": "text",
-          "text": "ObjectDecryption はその中の成功結果の種類を表す enum です。Rc4(Rc4ObjectKey) のように、[[バリアント|variant]]が鍵の型を決めます。呼び出し側は Rc4 という形を受け取ると、中の値も RC4 用だと型から分かります。Aes128ObjectKey の長さは16バイト、Aes256 は認証済みの32バイト鍵への参照です。"
+          "text": "ObjectDecryption は成功結果の種類を表す enum です。Rc4(Rc4ObjectKey) のように、[[バリアント|variant]]が鍵の型を決めます。RC4 と AES-128 の結果は導出した鍵、Aes256 の結果は認証済みの32バイト鍵のコピーを所有します。"
         },
         {
           "kind": "excerpt",
@@ -2071,7 +2308,7 @@
                 "end": 152
               }
             ],
-            "text": "        let method = self.handler().algorithm().crypt_filter_method(kind);\n        match (method, self.key()) {\n            (CryptFilterMethod::None, _) => Ok(ObjectDecryption::None),\n            (CryptFilterMethod::V2, FileEncryptionKey::Legacy(key)) => {\n                Ok(ObjectDecryption::Rc4(Rc4ObjectKey::derive(key, id)))\n            }\n            (CryptFilterMethod::AesV2, FileEncryptionKey::Legacy(key))\n                if key.as_bytes().len() == AES128_KEY_LEN =>\n            {\n                let bytes = key.object_key_hash(id, AES128_KEY_SALT);\n                Ok(ObjectDecryption::Aes128(Aes128ObjectKey(bytes)))\n            }\n            (CryptFilterMethod::AesV3, FileEncryptionKey::Aes256(key)) => {\n                Ok(ObjectDecryption::Aes256(key))\n            }\n            (method, key) => Err(ObjectKeyError::IncompatibleFileKey {\n                method,\n                length: key.as_bytes().len(),\n            }),\n        }"
+            "text": "        let method = self.handler().algorithm().crypt_filter_method(kind);\n        match (method, self.key()) {\n            (CryptFilterMethod::None, _) => Ok(ObjectDecryption::None),\n            (CryptFilterMethod::V2, FileEncryptionKey::Legacy(key)) => {\n                Ok(ObjectDecryption::Rc4(Rc4ObjectKey::derive(key, id)))\n            }\n            (CryptFilterMethod::AesV2, FileEncryptionKey::Legacy(key))\n                if key.as_bytes().len() == AES128_KEY_LEN =>\n            {\n                let bytes = key.object_key_hash(id, AES128_KEY_SALT);\n                Ok(ObjectDecryption::Aes128(Aes128ObjectKey(bytes)))\n            }\n            (CryptFilterMethod::AesV3, FileEncryptionKey::Aes256(key)) => {\n                Ok(ObjectDecryption::Aes256(key.copy_for_object_decryption()))\n            }\n            (method, key) => Err(ObjectKeyError::IncompatibleFileKey {\n                method,\n                length: key.as_bytes().len(),\n            }),\n        }"
           }
         },
         {
@@ -2119,7 +2356,8 @@
       "seeAlso": [
         "let-else",
         "object-key-bytes",
-        "document-binding"
+        "document-binding",
+        "owned-decryption"
       ]
     }
   ],
