@@ -9,7 +9,6 @@ use crate::encrypt::auth::{AuthenticatedFileKey, FileEncryptionKey};
 use crate::encrypt::crypt_filter::{CryptFilter, CryptFilterMethod};
 use crate::encrypt::legacy_key::LegacyFileKey;
 use crate::encrypt::md5::{Md5, DIGEST_LEN};
-use crate::encrypt::standard::StandardSecurityHandler;
 use crate::object::object_id::ObjectId;
 
 const AES128_KEY_LEN: usize = 16;
@@ -20,7 +19,8 @@ const AES128_KEY_SALT: &[u8; 4] = b"sAlT";
 pub enum EncryptedValueKind {
     /// 文字列。間接オブジェクト内の辞書や配列に含まれる文字列も該当する。
     String,
-    /// ストリーム本体のバイト列。
+    /// ストリーム本体のバイト列。crypt filter を使う文書では既定の `/StmF` を選ぶ。
+    /// 明示的な `/Crypt` や埋め込みファイル用の `/EFF` が適用される場合は呼び出し側で扱う。
     Stream,
 }
 
@@ -112,25 +112,27 @@ pub enum ObjectKeyError {
     },
 }
 
-impl StandardSecurityHandler {
-    /// この辞書で認証したファイル暗号鍵から、対象の復号方式と鍵を決定する。
-    /// 名前付きフィルターの存在は辞書解析で検証される。`/ObjStm` 内の値は復号を省略する。
+impl AuthenticatedFileKey<'_> {
+    /// 認証時の暗号化辞書とファイル暗号鍵から、対象の復号方式と鍵を決定する。
+    /// `/ObjStm` 内の値は復号を省略する。
+    ///
+    /// crypt filter を使う文書では既定の `/StrF` または `/StmF` を選ぶ。
+    /// 明示的な `/Crypt` や埋め込みファイル用の `/EFF` が適用される場合は呼び出し側で扱う。
     ///
     /// # Errors
     ///
     /// 選択した方式がファイル暗号鍵の種別または長さと両立しなければ
     /// [`ObjectKeyError::IncompatibleFileKey`] を返す。
-    pub fn object_decryption<'key>(
+    pub fn object_decryption(
         &self,
-        file_key: &'key AuthenticatedFileKey,
         target: ObjectDecryptionTarget,
-    ) -> Result<ObjectDecryption<'key>, ObjectKeyError> {
+    ) -> Result<ObjectDecryption<'_>, ObjectKeyError> {
         let ObjectDecryptionTarget::Indirect { id, kind } = target else {
             return Ok(ObjectDecryption::None);
         };
 
-        let method = self.algorithm().crypt_filter_method(kind);
-        match (method, file_key.key()) {
+        let method = self.handler().algorithm().crypt_filter_method(kind);
+        match (method, self.key()) {
             (CryptFilterMethod::None, _) => Ok(ObjectDecryption::None),
             (CryptFilterMethod::V2, FileEncryptionKey::Legacy(key)) => {
                 Ok(ObjectDecryption::Rc4(Rc4ObjectKey::derive(key, id)))

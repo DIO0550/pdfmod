@@ -19,11 +19,11 @@ fn stream_and_string_filters_select_salted_aes128_and_unsalted_rc4() {
     let auth = handler.authenticate(Some(b"user"), trailer.id()).unwrap();
 
     let stream = indirect(7, 0x1234, EncryptedValueKind::Stream);
-    let ObjectDecryption::Aes128(aes) = handler.object_decryption(&auth, stream).unwrap() else {
+    let ObjectDecryption::Aes128(aes) = auth.object_decryption(stream).unwrap() else {
         panic!("/StmF の AESV2 が選ばれる");
     };
     let string = indirect(7, 0x1234, EncryptedValueKind::String);
-    let ObjectDecryption::Rc4(rc4) = handler.object_decryption(&auth, string).unwrap() else {
+    let ObjectDecryption::Rc4(rc4) = auth.object_decryption(string).unwrap() else {
         panic!("/StrF の V2 が選ばれる");
     };
 
@@ -58,7 +58,7 @@ fn identity_and_no_encryption_method_return_no_key() {
         for kind in [EncryptedValueKind::Stream, EncryptedValueKind::String] {
             let target = indirect(7, 0, kind);
             assert!(matches!(
-                handler.object_decryption(&auth, target).unwrap(),
+                auth.object_decryption(target).unwrap(),
                 ObjectDecryption::None
             ));
         }
@@ -90,12 +90,11 @@ fn object_stream_container_gets_a_key_but_its_members_do_not() {
 
     let container = indirect(12, 0, EncryptedValueKind::Stream);
     assert!(matches!(
-        handler.object_decryption(&auth, container).unwrap(),
+        auth.object_decryption(container).unwrap(),
         ObjectDecryption::Aes128(_)
     ));
     assert!(matches!(
-        handler
-            .object_decryption(&auth, ObjectDecryptionTarget::InObjectStream)
+        auth.object_decryption(ObjectDecryptionTarget::InObjectStream)
             .unwrap(),
         ObjectDecryption::None
     ));
@@ -114,7 +113,7 @@ fn rejects_aes128_when_the_file_key_is_shorter_than_128_bits() {
     let target = indirect(7, 0, EncryptedValueKind::Stream);
 
     assert_eq!(
-        handler.object_decryption(&auth, target).unwrap_err(),
+        auth.object_decryption(target).unwrap_err(),
         ObjectKeyError::IncompatibleFileKey {
             method: CryptFilterMethod::AesV2,
             length: 5,

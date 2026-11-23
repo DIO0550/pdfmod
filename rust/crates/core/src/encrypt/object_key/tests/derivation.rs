@@ -15,7 +15,7 @@ fn legacy_rc4_uses_object_and_generation_and_truncates_to_ten_bytes() {
         (7, 0x1235, b"\x78\x93\xd9\x0c\x35\x7a\x5d\x7f\xaa\x6d"),
     ] {
         let target = indirect(number, generation, EncryptedValueKind::String);
-        let ObjectDecryption::Rc4(key) = handler.object_decryption(&auth, target).unwrap() else {
+        let ObjectDecryption::Rc4(key) = auth.object_decryption(target).unwrap() else {
             panic!("V1 の文字列には RC4 の鍵が必要");
         };
         assert_eq!(key.as_bytes(), expected);
@@ -52,7 +52,7 @@ fn algorithm_one_uses_only_the_low_three_object_number_bytes() {
         ),
     ] {
         let target = indirect(number, generation, EncryptedValueKind::Stream);
-        let ObjectDecryption::Rc4(key) = handler.object_decryption(&auth, target).unwrap() else {
+        let ObjectDecryption::Rc4(key) = auth.object_decryption(target).unwrap() else {
             panic!("V1 のストリームには RC4 の鍵が必要");
         };
         assert_eq!(key.as_bytes(), expected);
@@ -70,8 +70,7 @@ fn aesv3_reuses_the_same_authenticated_file_key_for_distinct_objects() {
         (0x100_0000, 8, EncryptedValueKind::Stream),
     ] {
         let target = indirect(number, generation, kind);
-        let ObjectDecryption::Aes256(key) = handler.object_decryption(&auth, target).unwrap()
-        else {
+        let ObjectDecryption::Aes256(key) = auth.object_decryption(target).unwrap() else {
             panic!("AESV3 の場合はファイル暗号鍵を使う");
         };
         assert!(std::ptr::eq(key, file_key));
