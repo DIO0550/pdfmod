@@ -4,7 +4,7 @@
   "headBranch": "feature/652-typescript-crypto-primitives",
   "baseBranch": "main",
   "mergeBase": "0d619acb552c50626ff74f0ac3bbd1fed36f2488",
-  "head": "e536b7b6c9a945cb5431642629bbae0052ea429c",
+  "head": "478ea6e3d396f391e0d9e792941259e5b9220f94",
   "groups": [
     {
       "label": "TypeScript · core",
@@ -76,7 +76,7 @@
           "path": "packages/core/src/pdf/encryption/primitives/md5/index.ts",
           "status": "A",
           "oldPath": null,
-          "additions": 115,
+          "additions": 113,
           "deletions": 0,
           "changed": true,
           "target": null
@@ -634,6 +634,26 @@
           "deletions": 0,
           "patch": "@@ -150,6 +150,7 @@ ISO 32000-1 表 20（共通）・表 21（標準ハンドラ）に基づく主\n | `/V` × `/R` の型制約 | §3 の 6 種だけを `StandardAlgorithm` として表現し、不正な組み合わせを構築不可にする |\n | 未対応ハンドラ・未対応版 | `/Adobe.PubSec` や未対応の `/V`×`/R` は `EncryptDictionary::Unsupported` に生辞書を保持して**解析を止めない** |\n | 構造不正エラー | `/Filter`・`/V`・`/R` の欠落や Standard 辞書の構造不正は `EncryptError` として位置情報付きで報告する |\n+| 暗号プリミティブ（TypeScript） | §7〜§10 の計算を Node とブラウザ共通の同期 TypeScript として提供。内部 API と PDF の各項目の対応は [図解ガイド](../guides/encryption-dictionary.html#typescript-primitives) を参照 |\n | 鍵導出・パスワード認証（Rust） | R2〜R4 の鍵導出は §11、R5・R6 の鍵導出・権限検証は §12、全リビジョンのパスワード認証と役割判定の入口は §13 で実装済み |\n | TypeScript `PdfDocument.load` | 復号未対応のため、暗号化 PDF は引き続き拒否する（暗号化辞書の型化 API は独立提供） |\n | 今後の対応範囲 | `AuthenticatedFileKey` を用いたオブジェクト（文字列・ストリーム）単位の復号、および `ObjectResolver`・`PdfDocument` への統合（#683） |",
           "patchLines": 8,
+          "truncated": false
+        }
+      ]
+    },
+    {
+      "sha": "478ea6e3d396f391e0d9e792941259e5b9220f94",
+      "merge": false,
+      "author": "DIO0550",
+      "date": "2026-11-23T23:49:23+09:00",
+      "subject": "🐛 [Bug Fix]: #652 MD5 のラウンド設定を共通の式に揃える",
+      "body": "- G・H・I の入力ワードの間隔と開始位置をラウンド設定へ移す\n\n背景:\n最初のCIで G・H・I に残った旧参照を型チェックが検出した。\n\n採用理由:\n4ラウンドで同じ式を使い、入力ワードの選び方は設定値だけで表す。\n\n影響とトレードオフ:\nRFC 1321 の既知値と末尾の境界テストを再実行し、64ステップを検証した。",
+      "files": [
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/md5/index.ts",
+          "status": "M",
+          "oldPath": null,
+          "additions": 6,
+          "deletions": 8,
+          "patch": "@@ -42,22 +42,20 @@ const ROUNDS = [\n   },\n   {\n     mix: ({ b, c, d }: WorkingState) => (b & d) | (c & ~d),\n-    selectWord: (step: number) =>\n-      (ROUND_WORD_SELECTION.G.stride * step + ROUND_WORD_SELECTION.G.first) %\n-      WORDS_PER_BLOCK,\n+    stride: 5,\n+    firstWord: 1,\n     shifts: /* @__PURE__ */ readHexWords(\"05 09 0e 14\", Number),\n   },\n   {\n     mix: ({ b, c, d }: WorkingState) => b ^ c ^ d,\n-    selectWord: (step: number) =>\n-      (ROUND_WORD_SELECTION.H.stride * step + ROUND_WORD_SELECTION.H.first) %\n-      WORDS_PER_BLOCK,\n+    stride: 3,\n+    firstWord: 5,\n     shifts: /* @__PURE__ */ readHexWords(\"04 0b 10 17\", Number),\n   },\n   {\n     mix: ({ b, c, d }: WorkingState) => c ^ (b | ~d),\n-    selectWord: (step: number) =>\n-      (ROUND_WORD_SELECTION.I.stride * step) % WORDS_PER_BLOCK,\n+    stride: 7,\n+    firstWord: 0,\n     shifts: /* @__PURE__ */ readHexWords(\"06 0a 0f 15\", Number),\n   },\n ] as const;",
+          "patchLines": 29,
           "truncated": false
         }
       ]
