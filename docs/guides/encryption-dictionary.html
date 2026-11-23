@@ -630,14 +630,13 @@ assert_eq!(digest, <span class="type">Md5</span>::digest(<span class="string">b"
   <p>誤ったパスワードや、R5・R6 に対して UTF-8 として解釈できないバイト列を渡した場合は <code>AuthError::IncorrectPassword</code> を返します。一方、R2〜R4 で <code>/ID</code> が欠けていれば <code>MissingFileId</code>、<code>/U</code> や <code>/O</code> が規定長（R2〜R4 は32バイト、R5・R6 は48バイト）と異なれば <code>InvalidEntryLength</code>、R5・R6 で <code>/Perms</code> が辞書と矛盾すれば <code>InvalidPermissions</code> となり、誤パスワードと辞書の破損・改ざんを明確に区別できます。</p>
 </div>
 <h3>Rust API と型による安全境界</h3>
-<p>検証済みの鍵と役割は <code>AuthenticatedFileKey</code> に包んで返します。フィールドは非公開で、構築できるのは <code>authenticate</code> と <code>authenticate_as</code> だけです。未認証や誤った鍵のまま後続の復号処理へ渡せないことを型で保証します。</p>
+<p><code>authenticate</code> と <code>authenticate_as</code> は、検証済みの鍵と役割を <code>AuthenticatedFileKey</code> に包んで返します。認証結果は認証に使った暗号化辞書への参照も保持するため、復号方式と鍵を同じ辞書から選べます。</p>
 <pre><code><span class="keyword">use</span> pdfmod_core::encrypt::auth::{<span class="type">AuthError</span>, <span class="type">PasswordRole</span>};
 
 <span class="keyword">match</span> handler.authenticate(password, trailer.id()) {
     <span class="type">Ok</span>(authenticated) =&gt; {
         <span class="keyword">let</span> role: <span class="type">PasswordRole</span> = authenticated.role();
-        <span class="keyword">let</span> key_bytes: &amp;[<span class="type">u8</span>] = authenticated.as_bytes();
-        <span class="comment">// role に応じて /P の権限制限を判定し、key_bytes で復号へ進む</span>
+        <span class="comment">// role に応じて /P の権限制限を判定する</span>
     }
     <span class="type">Err</span>(<span class="type">AuthError</span>::IncorrectPassword) =&gt; {
         <span class="comment">// パスワード不一致：再入力を求めるなど</span>
@@ -652,7 +651,7 @@ assert_eq!(digest, <span class="type">Md5</span>::digest(<span class="string">b"
   <tbody>
     <tr><td><code>StandardSecurityHandler::authenticate(password, file_id)</code></td><td><code>None</code> は空パスワードを利用者 → 所有者、<code>Some(bytes)</code> は所有者 → 利用者の順に認証</td></tr>
     <tr><td><code>StandardSecurityHandler::authenticate_as(role, password, file_id)</code></td><td>指定した単一の <code>PasswordRole</code> で Algorithm 6 / 7 / 11 / 12 を適用</td></tr>
-    <tr><td><code>AuthenticatedFileKey</code></td><td><code>role()</code>・<code>key()</code>・<code>as_bytes()</code> を提供。<code>Clone</code> / <code>Copy</code> 非実装、<code>Debug</code> は鍵バイト列を秘匿</td></tr>
+    <tr><td><code>AuthenticatedFileKey</code></td><td>認証に使った暗号化辞書を借用。<code>role()</code>・<code>key()</code>・<code>as_bytes()</code> で認証結果を参照。<code>Debug</code> は鍵バイト列を秘匿</td></tr>
     <tr><td><code>FileEncryptionKey</code></td><td><code>Legacy(LegacyFileKey)</code> と <code>Aes256(Aes256FileKey)</code> の列挙型。鍵種別のみを表し単独では認証済みを保証しない（認証が必要な境界では <code>AuthenticatedFileKey</code> を要求する）。<code>as_bytes()</code>・<code>as_legacy()</code>・<code>as_aes256()</code> を提供</td></tr>
     <tr><td><code>AuthError</code></td><td><code>IncorrectPassword</code> と <code>MissingFileId</code>・<code>InvalidEntryLength</code>・<code>InvalidKeyLength</code>・<code>InvalidPermissions</code>・<code>InvalidHashInput</code>・<code>UnsupportedRevision</code> を区別</td></tr>
   </tbody>
@@ -665,7 +664,7 @@ assert_eq!(digest, <span class="type">Md5</span>::digest(<span class="string">b"
 <div class="section-heading"><span class="number">15</span><h2>オブジェクトの復号鍵</h2></div>
 <p>ファイル暗号鍵はパスワード認証で得られます。文字列やストリームを読む段階では、まず暗号化に使われた方式を探し、その方式に必要な鍵を用意します。</p>
 
-<h3>文字列は <code>/StrF</code>、ストリーム本体は <code>/StmF</code></h3>
+<h3>文字列とストリーム本体の既定の方式</h3>
 <p>次は暗号化辞書と間接オブジェクトの抜粋です。<code>/StrF /ForStrings</code> から <code>/CF</code> の <code>/ForStrings</code> を引くと、<code>/CFM /V2</code> が見つかります。したがって <code>/Subject</code> に続く16進文字列は RC4 で復号します。ストリーム本体の既定方式は、<code>/StmF /ForStreams</code> が選ぶ AES-128 です。</p>
 <pre><code><span class="comment">% /Encrypt が指す暗号化辞書の抜粋</span>
 <span class="pdf-syntax">&lt;&lt;</span> <span class="key">/V</span> <span class="value">4</span> <span class="key">/R</span> <span class="value">4</span> <span class="key">/Length</span> <span class="value">128</span>
@@ -705,7 +704,9 @@ assert_eq!(digest, <span class="type">Md5</span>::digest(<span class="string">b"
     <span class="keyword">return</span> <span class="type">Ok</span>(<span class="type">ObjectDecryption</span>::None);
 };</code></pre>
 <p>Rust の <code>let … else</code> は、右辺の値が左側の形に一致したときに中身を取り出す構文です。<code>target</code> が通常の間接オブジェクトなら、波括弧の <code>id</code> と <code>kind</code> を後続の処理で使えます。格納形態が <code>InObjectStream</code> なら <code>else</code> の中へ進み、復号不要を表す <code>Ok(ObjectDecryption::None)</code> を返します。</p>
-<p><code>StandardSecurityHandler::object_decryption</code> は、認証済みのファイル鍵と対象を受け取り、方式と鍵を返す API です。選んだ方式がファイル鍵の種別や長さと両立しない場合は <code>IncompatibleFileKey</code> になります。暗号データへの適用と文書読み込みへの組み込みは後続の #683 で扱います。</p>
+<p><code>authenticated.object_decryption(target)</code> と呼ぶと、認証結果に結び付いた辞書とファイル鍵から、対象の復号方式と鍵を選びます。選んだ方式がファイル鍵の種別や長さと両立しない場合は <code>IncompatibleFileKey</code> になります。</p>
+<p><code>AuthenticatedFileKey&lt;'handler&gt;</code> の <code>'handler</code> は、暗号化辞書への参照を使える期間（ライフタイム）を表します。認証結果を使っている間は、元の辞書も参照できることを Rust のコンパイラが確認します。</p>
+<p>crypt filter を使う文書では、ストリーム本体の既定の方式を <code>/StmF</code> から選びます。明示的な <code>/Crypt</code> や埋め込みファイル用の <code>/EFF</code> が適用される場合は、呼び出し側で扱います。暗号データへの適用と文書読み込みへの組み込みは後続の #683 で扱います。</p>
 </section>
 <footer><a href="#top">最上部へ</a> · <a href="README.md">解説一覧</a></footer></div></main>
 </body></html>

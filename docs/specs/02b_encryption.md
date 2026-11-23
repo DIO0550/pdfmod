@@ -405,8 +405,8 @@ ISO 32000-1:2008 §7.6.3.4（Algorithm 6・7）および ISO 32000-2:2020 §7.6.
 
 Rust の `pdfmod_core::encrypt::auth` モジュールは、検証済みの鍵と役割を表す `AuthenticatedFileKey`、鍵本体を版別に包む `FileEncryptionKey`（`Legacy(LegacyFileKey)` / `Aes256(Aes256FileKey)`）、認証エラー `AuthError`、および `PasswordRole`（`encrypt::aes256_key::PasswordRole` の再公開）を提供します。入口は `StandardSecurityHandler` の次の 2 メソッドです。
 
-- `authenticate(password: Option<&[u8]>, file_id: Option<&FileId>) -> Result<AuthenticatedFileKey, AuthError>` — 役割を自動判定して認証する
-- `authenticate_as(role: PasswordRole, password: &[u8], file_id: Option<&FileId>) -> Result<AuthenticatedFileKey, AuthError>` — 指定した単一の役割で認証する
+- `authenticate(password: Option<&[u8]>, file_id: Option<&FileId>) -> Result<AuthenticatedFileKey<'_>, AuthError>` — 役割を自動判定して認証する
+- `authenticate_as(role: PasswordRole, password: &[u8], file_id: Option<&FileId>) -> Result<AuthenticatedFileKey<'_>, AuthError>` — 指定した単一の役割で認証する
 
 ### 13.1 役割の試行順序と未指定時の既定動作
 
@@ -439,7 +439,7 @@ R5・R6 はトレイラの `/ID` を参照しません。パスワードバイ�
 
 ### 13.5 型による安全境界とエラー分類
 
-- `AuthenticatedFileKey` はフィールドを非公開とし、`authenticate` / `authenticate_as` からのみ構築できる。未認証または誤った鍵のまま復号へ進めないことを型で保証し、`role()`・`key()`・`as_bytes()` を提供する。
+- `AuthenticatedFileKey<'handler>` は、認証に使った暗号化辞書の参照と検証済みの鍵・役割を保持する。フィールドは非公開で、`authenticate` / `authenticate_as` から構築する。`role()`・`key()`・`as_bytes()` で結果を参照できる。
 - `FileEncryptionKey` は `Legacy(LegacyFileKey)` / `Aes256(Aes256FileKey)` の鍵種別を表す列挙型であり、単独では鍵の認証済みを保証しない（`Legacy` は `/U` 未照合の `derive_legacy_file_key` の結果も包める）。認証済みの鍵を要求する境界では `AuthenticatedFileKey` を受け取る。`FileEncryptionKey` は `as_bytes()`・`as_legacy()`・`as_aes256()` を提供し、`AuthenticatedFileKey`・`FileEncryptionKey` とも `Clone` / `Copy` を実装せず、`Debug` 出力は `finish_non_exhaustive()`（内包鍵型の秘匿実装を含む）で鍵バイト列を出力しない。
 - `AuthError` はパスワード不一致と暗号化辞書・トレイラの構造不正や改ざんをバリアントで区別する。
 
@@ -480,9 +480,10 @@ ISO 32000-1:2008 §7.6.2 の **Algorithm 1** では、認証済みのファイ�
 
 `/Type /ObjStm` のストリーム本体は、コンテナ自身の番号・世代とストリームの方式で復号します。取り出した内包オブジェクトの文字列は、コンテナの復号ですでに平文になっています。
 
-`StandardSecurityHandler::object_decryption` は、同じ辞書で認証した `AuthenticatedFileKey` と `ObjectDecryptionTarget` を受け取ります。
+`AuthenticatedFileKey::object_decryption` は、`ObjectDecryptionTarget` を受け取り、認証結果が保持する暗号化辞書とファイル鍵から方式と鍵を選びます。
 
-- 通常の間接オブジェクトでは `ObjectId` と値の種類を使って方式と鍵を選びます。`/AESV3` は元の鍵を借用します。
+- 通常の間接オブジェクトでは値の種類から既定の方式を選び、`ObjectId` を使って鍵を導出します。`/AESV3` は元の鍵を借用します。
+- ストリーム側の明示的な `/Crypt` や埋め込みファイル用の `/EFF` が適用される場合は、呼び出し側で扱います。
 - `InObjectStream` ではフィルター選択と鍵導出を省略し、`ObjectDecryption::None` を返します。
 - `/CF` に未定義の名前は暗号化辞書の解析時に `UndefinedCryptFilter` になります。選ばれた方式とファイル鍵が両立しない場合は `IncompatibleFileKey` を返します。
 
