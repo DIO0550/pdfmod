@@ -705,6 +705,7 @@ assert_eq!(digest, <span class="type">Md5</span>::digest(<span class="string">b"
 };</code></pre>
 <p>Rust の <code>let … else</code> は、右辺の値が左側の形に一致したときに中身を取り出す構文です。<code>target</code> が通常の間接オブジェクトなら、波括弧の <code>id</code> と <code>kind</code> を後続の処理で使えます。格納形態が <code>InObjectStream</code> なら <code>else</code> の中へ進み、復号不要を表す <code>Ok(ObjectDecryption::None)</code> を返します。</p>
 <p><code>authenticated.object_decryption(target)</code> と呼ぶと、認証結果に結び付いた辞書とファイル鍵から、対象の復号方式と鍵を選びます。選んだ方式がファイル鍵の種別や長さと両立しない場合は <code>IncompatibleFileKey</code> になります。</p>
+<p>RC4 と AES-128 の戻り値は、その場で導出した鍵を持ちます。AES-256 では Algorithm 1.A が指定するファイル暗号鍵の32バイトをコピーして、<code>ObjectDecryption::Aes256</code> に入れます。どの方式でも戻り値が自分で鍵を持つため、呼び出し側は認証結果を破棄したあとも復号方式と鍵を保持できます。</p>
 <p><code>AuthenticatedFileKey&lt;'handler&gt;</code> の <code>'handler</code> は、暗号化辞書への参照を使える期間（ライフタイム）を表します。認証結果を使っている間は、元の辞書も参照できることを Rust のコンパイラが確認します。</p>
 <p>crypt filter を使う文書では、ストリーム本体の既定の方式を <code>/StmF</code> から選びます。明示的な <code>/Crypt</code> や埋め込みファイル用の <code>/EFF</code> が適用される場合は、呼び出し側で扱います。暗号データへの適用と文書読み込みへの組み込みは後続の #683 で扱います。</p>
 </section>

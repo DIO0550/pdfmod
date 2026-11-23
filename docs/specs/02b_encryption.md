@@ -482,7 +482,7 @@ ISO 32000-1:2008 §7.6.2 の **Algorithm 1** では、認証済みのファイ�
 
 `AuthenticatedFileKey::object_decryption` は、`ObjectDecryptionTarget` を受け取り、認証結果が保持する暗号化辞書とファイル鍵から方式と鍵を選びます。
 
-- 通常の間接オブジェクトでは値の種類から既定の方式を選び、`ObjectId` を使って鍵を導出します。`/AESV3` は元の鍵を借用します。
+- 通常の間接オブジェクトでは値の種類から既定の方式を選びます。RC4 と AES-128 は `ObjectId` を使って鍵を導出し、`/AESV3` は認証済みの 32 バイトの鍵をコピーします。戻り値は鍵を所有するため、認証結果より長く保持できます。
 - ストリーム側の明示的な `/Crypt` や埋め込みファイル用の `/EFF` が適用される場合は、呼び出し側で扱います。
 - `InObjectStream` ではフィルター選択と鍵導出を省略し、`ObjectDecryption::None` を返します。
 - `/CF` に未定義の名前は暗号化辞書の解析時に `UndefinedCryptFilter` になります。選ばれた方式とファイル鍵が両立しない場合は `IncompatibleFileKey` を返します。
