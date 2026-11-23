@@ -60,19 +60,23 @@ fn algorithm_one_uses_only_the_low_three_object_number_bytes() {
 }
 
 #[test]
-fn aesv3_reuses_the_same_authenticated_file_key_for_distinct_objects() {
-    let handler = standard_handler(R5.as_bytes());
-    let auth = handler.authenticate(Some(b"user-r5"), None).unwrap();
-    let file_key = auth.key().as_aes256().unwrap();
+fn aesv3_returns_file_key_bytes_that_outlive_authentication() {
+    let (decryptions, file_key_bytes) = {
+        let handler = standard_handler(R5.as_bytes());
+        let auth = handler.authenticate(Some(b"user-r5"), None).unwrap();
+        let file_key_bytes = *auth.key().as_aes256().unwrap().as_bytes();
+        let targets = [
+            indirect(7, 0, EncryptedValueKind::String),
+            indirect(0x100_0000, 8, EncryptedValueKind::Stream),
+        ];
+        let decryptions = targets.map(|target| auth.object_decryption(target).unwrap());
+        (decryptions, file_key_bytes)
+    };
 
-    for (number, generation, kind) in [
-        (7, 0, EncryptedValueKind::String),
-        (0x100_0000, 8, EncryptedValueKind::Stream),
-    ] {
-        let target = indirect(number, generation, kind);
-        let ObjectDecryption::Aes256(key) = auth.object_decryption(target).unwrap() else {
+    for decryption in decryptions {
+        let ObjectDecryption::Aes256(key) = decryption else {
             panic!("AESV3 の場合はファイル暗号鍵を使う");
         };
-        assert!(std::ptr::eq(key, file_key));
+        assert_eq!(key.as_bytes(), &file_key_bytes);
     }
 }

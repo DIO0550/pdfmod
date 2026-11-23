@@ -41,15 +41,15 @@ pub enum ObjectDecryptionTarget {
 /// 対象へ適用する復号方式と、その方式の鍵。
 #[derive(Debug)]
 #[must_use]
-pub enum ObjectDecryption<'key> {
+pub enum ObjectDecryption {
     /// `/Identity`、`/CFM /None`、またはオブジェクトストリーム内の値。
     None,
     /// Algorithm 1 で導出した RC4 の鍵。
     Rc4(Rc4ObjectKey),
     /// `sAlT` を加えた Algorithm 1 で導出した AES-128 の鍵。
     Aes128(Aes128ObjectKey),
-    /// Algorithm 1.A に従い借用した AES-256 のファイル暗号鍵。
-    Aes256(&'key Aes256FileKey),
+    /// Algorithm 1.A に従い、認証済みの AES-256 ファイル暗号鍵のコピーを使う。
+    Aes256(Aes256FileKey),
 }
 
 /// Algorithm 1 で導出した 10〜16 バイトの RC4 鍵。
@@ -114,7 +114,7 @@ pub enum ObjectKeyError {
 
 impl AuthenticatedFileKey<'_> {
     /// 認証時の暗号化辞書とファイル暗号鍵から、対象の復号方式と鍵を決定する。
-    /// `/ObjStm` 内の値は復号を省略する。
+    /// 戻り値は復号鍵を所有する。`/ObjStm` 内の値は復号を省略する。
     ///
     /// crypt filter を使う文書では既定の `/StrF` または `/StmF` を選ぶ。
     /// 明示的な `/Crypt` や埋め込みファイル用の `/EFF` が適用される場合は呼び出し側で扱う。
@@ -126,7 +126,7 @@ impl AuthenticatedFileKey<'_> {
     pub fn object_decryption(
         &self,
         target: ObjectDecryptionTarget,
-    ) -> Result<ObjectDecryption<'_>, ObjectKeyError> {
+    ) -> Result<ObjectDecryption, ObjectKeyError> {
         let ObjectDecryptionTarget::Indirect { id, kind } = target else {
             return Ok(ObjectDecryption::None);
         };
@@ -144,7 +144,7 @@ impl AuthenticatedFileKey<'_> {
                 Ok(ObjectDecryption::Aes128(Aes128ObjectKey(bytes)))
             }
             (CryptFilterMethod::AesV3, FileEncryptionKey::Aes256(key)) => {
-                Ok(ObjectDecryption::Aes256(key))
+                Ok(ObjectDecryption::Aes256(key.copy_for_object_decryption()))
             }
             (method, key) => Err(ObjectKeyError::IncompatibleFileKey {
                 method,
