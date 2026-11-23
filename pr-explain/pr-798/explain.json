@@ -1,11 +1,11 @@
 {
   "version": 1,
   "pr": 798,
-  "sha": "3b0d45ee7e06c4786892fd7da97c46cdc8b73cda",
+  "sha": "b36307b079a30e3c2ae417db8b48e3c6bc7a05b8",
   "issue": 676,
   "overview": {
     "title": "対象ごとにPDFの復号方式と鍵を選ぶ",
-    "lead": "認証で得たファイル鍵を、文字列やストリームに対応する復号鍵へつなげる。暗号化辞書の読み方から、オブジェクト番号と世代番号が鍵に入る位置までを追う。",
+    "lead": "パスワード認証の結果からPDFの文字列やストリームに対応する復号鍵を選ぶ。認証結果が元の暗号化辞書を借用し、辞書と鍵の組を保つ仕組みを追う。",
     "before": [
       {
         "text": "暗号化辞書の解析とパスワード認証は提供されていた。呼び出し側が受け取るのはファイル全体の鍵までだった。"
@@ -13,7 +13,7 @@
     ],
     "after": [
       {
-        "text": "通常の間接オブジェクトでは、文字列とストリーム本体のどちらかに応じてフィルターを引く。",
+        "text": "認証結果から対象を渡すと、認証時の辞書を使って文字列やストリーム本体の既定方式を選ぶ。",
         "message": "select-key"
       },
       {
@@ -21,12 +21,15 @@
       },
       {
         "text": "平文指定やオブジェクトストリーム内の値には復号不要を返す。フィルター名の欠落や鍵の不整合はエラーで分かる。"
+      },
+      {
+        "text": "明示の Crypt や埋め込みファイル用の EFF が適用されるときは、ストリームを読む側が個別に扱う。"
       }
     ],
     "highlights": [
       {
         "title": "認証後の入口",
-        "text": "方式と対応する鍵が一つの値にまとまる。",
+        "text": "復号方式を認証に使った暗号化辞書から選び、検証済みのファイル鍵と組み合わせる。",
         "go": {
           "kind": "file",
           "path": "rust/crates/core/src/encrypt/object_key.rs"
@@ -51,7 +54,7 @@
     {
       "path": "rust/crates/core/src/encrypt/auth.rs",
       "name": "パスワード認証",
-      "role": "認証済みのファイル鍵と鍵の種別を提供する。"
+      "role": "検証済みのファイル鍵と役割を返し、認証に使った暗号化辞書の参照も保持する。"
     },
     {
       "path": "docs/guides/encryption-dictionary.html",
@@ -72,9 +75,9 @@
       "kind": "qry",
       "name": "対象の復号方式と鍵を求める",
       "via": "call",
-      "code": "handler.object_decryption(&auth, target)",
-      "payload": "認証済みファイル鍵と文字列またはストリームの対象",
-      "returns": "/StrF または /StmF が選ぶ方式と、その方式の鍵。",
+      "code": "auth.object_decryption(target)",
+      "payload": "文字列またはストリーム本体の対象",
+      "returns": "/StrF または /StmF が選ぶ既定の方式と、その方式の鍵。",
       "status": "added"
     },
     {
@@ -84,9 +87,21 @@
       "kind": "qry",
       "name": "認証済みの鍵種別を読む",
       "via": "call",
-      "code": "file_key.key()",
-      "payload": "暗号化辞書で認証したファイル鍵",
-      "returns": "R2〜R4 の鍵または R5・R6 の32バイト鍵",
+      "code": "self.key()",
+      "payload": "認証結果",
+      "returns": "R2〜R4 のファイル鍵または R5・R6 の32バイト鍵",
+      "status": "added"
+    },
+    {
+      "id": "get-handler",
+      "from": "rust/crates/core/src/encrypt/object_key.rs",
+      "to": "rust/crates/core/src/encrypt/auth.rs",
+      "kind": "qry",
+      "via": "call",
+      "name": "認証時の暗号化辞書を受け取る",
+      "code": "self.handler()",
+      "payload": "認証結果",
+      "returns": "既定の方式を選ぶ暗号化辞書への参照",
       "status": "added"
     }
   ],
@@ -96,6 +111,7 @@
       "label": "V4の文字列またはストリームがRC4・AES-128を選ぶ流れ",
       "steps": [
         "select-key",
+        "get-handler",
         "get-file-key"
       ]
     }
@@ -425,6 +441,295 @@
           "text": "ObjStmの除外と、新しいAPIが返す復号方式・鍵・エラーを説明する。"
         }
       ]
+    },
+    {
+      "sha": "b072a2b96d53b70b6ae372b3a41db8bcb104ca06",
+      "phase": "core",
+      "role": "暗号化辞書と認証済みのファイル鍵を結び付ける",
+      "why": "文書を切り替えて処理する呼び出し側でも、鍵を検証した辞書と方式を選ぶ辞書の組が崩れないようにする。",
+      "notes": [
+        {
+          "path": "rust/crates/core/src/encrypt/auth.rs",
+          "start": 72,
+          "end": 91,
+          "text": "認証結果から鍵を選ぶ契約を説明する。別の暗号化辞書と認証結果を組み合わせる旧呼び出しを Rustdoc に載せ、コンパイル時に拒まれることを検証する。",
+          "side": "new"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/auth.rs",
+          "start": 94,
+          "end": 105,
+          "text": "認証結果が、検証済みの鍵・役割に加えて元の辞書への参照を保持する。暗号化モジュール内の鍵選択処理はこの参照を使う。",
+          "side": "new"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/auth.rs",
+          "start": 123,
+          "end": 128,
+          "text": "借用する型にも従来の Debug 出力を提供し、役割と鍵種別を表示する。辞書や鍵の中身はこの表示経路に載せない。",
+          "side": "new"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/auth.rs",
+          "start": 211,
+          "end": 215,
+          "text": "役割を自動で選ぶ公開認証 API の戻り値を、辞書への参照を持つ認証結果にする。",
+          "side": "new"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/auth.rs",
+          "start": 251,
+          "end": 256,
+          "text": "役割を指定する公開認証 API でも、同じように呼び出した辞書に認証結果を結び付ける。",
+          "side": "new"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/auth.rs",
+          "start": 274,
+          "end": 280,
+          "text": "R2〜R4 の自動役割判定では、最初に成功した認証結果を辞書への参照とともに返す。",
+          "side": "new"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/auth.rs",
+          "start": 290,
+          "end": 295,
+          "text": "R5・R6 の自動役割判定も、パスワード検証を終えた認証結果を辞書への参照とともに返す。",
+          "side": "new"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/auth.rs",
+          "start": 309,
+          "end": 314,
+          "text": "従来方式でパスワードを照合し、暗号化辞書を借用する認証結果を返せる型にする。",
+          "side": "new"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/auth.rs",
+          "start": 333,
+          "end": 338,
+          "text": "R2〜R4 の認証が成功した場所で、生成した鍵と認証に使った辞書の参照を一緒に包む。",
+          "side": "new"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/auth.rs",
+          "start": 417,
+          "end": 422,
+          "text": "AES-256 の認証処理でも、呼び出した辞書の借用期間を戻り値の型に伝える。",
+          "side": "new"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/auth.rs",
+          "start": 430,
+          "end": 435,
+          "text": "R5・R6 の鍵と権限の確認を終えたら、検証済みの鍵を生成した辞書への参照を認証結果に保存する。",
+          "side": "new"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/object_key.rs",
+          "start": 12,
+          "end": 12,
+          "text": "公開の復号鍵選択を認証結果に移すため、暗号化辞書の型への直接の import を取り除く。",
+          "side": "old"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/object_key.rs",
+          "start": 22,
+          "end": 23,
+          "text": "Stream は既定の StmF 用であると説明し、明示の Crypt と埋め込みファイル用の EFF の扱いを呼び出し側に伝える。",
+          "side": "new"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/object_key.rs",
+          "start": 115,
+          "end": 127,
+          "text": "認証結果を公開メソッドの受け手にする。入力は対象だけで、文書の既定方式を選ぶことを API の説明に明記する。",
+          "side": "new"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/object_key.rs",
+          "start": 128,
+          "end": 136,
+          "text": "対象が通常の値なら、認証結果の辞書から方式を読み、同じ結果に含まれるファイル鍵で既存の導出処理を選ぶ。",
+          "side": "new"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/auth/tests/errors.rs",
+          "start": 61,
+          "end": 62,
+          "text": "R2 の認証結果を検証する間、入力の暗号化辞書を変数に保持する。",
+          "side": "new"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/auth/tests/errors.rs",
+          "start": 70,
+          "end": 74,
+          "text": "R4 の後半16バイトを無視するテストでも、認証結果を使い終えるまで元の辞書を借用できるようにする。",
+          "side": "new"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/auth/tests/roles.rs",
+          "start": 127,
+          "end": 131,
+          "text": "同じパスワードを持つ R2 の認証結果を、辞書を保持した状態で確認する。",
+          "side": "new"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/auth/tests/roles.rs",
+          "start": 138,
+          "end": 142,
+          "text": "R3 の所有者判定で、認証結果を調べるまで辞書を変数に保持する。",
+          "side": "new"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/auth/tests/roles.rs",
+          "start": 154,
+          "end": 158,
+          "text": "R4 の所有者判定でも元の辞書を保持し、借用した認証結果の役割を検証する。",
+          "side": "new"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/auth/tests/roles.rs",
+          "start": 175,
+          "end": 176,
+          "text": "R5 の所有者判定で、対応する辞書を変数に束縛してから認証する。",
+          "side": "new"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/auth/tests/roles.rs",
+          "start": 185,
+          "end": 187,
+          "text": "R2 の Debug 表示と鍵アクセサを調べるため、認証結果が参照する辞書を保持する。",
+          "side": "new"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/auth/tests/roles.rs",
+          "start": 204,
+          "end": 206,
+          "text": "R5 の Debug 表示と鍵アクセサを調べる間も辞書を保持する。",
+          "side": "new"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/object_key/tests/derivation.rs",
+          "start": 18,
+          "end": 18,
+          "text": "認証結果を入口にして、RC4 のオブジェクト番号と世代の違いを既知値で検証する。",
+          "side": "new"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/object_key/tests/derivation.rs",
+          "start": 55,
+          "end": 55,
+          "text": "認証結果に対象だけを渡し、24ビットを越える番号の既知のRC4鍵を検証する。",
+          "side": "new"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/object_key/tests/derivation.rs",
+          "start": 73,
+          "end": 74,
+          "text": "認証結果を入口にして異なる対象のAES-256鍵を取り出し、元の鍵を参照していることを確認する。",
+          "side": "new"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/object_key/tests/selection.rs",
+          "start": 22,
+          "end": 26,
+          "text": "一つの認証結果から、ストリームではAES-128、文字列ではRC4を選ぶことを検証する。",
+          "side": "new"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/object_key/tests/selection.rs",
+          "start": 61,
+          "end": 61,
+          "text": "認証結果を使う新しい入口でも、暗号化なしの指定から復号不要が返ることを検証する。",
+          "side": "new"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/object_key/tests/selection.rs",
+          "start": 93,
+          "end": 99,
+          "text": "コンテナはストリームとして方式を選び、内包値だけが復号不要になることを新しい入口で確かめる。",
+          "side": "new"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/object_key/tests/selection.rs",
+          "start": 116,
+          "end": 116,
+          "text": "認証結果を起点にしても、短いファイル鍵とAES-128の組をエラーとして扱うことを検証する。",
+          "side": "new"
+        }
+      ]
+    },
+    {
+      "sha": "b36307b079a30e3c2ae417db8b48e3c6bc7a05b8",
+      "phase": "fin",
+      "role": "認証から復号鍵の選択までの使い方を文書化する",
+      "why": "暗号化辞書を借用する新しい入口と、ストリームの既定方式が適用される範囲を、ガイドと仕様書から追えるようにする。",
+      "notes": [
+        {
+          "path": "docs/guides/encryption-dictionary.html",
+          "start": 633,
+          "end": 633,
+          "text": "認証結果が、鍵と役割に加えて元の暗号化辞書を参照していることを説明する。",
+          "side": "new"
+        },
+        {
+          "path": "docs/guides/encryption-dictionary.html",
+          "start": 637,
+          "end": 640,
+          "text": "認証直後の例は役割による権限の判定を示し、鍵選択の呼び出し方は復号鍵の節に置く。",
+          "side": "new"
+        },
+        {
+          "path": "docs/guides/encryption-dictionary.html",
+          "start": 654,
+          "end": 655,
+          "text": "認証結果の型の役割を表で示し、辞書の借用と鍵の参照方法を対応付ける。",
+          "side": "new"
+        },
+        {
+          "path": "docs/guides/encryption-dictionary.html",
+          "start": 667,
+          "end": 667,
+          "text": "見出しを、暗号化辞書から文字列・ストリームの既定方式を選ぶ説明に合わせる。",
+          "side": "new"
+        },
+        {
+          "path": "docs/guides/encryption-dictionary.html",
+          "start": 707,
+          "end": 708,
+          "text": "認証結果に対象を渡す呼び出し方と、元の辞書を借用できる期間を表すライフタイムを説明する。",
+          "side": "new"
+        },
+        {
+          "path": "docs/guides/encryption-dictionary.html",
+          "start": 709,
+          "end": 709,
+          "text": "StmF を使う既定選択と、個別に扱う明示の Crypt・埋め込みファイルの EFF を説明する。",
+          "side": "new"
+        },
+        {
+          "path": "docs/specs/02b_encryption.md",
+          "start": 408,
+          "end": 409,
+          "text": "対応する二つの認証 API の戻り値に、暗号化辞書の借用期間が含まれることを署名に示す。",
+          "side": "new"
+        },
+        {
+          "path": "docs/specs/02b_encryption.md",
+          "start": 442,
+          "end": 442,
+          "text": "認証結果が暗号化辞書への参照と鍵・役割を保持し、アクセサで参照できることを記載する。",
+          "side": "new"
+        },
+        {
+          "path": "docs/specs/02b_encryption.md",
+          "start": 483,
+          "end": 486,
+          "text": "復号鍵選択の入口と対象を記載し、ストリームごとの Crypt と埋め込みファイルの EFF を扱う位置を示す。",
+          "side": "new"
+        }
+      ]
     }
   ],
   "suites": [
@@ -437,6 +742,11 @@
       "id": "selection",
       "label": "辞書と対象からの選択",
       "file": "rust/crates/core/src/encrypt/object_key/tests/selection.rs"
+    },
+    {
+      "id": "auth-contract",
+      "label": "認証結果の公開API",
+      "file": "rust/crates/core/src/encrypt/auth.rs"
     }
   ],
   "tests": [
@@ -457,7 +767,7 @@
         "path": "rust/crates/core/src/encrypt/object_key/tests/derivation.rs",
         "start": 6,
         "end": 23,
-        "text": "fn legacy_rc4_uses_object_and_generation_and_truncates_to_ten_bytes() {\n    let handler = standard_handler(R2.as_bytes());\n    let trailer = parse_trailer(TRAILER);\n    let auth = handler.authenticate(None, trailer.id()).unwrap();\n\n    // 既知の R2 ファイル鍵に番号をリトルエンディアンで連結し、Python の hashlib で照合した。\n    for (number, generation, expected) in [\n        (7, 0x1234, b\"\\xf1\\x2f\\xa0\\xa4\\x93\\xe0\\x98\\x62\\xb8\\x9f\"),\n        (8, 0x1234, b\"\\xac\\x0b\\xec\\xab\\xa7\\xe5\\x74\\x66\\x52\\x21\"),\n        (7, 0x1235, b\"\\x78\\x93\\xd9\\x0c\\x35\\x7a\\x5d\\x7f\\xaa\\x6d\"),\n    ] {\n        let target = indirect(number, generation, EncryptedValueKind::String);\n        let ObjectDecryption::Rc4(key) = handler.object_decryption(&auth, target).unwrap() else {\n            panic!(\"V1 の文字列には RC4 の鍵が必要\");\n        };\n        assert_eq!(key.as_bytes(), expected);\n    }\n}"
+        "text": "fn legacy_rc4_uses_object_and_generation_and_truncates_to_ten_bytes() {\n    let handler = standard_handler(R2.as_bytes());\n    let trailer = parse_trailer(TRAILER);\n    let auth = handler.authenticate(None, trailer.id()).unwrap();\n\n    // 既知の R2 ファイル鍵に番号をリトルエンディアンで連結し、Python の hashlib で照合した。\n    for (number, generation, expected) in [\n        (7, 0x1234, b\"\\xf1\\x2f\\xa0\\xa4\\x93\\xe0\\x98\\x62\\xb8\\x9f\"),\n        (8, 0x1234, b\"\\xac\\x0b\\xec\\xab\\xa7\\xe5\\x74\\x66\\x52\\x21\"),\n        (7, 0x1235, b\"\\x78\\x93\\xd9\\x0c\\x35\\x7a\\x5d\\x7f\\xaa\\x6d\"),\n    ] {\n        let target = indirect(number, generation, EncryptedValueKind::String);\n        let ObjectDecryption::Rc4(key) = auth.object_decryption(target).unwrap() else {\n            panic!(\"V1 の文字列には RC4 の鍵が必要\");\n        };\n        assert_eq!(key.as_bytes(), expected);\n    }\n}"
       },
       "targets": [
         "rust/crates/core/src/encrypt/object_key.rs"
@@ -479,7 +789,7 @@
         "path": "rust/crates/core/src/encrypt/object_key/tests/derivation.rs",
         "start": 26,
         "end": 60,
-        "text": "fn algorithm_one_uses_only_the_low_three_object_number_bytes() {\n    let handler = standard_handler(R2.as_bytes());\n    let trailer = parse_trailer(TRAILER);\n    let auth = handler.authenticate(None, trailer.id()).unwrap();\n\n    // 0xff_ffff は 3 バイトの上限。0x100_0000 の下位 3 バイトは 00 00 00。\n    for (number, generation, expected) in [\n        (\n            0xff_ffff,\n            0xffff,\n            b\"\\x42\\x30\\xf5\\x89\\xe6\\xb9\\x12\\x90\\x8f\\xad\",\n        ),\n        (\n            0x100_0000,\n            0xffff,\n            b\"\\x92\\x2d\\x06\\x64\\x3c\\x7b\\x68\\x91\\x6d\\xb8\",\n        ),\n        (\n            0xab_cdef,\n            0x1234,\n            b\"\\xf6\\x64\\x60\\x5f\\x8d\\x58\\x8d\\xe7\\xb2\\x13\",\n        ),\n        (\n            0x1ab_cdef,\n            0x1234,\n            b\"\\xf6\\x64\\x60\\x5f\\x8d\\x58\\x8d\\xe7\\xb2\\x13\",\n        ),\n    ] {\n        let target = indirect(number, generation, EncryptedValueKind::Stream);\n        let ObjectDecryption::Rc4(key) = handler.object_decryption(&auth, target).unwrap() else {\n            panic!(\"V1 のストリームには RC4 の鍵が必要\");\n        };\n        assert_eq!(key.as_bytes(), expected);\n    }\n}"
+        "text": "fn algorithm_one_uses_only_the_low_three_object_number_bytes() {\n    let handler = standard_handler(R2.as_bytes());\n    let trailer = parse_trailer(TRAILER);\n    let auth = handler.authenticate(None, trailer.id()).unwrap();\n\n    // 0xff_ffff は 3 バイトの上限。0x100_0000 の下位 3 バイトは 00 00 00。\n    for (number, generation, expected) in [\n        (\n            0xff_ffff,\n            0xffff,\n            b\"\\x42\\x30\\xf5\\x89\\xe6\\xb9\\x12\\x90\\x8f\\xad\",\n        ),\n        (\n            0x100_0000,\n            0xffff,\n            b\"\\x92\\x2d\\x06\\x64\\x3c\\x7b\\x68\\x91\\x6d\\xb8\",\n        ),\n        (\n            0xab_cdef,\n            0x1234,\n            b\"\\xf6\\x64\\x60\\x5f\\x8d\\x58\\x8d\\xe7\\xb2\\x13\",\n        ),\n        (\n            0x1ab_cdef,\n            0x1234,\n            b\"\\xf6\\x64\\x60\\x5f\\x8d\\x58\\x8d\\xe7\\xb2\\x13\",\n        ),\n    ] {\n        let target = indirect(number, generation, EncryptedValueKind::Stream);\n        let ObjectDecryption::Rc4(key) = auth.object_decryption(target).unwrap() else {\n            panic!(\"V1 のストリームには RC4 の鍵が必要\");\n        };\n        assert_eq!(key.as_bytes(), expected);\n    }\n}"
       },
       "targets": [
         "rust/crates/core/src/encrypt/object_key.rs"
@@ -500,8 +810,8 @@
       "excerpt": {
         "path": "rust/crates/core/src/encrypt/object_key/tests/derivation.rs",
         "start": 63,
-        "end": 79,
-        "text": "fn aesv3_reuses_the_same_authenticated_file_key_for_distinct_objects() {\n    let handler = standard_handler(R5.as_bytes());\n    let auth = handler.authenticate(Some(b\"user-r5\"), None).unwrap();\n    let file_key = auth.key().as_aes256().unwrap();\n\n    for (number, generation, kind) in [\n        (7, 0, EncryptedValueKind::String),\n        (0x100_0000, 8, EncryptedValueKind::Stream),\n    ] {\n        let target = indirect(number, generation, kind);\n        let ObjectDecryption::Aes256(key) = handler.object_decryption(&auth, target).unwrap()\n        else {\n            panic!(\"AESV3 の場合はファイル暗号鍵を使う\");\n        };\n        assert!(std::ptr::eq(key, file_key));\n    }\n}"
+        "end": 78,
+        "text": "fn aesv3_reuses_the_same_authenticated_file_key_for_distinct_objects() {\n    let handler = standard_handler(R5.as_bytes());\n    let auth = handler.authenticate(Some(b\"user-r5\"), None).unwrap();\n    let file_key = auth.key().as_aes256().unwrap();\n\n    for (number, generation, kind) in [\n        (7, 0, EncryptedValueKind::String),\n        (0x100_0000, 8, EncryptedValueKind::Stream),\n    ] {\n        let target = indirect(number, generation, kind);\n        let ObjectDecryption::Aes256(key) = auth.object_decryption(target).unwrap() else {\n            panic!(\"AESV3 の場合はファイル暗号鍵を使う\");\n        };\n        assert!(std::ptr::eq(key, file_key));\n    }\n}"
       },
       "targets": [
         "rust/crates/core/src/encrypt/object_key.rs"
@@ -523,7 +833,7 @@
         "path": "rust/crates/core/src/encrypt/object_key/tests/selection.rs",
         "start": 13,
         "end": 39,
-        "text": "fn stream_and_string_filters_select_salted_aes128_and_unsalted_rc4() {\n    let source = R4_CLEAR_METADATA\n        .replace(\"/CF << /StdCF\", \"/CF << /Legacy << /CFM /V2 >> /StdCF\")\n        .replace(\"/StrF /StdCF\", \"/StrF /Legacy\");\n    let handler = standard_handler(source.as_bytes());\n    let trailer = parse_trailer(TRAILER);\n    let auth = handler.authenticate(Some(b\"user\"), trailer.id()).unwrap();\n\n    let stream = indirect(7, 0x1234, EncryptedValueKind::Stream);\n    let ObjectDecryption::Aes128(aes) = handler.object_decryption(&auth, stream).unwrap() else {\n        panic!(\"/StmF の AESV2 が選ばれる\");\n    };\n    let string = indirect(7, 0x1234, EncryptedValueKind::String);\n    let ObjectDecryption::Rc4(rc4) = handler.object_decryption(&auth, string).unwrap() else {\n        panic!(\"/StrF の V2 が選ばれる\");\n    };\n\n    // 同じ ObjectId と既知の R4 ファイル鍵で、sAlT の有無だけを変えて hashlib で照合した。\n    assert_eq!(\n        aes.as_bytes(),\n        b\"\\x1b\\x66\\xd7\\xe5\\xff\\xda\\x93\\xe9\\xbb\\x90\\x89\\x2a\\xb0\\xe0\\x50\\x27\"\n    );\n    assert_eq!(\n        rc4.as_bytes(),\n        b\"\\xa8\\x1a\\xbb\\xe4\\x02\\x51\\x16\\xeb\\xda\\x01\\xd9\\x65\\x26\\x39\\xdd\\xee\"\n    );\n}"
+        "text": "fn stream_and_string_filters_select_salted_aes128_and_unsalted_rc4() {\n    let source = R4_CLEAR_METADATA\n        .replace(\"/CF << /StdCF\", \"/CF << /Legacy << /CFM /V2 >> /StdCF\")\n        .replace(\"/StrF /StdCF\", \"/StrF /Legacy\");\n    let handler = standard_handler(source.as_bytes());\n    let trailer = parse_trailer(TRAILER);\n    let auth = handler.authenticate(Some(b\"user\"), trailer.id()).unwrap();\n\n    let stream = indirect(7, 0x1234, EncryptedValueKind::Stream);\n    let ObjectDecryption::Aes128(aes) = auth.object_decryption(stream).unwrap() else {\n        panic!(\"/StmF の AESV2 が選ばれる\");\n    };\n    let string = indirect(7, 0x1234, EncryptedValueKind::String);\n    let ObjectDecryption::Rc4(rc4) = auth.object_decryption(string).unwrap() else {\n        panic!(\"/StrF の V2 が選ばれる\");\n    };\n\n    // 同じ ObjectId と既知の R4 ファイル鍵で、sAlT の有無だけを変えて hashlib で照合した。\n    assert_eq!(\n        aes.as_bytes(),\n        b\"\\x1b\\x66\\xd7\\xe5\\xff\\xda\\x93\\xe9\\xbb\\x90\\x89\\x2a\\xb0\\xe0\\x50\\x27\"\n    );\n    assert_eq!(\n        rc4.as_bytes(),\n        b\"\\xa8\\x1a\\xbb\\xe4\\x02\\x51\\x16\\xeb\\xda\\x01\\xd9\\x65\\x26\\x39\\xdd\\xee\"\n    );\n}"
       },
       "targets": [
         "rust/crates/core/src/encrypt/object_key.rs"
@@ -545,7 +855,7 @@
         "path": "rust/crates/core/src/encrypt/object_key/tests/selection.rs",
         "start": 42,
         "end": 66,
-        "text": "fn identity_and_no_encryption_method_return_no_key() {\n    let trailer = parse_trailer(TRAILER);\n    for selectors in [\n        \"/StrF /Identity /StmF /Identity\",\n        \"\",\n        \"/StrF /Clear /StmF /Default\",\n    ] {\n        let source = R4_CLEAR_METADATA\n            .replace(\"/StmF /StdCF /StrF /StdCF\", selectors)\n            .replace(\n                \"/CF << /StdCF\",\n                \"/CF << /Clear << /CFM /None >> /Default << >> /StdCF\",\n            );\n        let handler = standard_handler(source.as_bytes());\n        let auth = handler.authenticate(Some(b\"user\"), trailer.id()).unwrap();\n\n        for kind in [EncryptedValueKind::Stream, EncryptedValueKind::String] {\n            let target = indirect(7, 0, kind);\n            assert!(matches!(\n                handler.object_decryption(&auth, target).unwrap(),\n                ObjectDecryption::None\n            ));\n        }\n    }\n}"
+        "text": "fn identity_and_no_encryption_method_return_no_key() {\n    let trailer = parse_trailer(TRAILER);\n    for selectors in [\n        \"/StrF /Identity /StmF /Identity\",\n        \"\",\n        \"/StrF /Clear /StmF /Default\",\n    ] {\n        let source = R4_CLEAR_METADATA\n            .replace(\"/StmF /StdCF /StrF /StdCF\", selectors)\n            .replace(\n                \"/CF << /StdCF\",\n                \"/CF << /Clear << /CFM /None >> /Default << >> /StdCF\",\n            );\n        let handler = standard_handler(source.as_bytes());\n        let auth = handler.authenticate(Some(b\"user\"), trailer.id()).unwrap();\n\n        for kind in [EncryptedValueKind::Stream, EncryptedValueKind::String] {\n            let target = indirect(7, 0, kind);\n            assert!(matches!(\n                auth.object_decryption(target).unwrap(),\n                ObjectDecryption::None\n            ));\n        }\n    }\n}"
       },
       "targets": [
         "rust/crates/core/src/encrypt/object_key.rs"
@@ -588,8 +898,8 @@
       "excerpt": {
         "path": "rust/crates/core/src/encrypt/object_key/tests/selection.rs",
         "start": 86,
-        "end": 102,
-        "text": "fn object_stream_container_gets_a_key_but_its_members_do_not() {\n    let handler = standard_handler(R4_CLEAR_METADATA.as_bytes());\n    let trailer = parse_trailer(TRAILER);\n    let auth = handler.authenticate(Some(b\"user\"), trailer.id()).unwrap();\n\n    let container = indirect(12, 0, EncryptedValueKind::Stream);\n    assert!(matches!(\n        handler.object_decryption(&auth, container).unwrap(),\n        ObjectDecryption::Aes128(_)\n    ));\n    assert!(matches!(\n        handler\n            .object_decryption(&auth, ObjectDecryptionTarget::InObjectStream)\n            .unwrap(),\n        ObjectDecryption::None\n    ));\n}"
+        "end": 101,
+        "text": "fn object_stream_container_gets_a_key_but_its_members_do_not() {\n    let handler = standard_handler(R4_CLEAR_METADATA.as_bytes());\n    let trailer = parse_trailer(TRAILER);\n    let auth = handler.authenticate(Some(b\"user\"), trailer.id()).unwrap();\n\n    let container = indirect(12, 0, EncryptedValueKind::Stream);\n    assert!(matches!(\n        auth.object_decryption(container).unwrap(),\n        ObjectDecryption::Aes128(_)\n    ));\n    assert!(matches!(\n        auth.object_decryption(ObjectDecryptionTarget::InObjectStream)\n            .unwrap(),\n        ObjectDecryption::None\n    ));\n}"
       },
       "targets": [
         "rust/crates/core/src/encrypt/object_key.rs"
@@ -610,13 +920,36 @@
       "commit": "fe351ff105ceee9bdca47574588d5c6bf4314f74",
       "excerpt": {
         "path": "rust/crates/core/src/encrypt/object_key/tests/selection.rs",
-        "start": 105,
-        "end": 123,
-        "text": "fn rejects_aes128_when_the_file_key_is_shorter_than_128_bits() {\n    // R4 の 40 ビット鍵で /U の照合は通るが、AESV2 が要求する 128 ビットを満たさない。\n    let source = b\"<< /Filter /Standard /V 4 /R 4 /Length 40 /P -4\n        /O <3c482162008fafcb228b7db3c43a1090bc5b56e9b1556e89fc0656fd291f4908>\n        /U <d3b1553015c7d57ed4c8a35b0f084ee900000000000000000000000000000000>\n        /CF << /StdCF << /CFM /AESV2 >> >> /StmF /StdCF >>\";\n    let handler = standard_handler(source);\n    let trailer = parse_trailer(TRAILER);\n    let auth = handler.authenticate(Some(b\"user\"), trailer.id()).unwrap();\n    let target = indirect(7, 0, EncryptedValueKind::Stream);\n\n    assert_eq!(\n        handler.object_decryption(&auth, target).unwrap_err(),\n        ObjectKeyError::IncompatibleFileKey {\n            method: CryptFilterMethod::AesV2,\n            length: 5,\n        }\n    );\n}"
+        "start": 104,
+        "end": 122,
+        "text": "fn rejects_aes128_when_the_file_key_is_shorter_than_128_bits() {\n    // R4 の 40 ビット鍵で /U の照合は通るが、AESV2 が要求する 128 ビットを満たさない。\n    let source = b\"<< /Filter /Standard /V 4 /R 4 /Length 40 /P -4\n        /O <3c482162008fafcb228b7db3c43a1090bc5b56e9b1556e89fc0656fd291f4908>\n        /U <d3b1553015c7d57ed4c8a35b0f084ee900000000000000000000000000000000>\n        /CF << /StdCF << /CFM /AESV2 >> >> /StmF /StdCF >>\";\n    let handler = standard_handler(source);\n    let trailer = parse_trailer(TRAILER);\n    let auth = handler.authenticate(Some(b\"user\"), trailer.id()).unwrap();\n    let target = indirect(7, 0, EncryptedValueKind::Stream);\n\n    assert_eq!(\n        auth.object_decryption(target).unwrap_err(),\n        ObjectKeyError::IncompatibleFileKey {\n            method: CryptFilterMethod::AesV2,\n            length: 5,\n        }\n    );\n}"
       },
       "targets": [
         "rust/crates/core/src/encrypt/object_key.rs"
       ]
+    },
+    {
+      "id": "foreign-handler",
+      "suite": "auth-contract",
+      "name": "select_with_another_handler",
+      "techniques": [
+        "error"
+      ],
+      "commit": "b072a2b96d53b70b6ae372b3a41db8bcb104ca06",
+      "targets": [
+        "rust/crates/core/src/encrypt/auth.rs",
+        "rust/crates/core/src/encrypt/object_key.rs"
+      ],
+      "excerpt": {
+        "path": "rust/crates/core/src/encrypt/auth.rs",
+        "start": 79,
+        "end": 91,
+        "text": "/// ```compile_fail,E0599\n/// use pdfmod_core::encrypt::{\n///     auth::AuthenticatedFileKey, object_key::ObjectDecryptionTarget,\n///     standard::StandardSecurityHandler,\n/// };\n///\n/// fn select_with_another_handler(\n///     another_handler: &StandardSecurityHandler,\n///     authenticated: &AuthenticatedFileKey<'_>,\n///     target: ObjectDecryptionTarget,\n/// ) {\n///     let _ = another_handler.object_decryption(authenticated, target);\n/// }"
+      },
+      "why": "認証時と別の暗号化辞書を渡せる入口の再導入を検出する。",
+      "given": "暗号化辞書への参照と認証結果。",
+      "when": "辞書の側に認証結果と対象を渡して復号鍵を選ぶコードを Rustdoc がコンパイルする。",
+      "then": "公開メソッドが見つからないエラーになり、compile_fail の doctest が成功する。"
     }
   ],
   "impact": {
@@ -708,9 +1041,9 @@
           "kind": "excerpt",
           "excerpt": {
             "path": "rust/crates/core/src/encrypt/object_key.rs",
-            "start": 123,
-            "end": 132,
-            "text": "    pub fn object_decryption<'key>(\n        &self,\n        file_key: &'key AuthenticatedFileKey,\n        target: ObjectDecryptionTarget,\n    ) -> Result<ObjectDecryption<'key>, ObjectKeyError> {\n        let ObjectDecryptionTarget::Indirect { id, kind } = target else {\n            return Ok(ObjectDecryption::None);\n        };\n\n        let method = self.algorithm().crypt_filter_method(kind);"
+            "start": 126,
+            "end": 134,
+            "text": "    pub fn object_decryption(\n        &self,\n        target: ObjectDecryptionTarget,\n    ) -> Result<ObjectDecryption<'_>, ObjectKeyError> {\n        let ObjectDecryptionTarget::Indirect { id, kind } = target else {\n            return Ok(ObjectDecryption::None);\n        };\n\n        let method = self.handler().algorithm().crypt_filter_method(kind);"
           }
         },
         {
@@ -722,8 +1055,8 @@
         {
           "path": "rust/crates/core/src/encrypt/object_key.rs",
           "lineRange": {
-            "start": 128,
-            "end": 130
+            "start": 130,
+            "end": 132
           },
           "text": "格納形態を調べ、通常の値から番号・世代と種類を取り出す。"
         }
@@ -736,44 +1069,65 @@
       "kind": "language",
       "id": "borrow-key",
       "category": "Rust · 借用",
-      "label": "ライフタイム 'key",
-      "gist": "AES-256が持ち帰る参照を、呼び出し側が元の鍵を使える期間に結び付ける。",
+      "label": "暗号化辞書を借用するライフタイム",
+      "gist": "認証結果を使える期間を、認証に使った辞書を参照できる期間に結び付ける。",
       "passages": [
         {
           "kind": "text",
-          "text": "アンパサンド & は、別の持ち主が所有する値を参照する記号。'key はその参照を使える期間の名前で、呼び出した後も元の値が残っている間だけ参照を使える。"
+          "text": "アンパサンド & は、別の持ち主が所有する値への参照を表す。'handler のようなアポストロフィで始まる名前をライフタイムといい、参照を使える期間を型に表すために使う。"
+        },
+        {
+          "kind": "text",
+          "text": "たとえば let auth = handler.authenticate(None, trailer.id())? と書く。auth をあとで使う間は、元の handler も参照できる状態が必要になる。"
         },
         {
           "kind": "excerpt",
           "excerpt": {
-            "path": "rust/crates/core/src/encrypt/object_key.rs",
-            "start": 123,
-            "end": 130,
-            "text": "    pub fn object_decryption<'key>(\n        &self,\n        file_key: &'key AuthenticatedFileKey,\n        target: ObjectDecryptionTarget,\n    ) -> Result<ObjectDecryption<'key>, ObjectKeyError> {\n        let ObjectDecryptionTarget::Indirect { id, kind } = target else {\n            return Ok(ObjectDecryption::None);\n        };"
+            "path": "rust/crates/core/src/encrypt/auth.rs",
+            "start": 93,
+            "end": 105,
+            "text": "#[must_use]\npub struct AuthenticatedFileKey<'handler> {\n    handler: &'handler StandardSecurityHandler,\n    key: FileEncryptionKey,\n    role: PasswordRole,\n}\n\nimpl AuthenticatedFileKey<'_> {\n    pub(super) fn handler(&self) -> &StandardSecurityHandler {\n        self.handler\n    }\n\n    /// 認証に成功した役割（利用者または所有者）を返す。"
           }
         },
         {
           "kind": "excerpt",
           "excerpt": {
             "path": "rust/crates/core/src/encrypt/object_key.rs",
-            "start": 138,
-            "end": 146,
-            "text": "            (CryptFilterMethod::AesV2, FileEncryptionKey::Legacy(key))\n                if key.as_bytes().len() == AES128_KEY_LEN =>\n            {\n                let bytes = key.object_key_hash(id, AES128_KEY_SALT);\n                Ok(ObjectDecryption::Aes128(Aes128ObjectKey(bytes)))\n            }\n            (CryptFilterMethod::AesV3, FileEncryptionKey::Aes256(key)) => {\n                Ok(ObjectDecryption::Aes256(key))\n            }"
+            "start": 126,
+            "end": 136,
+            "text": "    pub fn object_decryption(\n        &self,\n        target: ObjectDecryptionTarget,\n    ) -> Result<ObjectDecryption<'_>, ObjectKeyError> {\n        let ObjectDecryptionTarget::Indirect { id, kind } = target else {\n            return Ok(ObjectDecryption::None);\n        };\n\n        let method = self.handler().algorithm().crypt_filter_method(kind);\n        match (method, self.key()) {\n            (CryptFilterMethod::None, _) => Ok(ObjectDecryption::None),"
           }
         },
         {
           "kind": "text",
-          "text": "file_key: &'key AuthenticatedFileKey と ObjectDecryption<'key> が同じ期間の名前を参照する。たとえば認証済みの鍵を破棄してから結果に入ったAES-256鍵を使おうとすると、コンパイル時に誤りが分かる。"
+          "text": "認証結果が持つ handler と key を使って鍵を選ぶ。戻り値の ObjectDecryption<'_> は &self の借用に結び付くので、AES-256 を選ぶとその場で元の32バイト鍵への参照を返せる。"
+        },
+        {
+          "kind": "excerpt",
+          "excerpt": {
+            "path": "rust/crates/core/src/encrypt/object_key.rs",
+            "start": 146,
+            "end": 148,
+            "text": "            (CryptFilterMethod::AesV3, FileEncryptionKey::Aes256(key)) => {\n                Ok(ObjectDecryption::Aes256(key))\n            }"
+          }
         }
       ],
       "occurrences": [
         {
+          "path": "rust/crates/core/src/encrypt/auth.rs",
+          "lineRange": {
+            "start": 94,
+            "end": 98
+          },
+          "text": "認証時の暗号化辞書を参照で保持する。"
+        },
+        {
           "path": "rust/crates/core/src/encrypt/object_key.rs",
           "lineRange": {
-            "start": 144,
-            "end": 145
+            "start": 146,
+            "end": 148
           },
-          "text": "AES-256でファイル鍵を複製せず、その参照を返す。"
+          "text": "AES-256 では認証結果が持つ鍵の参照を返す。"
         }
       ]
     },
@@ -794,14 +1148,18 @@
         },
         {
           "kind": "text",
+          "text": "ストリームに明示の /Crypt がある場合や、埋め込みファイルに /EFF が適用される場合はその指定を使う。この変更の公開APIは暗号化辞書から既定の方式を選ぶ入口を提供する。"
+        },
+        {
+          "kind": "text",
           "text": "obj の前の7はオブジェクト番号、4660は世代番号。RC4ではファイル鍵の後ろに07 00 00 34 12を連結してMD5を計算する。AES-128なら続けてASCIIのsAlTを加える。AES-256の方式ではファイル鍵を使う。"
         },
         {
           "kind": "excerpt",
           "excerpt": {
             "path": "rust/crates/core/src/encrypt/object_key.rs",
-            "start": 155,
-            "end": 171,
+            "start": 157,
+            "end": 173,
             "text": "impl StandardAlgorithm {\n    fn crypt_filter_method(&self, kind: EncryptedValueKind) -> CryptFilterMethod {\n        let filters = match self {\n            Self::V1R2 | Self::V1R3 | Self::V2R3 { .. } => return CryptFilterMethod::V2,\n            Self::V4R4 { crypt_filters, .. }\n            | Self::V5R5 { crypt_filters, .. }\n            | Self::V5R6 { crypt_filters, .. } => crypt_filters,\n        };\n        let selector = match kind {\n            EncryptedValueKind::String => filters.string(),\n            EncryptedValueKind::Stream => filters.stream(),\n        };\n\n        // 名前付きの /StrF と /StmF は解析時に存在を検証済みなので、ここでの欠落は /Identity。\n        filters\n            .get(selector)\n            .map_or(CryptFilterMethod::None, CryptFilter::method)"
           }
         },
@@ -809,9 +1167,9 @@
           "kind": "excerpt",
           "excerpt": {
             "path": "rust/crates/core/src/encrypt/object_key.rs",
-            "start": 175,
-            "end": 187,
-            "text": "impl LegacyFileKey {\n    fn object_key_hash(&self, id: ObjectId, suffix: &[u8]) -> [u8; DIGEST_LEN] {\n        // Algorithm 1 は 24 ビットを超える番号でも下位 3 バイトだけを使う。\n        let [low, middle, high, ..] = id.object_number().value().to_le_bytes();\n        let generation = id.generation_number().value().to_le_bytes();\n\n        let mut md5 = Md5::new();\n        md5.update(self.as_bytes());\n        md5.update(&[low, middle, high]);\n        md5.update(&generation);\n        md5.update(suffix);\n        md5.finalize()\n    }"
+            "start": 177,
+            "end": 190,
+            "text": "impl LegacyFileKey {\n    fn object_key_hash(&self, id: ObjectId, suffix: &[u8]) -> [u8; DIGEST_LEN] {\n        // Algorithm 1 は 24 ビットを超える番号でも下位 3 バイトだけを使う。\n        let [low, middle, high, ..] = id.object_number().value().to_le_bytes();\n        let generation = id.generation_number().value().to_le_bytes();\n\n        let mut md5 = Md5::new();\n        md5.update(self.as_bytes());\n        md5.update(&[low, middle, high]);\n        md5.update(&generation);\n        md5.update(suffix);\n        md5.finalize()\n    }\n}"
           }
         },
         {
@@ -823,8 +1181,8 @@
         {
           "path": "rust/crates/core/src/encrypt/object_key.rs",
           "lineRange": {
-            "start": 163,
-            "end": 171
+            "start": 165,
+            "end": 173
           },
           "text": "値の種類からセレクターを決め、名前が指す暗号方式を読む。"
         }
