@@ -1,0 +1,1004 @@
+{
+  "version": 1,
+  "pr": 799,
+  "sha": "478ea6e3d396f391e0d9e792941259e5b9220f94",
+  "issue": 652,
+  "overview": {
+    "title": "PDFの復号に使うTypeScriptの暗号プリミティブ",
+    "lead": "PDFの標準セキュリティハンドラは、リビジョンと辞書項目によってハッシュ方式やAESの形式を切り替える。このPRは鍵導出とオブジェクト復号が共有する同期計算を実装する。",
+    "before": [
+      {
+        "text": "TypeScriptでは暗号化辞書から方式と鍵の材料を読み取れた。復号に必要な計算はRust側で順次追加されていた。"
+      }
+    ],
+    "after": [
+      {
+        "text": "MD5・RC4と3種のSHA-2を使える。AESは同じ展開鍵から、IV別渡しのCBC、IVが先頭にあるPDFのCBC、単一ブロックのECBを扱う。"
+      },
+      {
+        "text": "暗号化PDFを開くためには、後続の鍵導出と認証、読み込み処理への接続が必要。"
+      }
+    ],
+    "highlights": [
+      {
+        "title": "CBCでIVの場所を読む",
+        "text": "文字列は先頭16バイト、ファイル鍵は別に渡す16バイトを使う。2種類の入口から同じブロック変換を呼ぶ。",
+        "go": {
+          "kind": "flow",
+          "id": "cbc"
+        }
+      }
+    ]
+  },
+  "concepts": [
+    {
+      "path": "packages/core/src/pdf/encryption/primitives/aes/index.ts",
+      "name": "PDF用AESの入口",
+      "role": "鍵を展開し、ECB、CBC、PDFのCBCに合った入力を受け付ける。"
+    },
+    {
+      "path": "packages/core/src/pdf/encryption/primitives/aes/block/index.ts",
+      "name": "AESのブロック変換",
+      "role": "状態の置換・回転・列の混合を繰り返して16バイトを変換する。"
+    },
+    {
+      "path": "packages/core/src/pdf/encryption/primitives/aes/round-keys/index.ts",
+      "name": "AESの鍵スケジュール",
+      "role": "入力鍵から、ラウンド順に使う鍵を導出する。"
+    },
+    {
+      "path": "packages/core/src/pdf/encryption/primitives/aes/byte/index.ts",
+      "name": "AESのバイト演算",
+      "role": "規格で定めた値への置換と、有限体の乗算を提供する。"
+    },
+    {
+      "path": "packages/core/src/pdf/encryption/primitives/hash-blocks/index.ts",
+      "name": "ハッシュのブロック分割",
+      "role": "元データのビューとパディング付きの末尾を順に渡す。"
+    },
+    {
+      "path": "packages/core/src/pdf/encryption/primitives/md5/index.ts",
+      "name": "旧リビジョン用MD5",
+      "role": "入力を64バイトずつ処理して16バイトのダイジェストを返す。"
+    },
+    {
+      "path": "packages/core/src/pdf/encryption/primitives/rc4/index.ts",
+      "name": "旧形式PDF用RC4",
+      "role": "鍵で置換表を初期化して入力を鍵ストリームでXORする。"
+    },
+    {
+      "path": "packages/core/src/pdf/encryption/primitives/sha2/sha256/index.ts",
+      "name": "SHA-256の32ビット処理",
+      "role": "8つの32ビットワードを更新し、32バイトのダイジェストにする。"
+    },
+    {
+      "path": "packages/core/src/pdf/encryption/primitives/sha2/sha512/index.ts",
+      "name": "SHA-384・512の64ビット処理",
+      "role": "初期値と出力長に合わせて共通の圧縮を使う。"
+    }
+  ],
+  "messages": [
+    {
+      "id": "key-expand",
+      "from": "packages/core/src/pdf/encryption/primitives/aes/index.ts",
+      "to": "packages/core/src/pdf/encryption/primitives/aes/round-keys/index.ts",
+      "kind": "qry",
+      "name": "鍵をラウンドに展開する",
+      "code": "expandRoundKeys(key)",
+      "via": "call",
+      "payload": "16または32バイトの鍵",
+      "returns": "ラウンド鍵のバイト列"
+    },
+    {
+      "id": "decrypt-block",
+      "from": "packages/core/src/pdf/encryption/primitives/aes/index.ts",
+      "to": "packages/core/src/pdf/encryption/primitives/aes/block/index.ts",
+      "kind": "qry",
+      "name": "暗号文ブロックを復号する",
+      "code": "cipher.decrypt(data, offset)",
+      "via": "call",
+      "payload": "暗号文と対象ブロックの開始位置",
+      "returns": "復号した16バイト。CBC側は続けて前の暗号文またはIVとXORする。"
+    },
+    {
+      "id": "data-blocks",
+      "from": "packages/core/src/pdf/encryption/primitives/sha2/sha512/index.ts",
+      "to": "packages/core/src/pdf/encryption/primitives/hash-blocks/index.ts",
+      "kind": "qry",
+      "name": "入力と末尾をブロックに分ける",
+      "code": "visitHashBlocks(input, HashBlockLayouts.Sha512, compress)",
+      "via": "call",
+      "payload": "入力のUint8Arrayと128バイト単位の設定",
+      "returns": "データとパディングを順にコールバックへ渡す。"
+    }
+  ],
+  "flows": [
+    {
+      "id": "cbc",
+      "label": "AESの鍵を準備してCBCを復号する",
+      "steps": [
+        "key-expand",
+        "decrypt-block"
+      ]
+    },
+    {
+      "id": "hash-input",
+      "label": "SHAの入力をブロックに分ける",
+      "steps": [
+        "data-blocks"
+      ]
+    }
+  ],
+  "commitStories": [
+    {
+      "sha": "e1a43ae12bc35e945c0d09df920d85e56004aba2",
+      "phase": "core",
+      "role": "MD5 のバイト列ハッシュ",
+      "why": "旧リビジョンの鍵導出で使う16バイトのハッシュを、末尾だけ追加割り当てする構成にする。",
+      "notes": [
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/hash-blocks/index.ts",
+          "start": 8,
+          "end": 12,
+          "side": "new",
+          "text": "MD5 と SHA-256 は64バイト、SHA-384・512は128バイトのブロックを使う。末尾に書く元データのビット長の欄を方式ごとに固定し、MD5 の欄だけ下位バイトから並べる。"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/hash-blocks/index.ts",
+          "start": 30,
+          "end": 34,
+          "side": "new",
+          "text": "入力が大きな配列の一部でも、その byteOffset と byteLength を渡して範囲を限定する。完全なブロックを元のバッファから直接読める。"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/hash-blocks/index.ts",
+          "start": 36,
+          "end": 40,
+          "side": "new",
+          "text": "残りのバイト列に 80 とビット長の欄が入るか計算し、1ブロックか2ブロックの作業領域を取る。入力ブロックがちょうど埋まっても長さを書く領域は必要。"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/hash-blocks/index.ts",
+          "start": 43,
+          "end": 51,
+          "side": "new",
+          "text": "元の長さをバイト数からビット数に変え、方式ごとの順序で最後の8バイトに書く。SHA-384・512 の長さ欄は16バイトあり、Uint8Array で表せる長さでは上位8バイトがゼロになる。"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/hex-words/index.ts",
+          "start": 7,
+          "end": 14,
+          "side": "new",
+          "text": "規格と同じ順番で並べた16進表記を空白ごとに分ける。Number なら32ビットまでの定数、BigInt なら64ビットの整数を桁落ちなしで初期化できる。"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/word32/index.ts",
+          "start": 10,
+          "end": 16,
+          "side": "new",
+          "text": "同じ整数を左右にずらしたうえで OR でつなぎ、片側からはみ出したビットを反対側へ戻す。MD5 は左回転、SHA-256 は右回転を使う。"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/md5/index.ts",
+          "start": 8,
+          "end": 27,
+          "side": "new",
+          "text": "RFC 1321 の初期状態4ワードと、各ステップで加える64個の規定値を用意する。入力を空から処理するときもこの初期状態から始める。"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/md5/index.ts",
+          "start": 36,
+          "end": 64,
+          "side": "new",
+          "text": "F・G・H・I が3つの状態ワードをそれぞれ別の式で混ぜる。stride と firstWord から16個の入力ワードを読む順序を決め、ラウンドごとに違うビット数で回す。"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/md5/index.ts",
+          "start": 73,
+          "end": 80,
+          "side": "new",
+          "text": "digest の呼び出しごとに初期状態をコピーする。1つのメッセージの間だけ、前のブロックから受け継いだ状態を使う。"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/md5/index.ts",
+          "start": 81,
+          "end": 100,
+          "side": "new",
+          "text": "選んだ4バイトをリトルエンディアンで整数に読み、現在の状態・規定値と足してから回す。加算を32ビットへ丸め、4つの状態をずらして次のステップに渡す。"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/md5/index.ts",
+          "start": 101,
+          "end": 114,
+          "side": "new",
+          "text": "ブロックの計算結果を元の状態に加える。全ブロックが終わると、4ワードを下位バイトから書き出して16バイトのダイジェストにする。"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/__tests__/vectors.test.helpers.ts",
+          "start": 2,
+          "end": 6,
+          "side": "new",
+          "text": "仕様や Rust テストにある期待値の16進表記を2桁ずつ読む。比較対象を文字列化せず、実際の出力と同じバイト列にそろえる。"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/md5/__tests__/md5.basic.test.ts",
+          "start": 6,
+          "end": 25,
+          "side": "new",
+          "text": "RFC 1321 の7入力を検証する。空入力で末尾の生成だけを通し、80バイトの入力で前のブロックから状態を受け継ぐことも確かめる。"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/md5/__tests__/md5.basic.test.ts",
+          "start": 24,
+          "end": 35,
+          "side": "new",
+          "text": "55バイトでは長さ欄が1ブロックに収まり、56バイトで次のブロックへ移る。64バイトは完全なデータブロックと末尾1つに分かれる。前後に検査対象外のバイトを置き、ビューの境界も確認する。"
+        }
+      ]
+    },
+    {
+      "sha": "27f26981786395d57254a624813f7f897ea2363d",
+      "phase": "core",
+      "role": "RC4 の鍵ストリーム",
+      "why": "PDFオブジェクトごとに鍵ストリームを作る。長さを検証し、同じ変換で既知の暗号文を復元する。",
+      "notes": [
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/rc4/index.ts",
+          "start": 21,
+          "end": 28,
+          "side": "new",
+          "text": "PDF の鍵として5〜16バイトを検証してから、0〜255の置換表を初期化する。空の鍵を位置計算に使う前に長さエラーとして返せる。"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/rc4/index.ts",
+          "start": 30,
+          "end": 35,
+          "side": "new",
+          "text": "置換表の2位置を入れ替える。鍵で表を初期化する段階と、バイトごとに状態を進める段階で同じ操作を使う。"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/rc4/index.ts",
+          "start": 38,
+          "end": 43,
+          "side": "new",
+          "text": "鍵を繰り返し参照して添字 j を決め、256回の交換で鍵に依存する表を作る。次の段階へ鍵の初期化で使った添字を持ち越さない。"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/rc4/index.ts",
+          "start": 47,
+          "end": 59,
+          "side": "new",
+          "text": "i と j を進めて置換表から鍵ストリームの1バイトを得る。入力との XOR を出力配列に書くので同じ鍵で再度変換すると元のバイトに戻り、入力の配列も保たれる。"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/rc4/__tests__/rc4.basic.test.ts",
+          "start": 5,
+          "end": 21,
+          "side": "new",
+          "text": "RFC 6229 の最短・最長のPDF鍵を指定する。入力をゼロで埋めると出力が鍵ストリームと同じになり、256バイト先で添字の折り返しも検証できる。"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/rc4/__tests__/rc4.basic.test.ts",
+          "start": 19,
+          "end": 29,
+          "side": "new",
+          "text": "既知の暗号文を実際に復号して ASCII の平文を得る。同時に元の暗号文を再利用できることを確認する。"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/rc4/__tests__/rc4.basic.test.ts",
+          "start": 32,
+          "end": 39,
+          "side": "new",
+          "text": "空の鍵、下限より1バイト短い鍵、上限より1バイト長い鍵で長さエラーを固定する。"
+        }
+      ]
+    },
+    {
+      "sha": "34947516c0f3c3876ca377a17d07ecbc6f51f430",
+      "phase": "core",
+      "role": "SHA-256・384・512 のハッシュ",
+      "why": "R6の反復ハッシュに必要な3種類を同期で計算できるようにする。64ビット方式は処理部分を共用する。",
+      "notes": [
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/sha2/sha256/index.ts",
+          "start": 11,
+          "end": 30,
+          "side": "new",
+          "text": "SHA-256 の初期値と64個のラウンド定数を FIPS 180-4 の値で揃える。MD5 とは初期値と演算が異なる。"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/sha2/sha256/index.ts",
+          "start": 32,
+          "end": 59,
+          "side": "new",
+          "text": "メッセージワードを増やすときの2種類の式と、ラウンド内の状態を混ぜる2種類の式を置く。通常の右シフトでは落ちるビットを回転では反対側へ戻す。"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/sha2/sha256/index.ts",
+          "start": 75,
+          "end": 88,
+          "side": "new",
+          "text": "64バイトの中にある16ワードを上位バイトから読む。既出のワードと σ の結果を足して、64ラウンド分まで並びを伸ばす。"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/sha2/sha256/index.ts",
+          "start": 88,
+          "end": 110,
+          "side": "new",
+          "text": "8ワードを作業値に取り出し、ブロックのワードとラウンド定数を加えて状態を更新する。次のブロックには更新前の状態に結果を足した8ワードを渡す。"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/sha2/sha256/index.ts",
+          "start": 112,
+          "end": 120,
+          "side": "new",
+          "text": "圧縮が終わった8個の32ビットワードを上位バイトから書き出し、32バイトのダイジェストを返す。"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/sha2/sha512/index.ts",
+          "start": 13,
+          "end": 56,
+          "side": "new",
+          "text": "SHA-384 と SHA-512 は定数80個を共有する一方、最初の8ワードが異なる。64ビットの定数を BigInt にすると上位ビットを保持できる。"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/sha2/sha512/index.ts",
+          "start": 60,
+          "end": 96,
+          "side": "new",
+          "text": "BigInt の右シフトで落ちるビットを左から戻し、BigInt.asUintN で下位64ビットに収める。メッセージと状態の混合が依存する分だけ回転・シフトの組を定義する。"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/sha2/sha512/index.ts",
+          "start": 99,
+          "end": 115,
+          "side": "new",
+          "text": "SHA-384 は専用初期値と6ワード、SHA-512 は専用初期値と8ワードの組で渡す。384は512の出力の切り出しだけでは得られない。"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/sha2/sha512/index.ts",
+          "start": 123,
+          "end": 135,
+          "side": "new",
+          "text": "128バイトを16個の64ビットワードとして読み、先行ワードの値から80ラウンドに広げる。作業用の配列をブロック間で再利用する。"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/sha2/sha512/index.ts",
+          "start": 135,
+          "end": 157,
+          "side": "new",
+          "text": "状態とメッセージワードを混ぜた結果を毎ラウンド64ビットへ丸める。ブロックを処理した結果は型付き配列に足し、最終ブロックまで状態を引き継ぐ。"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/sha2/sha512/index.ts",
+          "start": 158,
+          "end": 186,
+          "side": "new",
+          "text": "最後に残す6または8ワードをビッグエンディアンで書く。呼び出し側にはそれぞれ48バイト、64バイトを返す。"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/sha2/sha256/__tests__/sha256.basic.test.ts",
+          "start": 5,
+          "end": 19,
+          "side": "new",
+          "text": "NIST の空、短い入力、56バイトの入力を検証する。ハッシュ結果全部を比較して値とバイト順を固定する。"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/sha2/sha256/__tests__/sha256.basic.test.ts",
+          "start": 19,
+          "end": 26,
+          "side": "new",
+          "text": "55・56バイトを境に長さ欄が次のブロックに移ることを検証し、64バイトではデータブロックをちょうど1つ使う。"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/sha2/sha512/__tests__/sha512.basic.test.ts",
+          "start": 5,
+          "end": 36,
+          "side": "new",
+          "text": "NIST の短い入力と112バイトの入力で、2方式の結果を固定する。112バイトでは終端フラグと16バイトの長さ欄が同じブロックに収まらない。"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/sha2/sha512/__tests__/sha512.basic.test.ts",
+          "start": 9,
+          "end": 9,
+          "side": "new",
+          "text": "128バイトを読む2方式のテストをまとめる。入力と期待値は公開値および Rust 版で照合した値を用いる。"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/sha2/sha512/__tests__/sha512.basic.test.ts",
+          "start": 44,
+          "end": 74,
+          "side": "new",
+          "text": "111バイトはパディングを同じブロックに置ける上限、128バイトは完全な入力ブロック1つ。前後の番兵を除いた部分ビューだけを処理して期待値と比べる。"
+        }
+      ]
+    },
+    {
+      "sha": "457f759df88c70c4f071103d071dc813fd6cb336",
+      "phase": "core",
+      "role": "AES の入力形式ごとの変換",
+      "why": "ファイル鍵、権限、オブジェクトで要求されるCBC・ECBの形式に合わせて、共通のブロック変換を呼び出す。",
+      "notes": [
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/index.ts",
+          "start": 2,
+          "end": 11,
+          "side": "new",
+          "text": "内部の入口に4系統の実装を揃える。Web Crypto で埋まらないモードと旧方式があるため、環境ごとの実装分岐や依存追加を避けて同期 TypeScript で統一する。"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/aes/byte/index.ts",
+          "start": 8,
+          "end": 30,
+          "side": "new",
+          "text": "規格が定義する256個の置換結果を番号順に並べる。鍵の展開と平文ブロックの変換で共通に使う。"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/aes/byte/index.ts",
+          "start": 35,
+          "end": 38,
+          "side": "new",
+          "text": "左へ1ビットずらし、上位ビットが立っていた値に AES の既約多項式の下位部を XOR する。有限体の計算結果を1バイトに戻し、列の混合に利用する。"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/aes/round-keys/index.ts",
+          "start": 14,
+          "end": 23,
+          "side": "new",
+          "text": "16バイトの鍵なら10回、32バイトなら14回のラウンドに必要な領域を取り、元の鍵から最初のワードを作る。鍵はコピーするため呼び出し後の元配列の変更に依存しない。"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/aes/round-keys/index.ts",
+          "start": 22,
+          "end": 39,
+          "side": "new",
+          "text": "直前の4バイトを読み、鍵の区切りに来たら回転・置換とラウンド定数を適用する。結果が次のワードを作る材料になる。"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/aes/round-keys/index.ts",
+          "start": 45,
+          "end": 56,
+          "side": "new",
+          "text": "AES-256 は鍵の途中で追加のバイト置換を行う。必要な変換の後、鍵長だけ前のワードと XOR して新しいワードを確定する。"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/aes/block/index.ts",
+          "start": 6,
+          "end": 15,
+          "side": "new",
+          "text": "正方向の置換表で入力と出力を逆に並べ替え、復号に使う対応表を一度だけ作る。"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/aes/block/index.ts",
+          "start": 17,
+          "end": 33,
+          "side": "new",
+          "text": "4行4列を列順に格納する。出力の添字から行と列を求め、その行番号だけ循環移動した元の列から読む。復号は逆向きに移動する。"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/aes/block/index.ts",
+          "start": 48,
+          "end": 71,
+          "side": "new",
+          "text": "ブロックとラウンド鍵から使う作業領域を確保する。入力をコピーし、鍵との XOR と置換を作業領域に書くので元の暗号文をCBCの次のブロックで使える。"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/aes/block/index.ts",
+          "start": 73,
+          "end": 99,
+          "side": "new",
+          "text": "4バイトごとに列の係数を混ぜる。復号は逆行列の前処理を加えてから同じ式を使い、逆変換に必要な演算をまとめる。"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/aes/block/index.ts",
+          "start": 100,
+          "end": 119,
+          "side": "new",
+          "text": "最初と最後に鍵を加え、中間で置換・行移動・列の混合を行う。最後のラウンドでは列を混ぜない。結果のブロックは次のCBC処理に渡す。"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/aes/block/index.ts",
+          "start": 119,
+          "end": 138,
+          "side": "new",
+          "text": "最後のラウンド鍵から逆向きに処理する。置換と行移動を戻し、鍵の加算と列の逆変換を実行して16バイトを得る。"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/aes/index.ts",
+          "start": 15,
+          "end": 32,
+          "side": "new",
+          "text": "ブロック、IV別渡しのCBC、IV付きPDFの入口を用意する。どの長さを要求し、どのパディングを扱うかが呼び出しから分かる。"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/aes/index.ts",
+          "start": 33,
+          "end": 43,
+          "side": "new",
+          "text": "IV が16バイトに満たない場合とデータの末尾が16バイト単位でない場合を分ける。認証側が不正入力の理由を扱える。"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/aes/index.ts",
+          "start": 45,
+          "end": 64,
+          "side": "new",
+          "text": "最初の平文は復号ブロックとIVを XOR して得る。2ブロック目からは前の暗号文を XOR するため、暗号文を入力側に残したまま平文を別の配列に書く。"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/aes/index.ts",
+          "start": 65,
+          "end": 84,
+          "side": "new",
+          "text": "最初にIV、次から直前の暗号文を平文に XOR してから AES を適用する。Algorithm 2.B は揃ったブロックを渡すため、暗号化側で末尾を足さない。"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/aes/index.ts",
+          "start": 85,
+          "end": 105,
+          "side": "new",
+          "text": "復号した末尾の値を取り除く個数として読み、1〜16の範囲と全該当バイトの一致を検査する。合えばパディング前までのビューを返し、全体がパディングなら空になる。"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/aes/index.ts",
+          "start": 113,
+          "end": 122,
+          "side": "new",
+          "text": "16または32バイトの入力鍵だけを許可する。展開した鍵をクロージャに保持するので、同じ鍵を使う変換で展開を繰り返さずに済む。"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/aes/index.ts",
+          "start": 124,
+          "end": 132,
+          "side": "new",
+          "text": "/Perms の16バイトを検証してAESの逆変換に渡す。IVの連鎖や末尾の検証が不要なフィールドなので、完全な1ブロックを返す。"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/aes/index.ts",
+          "start": 133,
+          "end": 150,
+          "side": "new",
+          "text": "/UE・/OE は別渡しのIVと完全なブロック列を検証してから処理する。ブロック列の結果をそのまま返すため、平文のファイル鍵の末尾も残る。"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/aes/index.ts",
+          "start": 153,
+          "end": 165,
+          "side": "new",
+          "text": "IVに加えて暗号文を1ブロック以上要求する。先頭16バイトのIVと残りのデータを分け、CBCで復号してからPDFのパディングを外す。"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/aes/__tests__/aes.test.helpers.ts",
+          "start": 5,
+          "end": 9,
+          "side": "new",
+          "text": "公開ベクタの16進表記から鍵を組み立てる。鍵を受理したうえで復号操作を試せるように、テストの前提として生成成功を確認する。"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/aes/__tests__/aes.basic.test.ts",
+          "start": 5,
+          "end": 22,
+          "side": "new",
+          "text": "FIPS 197 の128・256ビット鍵を使って同じ平文を取り出す。鍵長に応じてラウンド数を変える処理の結果を公開値で確認する。"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/aes/__tests__/aes.basic.test.ts",
+          "start": 33,
+          "end": 63,
+          "side": "new",
+          "text": "NIST の4ブロックを使い、直前の暗号文の参照を含むCBC復号と暗号化を公開値に照らす。復号後も入力の暗号文を保持する。"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/aes/__tests__/aes.basic.test.ts",
+          "start": 69,
+          "end": 81,
+          "side": "new",
+          "text": "PDFの文字列の形式で先頭のIVを読み、末尾のパディングを外す。Rust 版のガイドと同じ48バイトから17バイトの平文を得る。"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/aes/__tests__/aes.basic.test.ts",
+          "start": 83,
+          "end": 91,
+          "side": "new",
+          "text": "Rust 版と同じ権限ブロックを使い、リトルエンディアンの権限だけでなく、署名文字と末尾まで16バイト全部を残す。"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/aes/__tests__/aes.validation.test.ts",
+          "start": 11,
+          "end": 28,
+          "side": "new",
+          "text": "24バイトのAES-192も、PDFが扱う2種類に含まれないので長さエラーにする。ECBの途中で切れたブロックや2ブロックも拒否する。"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/aes/__tests__/aes.validation.test.ts",
+          "start": 29,
+          "end": 53,
+          "side": "new",
+          "text": "IV の不足と暗号文の端数を別のエラーとして確認し、呼び出し側がどこで失敗したかを把握できるようにする。"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/aes/__tests__/aes.validation.test.ts",
+          "start": 51,
+          "end": 75,
+          "side": "new",
+          "text": "PKCS#7の正しい末尾で、パディング1バイト・16バイト・平文が空に戻る場合を照合する。"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/aes/__tests__/aes.validation.test.ts",
+          "start": 70,
+          "end": 92,
+          "side": "new",
+          "text": "IVだけの入力や途中で終わる暗号文を長さエラーにする。復号できても末尾0、17、値の不一致のどれかがあればパディングエラーになる。"
+        }
+      ]
+    },
+    {
+      "sha": "e536b7b6c9a945cb5431642629bbae0052ea429c",
+      "phase": "fin",
+      "role": "暗号化辞書ガイドの更新",
+      "why": "PDFに書かれるデータから TypeScript の引数と返り値を追えるようにする。",
+      "notes": [
+        {
+          "path": "docs/guides/encryption-dictionary.html",
+          "start": 170,
+          "end": 170,
+          "side": "new",
+          "text": "既存の暗号辞書の説明から、TypeScriptの入口を直接開けるリンクを目次に足す。"
+        },
+        {
+          "path": "docs/guides/encryption-dictionary.html",
+          "start": 664,
+          "end": 680,
+          "side": "new",
+          "text": "辞書項目ごとに必要なIVと出力長を対応付ける。/UE と /OE の32バイト、/Perms の16バイト、文字列のIV付きCBCが同じAESを異なる形で使うことを例からたどれる。"
+        },
+        {
+          "path": "docs/guides/encryption-dictionary.html",
+          "start": 682,
+          "end": 685,
+          "side": "new",
+          "text": "必要なモードを同じTypeScriptに揃える理由と、暗号化PDFの読み込みまでに必要な鍵導出・認証・オブジェクト解決の接続を示す。"
+        },
+        {
+          "path": "docs/specs/02b_encryption.md",
+          "start": 153,
+          "end": 153,
+          "side": "new",
+          "text": "実装範囲にTypeScriptの同期プリミティブを追加し、辞書項目との対応をガイドへ結ぶ。"
+        },
+        {
+          "path": "docs/guides/README.md",
+          "start": 19,
+          "end": 19,
+          "side": "new",
+          "text": "暗号化辞書ガイドの一覧行に新しい節と実装の配置を足し、既存のページから辿れるようにする。"
+        }
+      ]
+    },
+    {
+      "sha": "478ea6e3d396f391e0d9e792941259e5b9220f94",
+      "phase": "revise",
+      "role": "MD5のメッセージ順序を定義する",
+      "why": "最初のCIの型チェックで残っていた旧参照を解消する。4ラウンドで同じ計算式を使えるよう、G・H・Iの設定にも間隔と開始位置を持たせる。",
+      "notes": [
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/md5/index.ts",
+          "start": 45,
+          "end": 61,
+          "side": "new",
+          "text": "G・H・Iの古い関数参照を、入力ワードの番号を決める2値に置き換える。例えばGの先頭の位置は1、次は6で、ラウンド中は（5×ステップ番号+1）を16で割った余りで位置を求める。"
+        }
+      ]
+    }
+  ],
+  "suites": [
+    {
+      "id": "md5-vector-suite",
+      "label": "MD5 の既知値",
+      "file": "packages/core/src/pdf/encryption/primitives/md5/__tests__/md5.basic.test.ts"
+    },
+    {
+      "id": "rc4-vector-suite",
+      "label": "RC4 の鍵ストリーム",
+      "file": "packages/core/src/pdf/encryption/primitives/rc4/__tests__/rc4.basic.test.ts"
+    },
+    {
+      "id": "sha256-vector-suite",
+      "label": "SHA-256 の既知値",
+      "file": "packages/core/src/pdf/encryption/primitives/sha2/sha256/__tests__/sha256.basic.test.ts"
+    },
+    {
+      "id": "sha512-vector-suite",
+      "label": "SHA-384・512 の既知値",
+      "file": "packages/core/src/pdf/encryption/primitives/sha2/sha512/__tests__/sha512.basic.test.ts"
+    },
+    {
+      "id": "aes-nopad-suite",
+      "label": "パディングなしの AES",
+      "file": "packages/core/src/pdf/encryption/primitives/aes/__tests__/aes.basic.test.ts"
+    },
+    {
+      "id": "aes-key-suite",
+      "label": "PDF が使う AES 鍵長",
+      "file": "packages/core/src/pdf/encryption/primitives/aes/__tests__/aes.validation.test.ts"
+    }
+  ],
+  "tests": [
+    {
+      "id": "md5-vector",
+      "suite": "md5-vector-suite",
+      "name": "RFC 1321 の入力 %j が既知の MD5 ダイジェストになる",
+      "techniques": [
+        "equivalence"
+      ],
+      "why": "パディングとバイト順の誤りを、公開されている最終値で検出する。",
+      "given": "RFC 1321 の空文字、短い文字列、複数ブロックの文字列。",
+      "when": "文字列のバイト列を MD5 でハッシュする。",
+      "then": "どのケースも16バイトの期待値と一致する。",
+      "excerpt": {
+        "path": "packages/core/src/pdf/encryption/primitives/md5/__tests__/md5.basic.test.ts",
+        "start": 6,
+        "end": 17,
+        "text": "test.each([\n  [\"\", \"d41d8cd98f00b204e9800998ecf8427e\"],\n  [\"a\", \"0cc175b9c0f1b6a831c399e269772661\"],\n  [\"abc\", \"900150983cd24fb0d6963f7d28e17f72\"],\n  [\"message digest\", \"f96b697d7cb7938d525a2f31aaf161d0\"],\n  [\"abcdefghijklmnopqrstuvwxyz\", \"c3fcd3d76192e4007dfb496cca67e13b\"],\n  [\n    \"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789\",\n    \"d174ab98d277d9f5a5611c2c9f419d9f\",\n  ],\n  [\"1234567890\".repeat(8), \"57edf4a22be3c955ac49da2e2107b67a\"],\n])(\"RFC 1321 の入力 %j が既知の MD5 ダイジェストになる\", (message, expected) => {"
+      }
+    },
+    {
+      "id": "rc4-vector",
+      "suite": "rc4-vector-suite",
+      "name": "RFC 6229 の %i バイト鍵に対する位置 %i の鍵ストリームと一致する",
+      "techniques": [
+        "equivalence",
+        "boundary"
+      ],
+      "why": "最初の出力だけでは検出できない添字の折り返しを含める。",
+      "given": "RFC 6229 の鍵とゼロで埋めた入力。",
+      "when": "指定位置まで鍵ストリームを進める。",
+      "then": "5・16バイトの鍵と位置0・256で、それぞれ公開値の16バイトと一致する。",
+      "excerpt": {
+        "path": "packages/core/src/pdf/encryption/primitives/rc4/__tests__/rc4.basic.test.ts",
+        "start": 5,
+        "end": 16,
+        "text": "test.each([\n  [5, 0, \"b2396305f03dc027ccc3524a0a1118a8\"],\n  [5, 256, \"1cfcf62b03eddb641d77dfcf7f8d8c93\"],\n  [16, 0, \"9ac7cc9a609d1ef7b2932899cde41b97\"],\n])(\"RFC 6229 の %i バイト鍵に対する位置 %i の鍵ストリームと一致する\", (length, offset, expected) => {\n  const key = Uint8Array.from({ length }, (_, index) => index + 1);\n  const data = new Uint8Array(offset + 16);\n\n  const result = Rc4.apply({ key, data });\n\n  assert(result.ok);\n  expect(result.value.subarray(offset)).toEqual(vectorBytes(expected));"
+      }
+    },
+    {
+      "id": "sha256-vector",
+      "suite": "sha256-vector-suite",
+      "name": "SHA-256 が NIST の入力 %j のダイジェストと一致する",
+      "techniques": [
+        "equivalence"
+      ],
+      "why": "256ビットの SHA-2 の入力処理と出力順序を独立した公開値で固定する。",
+      "given": "空文字、abc、パディングが次ブロックに跨る長文。",
+      "when": "SHA-256 を計算する。",
+      "then": "32バイトの結果が既知値と一致する。",
+      "excerpt": {
+        "path": "packages/core/src/pdf/encryption/primitives/sha2/sha256/__tests__/sha256.basic.test.ts",
+        "start": 5,
+        "end": 16,
+        "text": "test.each([\n  [\"\", \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"],\n  [\"abc\", \"ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad\"],\n  [\n    \"abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq\",\n    \"248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1\",\n  ],\n])(\"SHA-256 が NIST の入力 %j のダイジェストと一致する\", (message, expected) => {\n  const input = new TextEncoder().encode(message);\n\n  expect(Sha256.digest(input)).toEqual(vectorBytes(expected));\n});"
+      }
+    },
+    {
+      "id": "sha512-vector",
+      "suite": "sha512-vector-suite",
+      "name": "SHA-384/512 が NIST の入力 %j の既知のダイジェストと一致する",
+      "techniques": [
+        "equivalence",
+        "boundary"
+      ],
+      "why": "専用の初期状態と、後続ブロックまで続くパディングをまとめて確かめる。",
+      "given": "短い abc と、128バイトブロックの長さ欄に重なる112バイトの文字列。",
+      "when": "SHA-384 または SHA-512 を計算する。",
+      "then": "それぞれ48バイト、64バイトの新しい配列が公開値に一致する。",
+      "excerpt": {
+        "path": "packages/core/src/pdf/encryption/primitives/sha2/sha512/__tests__/sha512.basic.test.ts",
+        "start": 5,
+        "end": 16,
+        "text": "const longMessage =\n  \"abcdefghbcdefghicdefghijdefghijkefghijklfghijklmghijklmnhijklmno\" +\n  \"ijklmnopjklmnopqklmnopqrlmnopqrsmnopqrstnopqrstu\";\n\ntest.each([\n  [\n    Sha384,\n    \"abc\",\n    \"cb00753f45a35e8bb5a03d699ac65007272c32ab0eded163\" +\n      \"1a8b605a43ff5bed8086072ba1e7cc2358baeca134c825a7\",\n  ],\n  ["
+      }
+    },
+    {
+      "id": "aes-nopad",
+      "suite": "aes-nopad-suite",
+      "name": "R6 の反復ハッシュで使う AES-128-CBC がパディングを足さない",
+      "techniques": [
+        "equivalence"
+      ],
+      "why": "暗号文にパディングを追加すると、R6で後続のハッシュに渡すバイト列が変わる。",
+      "given": "NIST SP 800-38A F.2.1 の鍵・IV・平文4ブロック。",
+      "when": "パディングなしのCBCで暗号化する。",
+      "then": "出力は公開ベクタの64バイトと一致する。",
+      "excerpt": {
+        "path": "packages/core/src/pdf/encryption/primitives/aes/__tests__/aes.basic.test.ts",
+        "start": 54,
+        "end": 65,
+        "text": "test(\"R6 の反復ハッシュで使う AES-128-CBC がパディングを足さない\", () => {\n  const aes = createAes(key128);\n\n  const result = aes.encryptCbcBlocks({\n    iv,\n    data: vectorBytes(plaintext),\n  });\n\n  assert(result.ok);\n  expect(result.value).toEqual(vectorBytes(ciphertext128));\n});\n"
+      }
+    },
+    {
+      "id": "aes-pdf",
+      "suite": "aes-nopad-suite",
+      "name": "AES-256 の PDF 文字列では先頭の IV と末尾のパディングを除く",
+      "techniques": [
+        "boundary",
+        "equivalence"
+      ],
+      "why": "IVを分ける位置・CBC連鎖・パディングの切り落としをまとめて実データから確認する。",
+      "given": "IV 16バイトと暗号文2ブロックを合わせた、ガイドにある48バイト。",
+      "when": "PDF形式のCBCを復号する。",
+      "then": "平文は17バイトの PDF stream block! になる。",
+      "excerpt": {
+        "path": "packages/core/src/pdf/encryption/primitives/aes/__tests__/aes.basic.test.ts",
+        "start": 69,
+        "end": 80,
+        "text": "test(\"AES-256 の PDF 文字列では先頭の IV と末尾のパディングを除く\", () => {\n  const aes = createAes(key256);\n  const input = vectorBytes(\n    \"a0a1a2a3a4a5a6a7a8a9aaabacadaeaf\" +\n      \"aa21ce5618972cf6990c87a0b04065eb\" +\n      \"1da720b04e5dded942a216c5b4f681df\",\n  );\n\n  const result = aes.decryptPdfCbc(input);\n\n  assert(result.ok);\n  expect(new TextDecoder().decode(result.value)).toBe(\"PDF stream block!\");"
+      }
+    },
+    {
+      "id": "aes-key",
+      "suite": "aes-key-suite",
+      "name": "PDF で使えない %i バイトの AES 鍵を拒否する",
+      "techniques": [
+        "error",
+        "boundary"
+      ],
+      "why": "AES-192などPDFの標準セキュリティハンドラで使わない鍵で計算を始めないようにする。",
+      "given": "0・15・24・33バイトの鍵。",
+      "when": "AES の生成に渡す。",
+      "then": "鍵の長さエラーを返す。",
+      "excerpt": {
+        "path": "packages/core/src/pdf/encryption/primitives/aes/__tests__/aes.validation.test.ts",
+        "start": 11,
+        "end": 22,
+        "text": "])(\"PDF で使えない %i バイトの AES 鍵を拒否する\", (length) => {\n  expect(Aes.create(new Uint8Array(length))).toEqual({\n    ok: false,\n    error: \"INVALID_KEY_LENGTH\",\n  });\n});\n\ntest.each([\n  0, 15, 17, 32,\n])(\"ECB の 1 ブロックに %i バイト渡すと長さエラーになる\", (length) => {\n  const aes = createAes(key128);\n"
+      }
+    }
+  ],
+  "impact": {
+    "title": "暗号化PDFの読み込みに必要な計算を準備する",
+    "lead": "今回追加したバイト列の変換を使うと、鍵の計算や認証を実装する段階で、Nodeとブラウザが同じ結果を得られる。暗号化PDFを開けるようにするには文書の読み込み処理との接続が必要。"
+  },
+  "primers": [
+    {
+      "kind": "language",
+      "id": "subarray",
+      "category": "TypeScript · バイト列",
+      "label": "Uint8Array.subarray と DataView",
+      "gist": "元の配列を共有しながら、読む位置と長さを指定できる。",
+      "passages": [
+        {
+          "kind": "text",
+          "text": "subarray(開始, 終了) は開始を含み、終了を含まない。subarray(1, 3) で、元の配列の添字1・2を持つ新しいビューが得られる。ビューは同じバイトを参照する。"
+        },
+        {
+          "kind": "text",
+          "text": "例えば Uint8Array.of(10, 20, 30).subarray(1, 2) の長さは1で、値は20。位置を省略した末尾側は配列の終わりまでになる。"
+        },
+        {
+          "kind": "excerpt",
+          "excerpt": {
+            "path": "packages/core/src/pdf/encryption/primitives/aes/index.ts",
+            "start": 161,
+            "end": 164,
+            "text": "        const iv = input.subarray(0, AES_BLOCK_BYTES);\n        const data = input.subarray(AES_BLOCK_BYTES);\n        return removePdfPadding(decryptCbc(roundKeys, { iv, data }));\n      },"
+          }
+        },
+        {
+          "kind": "text",
+          "text": "PDF形式では最初の16バイトだけをIVのビューにする。CBCの計算で出力配列を作るため、共有している2つの元データはそのまま残る。"
+        },
+        {
+          "kind": "excerpt",
+          "excerpt": {
+            "path": "packages/core/src/pdf/encryption/primitives/hash-blocks/index.ts",
+            "start": 30,
+            "end": 34,
+            "text": "  const source = new DataView(input.buffer, input.byteOffset, input.byteLength);\n\n  for (let offset = 0; offset < tailStart; offset += blockBytes) {\n    compress(source, offset);\n  }"
+          }
+        },
+        {
+          "kind": "text",
+          "text": "DataView は複数バイトから1つの整数を取り出せる。元の buffer だけを渡すと先頭から読んでしまうため、部分ビューの byteOffset と byteLength を渡す。"
+        }
+      ],
+      "occurrences": [
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/aes/index.ts",
+          "text": "先頭16バイトのIVと残りの暗号文を切り出す。"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/hash-blocks/index.ts",
+          "text": "ビューの範囲を保ちながらブロックを整数に読む。"
+        }
+      ]
+    },
+    {
+      "kind": "pdf",
+      "id": "pdf-cbc",
+      "category": "PDF · 暗号化辞書",
+      "label": "AESV3 と /Perms のデータ配置",
+      "gist": "辞書項目と暗号化された文字列では、AESに渡すバイト列の意味が異なる。",
+      "passages": [
+        {
+          "kind": "text",
+          "text": "暗号化辞書と文字列の抜粋。8 0 obj はオブジェクト番号8と世代0の宣言。/V 5・/R 6 はAES-256を使う方式を表し、/StrF /StdCF が文字列に適用するcrypt filterを選ぶ。"
+        },
+        {
+          "kind": "declaration",
+          "code": "% 暗号化辞書の抜粋\n8 0 obj\n<< /Filter /Standard /V 5 /R 6 /P -4\n   /CF << /StdCF << /CFM /AESV3 >> >> /StrF /StdCF\n   /Perms <D2FFE8BC214EBC01DFF5AF20C2B755C8> >>\nendobj\n\n% AES-256 CBCで暗号化された文字列の抜粋\n9 0 obj\n<< /Subject <A0A1A2A3A4A5A6A7A8A9AAABACADAEAF\n             AA21CE5618972CF6990C87A0B04065EB\n             1DA720B04E5DDED942A216C5B4F681DF> >>\nendobj"
+        },
+        {
+          "kind": "text",
+          "text": "角括弧内の16進表記は2桁で1バイト。/Subject の最初の16バイトはIVで、残り32バイトが暗号文になる。/Perms は全16バイトをECBに渡す。"
+        },
+        {
+          "kind": "excerpt",
+          "excerpt": {
+            "path": "packages/core/src/pdf/encryption/primitives/aes/index.ts",
+            "start": 153,
+            "end": 165,
+            "text": "      decryptPdfCbc(input) {\n        const hasIvAndCiphertext = input.length >= 2 * AES_BLOCK_BYTES;\n        const aligned = input.length % AES_BLOCK_BYTES === 0;\n\n        if (!hasIvAndCiphertext || !aligned) {\n          return err(\"INVALID_LENGTH\");\n        }\n\n        const iv = input.subarray(0, AES_BLOCK_BYTES);\n        const data = input.subarray(AES_BLOCK_BYTES);\n        return removePdfPadding(decryptCbc(roundKeys, { iv, data }));\n      },\n    });"
+          }
+        },
+        {
+          "kind": "spec",
+          "text": "PDFのAESV2/AESV3の文字列・ストリームとAES-256の暗号化辞書は ISO 32000 §7.6。AESのブロック変換はFIPS 197、CBC・ECBの組み立てはNIST SP 800-38A。"
+        }
+      ],
+      "occurrences": [
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/aes/index.ts",
+          "text": "文字列の CBC では IV とパディングを処理する。/Perms の ECB は全16バイトを返す。"
+        }
+      ],
+      "seeAlso": [
+        "subarray",
+        "cbc-chaining"
+      ]
+    },
+    {
+      "kind": "codebase",
+      "id": "cbc-chaining",
+      "category": "pdfmod · 復号処理",
+      "label": "CBCの前の暗号文",
+      "gist": "ブロック単位の復号結果に、IVまたは直前の暗号文をXORすると平文になる。",
+      "status": "added",
+      "passages": [
+        {
+          "kind": "text",
+          "text": "XOR は2つのビットが違うと1を返す演算。前の暗号文の値を復号済みのバイトに上書きすると、次の平文を正しく得られない。"
+        },
+        {
+          "kind": "excerpt",
+          "excerpt": {
+            "path": "packages/core/src/pdf/encryption/primitives/aes/index.ts",
+            "start": 45,
+            "end": 64,
+            "text": "function decryptCbc(roundKeys: Uint8Array, { iv, data }: CbcInput): Uint8Array {\n  const cipher = createBlockCipher(roundKeys);\n  const output = new Uint8Array(data.length);\n  let previous = iv;\n  let previousOffset = 0;\n\n  for (let offset = 0; offset < data.length; offset += AES_BLOCK_BYTES) {\n    const block = cipher.decrypt(data, offset);\n\n    for (let i = 0; i < AES_BLOCK_BYTES; i++) {\n      output[offset + i] = block[i] ^ previous[previousOffset + i];\n    }\n\n    previous = data;\n    previousOffset = offset;\n  }\n\n  return output;\n}\n"
+          }
+        },
+        {
+          "kind": "text",
+          "text": "1ブロック目を処理する前のpreviousはIV。処理後にpreviousを元の暗号文のdataに移し、今回の位置を保存する。次のブロックからは同じ配列の1ブロック手前とXORする。"
+        }
+      ],
+      "occurrences": [
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/aes/index.ts",
+          "text": "平文と暗号文の配列を分けて保持する。"
+        },
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/aes/block/index.ts",
+          "text": "16バイトの作業領域だけを再利用する。"
+        }
+      ],
+      "tests": [
+        "aes-pdf",
+        "aes-nopad"
+      ],
+      "flows": [
+        "cbc"
+      ]
+    }
+  ]
+}
