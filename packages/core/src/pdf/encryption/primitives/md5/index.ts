@@ -42,22 +42,20 @@ const ROUNDS = [
   },
   {
     mix: ({ b, c, d }: WorkingState) => (b & d) | (c & ~d),
-    selectWord: (step: number) =>
-      (ROUND_WORD_SELECTION.G.stride * step + ROUND_WORD_SELECTION.G.first) %
-      WORDS_PER_BLOCK,
+    stride: 5,
+    firstWord: 1,
     shifts: /* @__PURE__ */ readHexWords("05 09 0e 14", Number),
   },
   {
     mix: ({ b, c, d }: WorkingState) => b ^ c ^ d,
-    selectWord: (step: number) =>
-      (ROUND_WORD_SELECTION.H.stride * step + ROUND_WORD_SELECTION.H.first) %
-      WORDS_PER_BLOCK,
+    stride: 3,
+    firstWord: 5,
     shifts: /* @__PURE__ */ readHexWords("04 0b 10 17", Number),
   },
   {
     mix: ({ b, c, d }: WorkingState) => c ^ (b | ~d),
-    selectWord: (step: number) =>
-      (ROUND_WORD_SELECTION.I.stride * step) % WORDS_PER_BLOCK,
+    stride: 7,
+    firstWord: 0,
     shifts: /* @__PURE__ */ readHexWords("06 0a 0f 15", Number),
   },
 ] as const;
