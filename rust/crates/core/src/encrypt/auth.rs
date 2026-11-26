@@ -69,15 +69,39 @@ impl FileEncryptionKey {
 /// パスワード認証（Algorithm 6 / 7 / 11 / 12）を通過したファイル暗号鍵と役割。
 ///
 /// 構築経路は [`StandardSecurityHandler::authenticate`] と
-/// [`StandardSecurityHandler::authenticate_as`] のみに限定し、
-/// 未認証または誤った鍵のまま復号へ進めないことを型で保証する。
+/// [`StandardSecurityHandler::authenticate_as`] に限る。認証に使った暗号化辞書を借用し、
+/// [`Self::object_decryption`] でその辞書とファイル暗号鍵から方式と鍵を選ぶ。
+///
+/// # Examples
+///
+/// 別の暗号化辞書に認証結果を渡して復号鍵を選ぶ呼び出しは、コンパイル時に拒まれる。
+///
+/// ```compile_fail,E0599
+/// use pdfmod_core::encrypt::{
+///     auth::AuthenticatedFileKey, object_key::ObjectDecryptionTarget,
+///     standard::StandardSecurityHandler,
+/// };
+///
+/// fn select_with_another_handler(
+///     another_handler: &StandardSecurityHandler,
+///     authenticated: &AuthenticatedFileKey<'_>,
+///     target: ObjectDecryptionTarget,
+/// ) {
+///     let _ = another_handler.object_decryption(authenticated, target);
+/// }
+/// ```
 #[must_use]
-pub struct AuthenticatedFileKey {
+pub struct AuthenticatedFileKey<'handler> {
+    handler: &'handler StandardSecurityHandler,
     key: FileEncryptionKey,
     role: PasswordRole,
 }
 
-impl AuthenticatedFileKey {
+impl AuthenticatedFileKey<'_> {
+    pub(super) fn handler(&self) -> &StandardSecurityHandler {
+        self.handler
+    }
+
     /// 認証に成功した役割（利用者または所有者）を返す。
     #[must_use]
     pub fn role(&self) -> PasswordRole {
@@ -96,7 +120,7 @@ impl AuthenticatedFileKey {
     }
 }
 
-impl fmt::Debug for AuthenticatedFileKey {
+impl fmt::Debug for AuthenticatedFileKey<'_> {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter
             .debug_struct("AuthenticatedFileKey")
@@ -188,7 +212,7 @@ impl StandardSecurityHandler {
         &self,
         password: Option<&[u8]>,
         file_id: Option<&FileId>,
-    ) -> Result<AuthenticatedFileKey, AuthError> {
+    ) -> Result<AuthenticatedFileKey<'_>, AuthError> {
         let (bytes, roles) = match password {
             // パスワード未指定時は空パスワードを利用者 → 所有者の順に試し、
             // 利用者・所有者ともに空の文書でも /P の権限制限を優先する。
@@ -229,7 +253,7 @@ impl StandardSecurityHandler {
         role: PasswordRole,
         password: &[u8],
         file_id: Option<&FileId>,
-    ) -> Result<AuthenticatedFileKey, AuthError> {
+    ) -> Result<AuthenticatedFileKey<'_>, AuthError> {
         match self.algorithm() {
             StandardAlgorithm::V1R2 => {
                 self.authenticate_legacy(LegacyRevision::R2, role, password, file_id)
@@ -251,7 +275,7 @@ impl StandardSecurityHandler {
         roles: [PasswordRole; 2],
         password: &[u8],
         file_id: Option<&FileId>,
-    ) -> Result<AuthenticatedFileKey, AuthError> {
+    ) -> Result<AuthenticatedFileKey<'_>, AuthError> {
         for role in roles {
             match self.authenticate_legacy(revision, role, password, file_id) {
                 Ok(authenticated) => return Ok(authenticated),
@@ -266,7 +290,7 @@ impl StandardSecurityHandler {
         &self,
         roles: [PasswordRole; 2],
         password: &[u8],
-    ) -> Result<AuthenticatedFileKey, AuthError> {
+    ) -> Result<AuthenticatedFileKey<'_>, AuthError> {
         // UTF-8 検証結果は認証 1 回につき一度だけ求めて役割間で共有する。
         let prepared = prepare_aes256_password(password);
         for role in roles {
@@ -285,7 +309,7 @@ impl StandardSecurityHandler {
         role: PasswordRole,
         password: &[u8],
         file_id: Option<&FileId>,
-    ) -> Result<AuthenticatedFileKey, AuthError> {
+    ) -> Result<AuthenticatedFileKey<'_>, AuthError> {
         let file_id = file_id.ok_or(AuthError::MissingFileId)?;
         let owner_entry = fixed_legacy_entry(EncryptKey::O, self.owner_key())?;
         let user_entry = fixed_legacy_entry(EncryptKey::U, self.user_key())?;
@@ -307,6 +331,7 @@ impl StandardSecurityHandler {
         };
 
         Ok(AuthenticatedFileKey {
+            handler: self,
             key: FileEncryptionKey::Legacy(key),
             role,
         })
@@ -391,7 +416,7 @@ impl StandardSecurityHandler {
         &self,
         role: PasswordRole,
         prepared: Option<&str>,
-    ) -> Result<AuthenticatedFileKey, AuthError> {
+    ) -> Result<AuthenticatedFileKey<'_>, AuthError> {
         let Some(prepared) = prepared else {
             // 不正な UTF-8 入力でも辞書項目の長さ不正（構造破損）を隠さないよう先に検証する。
             self.validate_aes256_entries(role)
@@ -404,6 +429,7 @@ impl StandardSecurityHandler {
             .map_err(AuthError::from_aes256_error)?;
 
         Ok(AuthenticatedFileKey {
+            handler: self,
             key: FileEncryptionKey::Aes256(key),
             role,
         })
@@ -479,4 +505,4 @@ fn ct_eq_prefix<const N: usize, const M: usize>(left: &[u8; N], right: &[u8; M])
 }
 
 #[cfg(test)]
-mod tests;
+pub(super) mod tests;

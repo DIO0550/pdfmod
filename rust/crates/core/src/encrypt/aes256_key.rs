@@ -37,6 +37,11 @@ impl Aes256FileKey {
         &self.0
     }
 
+    /// 検証済みの鍵を、復号結果で所有できるように複製する。
+    pub(super) fn copy_for_object_decryption(&self) -> Self {
+        Self(self.0)
+    }
+
     fn verify_permissions(
         bytes: [u8; KEY_LEN],
         perms: &[u8; 16],

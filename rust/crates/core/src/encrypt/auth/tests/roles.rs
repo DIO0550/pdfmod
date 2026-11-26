@@ -124,7 +124,8 @@ fn explicit_password_prefers_owner_when_user_and_owner_passwords_are_identical()
     let r2 = b"<< /Filter /Standard /V 1 /R 2 /Length 40 /P -4
         /O <8bcfe6441d8d2931a4bd1c063a0fc2e5d165288c9f429d491a513414f7bde5aa>
         /U <b000bee02ac13b53a5f940094057180e67da785b31a7bc6a27297ec4e7f3586f> >>";
-    let r2_auth = standard_handler(r2)
+    let r2_handler = standard_handler(r2);
+    let r2_auth = r2_handler
         .authenticate(Some(b"shared"), trailer.id())
         .unwrap();
     assert_eq!(r2_auth.role(), PasswordRole::Owner);
@@ -134,7 +135,8 @@ fn explicit_password_prefers_owner_when_user_and_owner_passwords_are_identical()
     let r3 = b"<< /Filter /Standard /V 2 /R 3 /Length 128 /P -4
         /O <ef4e52c82a492f3fd5ad90ce3846b738c11b7b2c38d8cfe236062aee2bc9b9c4>
         /U <ba7e586784910f76a068f5cb7a410eff0122456a91bae5134273a6db134c87c4> >>";
-    let r3_auth = standard_handler(r3)
+    let r3_handler = standard_handler(r3);
+    let r3_auth = r3_handler
         .authenticate(Some(b"shared-r3"), trailer.id())
         .unwrap();
     assert_eq!(r3_auth.role(), PasswordRole::Owner);
@@ -149,7 +151,8 @@ fn explicit_password_prefers_owner_when_user_and_owner_passwords_are_identical()
         /StmF /StdCF /StrF /StdCF /P -3392 /EncryptMetadata false
         /O <d558d15c2e5630be588eb5627040b710633ad0e89268920bc6b9668d87d1e241>
         /U <b24e6231b6927bde60f5edd622fc575c0122456a91bae5134273a6db134c87c4> >>";
-    let r4_auth = standard_handler(r4)
+    let r4_handler = standard_handler(r4);
+    let r4_auth = r4_handler
         .authenticate(Some(b"shared-r4"), trailer.id())
         .unwrap();
     assert_eq!(r4_auth.role(), PasswordRole::Owner);
@@ -169,9 +172,8 @@ fn explicit_password_prefers_owner_when_user_and_owner_passwords_are_identical()
         EncryptKey::OE,
         "1806262c5ddd8229a4ed71fa1b222b39a3fc402f47b66e779d561acaf234042a",
     );
-    let r5_auth = standard_handler(r5_same.as_bytes())
-        .authenticate(Some(b"user-r5"), None)
-        .unwrap();
+    let r5_handler = standard_handler(r5_same.as_bytes());
+    let r5_auth = r5_handler.authenticate(Some(b"user-r5"), None).unwrap();
     assert_eq!(r5_auth.role(), PasswordRole::Owner);
     assert_eq!(r5_auth.as_bytes(), R5_KEY);
 }
@@ -180,9 +182,8 @@ fn explicit_password_prefers_owner_when_user_and_owner_passwords_are_identical()
 fn authenticated_file_key_accessors_and_redacted_debug_do_not_leak_key_bytes() {
     let trailer = parse_trailer(TRAILER);
 
-    let legacy_auth = standard_handler(R2.as_bytes())
-        .authenticate(None, trailer.id())
-        .unwrap();
+    let legacy_handler = standard_handler(R2.as_bytes());
+    let legacy_auth = legacy_handler.authenticate(None, trailer.id()).unwrap();
     assert!(matches!(legacy_auth.key(), FileEncryptionKey::Legacy(_)));
     assert_eq!(legacy_auth.key().as_legacy().unwrap().as_bytes(), R2_KEY);
     assert!(legacy_auth.key().as_aes256().is_none());
@@ -200,9 +201,8 @@ fn authenticated_file_key_accessors_and_redacted_debug_do_not_leak_key_bytes() {
         }
     }
 
-    let aes_auth = standard_handler(R5.as_bytes())
-        .authenticate(Some(b"owner-r5"), None)
-        .unwrap();
+    let aes_handler = standard_handler(R5.as_bytes());
+    let aes_auth = aes_handler.authenticate(Some(b"owner-r5"), None).unwrap();
     assert!(matches!(aes_auth.key(), FileEncryptionKey::Aes256(_)));
     assert_eq!(aes_auth.key().as_aes256().unwrap().as_bytes(), R5_KEY);
     assert!(aes_auth.key().as_legacy().is_none());

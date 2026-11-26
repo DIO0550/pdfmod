@@ -1,7 +1,7 @@
 # 02b. 暗号化 (Encryption)
 
 > **対応規格**: ISO 32000-1:2008 §7.6 / ISO 32000-2:2020 §7.6  
-> **扱う内容**: 暗号化辞書の構造、`/V`×`/R` の組み合わせ、crypt filter、権限フラグ `/P`、暗号プリミティブ（MD5 / RC4 / SHA-2 / AES）、R2〜R6 のファイル暗号鍵導出・権限検証・パスワード認証  
+> **扱う内容**: 暗号化辞書の構造、`/V`×`/R` の組み合わせ、crypt filter、権限フラグ `/P`、暗号プリミティブ（MD5 / RC4 / SHA-2 / AES）、R2〜R6 のファイル暗号鍵導出・権限検証・パスワード認証、オブジェクトの復号鍵\
 > **図解ガイド**: [暗号化辞書 — PDF 仕様解説](../guides/encryption-dictionary.html)（実 PDF 抜粋・色分け・計算例付き）
 
 ## 目次
@@ -19,6 +19,7 @@
 11. [R2〜R4 のファイル暗号鍵を導出する](#11-r2r4-のファイル暗号鍵を導出する)
 12. [R5・R6 の AES-256 ファイル暗号鍵と権限の検証](#12-r5r6-の-aes-256-ファイル暗号鍵と権限の検証)
 13. [パスワード認証（Algorithm 6 / 7 / 11 / 12）](#13-パスワード認証algorithm-6--7--11--12)
+14. [オブジェクトの復号鍵](#14-オブジェクトの復号鍵)
 
 ---
 
@@ -151,8 +152,9 @@ ISO 32000-1 表 20（共通）・表 21（標準ハンドラ）に基づく主�
 | 未対応ハンドラ・未対応版 | `/Adobe.PubSec` や未対応の `/V`×`/R` は `EncryptDictionary::Unsupported` に生辞書を保持して**解析を止めない** |
 | 構造不正エラー | `/Filter`・`/V`・`/R` の欠落や Standard 辞書の構造不正は `EncryptError` として位置情報付きで報告する |
 | 鍵導出・パスワード認証（Rust） | R2〜R4 の鍵導出は §11、R5・R6 の鍵導出・権限検証は §12、全リビジョンのパスワード認証と役割判定の入口は §13 で実装済み |
+| オブジェクトの復号鍵（Rust） | `AuthenticatedFileKey` と対象から方式を選び、Algorithm 1 / 1.A に従って鍵を返す（§14） |
 | TypeScript `PdfDocument.load` | 復号未対応のため、暗号化 PDF は引き続き拒否する（暗号化辞書の型化 API は独立提供） |
-| 今後の対応範囲 | `AuthenticatedFileKey` を用いたオブジェクト（文字列・ストリーム）単位の復号、および `ObjectResolver`・`PdfDocument` への統合（#683） |
+| 今後の対応範囲 | 文字列・ストリームへの復号の適用と、`ObjectResolver`・`PdfDocument` への統合（#683） |
 
 ### 6.2 TypeScript と Rust の共通解析方針
 
@@ -403,8 +405,8 @@ ISO 32000-1:2008 §7.6.3.4（Algorithm 6・7）および ISO 32000-2:2020 §7.6.
 
 Rust の `pdfmod_core::encrypt::auth` モジュールは、検証済みの鍵と役割を表す `AuthenticatedFileKey`、鍵本体を版別に包む `FileEncryptionKey`（`Legacy(LegacyFileKey)` / `Aes256(Aes256FileKey)`）、認証エラー `AuthError`、および `PasswordRole`（`encrypt::aes256_key::PasswordRole` の再公開）を提供します。入口は `StandardSecurityHandler` の次の 2 メソッドです。
 
-- `authenticate(password: Option<&[u8]>, file_id: Option<&FileId>) -> Result<AuthenticatedFileKey, AuthError>` — 役割を自動判定して認証する
-- `authenticate_as(role: PasswordRole, password: &[u8], file_id: Option<&FileId>) -> Result<AuthenticatedFileKey, AuthError>` — 指定した単一の役割で認証する
+- `authenticate(password: Option<&[u8]>, file_id: Option<&FileId>) -> Result<AuthenticatedFileKey<'_>, AuthError>` — 役割を自動判定して認証する
+- `authenticate_as(role: PasswordRole, password: &[u8], file_id: Option<&FileId>) -> Result<AuthenticatedFileKey<'_>, AuthError>` — 指定した単一の役割で認証する
 
 ### 13.1 役割の試行順序と未指定時の既定動作
 
@@ -437,7 +439,7 @@ R5・R6 はトレイラの `/ID` を参照しません。パスワードバイ�
 
 ### 13.5 型による安全境界とエラー分類
 
-- `AuthenticatedFileKey` はフィールドを非公開とし、`authenticate` / `authenticate_as` からのみ構築できる。未認証または誤った鍵のまま復号へ進めないことを型で保証し、`role()`・`key()`・`as_bytes()` を提供する。
+- `AuthenticatedFileKey<'handler>` は、認証に使った暗号化辞書の参照と検証済みの鍵・役割を保持する。フィールドは非公開で、`authenticate` / `authenticate_as` から構築する。`role()`・`key()`・`as_bytes()` で結果を参照できる。
 - `FileEncryptionKey` は `Legacy(LegacyFileKey)` / `Aes256(Aes256FileKey)` の鍵種別を表す列挙型であり、単独では鍵の認証済みを保証しない（`Legacy` は `/U` 未照合の `derive_legacy_file_key` の結果も包める）。認証済みの鍵を要求する境界では `AuthenticatedFileKey` を受け取る。`FileEncryptionKey` は `as_bytes()`・`as_legacy()`・`as_aes256()` を提供し、`AuthenticatedFileKey`・`FileEncryptionKey` とも `Clone` / `Copy` を実装せず、`Debug` 出力は `finish_non_exhaustive()`（内包鍵型の秘匿実装を含む）で鍵バイト列を出力しない。
 - `AuthError` はパスワード不一致と暗号化辞書・トレイラの構造不正や改ざんをバリアントで区別する。
 
@@ -451,7 +453,41 @@ R5・R6 はトレイラの `/ID` を参照しません。パスワードバイ�
 | `InvalidHashInput` | R5・R6 の SHA-2 入力長または反復ブロック長を扱えない |
 | `UnsupportedRevision` | 対応外のアルゴリズム版・リビジョンが渡された |
 
-`AuthenticatedFileKey` を用いたオブジェクト単位の鍵導出（Algorithm 1）、文字列・ストリームの復号、および `ObjectResolver`・`PdfDocument` への統合は後続の #683 で扱います。
+認証に成功したら、返された `AuthenticatedFileKey` を §14 のオブジェクト復号鍵の選択に使います。
+
+---
+
+## 14. オブジェクトの復号鍵
+
+### 14.1 暗号方式の選択
+
+`/V 1`・`/V 2` の文字列とストリームは RC4 を使います。`/V 4` 以降の既定方式は、文字列なら `/StrF`、ストリーム本体なら `/StmF` で選び、指定名を `/CF` で引きます。ストリーム辞書内の文字列にも `/StrF` が適用されます。
+
+| 選択結果 | 鍵の扱い |
+| :--- | :--- |
+| `/Identity`、`/CFM /None` | 復号を省略。`/StmF`・`/StrF` の既定は `/Identity`、`/CFM` の既定は `/None` |
+| `/CFM /V2` | Algorithm 1 で RC4 鍵を導出 |
+| `/CFM /AESV2` | Algorithm 1 の入力末尾に `sAlT` を加え、16 バイトの AES-128 鍵を導出 |
+| `/CFM /AESV3` | Algorithm 1.A に従い 32 バイトのファイル暗号鍵を使用 |
+
+### 14.2 Algorithm 1 と 1.A
+
+ISO 32000-1:2008 §7.6.2 の **Algorithm 1** では、認証済みのファイル暗号鍵、間接オブジェクト番号の下位 3 バイト、世代番号の下位 2 バイトを順に連結します。番号は下位バイトから並べます（リトルエンディアン）。AES-128 ではその末尾に ASCII `sAlT`（`73 41 6C 54`）を追加します。連結したバイト列を MD5 にかけ、先頭 `min(ファイル暗号鍵のバイト数 + 5, 16)` バイトを鍵にします。
+
+例えば `7 4660 obj` の番号は `07 00 00`、世代 `4660 = 0x1234` は `34 12` です。オブジェクト番号が `0x01000000` のときは `00 00 00` が入力になります。番号の上位バイトだけが異なり世代が同じオブジェクトは、同じ鍵を導出します。AES-256 の **Algorithm 1.A** はオブジェクト番号・世代番号に関わらず 32 バイトのファイル暗号鍵を使用します。
+
+### 14.3 オブジェクトストリームと Rust API
+
+`/Type /ObjStm` のストリーム本体は、コンテナ自身の番号・世代とストリームの方式で復号します。取り出した内包オブジェクトの文字列は、コンテナの復号ですでに平文になっています。
+
+`AuthenticatedFileKey::object_decryption` は、`ObjectDecryptionTarget` を受け取り、認証結果が保持する暗号化辞書とファイル鍵から方式と鍵を選びます。
+
+- 通常の間接オブジェクトでは値の種類から既定の方式を選びます。RC4 と AES-128 は `ObjectId` を使って鍵を導出し、`/AESV3` は認証済みの 32 バイトの鍵をコピーします。戻り値は鍵を所有するため、認証結果より長く保持できます。
+- ストリーム側の明示的な `/Crypt` や埋め込みファイル用の `/EFF` が適用される場合は、呼び出し側で扱います。
+- `InObjectStream` ではフィルター選択と鍵導出を省略し、`ObjectDecryption::None` を返します。
+- `/CF` に未定義の名前は暗号化辞書の解析時に `UndefinedCryptFilter` になります。選ばれた方式とファイル鍵が両立しない場合は `IncompatibleFileKey` を返します。
+
+実際のデータへの復号の適用と文書読込への統合は #683 で扱います。
 
 ---
 

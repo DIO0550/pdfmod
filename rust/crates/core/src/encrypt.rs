@@ -3,7 +3,7 @@
 //!
 //! `/Filter /Standard` の暗号化辞書のみを型として解釈し、`/V` と `/R` の
 //! 取りうる組み合わせだけを [`StandardAlgorithm`] のバリアントで表現する。
-//! R2〜R6 のファイル暗号鍵の導出とパスワード認証（Algorithm 6 / 7 / 11 / 12）を提供し、
+//! R2〜R6 のファイル暗号鍵の導出、パスワード認証、オブジェクト復号鍵の選択を提供し、
 //! MD5・SHA-2・RC4・AES を内部で実装する。
 //!
 //! # スコープ外
@@ -34,6 +34,7 @@ pub mod error;
 pub mod key;
 pub mod legacy_key;
 mod md5;
+pub mod object_key;
 pub mod permissions;
 mod rc4;
 mod sha2;
