@@ -1,0 +1,457 @@
+{
+  "version": 1,
+  "pr": 800,
+  "sha": "e52ad4da6aa2779f5581964a34164e4ad34048bb",
+  "issue": 683,
+  "overview": {
+    "title": "認証済みの Resolver で暗号化オブジェクトを遅延復号する",
+    "lead": "認証済みの鍵を Resolver へ所有させ、要求された文字列とストリームだけを復号します。実装、境界条件のテスト、PDF 仕様の解説を三つのコミットで一つの機能としてまとめました。",
+    "before": [
+      {
+        "text": "認証とオブジェクト鍵導出はできても、解決したオブジェクトへ復号を適用できなかった"
+      }
+    ],
+    "after": [
+      {
+        "text": "認証済みの Resolver が RC4・AES-128・AES-256 の文字列とストリームを要求時に復号する"
+      }
+    ]
+  },
+  "commitStories": [
+    {
+      "sha": "9a04da876ada9dbdd19536436aa0a473e2739db3",
+      "phase": "core",
+      "role": "認証結果を Resolver の所有状態へ移し、解決時の遅延復号を実装する",
+      "why": "暗号化対象は間接オブジェクトの番号・値の種類・暗号化辞書ごとに変わるため、解析後に復号方法と鍵を集約し、キャッシュの入口で一度だけ適用する必要がある。",
+      "notes": [
+        {
+          "path": "rust/crates/core/src/encrypt.rs",
+          "side": "old",
+          "start": 20,
+          "end": 26,
+          "text": "AES 復号を利用するコードが加わるため、未使用を将来の #683 へ延期する属性を削除する。以降は実コードから呼び出される。"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/auth.rs",
+          "start": 17,
+          "end": 17,
+          "text": "認証結果から文書ごとの所有復号状態を構築する型を参照し、認証側と Resolver 側の境界をつなぐ。"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/auth.rs",
+          "start": 122,
+          "end": 127,
+          "text": "入力の認証辞書への借用を Resolver に残さず、方式・ファイル鍵・メタデータ設定だけを所有状態へ移す。これにより認証後も Resolver の寿命を独立して扱える。"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/object_key.rs",
+          "start": 6,
+          "end": 6,
+          "text": "AES の CBC 復号とその長さ・パディングエラーを、PDF のオブジェクト復号境界で扱えるようにする。"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/object_key.rs",
+          "start": 13,
+          "end": 13,
+          "text": "導出済み RC4 鍵を実際の暗号文へ適用するため、RC4 実装をこのモジュールへ受け渡す。"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/object_key.rs",
+          "start": 57,
+          "end": 103,
+          "text": "None は入力を保ち、RC4 と AES は方式別の復号器を選ぶ。AES の基礎エラーは PDF 復号で扱う型へ変換し、暗号文の長さ・パディング不正を呼び出し側で区別できる。"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/object_key.rs",
+          "start": 105,
+          "end": 136,
+          "text": "認証済み Resolver が必要とする方式・ファイル鍵・EncryptMetadata だけを所有する。対象種別から既存の鍵選択規則を再利用し、辞書への借用を持ち込まない。"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/object_key.rs",
+          "start": 209,
+          "end": 246,
+          "text": "認証結果から直接鍵を選ぶ公開経路と Resolver 所有状態の内部経路を同じ選択関数へ集約する。Identity と ObjStm 内を変更せず、方式・鍵不一致だけをエラーへする。"
+        },
+        {
+          "path": "rust/crates/core/src/object/dictionary.rs",
+          "start": 123,
+          "end": 132,
+          "text": "辞書を所有状態のまま走査できるようにし、Resolver が値を一つずつ復号して新しい辞書へ再構築できる。元の辞書を複製せず利用者の所有権を移す。"
+        },
+        {
+          "path": "rust/crates/core/src/resolver.rs",
+          "start": 13,
+          "end": 16,
+          "text": "認証鍵、文書ごとの所有状態、文字列・ストリーム種別を Resolver の解決経路へ取り込む。"
+        },
+        {
+          "path": "rust/crates/core/src/resolver.rs",
+          "start": 36,
+          "end": 36,
+          "text": "Resolver に任意の認証状態を保持する。通常の非認証入口は None のままとし、既存の暗号化文書拒否を維持する。"
+        },
+        {
+          "path": "rust/crates/core/src/resolver.rs",
+          "start": 52,
+          "end": 86,
+          "text": "既存の open は認証状態を持たせないまま組み立て、open_authenticated は認証済み鍵を所有状態へ変換する。xref の平文構造を先に読む点は両入口で共通にする。"
+        },
+        {
+          "path": "rust/crates/core/src/resolver.rs",
+          "start": 96,
+          "end": 96,
+          "text": "検証済みヘッダから作る非暗号化 Resolver でも認証フィールドを明示的に空にする。すべての構築経路で状態が決定される。"
+        },
+        {
+          "path": "rust/crates/core/src/resolver.rs",
+          "start": 278,
+          "end": 300,
+          "text": "間接オブジェクトを読んだ直後に暗号化の有無と Encrypt オブジェクト自身かを判定する。構造を読む対象とデータを復号する対象をここで分ける。"
+        },
+        {
+          "path": "rust/crates/core/src/resolver.rs",
+          "start": 302,
+          "end": 319,
+          "text": "文字列は元の符号化を保ったまま平文化し、配列と辞書は同じ間接オブジェクト番号で再帰処理する。ネスト値にも StrF が一貫して適用される。"
+        },
+        {
+          "path": "rust/crates/core/src/resolver.rs",
+          "start": 320,
+          "end": 363,
+          "text": "xref ストリームは変更せず、メタデータ除外は本体だけ平文として保つ。通常ストリームは辞書内文字列を先に復号し、本体の IV・パディングを除いた後に Length を平文長へ更新する。"
+        },
+        {
+          "path": "rust/crates/core/src/resolver.rs",
+          "start": 365,
+          "end": 390,
+          "text": "辞書の値を再構築し、認証欠落・方式不一致・復号器の失敗を Resolver エラーへ分類する。復号された値はこの関数の呼び出し元で既存キャッシュへ保存される。"
+        },
+        {
+          "path": "rust/crates/core/src/resolver/error.rs",
+          "start": 4,
+          "end": 4,
+          "text": "鍵選択と実復号の失敗型を Resolver の公開エラーへ接続する。"
+        },
+        {
+          "path": "rust/crates/core/src/resolver/error.rs",
+          "start": 61,
+          "end": 66,
+          "text": "未認証、crypt filter と鍵の不一致、入力の長さ・パディング不正を別の結果として返す。利用者が復号失敗と PDF 構造の失敗を混同しない。"
+        }
+      ]
+    },
+    {
+      "sha": "d5170a1b1ca42d233ea17c05bab9b82edb717a45",
+      "phase": "hard",
+      "role": "暗号方式・除外規則・文書経路・失敗を固定ベクトルで検証する",
+      "why": "暗号方式だけでなく、PDF 構造に応じた例外と Resolver のキャッシュ・ObjStm 統合まで崩れた場合に回帰を早く検出するため。",
+      "notes": [
+        {
+          "path": "rust/crates/core/src/resolver/tests.rs",
+          "start": 55,
+          "end": 58,
+          "text": "実装単位の復号検証と文書レベルの開封検証を Resolver のテストモジュールへ登録する。"
+        },
+        {
+          "path": "rust/crates/core/src/resolver/tests/decryption.rs",
+          "start": 1,
+          "end": 75,
+          "text": "R2、R3、R4、R5 の既知暗号化辞書とファイル ID を構築する共通入力を用意する。暗号方式ごとの認証結果を同じ Resolver 経路へ渡せる前提にする。"
+        },
+        {
+          "path": "rust/crates/core/src/resolver/tests/decryption.rs",
+          "start": 77,
+          "end": 126,
+          "text": "RC4 文字列を直接値だけでなく辞書と配列のネスト内でも検証する。同じ間接オブジェクトの StrF が再帰的に適用されることを確かめる。"
+        },
+        {
+          "path": "rust/crates/core/src/resolver/tests/decryption.rs",
+          "start": 128,
+          "end": 190,
+          "text": "小さなバイナリストリーム fixture を組み立て、RC4 復号後の平文と Length 更新を検証する。暗号文長だけでなく結果側の辞書を確認する。"
+        },
+        {
+          "path": "rust/crates/core/src/resolver/tests/decryption.rs",
+          "start": 192,
+          "end": 247,
+          "text": "Encrypt 辞書、trailer ID、Identity フィルタが変更されないことを確認する。復号対象の選別が成功経路を壊さない境界を固定する。"
+        },
+        {
+          "path": "rust/crates/core/src/resolver/tests/encrypted_document.rs",
+          "start": 1,
+          "end": 43,
+          "text": "Catalog から Contents を辿る共通経路を用意し、RC4-128 のコンテンツストリームを文書として解決できることを検証する。"
+        },
+        {
+          "path": "rust/crates/core/src/resolver/tests/encrypted_document.rs",
+          "start": 45,
+          "end": 108,
+          "text": "同じ文書経路を AES-128 と AES-256 に広げ、認証からルート解決、暗号化ストリームの平文化までを一続きで確認する。"
+        },
+        {
+          "path": "rust/crates/core/src/resolver/tests/decryption.rs",
+          "start": 249,
+          "end": 303,
+          "text": "xref ストリームと EncryptMetadata false のメタデータについて、暗号化辞書があっても本体を平文として保つ条件を検証する。"
+        },
+        {
+          "path": "rust/crates/core/src/resolver/tests/decryption.rs",
+          "start": 305,
+          "end": 346,
+          "text": "ObjStm のコンテナだけを復号し、抽出後の内包オブジェクトへ再度暗号方式を適用しないことを固定する。"
+        },
+        {
+          "path": "rust/crates/core/src/resolver/tests/decryption.rs",
+          "start": 348,
+          "end": 404,
+          "text": "未認証、crypt filter と鍵長の不一致、AES 暗号文長不正を別々の ResolveError として返す経路を確認する。"
+        },
+        {
+          "path": "rust/crates/core/src/resolver/tests/decryption.rs",
+          "start": 406,
+          "end": 432,
+          "text": "同じ参照を再解決したときに復号済み値の Rc を既存キャッシュから受け取り、再復号せず同一性も保つことを確認する。"
+        },
+        {
+          "path": "rust/crates/core/src/resolver/tests/decryption.rs",
+          "start": 434,
+          "end": 477,
+          "text": "AES-128 の文字列とストリームを既知 IV・暗号文から復号し、文字列内容とストリームの平文長更新を確認する。"
+        },
+        {
+          "path": "rust/crates/core/src/resolver/tests/decryption.rs",
+          "start": 479,
+          "end": 522,
+          "text": "R3 の RC4-128 で文字列とストリームを解決し、旧方式でも同じ認証済み Resolver 経路から平文を得られることを確認する。"
+        },
+        {
+          "path": "rust/crates/core/src/resolver/tests/decryption.rs",
+          "start": 524,
+          "end": 567,
+          "text": "R5 の AES-256 で文字列とストリームを復号し、Algorithm 1.A のファイル鍵をオブジェクト復号へ接続できることを確認する。"
+        },
+        {
+          "path": "rust/crates/core/src/resolver/tests/decryption.rs",
+          "start": 569,
+          "end": 579,
+          "text": "テスト PDF のバイナリ ObjStm を指定位置へ書き出す補助を定義し、xref とコンテナの相互参照を構築する。"
+        }
+      ]
+    },
+    {
+      "sha": "e52ad4da6aa2779f5581964a34164e4ad34048bb",
+      "phase": "fin",
+      "role": "対応範囲と除外規則を仕様書・HTML ガイド・索引へ記録する",
+      "why": "鍵導出だけでは、どの値をいつ復号し、どの構造を平文として扱うか判断できないため、実装経路と未対応範囲を同時に明示する。",
+      "notes": [
+        {
+          "path": "docs/guides/README.md",
+          "start": 19,
+          "end": 19,
+          "text": "暗号化ガイドの説明に認証済み Resolver の適用を追加し、Issue #683 と実装参照を索引へ結び付ける。"
+        },
+        {
+          "path": "docs/guides/encryption-dictionary.html",
+          "start": 242,
+          "end": 242,
+          "text": "TypeScript の拒否動作を維持しつつ、Rust Resolver には認証済み経路があることと、文書レベル入口が未公開な範囲を区別する。"
+        },
+        {
+          "path": "docs/guides/encryption-dictionary.html",
+          "start": 710,
+          "end": 723,
+          "text": "認証、構造読取、方式選択、平文長更新、除外、失敗、キャッシュを実装順に説明する。明示的 Crypt と EFF は今回の範囲外として明記する。"
+        },
+        {
+          "path": "docs/specs/02b_encryption.md",
+          "start": 4,
+          "end": 4,
+          "text": "仕様書の扱う内容へオブジェクト復号鍵の遅延解決への適用を追加し、章の目的と実装範囲を合わせる。"
+        },
+        {
+          "path": "docs/specs/02b_encryption.md",
+          "start": 156,
+          "end": 158,
+          "text": "実装済み表へ認証済み Resolver を追加し、文書レベルのパスワード受付と TypeScript 読込みを未対応へ更新する。"
+        },
+        {
+          "path": "docs/specs/02b_encryption.md",
+          "start": 221,
+          "end": 221,
+          "text": "RC4 の認証用途だけでなく、Resolver が文字列・ストリーム復号へ接続したことを参照先付きで更新する。"
+        },
+        {
+          "path": "docs/specs/02b_encryption.md",
+          "start": 491,
+          "end": 501,
+          "text": "認証結果の所有境界、StrF と StmF、Length 更新、Encrypt と xref の除外、メタデータ、ObjStm、キャッシュ、エラー分類を仕様へ整理する。"
+        }
+      ]
+    }
+  ],
+  "suites": [
+    {
+      "id": "resolver-decryption",
+      "label": "認証済み Resolver の復号",
+      "file": "rust/crates/core/src/resolver/tests/decryption.rs"
+    },
+    {
+      "id": "encrypted-document",
+      "label": "暗号化文書の統合解決",
+      "file": "rust/crates/core/src/resolver/tests/encrypted_document.rs"
+    }
+  ],
+  "tests": [
+    {
+      "id": "nested-rc4",
+      "suite": "resolver-decryption",
+      "name": "decrypts_rc4_strings_nested_in_dictionary_and_array",
+      "techniques": [
+        "regression",
+        "state"
+      ],
+      "why": "ネストした値へ StrF を適用し忘れると、辞書や配列の一部だけが暗号文のまま残るため。",
+      "given": "RC4 の同じ鍵で暗号化した文字列を辞書と配列に持つ間接オブジェクト",
+      "when": "親オブジェクトを認証済み Resolver で解決する",
+      "then": "二つのネスト値がともに secret になる",
+      "commit": "d5170a1b1ca42d233ea17c05bab9b82edb717a45",
+      "excerpt": {
+        "path": "rust/crates/core/src/resolver/tests/decryption.rs",
+        "start": 101,
+        "end": 126,
+        "text": "    let authentication = handler\n        .authenticate(None, Some(&file_id))\n        .expect(\"R2 の空利用者パスワードで認証できる\");\n    let mut resolver = ObjectResolver::open_authenticated(&data, authentication)\n        .expect(\"認証済みresolverを開ける\");\n\n    let resolved = resolver.resolve(reference(2, 0)).expect(\"辞書を解決できる\");\n    let dictionary = resolved.as_dictionary().expect(\"辞書オブジェクト\");\n    let values = dictionary\n        .get(b\"Values\".as_slice())\n        .and_then(PdfObject::as_pdf_array)\n        .expect(\"配列値\");\n\n    assert_eq!(\n        values.get(0).and_then(PdfObject::as_string_bytes),\n        Some(b\"secret\".as_slice())\n    );\n    assert_eq!(\n        values\n            .get(1)\n            .and_then(PdfObject::as_dictionary)\n            .and_then(|entry| entry.get(b\"Secret\".as_slice()))\n            .and_then(PdfObject::as_string_bytes),\n        Some(b\"secret\".as_slice())\n    );\n}"
+      }
+    },
+    {
+      "id": "objstm-once",
+      "suite": "resolver-decryption",
+      "name": "object_stream_members_are_not_decrypted_twice",
+      "techniques": [
+        "idempotence",
+        "boundary"
+      ],
+      "why": "ObjStm コンテナを復号した後に内包文字列を再復号すると内容が壊れるため。",
+      "given": "RC4 で暗号化した ObjStm コンテナに平文の組み立て後の文字列",
+      "when": "xref から内包オブジェクトを解決する",
+      "then": "一度だけ復号した secret を返す",
+      "commit": "d5170a1b1ca42d233ea17c05bab9b82edb717a45",
+      "excerpt": {
+        "path": "rust/crates/core/src/resolver/tests/decryption.rs",
+        "start": 305,
+        "end": 346,
+        "text": "    for row in row_bytes {\n        pdf.data.push(row.0);\n        pdf.data.extend_from_slice(&row.1.to_be_bytes());\n        pdf.data.extend_from_slice(&row.2.to_be_bytes());\n    }\n    pdf.data.extend_from_slice(\n        format!(\"\\nendstream\\nendobj\\nstartxref\\n{xref_offset}\\n%%EOF\\n\").as_bytes(),\n    );\n    let handler = r2_handler();\n    let file_id = file_id();\n    let authentication = handler\n        .authenticate(None, Some(&file_id))\n        .expect(\"R2 の空利用者パスワードで認証できる\");\n    let mut resolver = ObjectResolver::open_authenticated(&pdf.data, authentication)\n        .expect(\"認証済みresolverを開ける\");\n\n    let resolved = resolver\n        .resolve(reference(2, 0))\n        .expect(\"ObjStm内オブジェクトを解決できる\");\n\n    assert_eq!(resolved.as_string_bytes(), Some(b\"secret\".as_slice()));\n}\n\n#[test]\nfn unauthenticated_decryption_returns_dedicated_error() {\n    let mut pdf = PdfFixture::new();\n    pdf.object(1, 0, \"<< /Value 2 0 R >>\");\n    pdf.object(2, 0, \"<c9cbd5553118>\");\n    let data = pdf.finish_with_trailer(\"\", &format!(\"/Encrypt {R2} /ID [<{FILE_ID}> <{FILE_ID}>]\"));\n    let handler = r2_handler();\n    let file_id = file_id();\n    let authentication = handler\n        .authenticate(None, Some(&file_id))\n        .expect(\"R2 の空利用者パスワードで認証できる\");\n    let mut resolver = ObjectResolver::open_authenticated(&data, authentication)\n        .expect(\"認証済みresolverを開ける\");\n    resolver.authentication = None;\n\n    assert!(matches!(\n        resolver.resolve(reference(2, 0)),\n        Err(ResolveError::Unauthenticated)\n    ));"
+      }
+    },
+    {
+      "id": "aes256-document",
+      "suite": "encrypted-document",
+      "name": "opens_aes256_document_and_resolves_content_stream",
+      "techniques": [
+        "equivalence",
+        "error"
+      ],
+      "why": "AES-256 の認証、方式選択、ストリーム復号が文書の参照経路でつながることを確認するため。",
+      "given": "AES-256 で暗号化した Catalog と Contents ストリーム",
+      "when": "R5 のパスワードで認証しルートから内容を解決する",
+      "then": "ストリーム本文が stream data に復号される",
+      "commit": "d5170a1b1ca42d233ea17c05bab9b82edb717a45",
+      "excerpt": {
+        "path": "rust/crates/core/src/resolver/tests/encrypted_document.rs",
+        "start": 80,
+        "end": 108,
+        "text": "\n#[test]\nfn opens_aes256_document_and_resolves_content_stream() {\n    let mut pdf = PdfFixture::new();\n    pdf.object(1, 0, \"<< /Type /Catalog /Contents 3 0 R >>\");\n    binary_stream_object(\n        &mut pdf,\n        3,\n        &[\n            0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d,\n            0x0e, 0x0f, 0x92, 0x51, 0xde, 0xcc, 0x29, 0xd0, 0xf6, 0x5e, 0xae, 0x9e, 0x8a, 0xa5,\n            0x58, 0x98, 0x32, 0xb4,\n        ],\n    );\n    let data = pdf.finish_with_trailer(\"\", &format!(\"/Encrypt {R5_AES_256}\"));\n    let handler = standard_handler(R5_AES_256);\n    let authentication = handler\n        .authenticate(Some(b\"user-r5\"), None)\n        .expect(\"R5 の利用者パスワードで認証できる\");\n    let resolver = ObjectResolver::open_authenticated(&data, authentication)\n        .expect(\"認証済みresolverを開ける\");\n\n    let content = resolve_root_content(resolver, reference(1, 0));\n\n    assert_eq!(\n        content.as_stream().expect(\"コンテンツストリーム\").data(),\n        b\"stream data\"\n    );\n}"
+      }
+    }
+  ],
+  "impact": {
+    "title": "認証済みの暗号化 PDF から文字列と内容を読める",
+    "lead": "利用者はパスワード認証の結果を Resolver へ渡すと、要求したオブジェクトの文字列やストリームを平文として受け取れます。復号しない構造領域や対応外の経路はそのまま残ります。",
+    "kept": [
+      {
+        "text": "認証なしの通常入口は暗号化 PDF を拒否する"
+      },
+      {
+        "text": "未対応の文書レベル入力経路は今回追加しない"
+      }
+    ]
+  },
+  "primers": [
+    {
+      "kind": "language",
+      "id": "rust-result-match",
+      "category": "Rust · 結果と分岐",
+      "label": "Result と match",
+      "gist": "成功した値か、失敗の理由かを一つの型で返す。",
+      "passages": [
+        {
+          "kind": "text",
+          "text": "Result<T, E> の T は成功した値、E は失敗の理由を表す。match では self の復号方式ごとに分岐し、Ok で平文、Err で長さやパディングの問題を返す。"
+        },
+        {
+          "kind": "excerpt",
+          "excerpt": {
+            "path": "rust/crates/core/src/encrypt/object_key.rs",
+            "start": 57,
+            "end": 83,
+            "text": "impl ObjectDecryption {\n    /// 文字列またはストリームの暗号化前バイト列へ復号する。\n    ///\n    /// `/Identity` では入力をコピーして返す。RC4 の鍵長は既に導出時に\n    /// 検証されているため、不正な鍵長は通常発生しない。\n    ///\n    /// # Errors\n    ///\n    /// AES 入力の長さまたは PKCS#7 パディングが不正な場合にエラーを返す。\n    pub(crate) fn decrypt(&self, input: &[u8]) -> Result<Vec<u8>, DecryptError> {\n        match self {\n            Self::None => Ok(input.to_vec()),\n            Self::Rc4(key) => {\n                let mut rc4 = Rc4::new(key.as_bytes()).ok_or(DecryptError::InvalidRc4Key)?;\n                let mut plaintext = input.to_vec();\n                rc4.apply(&mut plaintext);\n                Ok(plaintext)\n            }\n            Self::Aes128(key) => Aes::new_128(key.as_bytes())\n                .decrypt_pdf_cbc(input)\n                .map_err(DecryptError::from),\n            Self::Aes256(key) => Aes::new_256(key.as_bytes())\n                .decrypt_pdf_cbc(input)\n                .map_err(DecryptError::from),\n        }\n    }\n}"
+          }
+        },
+        {
+          "kind": "caution",
+          "text": "pub(crate) の pub は公開、(crate) は同じ crate の内部までという範囲制限、:: はモジュールや型の所属をたどる区切りである。つまりこの復号入口は外部公開せず、Resolver など crate 内部からだけ呼べる。"
+        }
+      ],
+      "occurrences": [
+        {
+          "path": "rust/crates/core/src/encrypt/object_key.rs",
+          "lineRange": {
+            "start": 57,
+            "end": 83
+          },
+          "text": "方式ごとの復号器と失敗型を選ぶ"
+        }
+      ]
+    },
+    {
+      "kind": "pdf",
+      "id": "pdf-encrypted-stream",
+      "category": "PDF · 暗号化",
+      "label": "暗号化文字列とストリーム",
+      "gist": "文字列は StrF、ストリーム本体は StmF が選ぶ暗号方式で保護される。",
+      "passages": [
+        {
+          "kind": "declaration",
+          "code": "3 0 obj\n<< /Length 32 /Filter /FlateDecode >>\nstream\n<IV 16 bytes + ciphertext>\nendstream\nendobj"
+        },
+        {
+          "kind": "text",
+          "text": "AES の暗号化ストリームは先頭16バイトを IV として CBC 復号に使い、暗号文を復号後 PKCS#7 の末尾パディングを除く。Length は暗号化された実データ長なので、復号後は平文の長さへ更新する。"
+        },
+        {
+          "kind": "excerpt",
+          "excerpt": {
+            "path": "rust/crates/core/src/resolver.rs",
+            "start": 320,
+            "end": 359,
+            "text": "            PdfObject::Stream(stream) => {\n                let is_xref_stream = stream\n                    .dictionary()\n                    .get(b\"Type\".as_slice())\n                    .and_then(PdfObject::as_name)\n                    .is_some_and(|name| name.as_bytes() == b\"XRef\");\n                if is_xref_stream {\n                    return Ok(PdfObject::Stream(stream));\n                }\n\n                let is_metadata_stream = stream\n                    .dictionary()\n                    .get(b\"Type\".as_slice())\n                    .and_then(PdfObject::as_name)\n                    .is_some_and(|name| name.as_bytes() == b\"Metadata\");\n                let metadata_is_clear =\n                    self.authentication.as_ref().is_some_and(|authentication| {\n                        is_metadata_stream && !authentication.decrypts_metadata()\n                    });\n                let (dictionary, data) = stream.into_parts();\n                let mut dictionary = self.decrypt_dictionary(id, dictionary)?;\n                if metadata_is_clear {\n                    return Ok(PdfObject::Stream(crate::object::stream::PdfStream::new(\n                        dictionary, data,\n                    )));\n                }\n\n                let data = self.decrypt_bytes(id, EncryptedValueKind::Stream, data.as_slice())?;\n                let length = i64::try_from(data.len()).map_err(|_| {\n                    ResolveError::Decryption(\n                        crate::encrypt::object_key::DecryptError::InvalidLength,\n                    )\n                })?;\n                dictionary.insert(\n                    crate::object::name::PdfName::from(\"Length\"),\n                    PdfObject::from(length),\n                );\n                Ok(PdfObject::Stream(crate::object::stream::PdfStream::new(\n                    dictionary, data,\n                )))"
+          }
+        },
+        {
+          "kind": "spec",
+          "text": "ISO 32000-1:2008 §7.6.2 Algorithm 1、ISO 32000-2:2020 §7.6 Algorithm 1.A。Encrypt 辞書・xref・特定メタデータ・Identity・ObjStm 内部値の扱いは実装した除外規則である。"
+        }
+      ],
+      "occurrences": [
+        {
+          "path": "rust/crates/core/src/resolver.rs",
+          "lineRange": {
+            "start": 320,
+            "end": 359
+          },
+          "text": "ストリームの例外、復号、Length 更新を処理する"
+        }
+      ]
+    }
+  ]
+}
