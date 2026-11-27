@@ -1,11 +1,11 @@
 {
   "version": 1,
   "pr": 800,
-  "sha": "e52ad4da6aa2779f5581964a34164e4ad34048bb",
+  "sha": "a9668e7f89dad8adcda5821d8d398feec449f0c8",
   "issue": 683,
   "overview": {
     "title": "認証済みの Resolver で暗号化オブジェクトを遅延復号する",
-    "lead": "認証済みの鍵を Resolver へ所有させ、要求された文字列とストリームだけを復号します。実装、境界条件のテスト、PDF 仕様の解説を三つのコミットで一つの機能としてまとめました。",
+    "lead": "認証済みの鍵を Resolver へ所有させ、要求された文字列とストリームだけを復号します。レビュー後に認証元照合、署名除外、未対応フィルタ拒否、公開API互換性と平文ログ防止を追加しました。",
     "before": [
       {
         "text": "認証とオブジェクト鍵導出はできても、解決したオブジェクトへ復号を適用できなかった"
@@ -285,7 +285,252 @@
           "path": "docs/specs/02b_encryption.md",
           "start": 491,
           "end": 501,
-          "text": "認証結果の所有境界、StrF と StmF、Length 更新、Encrypt と xref の除外、メタデータ、ObjStm、キャッシュ、エラー分類を仕様へ整理する。"
+          "text": "認証結果の所有境界、StrF と StmF、Length 更新、Encrypt と xref の除外、メタデータ、ObjStm、キャッシュ、認証済みAPIのエラー分類を仕様へ整理する。"
+        }
+      ]
+    },
+    {
+      "sha": "0b9ad67eb4751fd4525eb300839fa94d6ba2b8e1",
+      "phase": "core",
+      "role": "レビュー指摘に合わせて認証済みResolverの安全境界と公開互換性を強化する",
+      "why": "認証結果の適用先が入力文書と結び付かず、暗号方式の例外やDebug出力から誤復号・平文露出が起こり得たため。",
+      "notes": [
+        {
+          "path": "rust/crates/core/src/encrypt/auth.rs",
+          "start": 99,
+          "end": 99,
+          "text": "認証に使った永続ファイルIDを結果に保持し、後で入力文書との結び付きを確認できる材料を残す。"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/auth.rs",
+          "start": 123,
+          "end": 128,
+          "text": "認証結果をResolver所有状態へ変換するとき、暗号化辞書と鍵、永続IDを一つの状態として渡す。"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/auth.rs",
+          "start": 340,
+          "end": 345,
+          "text": "R2〜R4の認証成功時に、鍵導出へ使った永続IDをコピーして結果へ保持する。"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/auth.rs",
+          "start": 439,
+          "end": 445,
+          "text": "R5・R6では永続IDを使わないため、出所判定の同じフィールドをNoneにする。"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/object_key.rs",
+          "start": 11,
+          "end": 18,
+          "text": "認証済み辞書とファイルIDの比較に必要な型を復号モジュールへ取り込む。"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/object_key.rs",
+          "start": 62,
+          "end": 83,
+          "text": "復号入口を所有バッファへ変更し、Identityは移動で返し、RC4は同じVecへ適用する。"
+        },
+        {
+          "path": "rust/crates/core/src/encrypt/object_key.rs",
+          "start": 110,
+          "end": 151,
+          "text": "認証済み辞書と永続IDを保持し、入力文書の辞書・IDと一致するかを公開解決前に判定する。"
+        },
+        {
+          "path": "rust/crates/core/src/object/dictionary.rs",
+          "side": "old",
+          "start": 120,
+          "end": 135,
+          "text": "外部利用者のメソッド解決を変える所有IntoIteratorを削除する。既存の借用走査を維持する。"
+        },
+        {
+          "path": "rust/crates/core/src/object/dictionary.rs",
+          "start": 123,
+          "end": 126,
+          "text": "所有走査をcrate内部の明示メソッドへ限定し、Resolverだけが所有再構築の入口を使う。"
+        },
+        {
+          "path": "rust/crates/core/src/object/dictionary.rs",
+          "start": 431,
+          "end": 441,
+          "text": "PdfDictionaryの既存borrow走査を保ち、into_iter後も辞書を再利用できる互換性を固定する。"
+        },
+        {
+          "path": "rust/crates/core/src/resolver.rs",
+          "start": 1,
+          "end": 8,
+          "text": "認証済み専用モジュール、エラー、fmtをResolverの公開構造へ取り込む。"
+        },
+        {
+          "path": "rust/crates/core/src/resolver.rs",
+          "start": 42,
+          "end": 52,
+          "text": "通常ResolverのDebugを手動実装し、入力長・トレーラ・キャッシュ件数だけを出してオブジェクト内容を伏せる。"
+        },
+        {
+          "path": "rust/crates/core/src/resolver.rs",
+          "side": "old",
+          "start": 54,
+          "end": 60,
+          "text": "通常Resolverから認証状態フィールドを除く削除を説明し、認証状態を別型へ移す。"
+        },
+        {
+          "path": "rust/crates/core/src/resolver.rs",
+          "start": 79,
+          "end": 137,
+          "text": "入力のEncrypt辞書と永続IDを認証結果へ照合し、一致した場合だけAuthenticatedObjectResolverを返す。"
+        },
+        {
+          "path": "rust/crates/core/src/resolver.rs",
+          "side": "old",
+          "start": 93,
+          "end": 101,
+          "text": "既存new入口から未使用の認証Option初期化を削除し、非認証Resolverの構造を元に戻す。"
+        },
+        {
+          "path": "rust/crates/core/src/resolver.rs",
+          "start": 331,
+          "end": 410,
+          "text": "公開ResolveErrorを変えず、認証済み専用Resolver、手動Debug、平文キャッシュ、解決ループを別型へ分離する。"
+        },
+        {
+          "path": "rust/crates/core/src/resolver.rs",
+          "start": 411,
+          "end": 451,
+          "text": "圧縮ObjStmのコンテナを認証済み状態で復号し、内包オブジェクトは平文として返す。"
+        },
+        {
+          "path": "rust/crates/core/src/resolver.rs",
+          "start": 453,
+          "end": 531,
+          "text": "参照解決後に署名Contents、明示Crypt、EmbeddedFile、Metadata、ObjStmを文脈に応じて処理する。"
+        },
+        {
+          "path": "rust/crates/core/src/resolver/authenticated_error.rs",
+          "start": 1,
+          "end": 25,
+          "text": "認証元不一致、方式不一致、復号失敗、未対応フィルタを既存ResolveErrorと分けた公開エラーで表す。"
+        },
+        {
+          "path": "rust/crates/core/src/resolver/cache.rs",
+          "start": 52,
+          "end": 55,
+          "text": "Debugがオブジェクト内容ではなくキャッシュ件数だけを表示できるよう件数アクセサを加える。"
+        },
+        {
+          "path": "rust/crates/core/src/resolver/error.rs",
+          "side": "old",
+          "start": 1,
+          "end": 7,
+          "text": "認証専用失敗型のimportを既存ResolveErrorから外し、既存エラーの依存を元へ戻す。"
+        },
+        {
+          "path": "rust/crates/core/src/resolver/error.rs",
+          "side": "old",
+          "start": 58,
+          "end": 68,
+          "text": "通常ResolveErrorへ追加した認証専用バリアントを戻し、既存の網羅的matchを保つ。"
+        },
+        {
+          "path": "rust/crates/core/src/resolver.rs",
+          "start": 538,
+          "end": 561,
+          "text": "署名Contentsだけを保護して他の辞書文字列を所有走査で復号する。"
+        },
+        {
+          "path": "rust/crates/core/src/resolver.rs",
+          "start": 562,
+          "end": 592,
+          "text": "所有Vecを認証済み復号へ渡し、専用エラーへ変換し、明示Cryptフィルタを検出する。"
+        }
+      ]
+    },
+    {
+      "sha": "381753ebb7dd8f6450a6d7164503473bcff3fbb4",
+      "phase": "hard",
+      "role": "レビューで要求された安全境界と互換性を実バイト列で検証する",
+      "why": "誤った認証元、署名、未対応フィルタ、Debug露出、公開API互換性を表面的な成功で通さないため。",
+      "notes": [
+        {
+          "path": "rust/crates/core/src/resolver/tests/decryption.rs",
+          "start": 198,
+          "end": 226,
+          "text": "Encrypt辞書のO/Uを入力fixtureから解析した期待バイトと比較する。"
+        },
+        {
+          "path": "rust/crates/core/src/resolver/tests/decryption.rs",
+          "start": 228,
+          "end": 264,
+          "text": "Sig辞書のContentsは暗号文のまま、他文字列は平文へなることを同じ辞書で検証する。"
+        },
+        {
+          "path": "rust/crates/core/src/resolver/tests/decryption.rs",
+          "start": 265,
+          "end": 297,
+          "text": "単独名と配列内の明示CryptがStmFへフォールバックせず失敗することを検証する。"
+        },
+        {
+          "path": "rust/crates/core/src/resolver/tests/decryption.rs",
+          "start": 298,
+          "end": 337,
+          "text": "EmbeddedFileと別暗号化辞書による認証結果を公開入口で拒否することを検証する。"
+        },
+        {
+          "path": "rust/crates/core/src/resolver/tests/decryption.rs",
+          "start": 458,
+          "end": 480,
+          "text": "別の永続IDへ認証結果を渡すとAuthenticationMismatchになることを固定する。"
+        },
+        {
+          "path": "rust/crates/core/src/resolver/tests/decryption.rs",
+          "start": 482,
+          "end": 510,
+          "text": "crypt filterと鍵長不一致を認証済み専用エラー型で返す。"
+        },
+        {
+          "path": "rust/crates/core/src/resolver/tests/decryption.rs",
+          "start": 512,
+          "end": 535,
+          "text": "AES入力長不正を認証済み専用復号エラーとして返す。"
+        },
+        {
+          "path": "rust/crates/core/src/resolver/tests/decryption.rs",
+          "start": 537,
+          "end": 580,
+          "text": "復号済みキャッシュとDebug出力について、平文の非再復号と非露出を検証する。"
+        },
+        {
+          "path": "rust/crates/core/src/resolver/tests/encrypted_document.rs",
+          "start": 7,
+          "end": 10,
+          "text": "E2Eヘルパーを認証済み専用Resolver型へ合わせ、3方式の文書経路が新しい公開境界を通ることを確認する。"
+        }
+      ]
+    },
+    {
+      "sha": "a9668e7f89dad8adcda5821d8d398feec449f0c8",
+      "phase": "fin",
+      "role": "レビュー後の認証・除外・互換性の境界を仕様へ反映する",
+      "why": "実装の安全境界が公開API名とエラー型から読み取れるよう、仕様とHTMLを現在の挙動へ合わせるため。",
+      "notes": [
+        {
+          "path": "docs/specs/02b_encryption.md",
+          "start": 493,
+          "end": 503,
+          "text": "EncryptとIDの照合、署名Contents、未対応Crypt/EFF、AuthenticatedResolveError、Debug秘匿を仕様へ追記する。"
+        },
+        {
+          "path": "docs/guides/encryption-dictionary.html",
+          "start": 711,
+          "end": 716,
+          "text": "認証済みResolverを入口として、認証元照合と所有状態の役割を説明する。"
+        },
+        {
+          "path": "docs/guides/encryption-dictionary.html",
+          "start": 717,
+          "end": 725,
+          "text": "署名、未対応フィルタ、専用エラー、Debugとキャッシュを現在の安全境界へ更新する。"
         }
       ]
     }
@@ -340,7 +585,7 @@
         "path": "rust/crates/core/src/resolver/tests/decryption.rs",
         "start": 305,
         "end": 346,
-        "text": "    for row in row_bytes {\n        pdf.data.push(row.0);\n        pdf.data.extend_from_slice(&row.1.to_be_bytes());\n        pdf.data.extend_from_slice(&row.2.to_be_bytes());\n    }\n    pdf.data.extend_from_slice(\n        format!(\"\\nendstream\\nendobj\\nstartxref\\n{xref_offset}\\n%%EOF\\n\").as_bytes(),\n    );\n    let handler = r2_handler();\n    let file_id = file_id();\n    let authentication = handler\n        .authenticate(None, Some(&file_id))\n        .expect(\"R2 の空利用者パスワードで認証できる\");\n    let mut resolver = ObjectResolver::open_authenticated(&pdf.data, authentication)\n        .expect(\"認証済みresolverを開ける\");\n\n    let resolved = resolver\n        .resolve(reference(2, 0))\n        .expect(\"ObjStm内オブジェクトを解決できる\");\n\n    assert_eq!(resolved.as_string_bytes(), Some(b\"secret\".as_slice()));\n}\n\n#[test]\nfn unauthenticated_decryption_returns_dedicated_error() {\n    let mut pdf = PdfFixture::new();\n    pdf.object(1, 0, \"<< /Value 2 0 R >>\");\n    pdf.object(2, 0, \"<c9cbd5553118>\");\n    let data = pdf.finish_with_trailer(\"\", &format!(\"/Encrypt {R2} /ID [<{FILE_ID}> <{FILE_ID}>]\"));\n    let handler = r2_handler();\n    let file_id = file_id();\n    let authentication = handler\n        .authenticate(None, Some(&file_id))\n        .expect(\"R2 の空利用者パスワードで認証できる\");\n    let mut resolver = ObjectResolver::open_authenticated(&data, authentication)\n        .expect(\"認証済みresolverを開ける\");\n    resolver.authentication = None;\n\n    assert!(matches!(\n        resolver.resolve(reference(2, 0)),\n        Err(ResolveError::Unauthenticated)\n    ));"
+        "text": "    let authentication = handler\n        .authenticate(None, Some(&file_id))\n        .expect(\"R2 の空利用者パスワードで認証できる\");\n    let mut resolver = ObjectResolver::open_authenticated(&data, authentication)\n        .expect(\"認証済みresolverを開ける\");\n\n    assert!(matches!(\n        resolver.resolve(reference(2, 0)),\n        Err(authenticated_error::AuthenticatedResolveError::UnsupportedCryptFilter)\n    ));\n}\n\n#[test]\nfn authentication_from_another_encrypt_dictionary_is_rejected() {\n    let mut pdf = PdfFixture::new();\n    pdf.object(1, 0, \"<< /Value 2 0 R >>\");\n    let data = pdf.finish_with_trailer(\n        \"\",\n        &format!(\"/Encrypt {R3_RC4_128} /ID [<{FILE_ID}> <{FILE_ID}>]\"),\n    );\n    let handler = r2_handler();\n    let file_id = file_id();\n    let authentication = handler\n        .authenticate(None, Some(&file_id))\n        .expect(\"R2 の空利用者パスワードで認証できる\");\n\n    assert!(matches!(\n        ObjectResolver::open_authenticated(&data, authentication),\n        Err(authenticated_error::AuthenticatedResolveError::AuthenticationMismatch)\n    ));\n}\n\n#[test]\nfn identity_string_filter_preserves_bytes() {\n    let mut pdf = PdfFixture::new();\n    pdf.object(1, 0, \"<< /Value 2 0 R >>\");\n    pdf.object(2, 0, \"<736563726574>\");\n    let data = pdf.finish_with_trailer(\n        \"\",\n        &format!(\"/Encrypt {R4_IDENTITY} /ID [<{FILE_ID}> <{FILE_ID}>]\"),\n    );\n    let handler = standard_handler(R4_IDENTITY);"
       }
     },
     {
@@ -360,13 +605,13 @@
         "path": "rust/crates/core/src/resolver/tests/encrypted_document.rs",
         "start": 80,
         "end": 108,
-        "text": "\n#[test]\nfn opens_aes256_document_and_resolves_content_stream() {\n    let mut pdf = PdfFixture::new();\n    pdf.object(1, 0, \"<< /Type /Catalog /Contents 3 0 R >>\");\n    binary_stream_object(\n        &mut pdf,\n        3,\n        &[\n            0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d,\n            0x0e, 0x0f, 0x92, 0x51, 0xde, 0xcc, 0x29, 0xd0, 0xf6, 0x5e, 0xae, 0x9e, 0x8a, 0xa5,\n            0x58, 0x98, 0x32, 0xb4,\n        ],\n    );\n    let data = pdf.finish_with_trailer(\"\", &format!(\"/Encrypt {R5_AES_256}\"));\n    let handler = standard_handler(R5_AES_256);\n    let authentication = handler\n        .authenticate(Some(b\"user-r5\"), None)\n        .expect(\"R5 の利用者パスワードで認証できる\");\n    let resolver = ObjectResolver::open_authenticated(&data, authentication)\n        .expect(\"認証済みresolverを開ける\");\n\n    let content = resolve_root_content(resolver, reference(1, 0));\n\n    assert_eq!(\n        content.as_stream().expect(\"コンテンツストリーム\").data(),\n        b\"stream data\"\n    );\n}"
+        "text": "        b\"stream data\"\n    );\n}\n\n#[test]\nfn opens_aes256_document_and_resolves_content_stream() {\n    let mut pdf = PdfFixture::new();\n    pdf.object(1, 0, \"<< /Type /Catalog /Contents 3 0 R >>\");\n    binary_stream_object(\n        &mut pdf,\n        3,\n        &[\n            0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d,\n            0x0e, 0x0f, 0x92, 0x51, 0xde, 0xcc, 0x29, 0xd0, 0xf6, 0x5e, 0xae, 0x9e, 0x8a, 0xa5,\n            0x58, 0x98, 0x32, 0xb4,\n        ],\n    );\n    let data = pdf.finish_with_trailer(\"\", &format!(\"/Encrypt {R5_AES_256}\"));\n    let handler = standard_handler(R5_AES_256);\n    let authentication = handler\n        .authenticate(Some(b\"user-r5\"), None)\n        .expect(\"R5 の利用者パスワードで認証できる\");\n    let resolver = ObjectResolver::open_authenticated(&data, authentication)\n        .expect(\"認証済みresolverを開ける\");\n\n    let content = resolve_root_content(resolver, reference(1, 0));\n\n    assert_eq!(\n        content.as_stream().expect(\"コンテンツストリーム\").data(),"
       }
     }
   ],
   "impact": {
     "title": "認証済みの暗号化 PDF から文字列と内容を読める",
-    "lead": "利用者はパスワード認証の結果を Resolver へ渡すと、要求したオブジェクトの文字列やストリームを平文として受け取れます。復号しない構造領域や対応外の経路はそのまま残ります。",
+    "lead": "利用者は入力文書に結び付いたパスワード認証結果をResolverへ渡すと、要求したオブジェクトの文字列やストリームを平文として安全に受け取れます。署名・xref・メタデータ・未対応crypt filterは文脈に応じて保持または型付きエラーになります。",
     "kept": [
       {
         "text": "認証なしの通常入口は暗号化 PDF を拒否する"
@@ -392,9 +637,9 @@
           "kind": "excerpt",
           "excerpt": {
             "path": "rust/crates/core/src/encrypt/object_key.rs",
-            "start": 57,
-            "end": 83,
-            "text": "impl ObjectDecryption {\n    /// 文字列またはストリームの暗号化前バイト列へ復号する。\n    ///\n    /// `/Identity` では入力をコピーして返す。RC4 の鍵長は既に導出時に\n    /// 検証されているため、不正な鍵長は通常発生しない。\n    ///\n    /// # Errors\n    ///\n    /// AES 入力の長さまたは PKCS#7 パディングが不正な場合にエラーを返す。\n    pub(crate) fn decrypt(&self, input: &[u8]) -> Result<Vec<u8>, DecryptError> {\n        match self {\n            Self::None => Ok(input.to_vec()),\n            Self::Rc4(key) => {\n                let mut rc4 = Rc4::new(key.as_bytes()).ok_or(DecryptError::InvalidRc4Key)?;\n                let mut plaintext = input.to_vec();\n                rc4.apply(&mut plaintext);\n                Ok(plaintext)\n            }\n            Self::Aes128(key) => Aes::new_128(key.as_bytes())\n                .decrypt_pdf_cbc(input)\n                .map_err(DecryptError::from),\n            Self::Aes256(key) => Aes::new_256(key.as_bytes())\n                .decrypt_pdf_cbc(input)\n                .map_err(DecryptError::from),\n        }\n    }\n}"
+            "start": 68,
+            "end": 84,
+            "text": "    pub(crate) fn decrypt(&self, input: Vec<u8>) -> Result<Vec<u8>, DecryptError> {\n        match self {\n            Self::None => Ok(input),\n            Self::Rc4(key) => {\n                let mut rc4 = Rc4::new(key.as_bytes()).ok_or(DecryptError::InvalidRc4Key)?;\n                let mut plaintext = input;\n                rc4.apply(&mut plaintext);\n                Ok(plaintext)\n            }\n            Self::Aes128(key) => Aes::new_128(key.as_bytes())\n                .decrypt_pdf_cbc(&input)\n                .map_err(DecryptError::from),\n            Self::Aes256(key) => Aes::new_256(key.as_bytes())\n                .decrypt_pdf_cbc(&input)\n                .map_err(DecryptError::from),\n        }\n    }"
           }
         },
         {
@@ -406,8 +651,8 @@
         {
           "path": "rust/crates/core/src/encrypt/object_key.rs",
           "lineRange": {
-            "start": 57,
-            "end": 83
+            "start": 68,
+            "end": 84
           },
           "text": "方式ごとの復号器と失敗型を選ぶ"
         }
@@ -432,9 +677,9 @@
           "kind": "excerpt",
           "excerpt": {
             "path": "rust/crates/core/src/resolver.rs",
-            "start": 320,
-            "end": 359,
-            "text": "            PdfObject::Stream(stream) => {\n                let is_xref_stream = stream\n                    .dictionary()\n                    .get(b\"Type\".as_slice())\n                    .and_then(PdfObject::as_name)\n                    .is_some_and(|name| name.as_bytes() == b\"XRef\");\n                if is_xref_stream {\n                    return Ok(PdfObject::Stream(stream));\n                }\n\n                let is_metadata_stream = stream\n                    .dictionary()\n                    .get(b\"Type\".as_slice())\n                    .and_then(PdfObject::as_name)\n                    .is_some_and(|name| name.as_bytes() == b\"Metadata\");\n                let metadata_is_clear =\n                    self.authentication.as_ref().is_some_and(|authentication| {\n                        is_metadata_stream && !authentication.decrypts_metadata()\n                    });\n                let (dictionary, data) = stream.into_parts();\n                let mut dictionary = self.decrypt_dictionary(id, dictionary)?;\n                if metadata_is_clear {\n                    return Ok(PdfObject::Stream(crate::object::stream::PdfStream::new(\n                        dictionary, data,\n                    )));\n                }\n\n                let data = self.decrypt_bytes(id, EncryptedValueKind::Stream, data.as_slice())?;\n                let length = i64::try_from(data.len()).map_err(|_| {\n                    ResolveError::Decryption(\n                        crate::encrypt::object_key::DecryptError::InvalidLength,\n                    )\n                })?;\n                dictionary.insert(\n                    crate::object::name::PdfName::from(\"Length\"),\n                    PdfObject::from(length),\n                );\n                Ok(PdfObject::Stream(crate::object::stream::PdfStream::new(\n                    dictionary, data,\n                )))"
+            "start": 494,
+            "end": 532,
+            "text": "    fn decrypt_stream(\n        &self,\n        id: ObjectId,\n        stream: crate::object::stream::PdfStream,\n    ) -> Result<PdfObject, AuthenticatedResolveError> {\n        let stream_type = stream\n            .dictionary()\n            .get(b\"Type\".as_slice())\n            .and_then(PdfObject::as_name)\n            .map(crate::object::name::PdfName::as_bytes);\n        if stream_type == Some(b\"XRef\".as_slice()) {\n            return Ok(PdfObject::Stream(stream));\n        }\n        if stream_type == Some(b\"EmbeddedFile\".as_slice())\n            || has_explicit_crypt_filter(stream.dictionary())\n        {\n            return Err(AuthenticatedResolveError::UnsupportedCryptFilter);\n        }\n\n        let metadata_is_clear =\n            stream_type == Some(b\"Metadata\".as_slice()) && !self.authentication.decrypts_metadata();\n        let (dictionary, data) = stream.into_parts();\n        let mut dictionary = self.decrypt_dictionary(id, dictionary)?;\n        if metadata_is_clear {\n            return Ok(PdfObject::Stream(crate::object::stream::PdfStream::new(\n                dictionary, data,\n            )));\n        }\n\n        let data = self.decrypt_bytes(id, EncryptedValueKind::Stream, data)?;\n        let length = i64::try_from(data.len()).map_err(|_| {\n            AuthenticatedResolveError::Decryption(\n                crate::encrypt::object_key::DecryptError::InvalidLength,\n            )\n        })?;\n        dictionary.insert(\n            crate::object::name::PdfName::from(\"Length\"),\n            PdfObject::from(length),\n        );"
           }
         },
         {
@@ -446,8 +691,8 @@
         {
           "path": "rust/crates/core/src/resolver.rs",
           "lineRange": {
-            "start": 320,
-            "end": 359
+            "start": 494,
+            "end": 532
           },
           "text": "ストリームの例外、復号、Length 更新を処理する"
         }
