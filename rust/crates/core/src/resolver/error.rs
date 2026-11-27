@@ -1,7 +1,6 @@
 //! 遅延解決の原因と型付きオブジェクトIDを保持するエラー。
 use crate::{
     byte_offset::ByteOffset,
-    encrypt::object_key::{DecryptError, ObjectKeyError},
     file::error::FileError,
     object::{generation_number::GenerationNumber, object_id::ObjectId},
     object_stream::error::ObjectStreamError,
@@ -58,12 +57,6 @@ pub enum ResolveError {
     InvalidObjectStream(ObjectId),
     /// 復号に対応していないため暗号化ファイルは開けない。
     EncryptedDocument,
-    /// 暗号化対象の解決に認証済み状態がない。
-    Unauthenticated,
-    /// crypt filter の方式とファイル暗号鍵が両立しない。
-    IncompatibleDecryption(ObjectKeyError),
-    /// 文字列またはストリーム本体を復号できない。
-    Decryption(DecryptError),
 }
 
 impl From<ParseError> for ResolveError {

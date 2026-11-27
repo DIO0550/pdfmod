@@ -49,6 +49,10 @@ impl ObjectCache {
         self.append(id, value);
     }
 
+    pub(super) fn len(&self) -> usize {
+        self.entries.len()
+    }
+
     fn remove(&mut self, id: ObjectId) -> Option<Entry> {
         let entry = self.entries.remove(&id)?;
         match entry.previous {

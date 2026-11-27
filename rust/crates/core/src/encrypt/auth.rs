@@ -96,6 +96,7 @@ pub struct AuthenticatedFileKey<'handler> {
     handler: &'handler StandardSecurityHandler,
     key: FileEncryptionKey,
     role: PasswordRole,
+    permanent_file_id: Option<Vec<u8>>,
 }
 
 impl AuthenticatedFileKey<'_> {
@@ -121,9 +122,7 @@ impl AuthenticatedFileKey<'_> {
     }
 
     pub(crate) fn into_object_state(self) -> AuthenticatedObjectState {
-        let algorithm = self.handler.algorithm().clone();
-        let encrypt_metadata = self.handler.encrypt_metadata();
-        AuthenticatedObjectState::new(algorithm, self.key, encrypt_metadata)
+        AuthenticatedObjectState::new(self.handler.clone(), self.key, self.permanent_file_id)
     }
 }
 
@@ -341,6 +340,7 @@ impl StandardSecurityHandler {
             handler: self,
             key: FileEncryptionKey::Legacy(key),
             role,
+            permanent_file_id: Some(file_id.permanent().to_vec()),
         })
     }
 
@@ -439,6 +439,7 @@ impl StandardSecurityHandler {
             handler: self,
             key: FileEncryptionKey::Aes256(key),
             role,
+            permanent_file_id: None,
         })
     }
 }
