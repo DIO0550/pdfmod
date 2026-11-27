@@ -52,6 +52,10 @@ impl PdfFixture {
 
 mod cycles;
 
+mod decryption;
+
+mod encrypted_document;
+
 mod caching;
 
 mod recovery;
