@@ -198,8 +198,140 @@ fn skips_encrypt_dictionary_and_trailer_id() {
         .and_then(crate::xref::trailer::Trailer::id)
         .expect("トレーラーID");
 
-    assert!(resolved.as_dictionary().is_some());
+    let PdfObject::Dictionary(expected) = Parser::new(R2.as_bytes())
+        .parse_object()
+        .expect("期待する暗号化辞書を解析できる")
+    else {
+        panic!("暗号化辞書は辞書");
+    };
+    let actual = resolved.as_dictionary().expect("解決値は辞書");
+    assert_eq!(
+        actual
+            .get(b"O".as_slice())
+            .and_then(PdfObject::as_string_bytes),
+        expected
+            .get(b"O".as_slice())
+            .and_then(PdfObject::as_string_bytes)
+    );
+    assert_eq!(
+        actual
+            .get(b"U".as_slice())
+            .and_then(PdfObject::as_string_bytes),
+        expected
+            .get(b"U".as_slice())
+            .and_then(PdfObject::as_string_bytes)
+    );
     assert_eq!(trailer_id.permanent(), file_id.permanent());
+}
+
+#[test]
+fn signature_contents_stays_encrypted_while_other_strings_are_decrypted() {
+    let mut pdf = PdfFixture::new();
+    pdf.object(1, 0, "<< /Signature 2 0 R >>");
+    pdf.object(
+        2,
+        0,
+        "<< /Type /Sig /Contents <c9cbd5553118> /Reason <c9cbd5553118> >>",
+    );
+    let data = pdf.finish_with_trailer("", &format!("/Encrypt {R2} /ID [<{FILE_ID}> <{FILE_ID}>]"));
+    let handler = r2_handler();
+    let file_id = file_id();
+    let authentication = handler
+        .authenticate(None, Some(&file_id))
+        .expect("R2 の空利用者パスワードで認証できる");
+    let mut resolver = ObjectResolver::open_authenticated(&data, authentication)
+        .expect("認証済みresolverを開ける");
+
+    let resolved = resolver
+        .resolve(reference(2, 0))
+        .expect("署名辞書を解決できる");
+    let signature = resolved.as_dictionary().expect("署名辞書");
+
+    assert_eq!(
+        signature
+            .get(b"Contents".as_slice())
+            .and_then(PdfObject::as_string_bytes),
+        Some(&[0xc9, 0xcb, 0xd5, 0x55, 0x31, 0x18][..])
+    );
+    assert_eq!(
+        signature
+            .get(b"Reason".as_slice())
+            .and_then(PdfObject::as_string_bytes),
+        Some(b"secret".as_slice())
+    );
+}
+
+#[test]
+fn explicit_crypt_filter_is_reported_as_unsupported() {
+    for filter in ["/Filter /Crypt", "/Filter [/FlateDecode /Crypt]"] {
+        let mut pdf = PdfFixture::new();
+        pdf.object(1, 0, "<< /Contents 2 0 R >>");
+        binary_stream_object_with_dictionary(
+            &mut pdf,
+            2,
+            &format!("{filter} /Length 11"),
+            b"stream data",
+        );
+        let data =
+            pdf.finish_with_trailer("", &format!("/Encrypt {R2} /ID [<{FILE_ID}> <{FILE_ID}>]"));
+        let handler = r2_handler();
+        let file_id = file_id();
+        let authentication = handler
+            .authenticate(None, Some(&file_id))
+            .expect("R2 の空利用者パスワードで認証できる");
+        let mut resolver = ObjectResolver::open_authenticated(&data, authentication)
+            .expect("認証済みresolverを開ける");
+
+        assert!(matches!(
+            resolver.resolve(reference(2, 0)),
+            Err(authenticated_error::AuthenticatedResolveError::UnsupportedCryptFilter)
+        ));
+    }
+}
+
+#[test]
+fn embedded_file_filter_selection_is_reported_as_unsupported() {
+    let mut pdf = PdfFixture::new();
+    pdf.object(1, 0, "<< /Contents 2 0 R >>");
+    binary_stream_object_with_dictionary(
+        &mut pdf,
+        2,
+        "/Type /EmbeddedFile /Length 11",
+        b"stream data",
+    );
+    let data = pdf.finish_with_trailer("", &format!("/Encrypt {R2} /ID [<{FILE_ID}> <{FILE_ID}>]"));
+    let handler = r2_handler();
+    let file_id = file_id();
+    let authentication = handler
+        .authenticate(None, Some(&file_id))
+        .expect("R2 の空利用者パスワードで認証できる");
+    let mut resolver = ObjectResolver::open_authenticated(&data, authentication)
+        .expect("認証済みresolverを開ける");
+
+    assert!(matches!(
+        resolver.resolve(reference(2, 0)),
+        Err(authenticated_error::AuthenticatedResolveError::UnsupportedCryptFilter)
+    ));
+}
+
+#[test]
+fn authentication_from_another_encrypt_dictionary_is_rejected() {
+    let mut pdf = PdfFixture::new();
+    pdf.object(1, 0, "<< /Value 2 0 R >>");
+    let data = pdf.finish_with_trailer(
+        "",
+        &format!("/Encrypt {R3_RC4_128} /ID [<{FILE_ID}> <{FILE_ID}>]"),
+    );
+    let handler = r2_handler();
+    let file_id = file_id();
+    let authentication = handler
+        .authenticate(None, Some(&file_id))
+        .expect("R2 の空利用者パスワードで認証できる");
+
+    assert!(matches!(
+        ObjectResolver::open_authenticated(&data, authentication),
+        Err(authenticated_error::AuthenticatedResolveError::AuthenticationMismatch)
+    ));
 }
 
 #[test]
@@ -326,23 +458,23 @@ fn object_stream_members_are_not_decrypted_twice() {
 }
 
 #[test]
-fn unauthenticated_decryption_returns_dedicated_error() {
+fn authentication_from_another_file_is_rejected() {
     let mut pdf = PdfFixture::new();
     pdf.object(1, 0, "<< /Value 2 0 R >>");
     pdf.object(2, 0, "<c9cbd5553118>");
-    let data = pdf.finish_with_trailer("", &format!("/Encrypt {R2} /ID [<{FILE_ID}> <{FILE_ID}>]"));
+    let other_id = "0123456789abcdef0123456789abcdef";
+    let data = pdf.finish_with_trailer(
+        "",
+        &format!("/Encrypt {R2} /ID [<{other_id}> <{other_id}>]"),
+    );
     let handler = r2_handler();
     let file_id = file_id();
     let authentication = handler
         .authenticate(None, Some(&file_id))
         .expect("R2 の空利用者パスワードで認証できる");
-    let mut resolver = ObjectResolver::open_authenticated(&data, authentication)
-        .expect("認証済みresolverを開ける");
-    resolver.authentication = None;
-
     assert!(matches!(
-        resolver.resolve(reference(2, 0)),
-        Err(ResolveError::Unauthenticated)
+        ObjectResolver::open_authenticated(&data, authentication),
+        Err(authenticated_error::AuthenticatedResolveError::AuthenticationMismatch)
     ));
 }
 
@@ -365,12 +497,14 @@ fn incompatible_crypt_filter_and_file_key_is_reported() {
 
     assert!(matches!(
         resolver.resolve(reference(2, 0)),
-        Err(ResolveError::IncompatibleDecryption(
-            crate::encrypt::object_key::ObjectKeyError::IncompatibleFileKey {
-                method: crate::encrypt::crypt_filter::CryptFilterMethod::AesV2,
-                length: 5,
-            }
-        ))
+        Err(
+            authenticated_error::AuthenticatedResolveError::IncompatibleDecryption(
+                crate::encrypt::object_key::ObjectKeyError::IncompatibleFileKey {
+                    method: crate::encrypt::crypt_filter::CryptFilterMethod::AesV2,
+                    length: 5,
+                }
+            )
+        )
     ));
 }
 
@@ -393,7 +527,7 @@ fn invalid_aes_ciphertext_reports_decryption_error() {
 
     assert!(matches!(
         resolver.resolve(reference(2, 0)),
-        Err(ResolveError::Decryption(
+        Err(authenticated_error::AuthenticatedResolveError::Decryption(
             crate::encrypt::object_key::DecryptError::InvalidLength
         ))
     ));
@@ -418,6 +552,30 @@ fn caches_decrypted_object_for_repeated_resolution() {
 
     assert!(Rc::ptr_eq(&first, &second));
     assert_eq!(second.as_string_bytes(), Some(b"secret".as_slice()));
+}
+
+#[test]
+fn authenticated_debug_output_does_not_include_plaintext() {
+    let mut pdf = PdfFixture::new();
+    pdf.object(1, 0, "<< /Value 2 0 R >>");
+    pdf.object(2, 0, "<c9cbd5553118>");
+    let data = pdf.finish_with_trailer("", &format!("/Encrypt {R2} /ID [<{FILE_ID}> <{FILE_ID}>]"));
+    let handler = r2_handler();
+    let file_id = file_id();
+    let authentication = handler
+        .authenticate(None, Some(&file_id))
+        .expect("R2 の空利用者パスワードで認証できる");
+    let mut resolver = ObjectResolver::open_authenticated(&data, authentication)
+        .expect("認証済みresolverを開ける");
+    resolver
+        .resolve(reference(2, 0))
+        .expect("文字列を解決できる");
+
+    let debug = format!("{resolver:?}");
+
+    assert!(debug.contains("AuthenticatedObjectResolver"));
+    assert!(!debug.contains("secret"));
+    assert!(!debug.contains("115, 101, 99, 114, 101, 116"));
 }
 
 #[test]

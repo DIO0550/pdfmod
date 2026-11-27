@@ -4,7 +4,10 @@ use super::decryption::{
 };
 use super::*;
 
-fn resolve_root_content(mut resolver: ObjectResolver<'_>, root: IndirectRef) -> Rc<PdfObject> {
+fn resolve_root_content(
+    mut resolver: AuthenticatedObjectResolver<'_>,
+    root: IndirectRef,
+) -> Rc<PdfObject> {
     let catalog = resolver.resolve(root).expect("ルート辞書を解決できる");
     let contents = catalog
         .as_dictionary()
