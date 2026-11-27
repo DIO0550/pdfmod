@@ -239,7 +239,7 @@ nav a { font-size: 16px; } table { font-size: 17px; } th { font-size: 15px; }
 <div class="note error"><strong>位置は辞書単位</strong>エラーの <code>offset</code> は渡された辞書の開始位置です。/CF/StdCF/CFMのようなキーのパスは報告しますが、個々の値の物理位置は取得しません。</div>
 <p>キーと期待型を表す <code>PdfDictionaryField</code> と直接値の取得・型チェックは、PDF共通の <code>PdfDictionaryReader</code> が担当します。暗号化側はそのエラーを <code>EncryptError</code> に変換し、暗号化固有の制約を検証します。</p>
 <p>入力辞書からキーを削除したりバイト列を書き換えたりしません。必須キー欠落、型不一致、不正なファイル鍵長、未定義セレクタはResultのエラーで返します。</p>
-<p>TypeScriptの <code>PdfDocument.load</code> は引き続き暗号化PDFを <code>ENCRYPTED_PDF_UNSUPPORTED</code> として拒否します。この型化は復号機能の基盤であり、ドキュメント読込の復号対応は後続の作業です。</p>
+<p>TypeScriptの <code>PdfDocument.load</code> は引き続き暗号化PDFを <code>ENCRYPTED_PDF_UNSUPPORTED</code> として拒否します。Rustではパスワード認証済みの <code>ObjectResolver::open_authenticated</code> から文字列・ストリームの遅延復号を利用できますが、Rust <code>PdfDocument</code> のパスワード受付はまだ公開していません。</p>
 <h3>TypeScriptで解析結果を読む</h3>
 <p>次の例は公開APIを使い、辞書の抜粋をバイト列から読み取ります。<code>ObjectParser</code> はPDFの構文を辞書へ変換し、<code>EncryptDictionary</code> はその辞書を暗号化方式の型へ変換します。トレイラから /Encrypt を探す処理は含みません。</p>
 <pre><code id="api-example"><span class="keyword">import</span> {
@@ -707,7 +707,21 @@ assert_eq!(digest, <span class="type">Md5</span>::digest(<span class="string">b"
 <p><code>authenticated.object_decryption(target)</code> と呼ぶと、認証結果に結び付いた辞書とファイル鍵から、対象の復号方式と鍵を選びます。選んだ方式がファイル鍵の種別や長さと両立しない場合は <code>IncompatibleFileKey</code> になります。</p>
 <p>RC4 と AES-128 の戻り値は、その場で導出した鍵を持ちます。AES-256 では Algorithm 1.A が指定するファイル暗号鍵の32バイトをコピーして、<code>ObjectDecryption::Aes256</code> に入れます。どの方式でも戻り値が自分で鍵を持つため、呼び出し側は認証結果を破棄したあとも復号方式と鍵を保持できます。</p>
 <p><code>AuthenticatedFileKey&lt;'handler&gt;</code> の <code>'handler</code> は、暗号化辞書への参照を使える期間（ライフタイム）を表します。認証結果を使っている間は、元の辞書も参照できることを Rust のコンパイラが確認します。</p>
-<p>crypt filter を使う文書では、ストリーム本体の既定の方式を <code>/StmF</code> から選びます。明示的な <code>/Crypt</code> や埋め込みファイル用の <code>/EFF</code> が適用される場合は、呼び出し側で扱います。暗号データへの適用と文書読み込みへの組み込みは後続の #683 で扱います。</p>
+<h3>認証済みResolverで遅延復号する</h3>
+<p>通常の <code>ObjectResolver::open</code> は暗号化文書を <code>EncryptedDocument</code> で拒否します。パスワード認証を済ませた場合は <code>open_authenticated</code> に認証結果を渡し、<code>AuthenticatedObjectResolver</code> が要求された間接オブジェクトだけを復号します。入力の <code>/Encrypt</code> と永続 <code>/ID</code> が認証元に一致することを入口で確認するため、別文書の鍵を渡すことはできません。</p>
+<pre><code><span class="keyword">let</span> authenticated = handler.authenticate(password, file_id)?;
+<span class="keyword">let mut</span> resolver = <span class="type">ObjectResolver</span>::open_authenticated(input, authenticated)?;
+<span class="keyword">let</span> value = resolver.resolve(reference)?;</code></pre>
+<ol class="steps">
+  <li><strong>構造を先に読む。</strong> xref、間接オブジェクトの番号、ストリーム辞書、暗号文の <code>/Length</code> は復号前の構造情報です。</li>
+  <li><strong>対象を選ぶ。</strong> 文字列・配列・辞書内の文字列は <code>/StrF</code>、ストリーム本体は <code>/StmF</code> を使います。AESでは先頭16バイトをIV、末尾をPKCS#7パディングとして処理します。</li>
+  <li><strong>平文長へ更新する。</strong> ストリーム復号後は、暗号文と異なり得る実データ長を辞書の <code>/Length</code> へ書き戻します。</li>
+  <li><strong>除外と一度だけの復号を守る。</strong> <code>/Encrypt</code>、<code>/ID</code>、xrefストリーム、<code>/Identity</code> は無変更です。ObjStmはコンテナだけを復号し、内包オブジェクトは再復号しません。</li>
+  <li><strong>署名と未対応フィルタを区別する。</strong> <code>/Type /Sig</code> の <code>/Contents</code> は平文のまま保ち、同じ辞書の他の文字列は復号します。明示的な <code>/Crypt</code> や埋め込みファイルは <code>/StmF</code> へ勝手にフォールバックせず、型付きエラーにします。</li>
+</ol>
+<div class="note warning"><strong>メタデータの例外</strong><code>/EncryptMetadata false</code> の <code>/Type /Metadata</code> ストリーム本体は平文として保ちます。通常ストリーム辞書に含まれる文字列は別物なので、<code>/StrF</code> の対象かどうかを辞書の値ごとに判定します。</div>
+<div class="note"><strong>失敗とキャッシュ</strong>認証元の不一致、復号方式と鍵の不一致、AESの長さ・パディング不正、未対応crypt filterは <code>AuthenticatedResolveError</code> の別バリアントで分岐できます。既存の <code>ResolveError</code> は変えないため、通常のResolverを使う既存呼び出しの網羅的matchは壊れません。復号済み <code>PdfObject</code> は認証済みResolverのキャッシュに保存されるため、同じ参照を再解決しても再度復号しません。<code>Debug</code> も平文オブジェクトではなく入力長とキャッシュ件数だけを出します。</div>
+<p>crypt filter を使う文書では、ストリーム本体の既定の方式を <code>/StmF</code> から選びます。明示的な <code>/Crypt</code> や埋め込みファイル用の <code>/EFF</code> が適用される場合は、呼び出し側で扱います。これらのフィルタ固有経路は今回のResolver統合の対象外です。</p>
 </section>
 <footer><a href="#top">最上部へ</a> · <a href="README.md">解説一覧</a></footer></div></main>
 </body></html>

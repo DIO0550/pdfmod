@@ -120,6 +120,13 @@ impl<'a> IntoIterator for &'a PdfDictionary {
     }
 }
 
+impl PdfDictionary {
+    /// 辞書を消費し、キーの昇順で所有エントリを走査する。
+    pub(crate) fn into_entries(self) -> btree_map::IntoIter<PdfName, PdfObject> {
+        self.0.into_iter()
+    }
+}
+
 impl FromIterator<(PdfName, PdfObject)> for PdfDictionary {
     /// ペア列から辞書を構築する。重複キーの値は最後の値で上書きする。
     fn from_iter<T: IntoIterator<Item = (PdfName, PdfObject)>>(iter: T) -> Self {
@@ -419,6 +426,17 @@ mod tests {
         // 空辞書では iter() が 1 件も列挙しない（count()==0）ことを確認する
         let dict = PdfDictionary::new();
         assert_eq!(dict.iter().count(), 0);
+    }
+
+    #[test]
+    fn into_iter_preserves_existing_dictionary_use() {
+        let mut dictionary = PdfDictionary::new();
+        dictionary.insert(PdfName::from("Value"), PdfObject::from(42));
+
+        let entries: Vec<_> = dictionary.into_iter().collect();
+
+        assert_eq!(entries.len(), 1);
+        assert_eq!(dictionary.len(), 1);
     }
 
     #[test]

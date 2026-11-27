@@ -17,13 +17,6 @@
 //!
 //! [`StandardAlgorithm`]: algorithm::StandardAlgorithm
 
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "IV 付き PDF 文字列・ストリームの復号は #683 から呼び出す"
-    )
-)]
 mod aes;
 pub mod aes256_key;
 pub mod algorithm;

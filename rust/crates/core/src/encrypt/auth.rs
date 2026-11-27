@@ -14,6 +14,7 @@ use crate::encrypt::legacy_key::{
     REHASH_COUNT,
 };
 use crate::encrypt::md5::{Md5, DIGEST_LEN};
+use crate::encrypt::object_key::AuthenticatedObjectState;
 use crate::encrypt::rc4::Rc4;
 use crate::encrypt::standard::StandardSecurityHandler;
 use crate::xref::trailer::file_id::FileId;
@@ -95,6 +96,7 @@ pub struct AuthenticatedFileKey<'handler> {
     handler: &'handler StandardSecurityHandler,
     key: FileEncryptionKey,
     role: PasswordRole,
+    permanent_file_id: Option<Vec<u8>>,
 }
 
 impl AuthenticatedFileKey<'_> {
@@ -117,6 +119,10 @@ impl AuthenticatedFileKey<'_> {
     #[must_use]
     pub fn as_bytes(&self) -> &[u8] {
         self.key.as_bytes()
+    }
+
+    pub(crate) fn into_object_state(self) -> AuthenticatedObjectState {
+        AuthenticatedObjectState::new(self.handler.clone(), self.key, self.permanent_file_id)
     }
 }
 
@@ -334,6 +340,7 @@ impl StandardSecurityHandler {
             handler: self,
             key: FileEncryptionKey::Legacy(key),
             role,
+            permanent_file_id: Some(file_id.permanent().to_vec()),
         })
     }
 
@@ -432,6 +439,7 @@ impl StandardSecurityHandler {
             handler: self,
             key: FileEncryptionKey::Aes256(key),
             role,
+            permanent_file_id: None,
         })
     }
 }

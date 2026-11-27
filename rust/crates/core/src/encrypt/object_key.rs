@@ -3,13 +3,17 @@
 
 use std::fmt;
 
+use crate::encrypt::aes::{Aes, AesCbcError};
 use crate::encrypt::aes256_key::Aes256FileKey;
 use crate::encrypt::algorithm::StandardAlgorithm;
 use crate::encrypt::auth::{AuthenticatedFileKey, FileEncryptionKey};
 use crate::encrypt::crypt_filter::{CryptFilter, CryptFilterMethod};
 use crate::encrypt::legacy_key::LegacyFileKey;
 use crate::encrypt::md5::{Md5, DIGEST_LEN};
+use crate::encrypt::rc4::Rc4;
+use crate::encrypt::standard::StandardSecurityHandler;
 use crate::object::object_id::ObjectId;
+use crate::xref::trailer::file_id::FileId;
 
 const AES128_KEY_LEN: usize = 16;
 const AES128_KEY_SALT: &[u8; 4] = b"sAlT";
@@ -50,6 +54,102 @@ pub enum ObjectDecryption {
     Aes128(Aes128ObjectKey),
     /// Algorithm 1.A に従い、認証済みの AES-256 ファイル暗号鍵のコピーを使う。
     Aes256(Aes256FileKey),
+}
+
+impl ObjectDecryption {
+    /// 文字列またはストリームの暗号化前バイト列へ復号する。
+    ///
+    /// `/Identity` では入力を所有権ごと返す。RC4 の鍵長は既に導出時に
+    /// 検証されているため、不正な鍵長は通常発生しない。
+    ///
+    /// # Errors
+    ///
+    /// AES 入力の長さまたは PKCS#7 パディングが不正な場合にエラーを返す。
+    pub(crate) fn decrypt(&self, input: Vec<u8>) -> Result<Vec<u8>, DecryptError> {
+        match self {
+            Self::None => Ok(input),
+            Self::Rc4(key) => {
+                let mut rc4 = Rc4::new(key.as_bytes()).ok_or(DecryptError::InvalidRc4Key)?;
+                let mut plaintext = input;
+                rc4.apply(&mut plaintext);
+                Ok(plaintext)
+            }
+            Self::Aes128(key) => Aes::new_128(key.as_bytes())
+                .decrypt_pdf_cbc(&input)
+                .map_err(DecryptError::from),
+            Self::Aes256(key) => Aes::new_256(key.as_bytes())
+                .decrypt_pdf_cbc(&input)
+                .map_err(DecryptError::from),
+        }
+    }
+}
+
+/// PDF の文字列・ストリーム暗号を復号できない理由。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DecryptError {
+    /// RC4 の導出鍵が 5〜16 バイトではない。
+    InvalidRc4Key,
+    /// AES の IV・暗号文が不完全。
+    InvalidLength,
+    /// AES の PKCS#7 パディングが不正。
+    InvalidPadding,
+}
+
+impl From<AesCbcError> for DecryptError {
+    fn from(error: AesCbcError) -> Self {
+        match error {
+            AesCbcError::InvalidLength => Self::InvalidLength,
+            AesCbcError::InvalidPadding => Self::InvalidPadding,
+        }
+    }
+}
+
+/// 認証済み Resolver が所有する、文書ごとの復号状態。
+#[derive(Debug)]
+pub(crate) struct AuthenticatedObjectState {
+    handler: StandardSecurityHandler,
+    key: FileEncryptionKey,
+    permanent_file_id: Option<Vec<u8>>,
+}
+
+impl AuthenticatedObjectState {
+    pub(super) fn new(
+        handler: StandardSecurityHandler,
+        key: FileEncryptionKey,
+        permanent_file_id: Option<Vec<u8>>,
+    ) -> Self {
+        Self {
+            handler,
+            key,
+            permanent_file_id,
+        }
+    }
+
+    pub(crate) fn decrypts_metadata(&self) -> bool {
+        self.handler.encrypt_metadata()
+    }
+
+    pub(crate) fn object_decryption(
+        &self,
+        target: ObjectDecryptionTarget,
+    ) -> Result<ObjectDecryption, ObjectKeyError> {
+        select_object_decryption(self.handler.algorithm(), &self.key, target)
+    }
+
+    pub(crate) fn matches_document(
+        &self,
+        handler: &StandardSecurityHandler,
+        file_id: Option<&FileId>,
+    ) -> bool {
+        let file_id_matches = match (&self.permanent_file_id, file_id) {
+            (Some(authenticated), Some(document)) => {
+                authenticated.as_slice() == document.permanent()
+            }
+            (None, _) => true,
+            (Some(_), None) => false,
+        };
+        self.handler == *handler && file_id_matches
+    }
 }
 
 /// Algorithm 1 で導出した 10〜16 バイトの RC4 鍵。
@@ -127,30 +227,38 @@ impl AuthenticatedFileKey<'_> {
         &self,
         target: ObjectDecryptionTarget,
     ) -> Result<ObjectDecryption, ObjectKeyError> {
-        let ObjectDecryptionTarget::Indirect { id, kind } = target else {
-            return Ok(ObjectDecryption::None);
-        };
+        select_object_decryption(self.handler().algorithm(), self.key(), target)
+    }
+}
 
-        let method = self.handler().algorithm().crypt_filter_method(kind);
-        match (method, self.key()) {
-            (CryptFilterMethod::None, _) => Ok(ObjectDecryption::None),
-            (CryptFilterMethod::V2, FileEncryptionKey::Legacy(key)) => {
-                Ok(ObjectDecryption::Rc4(Rc4ObjectKey::derive(key, id)))
-            }
-            (CryptFilterMethod::AesV2, FileEncryptionKey::Legacy(key))
-                if key.as_bytes().len() == AES128_KEY_LEN =>
-            {
-                let bytes = key.object_key_hash(id, AES128_KEY_SALT);
-                Ok(ObjectDecryption::Aes128(Aes128ObjectKey(bytes)))
-            }
-            (CryptFilterMethod::AesV3, FileEncryptionKey::Aes256(key)) => {
-                Ok(ObjectDecryption::Aes256(key.copy_for_object_decryption()))
-            }
-            (method, key) => Err(ObjectKeyError::IncompatibleFileKey {
-                method,
-                length: key.as_bytes().len(),
-            }),
+fn select_object_decryption(
+    algorithm: &StandardAlgorithm,
+    key: &FileEncryptionKey,
+    target: ObjectDecryptionTarget,
+) -> Result<ObjectDecryption, ObjectKeyError> {
+    let ObjectDecryptionTarget::Indirect { id, kind } = target else {
+        return Ok(ObjectDecryption::None);
+    };
+
+    let method = algorithm.crypt_filter_method(kind);
+    match (method, key) {
+        (CryptFilterMethod::None, _) => Ok(ObjectDecryption::None),
+        (CryptFilterMethod::V2, FileEncryptionKey::Legacy(key)) => {
+            Ok(ObjectDecryption::Rc4(Rc4ObjectKey::derive(key, id)))
         }
+        (CryptFilterMethod::AesV2, FileEncryptionKey::Legacy(key))
+            if key.as_bytes().len() == AES128_KEY_LEN =>
+        {
+            let bytes = key.object_key_hash(id, AES128_KEY_SALT);
+            Ok(ObjectDecryption::Aes128(Aes128ObjectKey(bytes)))
+        }
+        (CryptFilterMethod::AesV3, FileEncryptionKey::Aes256(key)) => {
+            Ok(ObjectDecryption::Aes256(key.copy_for_object_decryption()))
+        }
+        (method, key) => Err(ObjectKeyError::IncompatibleFileKey {
+            method,
+            length: key.as_bytes().len(),
+        }),
     }
 }
 
