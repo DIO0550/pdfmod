@@ -708,7 +708,7 @@ assert_eq!(digest, <span class="type">Md5</span>::digest(<span class="string">b"
 <p>RC4 と AES-128 の戻り値は、その場で導出した鍵を持ちます。AES-256 では Algorithm 1.A が指定するファイル暗号鍵の32バイトをコピーして、<code>ObjectDecryption::Aes256</code> に入れます。どの方式でも戻り値が自分で鍵を持つため、呼び出し側は認証結果を破棄したあとも復号方式と鍵を保持できます。</p>
 <p><code>AuthenticatedFileKey&lt;'handler&gt;</code> の <code>'handler</code> は、暗号化辞書への参照を使える期間（ライフタイム）を表します。認証結果を使っている間は、元の辞書も参照できることを Rust のコンパイラが確認します。</p>
 <h3>認証済みResolverで遅延復号する</h3>
-<p>通常の <code>ObjectResolver::open</code> は暗号化文書を <code>EncryptedDocument</code> で拒否します。パスワード認証を済ませた場合は <code>open_authenticated</code> に認証結果を渡し、要求された間接オブジェクトだけを復号します。認証に使った辞書の借用は Resolver に残さず、方式・鍵・<code>/EncryptMetadata</code> だけを所有する状態へ移します。</p>
+<p>通常の <code>ObjectResolver::open</code> は暗号化文書を <code>EncryptedDocument</code> で拒否します。パスワード認証を済ませた場合は <code>open_authenticated</code> に認証結果を渡し、<code>AuthenticatedObjectResolver</code> が要求された間接オブジェクトだけを復号します。入力の <code>/Encrypt</code> と永続 <code>/ID</code> が認証元に一致することを入口で確認するため、別文書の鍵を渡すことはできません。</p>
 <pre><code><span class="keyword">let</span> authenticated = handler.authenticate(password, file_id)?;
 <span class="keyword">let mut</span> resolver = <span class="type">ObjectResolver</span>::open_authenticated(input, authenticated)?;
 <span class="keyword">let</span> value = resolver.resolve(reference)?;</code></pre>
@@ -717,9 +717,10 @@ assert_eq!(digest, <span class="type">Md5</span>::digest(<span class="string">b"
   <li><strong>対象を選ぶ。</strong> 文字列・配列・辞書内の文字列は <code>/StrF</code>、ストリーム本体は <code>/StmF</code> を使います。AESでは先頭16バイトをIV、末尾をPKCS#7パディングとして処理します。</li>
   <li><strong>平文長へ更新する。</strong> ストリーム復号後は、暗号文と異なり得る実データ長を辞書の <code>/Length</code> へ書き戻します。</li>
   <li><strong>除外と一度だけの復号を守る。</strong> <code>/Encrypt</code>、<code>/ID</code>、xrefストリーム、<code>/Identity</code> は無変更です。ObjStmはコンテナだけを復号し、内包オブジェクトは再復号しません。</li>
+  <li><strong>署名と未対応フィルタを区別する。</strong> <code>/Type /Sig</code> の <code>/Contents</code> は平文のまま保ち、同じ辞書の他の文字列は復号します。明示的な <code>/Crypt</code> や埋め込みファイルは <code>/StmF</code> へ勝手にフォールバックせず、型付きエラーにします。</li>
 </ol>
 <div class="note warning"><strong>メタデータの例外</strong><code>/EncryptMetadata false</code> の <code>/Type /Metadata</code> ストリーム本体は平文として保ちます。通常ストリーム辞書に含まれる文字列は別物なので、<code>/StrF</code> の対象かどうかを辞書の値ごとに判定します。</div>
-<div class="note"><strong>失敗とキャッシュ</strong>復号方式と鍵の不一致は <code>ResolveError::IncompatibleDecryption</code>、AESの長さ・パディング不正は <code>ResolveError::Decryption</code>、認証状態の欠落は <code>ResolveError::Unauthenticated</code> で分岐できます。復号済み <code>PdfObject</code> は通常のオブジェクトキャッシュに保存されるため、同じ参照を再解決しても再度復号しません。</div>
+<div class="note"><strong>失敗とキャッシュ</strong>認証元の不一致、復号方式と鍵の不一致、AESの長さ・パディング不正、未対応crypt filterは <code>AuthenticatedResolveError</code> の別バリアントで分岐できます。既存の <code>ResolveError</code> は変えないため、通常のResolverを使う既存呼び出しの網羅的matchは壊れません。復号済み <code>PdfObject</code> は認証済みResolverのキャッシュに保存されるため、同じ参照を再解決しても再度復号しません。<code>Debug</code> も平文オブジェクトではなく入力長とキャッシュ件数だけを出します。</div>
 <p>crypt filter を使う文書では、ストリーム本体の既定の方式を <code>/StmF</code> から選びます。明示的な <code>/Crypt</code> や埋め込みファイル用の <code>/EFF</code> が適用される場合は、呼び出し側で扱います。これらのフィルタ固有経路は今回のResolver統合の対象外です。</p>
 </section>
 <footer><a href="#top">最上部へ</a> · <a href="README.md">解説一覧</a></footer></div></main>

@@ -490,13 +490,16 @@ ISO 32000-1:2008 §7.6.2 の **Algorithm 1** では、認証済みのファイ�
 
 ### 14.4 認証済み `ObjectResolver` での適用
 
-`ObjectResolver::open` は暗号化トレーラーを従来どおり `EncryptedDocument` で拒否する。認証済み入口では、`open_authenticated` が `AuthenticatedFileKey` を受け取り、認証に使ったアルゴリズム・ファイル鍵・`/EncryptMetadata` を所有する状態へ変換する。xref・間接オブジェクトの構文は平文の構造情報として従来どおり読み、要求されたオブジェクトの文字列・ストリームだけを遅延復号する。
+`ObjectResolver::open` は暗号化トレーラーを従来どおり `EncryptedDocument` で拒否する。認証済み入口では、`open_authenticated` が `AuthenticatedFileKey` を受け取り、認証に使った暗号化辞書・ファイル鍵・永続 `/ID` を所有する状態へ変換して `AuthenticatedObjectResolver` を返す。入口では入力文書の `/Encrypt` と永続 `/ID` を認証結果と照合し、別文書の鍵を持ち込めないようにする。xref・間接オブジェクトの構文は平文の構造情報として従来どおり読み、要求されたオブジェクトの文字列・ストリームだけを遅延復号する。
 
 - 同じ間接オブジェクトの辞書・配列に含まれる文字列は再帰的に `/StrF` を使って復号する。ストリーム本体は `/StmF` を使い、AES の IV・PKCS#7 パディングを除去した後に辞書の `/Length` を平文長へ更新する。
 - `/Encrypt` の間接オブジェクト、トレーラー `/ID`、`/Type /XRef` のxrefストリームは復号経路へ渡さない。`/Identity` と `/CFM /None` は入力を変更しない。
+- `/Type /Sig` 辞書の `/Contents` は署名バイト列として暗号化されない値を保持し、同じ辞書の他の文字列だけを `/StrF` で復号する。
 - `/EncryptMetadata false` かつ `/Type /Metadata` のストリーム本体は平文のまま返す。ただし辞書内の文字列は `/StrF` の対象となり得る。
+- 明示的な `/Filter /Crypt` と `/Type /EmbeddedFile` は `/StmF` へフォールバックせず、未対応の crypt filter として失敗する。
 - `/Type /ObjStm` のコンテナ本体だけを復号し、抽出した内包オブジェクトへは個別復号を再適用しない。
-- 復号後の `PdfObject` をキャッシュへ保存する。未認証状態、crypt filter と鍵の不一致、AES・RC4 の復号失敗は `ResolveError` の別々のバリアントで返す。
+- 復号後の `PdfObject` をキャッシュへ保存する。認証元の不一致、crypt filter と鍵の不一致、AES・RC4 の復号失敗は `AuthenticatedResolveError` の別々のバリアントで返す。既存の `ResolveError` は変更せず、通常Resolverの網羅的 match の互換性を保つ。
+- `AuthenticatedObjectResolver` の `Debug` は入力長・キャッシュ件数・トレーラだけを出し、復号済みの文字列やストリーム本体を出力しない。
 
 ---
 
