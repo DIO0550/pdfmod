@@ -14,6 +14,7 @@ use crate::encrypt::legacy_key::{
     REHASH_COUNT,
 };
 use crate::encrypt::md5::{Md5, DIGEST_LEN};
+use crate::encrypt::object_key::AuthenticatedObjectState;
 use crate::encrypt::rc4::Rc4;
 use crate::encrypt::standard::StandardSecurityHandler;
 use crate::xref::trailer::file_id::FileId;
@@ -117,6 +118,12 @@ impl AuthenticatedFileKey<'_> {
     #[must_use]
     pub fn as_bytes(&self) -> &[u8] {
         self.key.as_bytes()
+    }
+
+    pub(crate) fn into_object_state(self) -> AuthenticatedObjectState {
+        let algorithm = self.handler.algorithm().clone();
+        let encrypt_metadata = self.handler.encrypt_metadata();
+        AuthenticatedObjectState::new(algorithm, self.key, encrypt_metadata)
     }
 }
 

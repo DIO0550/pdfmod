@@ -120,6 +120,16 @@ impl<'a> IntoIterator for &'a PdfDictionary {
     }
 }
 
+impl IntoIterator for PdfDictionary {
+    type Item = (PdfName, PdfObject);
+    type IntoIter = btree_map::IntoIter<PdfName, PdfObject>;
+
+    /// 所有権を移し、全ペアをキーの昇順で走査する。
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
+
 impl FromIterator<(PdfName, PdfObject)> for PdfDictionary {
     /// ペア列から辞書を構築する。重複キーの値は最後の値で上書きする。
     fn from_iter<T: IntoIterator<Item = (PdfName, PdfObject)>>(iter: T) -> Self {

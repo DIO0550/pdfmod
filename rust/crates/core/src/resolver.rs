@@ -10,6 +10,10 @@ pub mod recovery;
 use cache::ObjectCache;
 
 use crate::byte_offset::ByteOffset;
+use crate::encrypt::auth::AuthenticatedFileKey;
+use crate::encrypt::object_key::{
+    AuthenticatedObjectState, EncryptedValueKind, ObjectDecryptionTarget,
+};
 use crate::file::header::PdfHeader;
 use crate::object::{
     generation_number::GenerationNumber, indirect_ref::IndirectRef, object_id::ObjectId,
@@ -29,6 +33,7 @@ pub struct ObjectResolver<'a> {
     header: PdfHeader,
     table: XRefTable,
     trailer: Option<Trailer>,
+    authentication: Option<AuthenticatedObjectState>,
     cache: ObjectCache,
     recovery: Option<recovery::RecoveryState>,
 }
@@ -49,6 +54,32 @@ impl<'a> ObjectResolver<'a> {
             header,
             table,
             trailer: Some(trailer),
+            authentication: None,
+            cache: ObjectCache::new(1024),
+            recovery: None,
+        })
+    }
+
+    /// 認証済みのファイル暗号鍵とともに暗号化PDFを開く。
+    /// 対象文字列・ストリームは要求された間接オブジェクトの解決時にだけ復号する。
+    ///
+    /// # Errors
+    ///
+    /// ヘッダ・xrefの解析に失敗した場合、対応する [`ResolveError`] を返す。
+    pub fn open_authenticated(
+        input: &'a [u8],
+        authentication: AuthenticatedFileKey<'_>,
+    ) -> Result<Self, ResolveError> {
+        let header = PdfHeader::parse(input).map_err(ResolveError::File)?;
+        let (table, trailer) = XRefChain::parse(input, &header)
+            .map_err(ResolveError::XRef)?
+            .into_parts();
+        Ok(Self {
+            input,
+            header,
+            table,
+            trailer: Some(trailer),
+            authentication: Some(authentication.into_object_state()),
             cache: ObjectCache::new(1024),
             recovery: None,
         })
@@ -62,6 +93,7 @@ impl<'a> ObjectResolver<'a> {
             header,
             table,
             trailer: None,
+            authentication: None,
             cache: ObjectCache::new(1024),
             recovery: None,
         }
@@ -243,7 +275,119 @@ impl<'a> ObjectResolver<'a> {
                 actual,
             });
         }
-        Ok(body)
+        self.decrypt_resolved_object(id, body)
+    }
+
+    fn decrypt_resolved_object(
+        &self,
+        id: ObjectId,
+        object: PdfObject,
+    ) -> Result<PdfObject, ResolveError> {
+        let Some(trailer) = self.trailer.as_ref() else {
+            return Ok(object);
+        };
+        if trailer.encrypt().is_none() {
+            return Ok(object);
+        }
+        if trailer.encrypt().is_some_and(|encrypt| match encrypt {
+            crate::xref::trailer::EncryptValue::Reference(reference) => reference.target() == id,
+            crate::xref::trailer::EncryptValue::Dictionary(_) => false,
+        }) {
+            return Ok(object);
+        }
+
+        self.decrypt_object(id, object)
+    }
+
+    fn decrypt_object(&self, id: ObjectId, object: PdfObject) -> Result<PdfObject, ResolveError> {
+        match object {
+            PdfObject::String(string) => {
+                let plaintext =
+                    self.decrypt_bytes(id, EncryptedValueKind::String, string.as_bytes())?;
+                Ok(PdfObject::String(crate::object::string::PdfString::new(
+                    plaintext,
+                    string.encoding(),
+                )))
+            }
+            PdfObject::Array(array) => array
+                .into_iter()
+                .map(|value| self.decrypt_object(id, value))
+                .collect::<Result<Vec<_>, _>>()
+                .map(PdfObject::from),
+            PdfObject::Dictionary(dictionary) => self
+                .decrypt_dictionary(id, dictionary)
+                .map(PdfObject::Dictionary),
+            PdfObject::Stream(stream) => {
+                let is_xref_stream = stream
+                    .dictionary()
+                    .get(b"Type".as_slice())
+                    .and_then(PdfObject::as_name)
+                    .is_some_and(|name| name.as_bytes() == b"XRef");
+                if is_xref_stream {
+                    return Ok(PdfObject::Stream(stream));
+                }
+
+                let is_metadata_stream = stream
+                    .dictionary()
+                    .get(b"Type".as_slice())
+                    .and_then(PdfObject::as_name)
+                    .is_some_and(|name| name.as_bytes() == b"Metadata");
+                let metadata_is_clear =
+                    self.authentication.as_ref().is_some_and(|authentication| {
+                        is_metadata_stream && !authentication.decrypts_metadata()
+                    });
+                let (dictionary, data) = stream.into_parts();
+                let mut dictionary = self.decrypt_dictionary(id, dictionary)?;
+                if metadata_is_clear {
+                    return Ok(PdfObject::Stream(crate::object::stream::PdfStream::new(
+                        dictionary, data,
+                    )));
+                }
+
+                let data = self.decrypt_bytes(id, EncryptedValueKind::Stream, data.as_slice())?;
+                let length = i64::try_from(data.len()).map_err(|_| {
+                    ResolveError::Decryption(
+                        crate::encrypt::object_key::DecryptError::InvalidLength,
+                    )
+                })?;
+                dictionary.insert(
+                    crate::object::name::PdfName::from("Length"),
+                    PdfObject::from(length),
+                );
+                Ok(PdfObject::Stream(crate::object::stream::PdfStream::new(
+                    dictionary, data,
+                )))
+            }
+            other => Ok(other),
+        }
+    }
+
+    fn decrypt_dictionary(
+        &self,
+        id: ObjectId,
+        dictionary: crate::object::dictionary::PdfDictionary,
+    ) -> Result<crate::object::dictionary::PdfDictionary, ResolveError> {
+        dictionary
+            .into_iter()
+            .map(|(name, value)| self.decrypt_object(id, value).map(|value| (name, value)))
+            .collect()
+    }
+
+    fn decrypt_bytes(
+        &self,
+        id: ObjectId,
+        kind: EncryptedValueKind,
+        input: &[u8],
+    ) -> Result<Vec<u8>, ResolveError> {
+        let authentication = self
+            .authentication
+            .as_ref()
+            .ok_or(ResolveError::Unauthenticated)?;
+        let target = ObjectDecryptionTarget::Indirect { id, kind };
+        let decryption = authentication
+            .object_decryption(target)
+            .map_err(ResolveError::IncompatibleDecryption)?;
+        decryption.decrypt(input).map_err(ResolveError::Decryption)
     }
 }
 
