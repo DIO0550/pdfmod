@@ -167,7 +167,8 @@ nav a { font-size: 16px; } table { font-size: 17px; } th { font-size: 15px; }
 <a href="#legacy-md5"><span>09</span>旧リビジョンの鍵導出とMD5</a><a href="#legacy-rc4"><span>10</span>旧形式のRC4</a>
 <a href="#revision6-sha2"><span>11</span>リビジョン6のSHA-2</a><a href="#aes-decryption"><span>12</span>AESのCBC・ECB復号</a>
 <a href="#aes256-file-key"><span>13</span>AES-256のファイル暗号鍵</a><a href="#password-auth"><span>14</span>パスワード認証</a>
-<a href="#object-key"><span>15</span>オブジェクトの復号鍵</a></nav></aside>
+<a href="#object-key"><span>15</span>オブジェクトの復号鍵</a>
+<a href="#typescript-primitives"><span>16</span>TypeScriptの暗号プリミティブ</a></nav></aside>
 <main id="top"><div class="wrap"><header class="hero"><div class="eyebrow">PDF INTERNALS / ENCRYPTION DICTIONARY</div>
 <h1>暗号化辞書を読む</h1><p class="lead">PDFの <code>/Encrypt</code> は、暗号化の方式と鍵の材料を記述します。アルゴリズムの版、crypt filter、権限を、解釈できる型へ変換する仕組みを見ていきます。</p></header>
 <section class="section" id="overview"><div class="section-heading"><span class="number">01</span><h2>暗号化の起点</h2></div>
@@ -722,6 +723,28 @@ assert_eq!(digest, <span class="type">Md5</span>::digest(<span class="string">b"
 <div class="note warning"><strong>メタデータの例外</strong><code>/EncryptMetadata false</code> の <code>/Type /Metadata</code> ストリーム本体は平文として保ちます。通常ストリーム辞書に含まれる文字列は別物なので、<code>/StrF</code> の対象かどうかを辞書の値ごとに判定します。</div>
 <div class="note"><strong>失敗とキャッシュ</strong>認証元の不一致、復号方式と鍵の不一致、AESの長さ・パディング不正、未対応crypt filterは <code>AuthenticatedResolveError</code> の別バリアントで分岐できます。既存の <code>ResolveError</code> は変えないため、通常のResolverを使う既存呼び出しの網羅的matchは壊れません。復号済み <code>PdfObject</code> は認証済みResolverのキャッシュに保存されるため、同じ参照を再解決しても再度復号しません。<code>Debug</code> も平文オブジェクトではなく入力長とキャッシュ件数だけを出します。</div>
 <p>crypt filter を使う文書では、ストリーム本体の既定の方式を <code>/StmF</code> から選びます。明示的な <code>/Crypt</code> や埋め込みファイル用の <code>/EFF</code> が適用される場合は、呼び出し側で扱います。これらのフィルタ固有経路は今回のResolver統合の対象外です。</p>
+</section>
+<section class="section" id="typescript-primitives">
+<div class="section-heading"><span class="number">16</span><h2>TypeScriptの暗号プリミティブ</h2></div>
+<p>暗号プリミティブは、バイト列をハッシュしたり、鍵で変換したりする計算の部品です。暗号化辞書からどの鍵と方式を使うかが決まると、次の部品にバイト列を渡せます。</p>
+<div class="table-wrap" tabindex="0" role="region" aria-label="PDFの処理とTypeScriptの暗号プリミティブ">
+<table><thead><tr><th scope="col">PDFで必要な処理</th><th scope="col">TypeScriptの入口</th><th scope="col">渡すデータ</th></tr></thead><tbody>
+<tr><td>R2〜R4の鍵導出・旧形式の復号</td><td><code>Md5.digest</code>・<code>Rc4.apply</code></td><td>ハッシュするバイト列、または5〜16バイトの鍵と暗号文</td></tr>
+<tr><td>R5・R6の鍵導出</td><td><code>Sha256.digest</code>・<code>Sha384.digest</code>・<code>Sha512.digest</code></td><td>ハッシュするバイト列。R5はSHA-256、R6はSHA-256で始めて反復中に3種を使い分ける。Algorithm 2.B では <code>encryptCbcBlocks</code> でAES-128の作業ブロックを作る</td></tr>
+<tr><td><code>/UE</code>・<code>/OE</code> のファイル鍵</td><td><code>decryptCbcBlocks</code></td><td>別に渡す16バイトのゼロIVと32バイトの暗号文。復号後の32バイトをすべて使う</td></tr>
+<tr><td><code>/Perms</code> の権限ブロック</td><td><code>decryptEcbBlock</code></td><td>16バイトの暗号文。復号後の全16バイトを権限検証に渡す</td></tr>
+<tr><td>AESV2・AESV3の文字列・ストリーム</td><td><code>decryptPdfCbc</code></td><td>IVを先頭に含む暗号文。復号後にパディングを検証して外す</td></tr>
+</tbody></table>
+</div>
+<h3>CBCの2つの入口を使い分ける</h3>
+<p><a href="#aes-decryption">AESの例</a>の <code>/Subject</code> には先頭にIVがあります。一方、辞書の <code>/UE</code> の32バイトはすべて暗号文で、IVは呼び出し側がゼロで用意します。両方ともCBCですが、IVの置き場所と復号後の末尾の扱いが異なるため、入口を分けています。</p>
+<pre><code><span class="keyword">const</span> iv = input.subarray(<span class="value">0</span>, AES_BLOCK_BYTES);
+<span class="keyword">const</span> data = input.subarray(AES_BLOCK_BYTES);
+<span class="keyword">return</span> removePdfPadding(decryptCbc(roundKeys, { iv, data }));</code></pre>
+<p><code>subarray(0, 16)</code> は位置0から15までを参照します。終了位置の16は範囲に含まれません。<code>subarray(16)</code> は位置16から末尾までです。例えば <code>Uint8Array.of(10, 20, 30).subarray(1, 2)</code> で読める値は <code>20</code> です。2つのビューは元のバッファを共有し、<code>decryptCbc</code> は復号結果を新しい配列に書き込みます。</p>
+<h3>Nodeとブラウザで同じ同期APIを使う</h3>
+<p>Nodeでもブラウザでも使える <code>Uint8Array</code>・<code>DataView</code>・<code>bigint</code> で実装しています。計算結果はその場で返り、<code>await</code> が必要な文書の読み込み処理からもそのまま呼べます。Web Crypto の AES-CBC はパディングを処理するAPIです。PDFで必要なパディングなしのCBC・ECB、旧リビジョンのMD5・RC4を含めて1つの実装に揃え、暗号ライブラリや環境ごとの実装を追加せずに済むようにしています。</p>
+<div class="note"><strong>TypeScriptで利用できる範囲</strong>ここで使えるのは個々の変換です。暗号化PDFを <code>PdfDocument.load</code> で開くには、鍵導出・認証・オブジェクト読み込みへの接続が必要です。</div>
 </section>
 <footer><a href="#top">最上部へ</a> · <a href="README.md">解説一覧</a></footer></div></main>
 </body></html>
