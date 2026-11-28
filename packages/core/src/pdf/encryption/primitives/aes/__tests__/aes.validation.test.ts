@@ -48,6 +48,28 @@ test("CBC の末尾がブロック未満なら暗号文の長さエラーにな�
   expect(result).toEqual({ ok: false, error: "INVALID_BLOCK_LENGTH" });
 });
 
+test("CBC 暗号化で IV が 16 バイトに満たないと IV 長のエラーになる", () => {
+  const aes = createAes(key128);
+
+  const result = aes.encryptCbcBlocks({
+    iv: new Uint8Array(15),
+    data: new Uint8Array(16),
+  });
+
+  expect(result).toEqual({ ok: false, error: "INVALID_IV_LENGTH" });
+});
+
+test("CBC 暗号化で平文が 16 バイトの倍数でなければブロック長のエラーになる", () => {
+  const aes = createAes(key128);
+
+  const result = aes.encryptCbcBlocks({
+    iv: new Uint8Array(16),
+    data: new Uint8Array(17),
+  });
+
+  expect(result).toEqual({ ok: false, error: "INVALID_BLOCK_LENGTH" });
+});
+
 // Rust 版と同じ OpenSSL の暗号文。PDF では IV を先頭に置く。
 test.each([
   [
