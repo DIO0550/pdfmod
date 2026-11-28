@@ -4,7 +4,7 @@
   "headBranch": "feature/652-typescript-crypto-primitives",
   "baseBranch": "main",
   "mergeBase": "2fcb2e3054c15cfc9106c31e6c5ed2af23fd4041",
-  "head": "ef9e176329901c564867cc16a9efbcf0a51103cb",
+  "head": "ef7962327d02a7cd4b8a1d44c3302eabc91e221b",
   "groups": [
     {
       "label": "TypeScript · core",
@@ -160,7 +160,7 @@
           "path": "packages/core/src/pdf/encryption/primitives/aes/__tests__/aes.validation.test.ts",
           "status": "A",
           "oldPath": null,
-          "additions": 92,
+          "additions": 114,
           "deletions": 0,
           "changed": true,
           "target": "packages/core/src/pdf/encryption/primitives/aes/index.ts"
@@ -279,6 +279,14 @@
       {
         "file": "packages/core/src/pdf/encryption/primitives/aes/__tests__/aes.validation.test.ts",
         "name": "CBC の末尾がブロック未満なら暗号文の長さエラーになる"
+      },
+      {
+        "file": "packages/core/src/pdf/encryption/primitives/aes/__tests__/aes.validation.test.ts",
+        "name": "CBC 暗号化で IV が 16 バイトに満たないと IV 長のエラーになる"
+      },
+      {
+        "file": "packages/core/src/pdf/encryption/primitives/aes/__tests__/aes.validation.test.ts",
+        "name": "CBC 暗号化で平文が 16 バイトの倍数でなければブロック長のエラーになる"
       },
       {
         "file": "packages/core/src/pdf/encryption/primitives/aes/__tests__/aes.validation.test.ts",
@@ -666,6 +674,26 @@
       "subject": "🔨 [Chore]: #652 main を取り込み暗号化ガイドの競合を解消",
       "body": "- Rust のオブジェクト復号と TypeScript のプリミティブの節を残す\n- TypeScript の節を第16章に移し、目次と一覧のリンクをそろえる\n\n背景:\n暗号化ガイドの同じ箇所に main と #652 が異なる節を追加した。\n\n採用理由:\n既存の Rust 解説と章番号を維持し、TypeScript の解説をその後に置く。\n\n影響とトレードオフ:\n解説の章番号と案内のみを調整し、両ブランチの実装は変更しない。",
       "files": []
+    },
+    {
+      "sha": "ef7962327d02a7cd4b8a1d44c3302eabc91e221b",
+      "merge": false,
+      "author": "DIO0550",
+      "date": "2026-11-28T19:47:35+09:00",
+      "subject": "🧪 [Tests]: #652 CBC 暗号化の長さエラーを検証",
+      "body": "- 15 バイトの IV で INVALID_IV_LENGTH を返すことを検証\n- 17 バイトの平文で INVALID_BLOCK_LENGTH を返すことを検証",
+      "files": [
+        {
+          "path": "packages/core/src/pdf/encryption/primitives/aes/__tests__/aes.validation.test.ts",
+          "status": "M",
+          "oldPath": null,
+          "additions": 22,
+          "deletions": 0,
+          "patch": "@@ -48,6 +48,28 @@ test(\"CBC の末尾がブロック未満なら暗号文の長さエラーにな\n   expect(result).toEqual({ ok: false, error: \"INVALID_BLOCK_LENGTH\" });\n });\n \n+test(\"CBC 暗号化で IV が 16 バイトに満たないと IV 長のエラーになる\", () => {\n+  const aes = createAes(key128);\n+\n+  const result = aes.encryptCbcBlocks({\n+    iv: new Uint8Array(15),\n+    data: new Uint8Array(16),\n+  });\n+\n+  expect(result).toEqual({ ok: false, error: \"INVALID_IV_LENGTH\" });\n+});\n+\n+test(\"CBC 暗号化で平文が 16 バイトの倍数でなければブロック長のエラーになる\", () => {\n+  const aes = createAes(key128);\n+\n+  const result = aes.encryptCbcBlocks({\n+    iv: new Uint8Array(16),\n+    data: new Uint8Array(17),\n+  });\n+\n+  expect(result).toEqual({ ok: false, error: \"INVALID_BLOCK_LENGTH\" });\n+});\n+\n // Rust 版と同じ OpenSSL の暗号文。PDF では IV を先頭に置く。\n test.each([\n   [",
+          "patchLines": 29,
+          "truncated": false
+        }
+      ]
     }
   ],
   "dependencies": [
