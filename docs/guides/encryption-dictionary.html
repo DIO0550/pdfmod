@@ -167,7 +167,8 @@ nav a { font-size: 16px; } table { font-size: 17px; } th { font-size: 15px; }
 <a href="#legacy-md5"><span>09</span>旧リビジョンの鍵導出とMD5</a><a href="#legacy-rc4"><span>10</span>旧形式のRC4</a>
 <a href="#revision6-sha2"><span>11</span>リビジョン6のSHA-2</a><a href="#aes-decryption"><span>12</span>AESのCBC・ECB復号</a>
 <a href="#aes256-file-key"><span>13</span>AES-256のファイル暗号鍵</a><a href="#password-auth"><span>14</span>パスワード認証</a>
-<a href="#typescript-primitives"><span>15</span>TypeScriptの暗号プリミティブ</a></nav></aside>
+<a href="#object-key"><span>15</span>オブジェクトの復号鍵</a>
+<a href="#typescript-primitives"><span>16</span>TypeScriptの暗号プリミティブ</a></nav></aside>
 <main id="top"><div class="wrap"><header class="hero"><div class="eyebrow">PDF INTERNALS / ENCRYPTION DICTIONARY</div>
 <h1>暗号化辞書を読む</h1><p class="lead">PDFの <code>/Encrypt</code> は、暗号化の方式と鍵の材料を記述します。アルゴリズムの版、crypt filter、権限を、解釈できる型へ変換する仕組みを見ていきます。</p></header>
 <section class="section" id="overview"><div class="section-heading"><span class="number">01</span><h2>暗号化の起点</h2></div>
@@ -239,7 +240,7 @@ nav a { font-size: 16px; } table { font-size: 17px; } th { font-size: 15px; }
 <div class="note error"><strong>位置は辞書単位</strong>エラーの <code>offset</code> は渡された辞書の開始位置です。/CF/StdCF/CFMのようなキーのパスは報告しますが、個々の値の物理位置は取得しません。</div>
 <p>キーと期待型を表す <code>PdfDictionaryField</code> と直接値の取得・型チェックは、PDF共通の <code>PdfDictionaryReader</code> が担当します。暗号化側はそのエラーを <code>EncryptError</code> に変換し、暗号化固有の制約を検証します。</p>
 <p>入力辞書からキーを削除したりバイト列を書き換えたりしません。必須キー欠落、型不一致、不正なファイル鍵長、未定義セレクタはResultのエラーで返します。</p>
-<p>TypeScriptの <code>PdfDocument.load</code> は引き続き暗号化PDFを <code>ENCRYPTED_PDF_UNSUPPORTED</code> として拒否します。この型化は復号機能の基盤であり、ドキュメント読込の復号対応は後続の作業です。</p>
+<p>TypeScriptの <code>PdfDocument.load</code> は引き続き暗号化PDFを <code>ENCRYPTED_PDF_UNSUPPORTED</code> として拒否します。Rustではパスワード認証済みの <code>ObjectResolver::open_authenticated</code> から文字列・ストリームの遅延復号を利用できますが、Rust <code>PdfDocument</code> のパスワード受付はまだ公開していません。</p>
 <h3>TypeScriptで解析結果を読む</h3>
 <p>次の例は公開APIを使い、辞書の抜粋をバイト列から読み取ります。<code>ObjectParser</code> はPDFの構文を辞書へ変換し、<code>EncryptDictionary</code> はその辞書を暗号化方式の型へ変換します。トレイラから /Encrypt を探す処理は含みません。</p>
 <pre><code id="api-example"><span class="keyword">import</span> {
@@ -409,7 +410,7 @@ assert_eq!(digest, <span class="type">Md5</span>::digest(<span class="string">b"
 暗号化  <span class="value">41</span> XOR <span class="value">1F</span> = <span class="value">5E</span>
 復号    <span class="value">5E</span> XOR <span class="value">1F</span> = <span class="value">41</span></code></pre>
 <p>Rustの内部型 <code>Rc4</code> は5〜16バイトの鍵を受け取ります。例えば4バイトや17バイトを渡すと <code>None</code> が返ります。<code>apply</code> は渡したデータをその場で書き換え、同じ状態で続けて呼ぶと次のバイトから処理します。空のデータでは鍵ストリームは進みません。</p>
-<div class="note"><strong>Rustで使える処理</strong>鍵とバイト列を渡してRC4を適用でき、R2〜R4の <a href="#password-auth">パスワード認証</a> でも使います。PDFの読み込み中に鍵を求め、暗号化された文字列やストリームに適用する処理は後続の実装です。</div>
+<div class="note"><strong>Rustで使える処理</strong>RC4はR2〜R4の <a href="#password-auth">パスワード認証</a> に使います。認証後は <a href="#object-key">オブジェクトの復号鍵</a> を導出できます。</div>
 </section>
 <section class="section" id="revision6-sha2">
 <div class="section-heading"><span class="number">11</span><h2>リビジョン6の鍵導出とSHA-2</h2></div>
@@ -630,14 +631,13 @@ assert_eq!(digest, <span class="type">Md5</span>::digest(<span class="string">b"
   <p>誤ったパスワードや、R5・R6 に対して UTF-8 として解釈できないバイト列を渡した場合は <code>AuthError::IncorrectPassword</code> を返します。一方、R2〜R4 で <code>/ID</code> が欠けていれば <code>MissingFileId</code>、<code>/U</code> や <code>/O</code> が規定長（R2〜R4 は32バイト、R5・R6 は48バイト）と異なれば <code>InvalidEntryLength</code>、R5・R6 で <code>/Perms</code> が辞書と矛盾すれば <code>InvalidPermissions</code> となり、誤パスワードと辞書の破損・改ざんを明確に区別できます。</p>
 </div>
 <h3>Rust API と型による安全境界</h3>
-<p>検証済みの鍵と役割は <code>AuthenticatedFileKey</code> に包んで返します。フィールドは非公開で、構築できるのは <code>authenticate</code> と <code>authenticate_as</code> だけです。未認証や誤った鍵のまま後続の復号処理へ渡せないことを型で保証します。</p>
+<p><code>authenticate</code> と <code>authenticate_as</code> は、検証済みの鍵と役割を <code>AuthenticatedFileKey</code> に包んで返します。認証結果は認証に使った暗号化辞書への参照も保持するため、復号方式と鍵を同じ辞書から選べます。</p>
 <pre><code><span class="keyword">use</span> pdfmod_core::encrypt::auth::{<span class="type">AuthError</span>, <span class="type">PasswordRole</span>};
 
 <span class="keyword">match</span> handler.authenticate(password, trailer.id()) {
     <span class="type">Ok</span>(authenticated) =&gt; {
         <span class="keyword">let</span> role: <span class="type">PasswordRole</span> = authenticated.role();
-        <span class="keyword">let</span> key_bytes: &amp;[<span class="type">u8</span>] = authenticated.as_bytes();
-        <span class="comment">// role に応じて /P の権限制限を判定し、key_bytes で復号へ進む</span>
+        <span class="comment">// role に応じて /P の権限制限を判定する</span>
     }
     <span class="type">Err</span>(<span class="type">AuthError</span>::IncorrectPassword) =&gt; {
         <span class="comment">// パスワード不一致：再入力を求めるなど</span>
@@ -652,17 +652,80 @@ assert_eq!(digest, <span class="type">Md5</span>::digest(<span class="string">b"
   <tbody>
     <tr><td><code>StandardSecurityHandler::authenticate(password, file_id)</code></td><td><code>None</code> は空パスワードを利用者 → 所有者、<code>Some(bytes)</code> は所有者 → 利用者の順に認証</td></tr>
     <tr><td><code>StandardSecurityHandler::authenticate_as(role, password, file_id)</code></td><td>指定した単一の <code>PasswordRole</code> で Algorithm 6 / 7 / 11 / 12 を適用</td></tr>
-    <tr><td><code>AuthenticatedFileKey</code></td><td><code>role()</code>・<code>key()</code>・<code>as_bytes()</code> を提供。<code>Clone</code> / <code>Copy</code> 非実装、<code>Debug</code> は鍵バイト列を秘匿</td></tr>
+    <tr><td><code>AuthenticatedFileKey</code></td><td>認証に使った暗号化辞書を借用。<code>role()</code>・<code>key()</code>・<code>as_bytes()</code> で認証結果を参照。<code>Debug</code> は鍵バイト列を秘匿</td></tr>
     <tr><td><code>FileEncryptionKey</code></td><td><code>Legacy(LegacyFileKey)</code> と <code>Aes256(Aes256FileKey)</code> の列挙型。鍵種別のみを表し単独では認証済みを保証しない（認証が必要な境界では <code>AuthenticatedFileKey</code> を要求する）。<code>as_bytes()</code>・<code>as_legacy()</code>・<code>as_aes256()</code> を提供</td></tr>
     <tr><td><code>AuthError</code></td><td><code>IncorrectPassword</code> と <code>MissingFileId</code>・<code>InvalidEntryLength</code>・<code>InvalidKeyLength</code>・<code>InvalidPermissions</code>・<code>InvalidHashInput</code>・<code>UnsupportedRevision</code> を区別</td></tr>
   </tbody>
 </table>
 </div>
 <div class="note"><strong>定数時間比較と鍵の秘匿</strong><code>/U</code> や検証ハッシュの照合には、先頭で不一致を見つけても打ち切らず全バイトを XOR で畳み込む<strong>定数時間比較（constant-time comparison）</strong>を使います。また <code>AuthenticatedFileKey</code> と内包する鍵型は <code>Debug</code> フォーマットで鍵バイト列を出力しません。</div>
-<div class="note warning"><strong>仕様と実装方針の境界</strong>R3・R4 の <code>/U</code> で照合対象となるのは先頭16バイトですが、pdfmod は辞書項目として32バイトちょうどの長さを要求します。R5・R6 の SASLprep は呼び出し側で行い、鍵導出に使う先頭127バイトを覆う最小のUTF-8文字境界まで（最大130バイト）を検証して不正な UTF-8 は <code>IncorrectPassword</code> として扱います（文字境界より後ろの未使用バイトは走査しません）。検証済みの鍵を使ったオブジェクト単位の鍵導出（Algorithm 1）、文字列・ストリームの復号、<code>PdfDocument</code> への統合は後続の実装で扱います。</div>
+<div class="note warning"><strong>仕様と実装方針の境界</strong>R3・R4 の <code>/U</code> で照合対象となるのは先頭16バイトですが、pdfmod は辞書項目として32バイトちょうどの長さを要求します。R5・R6 の SASLprep は呼び出し側で行い、鍵導出に使う先頭127バイトを覆う最小のUTF-8文字境界まで（最大130バイト）を検証して不正な UTF-8 は <code>IncorrectPassword</code> として扱います（文字境界より後ろの未使用バイトは走査しません）。認証で得たファイル鍵は、次の <a href="#object-key">オブジェクトの復号鍵</a> の選択に使います。</div>
+</section>
+<section class="section" id="object-key">
+<div class="section-heading"><span class="number">15</span><h2>オブジェクトの復号鍵</h2></div>
+<p>ファイル暗号鍵はパスワード認証で得られます。文字列やストリームを読む段階では、まず暗号化に使われた方式を探し、その方式に必要な鍵を用意します。</p>
+
+<h3>文字列とストリーム本体の既定の方式</h3>
+<p>次は暗号化辞書と間接オブジェクトの抜粋です。<code>/StrF /ForStrings</code> から <code>/CF</code> の <code>/ForStrings</code> を引くと、<code>/CFM /V2</code> が見つかります。したがって <code>/Subject</code> に続く16進文字列は RC4 で復号します。ストリーム本体の既定方式は、<code>/StmF /ForStreams</code> が選ぶ AES-128 です。</p>
+<pre><code><span class="comment">% /Encrypt が指す暗号化辞書の抜粋</span>
+<span class="pdf-syntax">&lt;&lt;</span> <span class="key">/V</span> <span class="value">4</span> <span class="key">/R</span> <span class="value">4</span> <span class="key">/Length</span> <span class="value">128</span>
+   <span class="key">/CF</span> <span class="pdf-syntax">&lt;&lt;</span> <span class="key">/ForStreams</span> <span class="pdf-syntax">&lt;&lt;</span> <span class="key">/CFM</span> <span class="key">/AESV2</span> <span class="key">/Length</span> <span class="value">16</span> <span class="pdf-syntax">&gt;&gt;</span>
+          <span class="key">/ForStrings</span> <span class="pdf-syntax">&lt;&lt;</span> <span class="key">/CFM</span> <span class="key">/V2</span> <span class="key">/Length</span> <span class="value">16</span> <span class="pdf-syntax">&gt;&gt; &gt;&gt;</span>
+   <span class="key">/StmF</span> <span class="key">/ForStreams</span> <span class="key">/StrF</span> <span class="key">/ForStrings</span> <span class="pdf-syntax">&gt;&gt;</span>
+
+<span class="value">7 4660</span> <span class="pdf-syntax">obj</span>
+<span class="pdf-syntax">&lt;&lt;</span> <span class="key">/Subject</span> <span class="string">&lt;5A2277&gt;</span> <span class="pdf-syntax">&gt;&gt;</span>
+<span class="pdf-syntax">endobj</span></code></pre>
+
+<div class="table-wrap" tabindex="0" role="region" aria-label="crypt filter に応じた復号鍵">
+<table>
+  <thead><tr><th scope="col">指定</th><th scope="col">処理</th></tr></thead>
+  <tbody>
+    <tr><td><code>/V 1</code>・<code>/V 2</code>、または <code>/CFM /V2</code></td><td>RC4。Algorithm 1 でオブジェクト鍵を導出します。</td></tr>
+    <tr><td><code>/CFM /AESV2</code></td><td>AES-128。Algorithm 1 の MD5 入力に <code>sAlT</code> を加えます。</td></tr>
+    <tr><td><code>/CFM /AESV3</code></td><td>AES-256。Algorithm 1.A に従って32バイトのファイル暗号鍵を使います。</td></tr>
+    <tr><td><code>/Identity</code>、<code>/CFM /None</code></td><td>復号を省略します。<code>/V 4</code> 以降で <code>/StmF</code> や <code>/StrF</code> を省略すると、その対象は <code>/Identity</code> です。<code>/CFM</code> の省略は <code>/None</code> になります。</td></tr>
+  </tbody>
+</table></div>
+<div class="note error"><strong><code>/CF</code> に名前が見つからない場合</strong>たとえば <code>/StrF /Missing</code> を指定した文書は、暗号化辞書の解析時に <code>UndefinedCryptFilter</code> を返します。<code>/Identity</code> は組み込みの名前として解決されます。</div>
+
+<h3>Algorithm 1 の入力をバイトで読む</h3>
+<ol class="steps">
+  <li><strong>ファイル暗号鍵を置く。</strong> 例の <code>/Length 128</code> は16バイト鍵を表します。</li>
+  <li><strong>番号をリトルエンディアンで足す。</strong> リトルエンディアンは小さい桁のバイトから並べる方式です。<code>7 4660 obj</code> のオブジェクト番号 <code>7</code> は <code>07 00 00</code>、世代番号 <code>4660</code>（16進数で <code>1234</code>）は <code>34 12</code> です。</li>
+  <li><strong>AES-128 の場合は <code>sAlT</code> を足す。</strong> 4文字を ASCII の4バイト <code>73 41 6C 54</code> にした固定値です。</li>
+  <li><strong>MD5 の先頭を取る。</strong> 16バイトの出力から、ファイル鍵の長さに5を足した長さまで取り出します。取り出すのは最大16バイトです。たとえばファイル鍵が5バイトなら、RC4 のオブジェクト鍵は10バイトになります。</li>
+</ol>
+<p>例のオブジェクトでテスト用ファイル鍵 <code>2d3657bf2eed39f71c700423877a4e15</code> を使うと、RC4 鍵は <code>a81abbe4025116ebda01d9652639ddee</code> です。この鍵で <code>&lt;5A2277&gt;</code> を復号したバイトを ASCII で読むと <code>PDF</code> になります。同じ番号と世代で AES-128 を選ぶと、<code>sAlT</code> が加わって鍵は <code>1b66d7e5ffda93e9bb90892ab0e05027</code> になります。</p>
+<div class="note"><strong>3バイトを超えるオブジェクト番号</strong>16進数で <code>ff ff ff</code> の次の番号 <code>01 00 00 00</code> は、下位3バイトだけを取り出すと <code>00 00 00</code> になります。上位バイトだけが異なる場合は、同じ世代から同じ鍵が導出されます。</div>
+
+<h3>オブジェクトストリームを一度復号する</h3>
+<p><code>/Type /ObjStm</code> は、複数のオブジェクトを一つのストリーム本体に格納します。コンテナの本体に <code>/StmF</code> とコンテナ自身の番号・世代を使います。そこから取り出したオブジェクトの文字列は、コンテナ本体を復号した時点で平文になっています。</p>
+<pre><code><span class="keyword">let</span> <span class="type">ObjectDecryptionTarget</span>::Indirect { id, kind } = target <span class="keyword">else</span> {
+    <span class="keyword">return</span> <span class="type">Ok</span>(<span class="type">ObjectDecryption</span>::None);
+};</code></pre>
+<p>Rust の <code>let … else</code> は、右辺の値が左側の形に一致したときに中身を取り出す構文です。<code>target</code> が通常の間接オブジェクトなら、波括弧の <code>id</code> と <code>kind</code> を後続の処理で使えます。格納形態が <code>InObjectStream</code> なら <code>else</code> の中へ進み、復号不要を表す <code>Ok(ObjectDecryption::None)</code> を返します。</p>
+<p><code>authenticated.object_decryption(target)</code> と呼ぶと、認証結果に結び付いた辞書とファイル鍵から、対象の復号方式と鍵を選びます。選んだ方式がファイル鍵の種別や長さと両立しない場合は <code>IncompatibleFileKey</code> になります。</p>
+<p>RC4 と AES-128 の戻り値は、その場で導出した鍵を持ちます。AES-256 では Algorithm 1.A が指定するファイル暗号鍵の32バイトをコピーして、<code>ObjectDecryption::Aes256</code> に入れます。どの方式でも戻り値が自分で鍵を持つため、呼び出し側は認証結果を破棄したあとも復号方式と鍵を保持できます。</p>
+<p><code>AuthenticatedFileKey&lt;'handler&gt;</code> の <code>'handler</code> は、暗号化辞書への参照を使える期間（ライフタイム）を表します。認証結果を使っている間は、元の辞書も参照できることを Rust のコンパイラが確認します。</p>
+<h3>認証済みResolverで遅延復号する</h3>
+<p>通常の <code>ObjectResolver::open</code> は暗号化文書を <code>EncryptedDocument</code> で拒否します。パスワード認証を済ませた場合は <code>open_authenticated</code> に認証結果を渡し、<code>AuthenticatedObjectResolver</code> が要求された間接オブジェクトだけを復号します。入力の <code>/Encrypt</code> と永続 <code>/ID</code> が認証元に一致することを入口で確認するため、別文書の鍵を渡すことはできません。</p>
+<pre><code><span class="keyword">let</span> authenticated = handler.authenticate(password, file_id)?;
+<span class="keyword">let mut</span> resolver = <span class="type">ObjectResolver</span>::open_authenticated(input, authenticated)?;
+<span class="keyword">let</span> value = resolver.resolve(reference)?;</code></pre>
+<ol class="steps">
+  <li><strong>構造を先に読む。</strong> xref、間接オブジェクトの番号、ストリーム辞書、暗号文の <code>/Length</code> は復号前の構造情報です。</li>
+  <li><strong>対象を選ぶ。</strong> 文字列・配列・辞書内の文字列は <code>/StrF</code>、ストリーム本体は <code>/StmF</code> を使います。AESでは先頭16バイトをIV、末尾をPKCS#7パディングとして処理します。</li>
+  <li><strong>平文長へ更新する。</strong> ストリーム復号後は、暗号文と異なり得る実データ長を辞書の <code>/Length</code> へ書き戻します。</li>
+  <li><strong>除外と一度だけの復号を守る。</strong> <code>/Encrypt</code>、<code>/ID</code>、xrefストリーム、<code>/Identity</code> は無変更です。ObjStmはコンテナだけを復号し、内包オブジェクトは再復号しません。</li>
+  <li><strong>署名と未対応フィルタを区別する。</strong> <code>/Type /Sig</code> の <code>/Contents</code> は平文のまま保ち、同じ辞書の他の文字列は復号します。明示的な <code>/Crypt</code> や埋め込みファイルは <code>/StmF</code> へ勝手にフォールバックせず、型付きエラーにします。</li>
+</ol>
+<div class="note warning"><strong>メタデータの例外</strong><code>/EncryptMetadata false</code> の <code>/Type /Metadata</code> ストリーム本体は平文として保ちます。通常ストリーム辞書に含まれる文字列は別物なので、<code>/StrF</code> の対象かどうかを辞書の値ごとに判定します。</div>
+<div class="note"><strong>失敗とキャッシュ</strong>認証元の不一致、復号方式と鍵の不一致、AESの長さ・パディング不正、未対応crypt filterは <code>AuthenticatedResolveError</code> の別バリアントで分岐できます。既存の <code>ResolveError</code> は変えないため、通常のResolverを使う既存呼び出しの網羅的matchは壊れません。復号済み <code>PdfObject</code> は認証済みResolverのキャッシュに保存されるため、同じ参照を再解決しても再度復号しません。<code>Debug</code> も平文オブジェクトではなく入力長とキャッシュ件数だけを出します。</div>
+<p>crypt filter を使う文書では、ストリーム本体の既定の方式を <code>/StmF</code> から選びます。明示的な <code>/Crypt</code> や埋め込みファイル用の <code>/EFF</code> が適用される場合は、呼び出し側で扱います。これらのフィルタ固有経路は今回のResolver統合の対象外です。</p>
 </section>
 <section class="section" id="typescript-primitives">
-<div class="section-heading"><span class="number">15</span><h2>TypeScriptの暗号プリミティブ</h2></div>
+<div class="section-heading"><span class="number">16</span><h2>TypeScriptの暗号プリミティブ</h2></div>
 <p>暗号プリミティブは、バイト列をハッシュしたり、鍵で変換したりする計算の部品です。暗号化辞書からどの鍵と方式を使うかが決まると、次の部品にバイト列を渡せます。</p>
 <div class="table-wrap" tabindex="0" role="region" aria-label="PDFの処理とTypeScriptの暗号プリミティブ">
 <table><thead><tr><th scope="col">PDFで必要な処理</th><th scope="col">TypeScriptの入口</th><th scope="col">渡すデータ</th></tr></thead><tbody>

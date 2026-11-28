@@ -58,9 +58,8 @@ fn r2_verifies_all_32_bytes_of_u_while_r4_ignores_trailing_16_bytes() {
             .unwrap_err(),
         AuthError::IncorrectPassword
     );
-    let r2_ok = standard_handler(R2.as_bytes())
-        .authenticate(None, trailer.id())
-        .unwrap();
+    let r2_handler = standard_handler(R2.as_bytes());
+    let r2_ok = r2_handler.authenticate(None, trailer.id()).unwrap();
     assert_eq!(r2_ok.as_bytes(), R2_KEY);
 
     // R4: /U の後半 16 バイト（16..32）を変えても認証成功する（先頭 16 バイト比較）。
@@ -68,7 +67,8 @@ fn r2_verifies_all_32_bytes_of_u_while_r4_ignores_trailing_16_bytes() {
         "0122456a91bae5134273a6db134c87c4>",
         "ffffffffffffffffffffffffffffffff>",
     );
-    let r4_ok = standard_handler(r4_changed_tail.as_bytes())
+    let r4_handler = standard_handler(r4_changed_tail.as_bytes());
+    let r4_ok = r4_handler
         .authenticate(Some(b"user"), trailer.id())
         .expect("R4 は /U の後半 16 バイトを無視する");
     assert_eq!(r4_ok.role(), PasswordRole::User);
